@@ -125,3 +125,8 @@ play".
 - [ ] Faster GPU usage via supporting multiple GPU
 (not very urgent, we need to generate the data & network first and this can be
 done with multiple processes each bound to a GPU)
+
+# License
+
+The code is released under the GPLv3 or later, except for ThreadPool.h, which
+has a specific license mentioned in that file.
