@@ -1,0 +1,1051 @@
+name: "ZeroNet"
+layer {
+  name: "data"
+  type: "Input"
+  top: "data"
+  input_param { shape: { dim: 1 dim: 18 dim: 19 dim: 19 } }
+}
+
+# input layer
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn1"
+  type: "BatchNorm"
+  bottom: "conv1"
+  top: "conv1"
+}
+
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "conv1"
+  top: "conv1"
+}
+
+# residual block 1
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "conv1"
+  top: "conv2"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn2"
+  type: "BatchNorm"
+  bottom: "conv2"
+  top: "conv2"
+}
+
+layer {
+  name: "relu2"
+  type: "ReLU"
+  bottom: "conv2"
+  top: "conv2"
+}
+
+layer {
+  name: "conv3"
+  type: "Convolution"
+  bottom: "conv2"
+  top: "conv3"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn3"
+  type: "BatchNorm"
+  bottom: "conv3"
+  top: "conv3"
+}
+
+layer {
+  name: "elt3"
+  type: "Eltwise"
+  bottom: "conv1"
+  bottom: "conv3"
+  top: "elt3"
+}
+
+layer {
+  name: "relu3"
+  type: "ReLU"
+  bottom: "elt3"
+  top: "elt3"
+}
+
+
+# residual block 2
+layer {
+  name: "conv4"
+  type: "Convolution"
+  bottom: "elt3"
+  top: "conv4"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn4"
+  type: "BatchNorm"
+  bottom: "conv4"
+  top: "conv4"
+}
+
+layer {
+  name: "relu4"
+  type: "ReLU"
+  bottom: "conv4"
+  top: "conv4"
+}
+
+layer {
+  name: "conv5"
+  type: "Convolution"
+  bottom: "conv4"
+  top: "conv5"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn5"
+  type: "BatchNorm"
+  bottom: "conv5"
+  top: "conv5"
+}
+
+layer {
+  name: "elt5"
+  type: "Eltwise"
+  bottom: "elt3"
+  bottom: "conv5"
+  top: "elt5"
+}
+
+layer {
+  name: "relu5"
+  type: "ReLU"
+  bottom: "elt5"
+  top: "elt5"
+}
+
+# residual block 3
+layer {
+  name: "conv6"
+  type: "Convolution"
+  bottom: "elt5"
+  top: "conv6"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn6"
+  type: "BatchNorm"
+  bottom: "conv6"
+  top: "conv6"
+}
+
+layer {
+  name: "relu6"
+  type: "ReLU"
+  bottom: "conv6"
+  top: "conv6"
+}
+
+layer {
+  name: "conv7"
+  type: "Convolution"
+  bottom: "conv6"
+  top: "conv7"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn7"
+  type: "BatchNorm"
+  bottom: "conv7"
+  top: "conv7"
+}
+
+layer {
+  name: "elt7"
+  type: "Eltwise"
+  bottom: "elt5"
+  bottom: "conv7"
+  top: "elt7"
+}
+
+layer {
+  name: "relu7"
+  type: "ReLU"
+  bottom: "elt7"
+  top: "elt7"
+}
+
+# residual block 4
+layer {
+  name: "conv8"
+  type: "Convolution"
+  bottom: "elt7"
+  top: "conv8"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn8"
+  type: "BatchNorm"
+  bottom: "conv8"
+  top: "conv8"
+}
+
+layer {
+  name: "relu8"
+  type: "ReLU"
+  bottom: "conv8"
+  top: "conv8"
+}
+
+layer {
+  name: "conv9"
+  type: "Convolution"
+  bottom: "conv8"
+  top: "conv9"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn9"
+  type: "BatchNorm"
+  bottom: "conv9"
+  top: "conv9"
+}
+
+layer {
+  name: "elt9"
+  type: "Eltwise"
+  bottom: "elt7"
+  bottom: "conv9"
+  top: "elt9"
+}
+
+layer {
+  name: "relu9"
+  type: "ReLU"
+  bottom: "elt9"
+  top: "elt9"
+}
+
+# residual block 5
+layer {
+  name: "conv10"
+  type: "Convolution"
+  bottom: "elt9"
+  top: "conv10"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn10"
+  type: "BatchNorm"
+  bottom: "conv10"
+  top: "conv10"
+}
+
+layer {
+  name: "relu10"
+  type: "ReLU"
+  bottom: "conv10"
+  top: "conv10"
+}
+
+layer {
+  name: "conv11"
+  type: "Convolution"
+  bottom: "conv10"
+  top: "conv11"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn11"
+  type: "BatchNorm"
+  bottom: "conv11"
+  top: "conv11"
+}
+
+layer {
+  name: "elt11"
+  type: "Eltwise"
+  bottom: "elt9"
+  bottom: "conv11"
+  top: "elt11"
+}
+
+layer {
+  name: "relu11"
+  type: "ReLU"
+  bottom: "elt11"
+  top: "elt11"
+}
+
+# residual block 6
+layer {
+  name: "conv12"
+  type: "Convolution"
+  bottom: "elt11"
+  top: "conv12"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn12"
+  type: "BatchNorm"
+  bottom: "conv12"
+  top: "conv12"
+}
+
+layer {
+  name: "relu12"
+  type: "ReLU"
+  bottom: "conv12"
+  top: "conv12"
+}
+
+layer {
+  name: "conv13"
+  type: "Convolution"
+  bottom: "conv12"
+  top: "conv13"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn13"
+  type: "BatchNorm"
+  bottom: "conv13"
+  top: "conv13"
+}
+
+layer {
+  name: "elt13"
+  type: "Eltwise"
+  bottom: "elt11"
+  bottom: "conv13"
+  top: "elt13"
+}
+
+layer {
+  name: "relu13"
+  type: "ReLU"
+  bottom: "elt13"
+  top: "elt13"
+}
+
+# residual block 7
+layer {
+  name: "conv14"
+  type: "Convolution"
+  bottom: "elt13"
+  top: "conv14"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn14"
+  type: "BatchNorm"
+  bottom: "conv14"
+  top: "conv14"
+}
+
+layer {
+  name: "relu14"
+  type: "ReLU"
+  bottom: "conv14"
+  top: "conv14"
+}
+
+layer {
+  name: "conv15"
+  type: "Convolution"
+  bottom: "conv14"
+  top: "conv15"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn15"
+  type: "BatchNorm"
+  bottom: "conv15"
+  top: "conv15"
+}
+
+layer {
+  name: "elt15"
+  type: "Eltwise"
+  bottom: "elt13"
+  bottom: "conv15"
+  top: "elt15"
+}
+
+layer {
+  name: "relu15"
+  type: "ReLU"
+  bottom: "elt15"
+  top: "elt15"
+}
+
+# residual block 8
+layer {
+  name: "conv16"
+  type: "Convolution"
+  bottom: "elt15"
+  top: "conv16"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn16"
+  type: "BatchNorm"
+  bottom: "conv16"
+  top: "conv16"
+}
+
+layer {
+  name: "relu16"
+  type: "ReLU"
+  bottom: "conv16"
+  top: "conv16"
+}
+
+layer {
+  name: "conv17"
+  type: "Convolution"
+  bottom: "conv16"
+  top: "conv17"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn17"
+  type: "BatchNorm"
+  bottom: "conv17"
+  top: "conv17"
+}
+
+layer {
+  name: "elt17"
+  type: "Eltwise"
+  bottom: "elt15"
+  bottom: "conv17"
+  top: "elt17"
+}
+
+layer {
+  name: "relu17"
+  type: "ReLU"
+  bottom: "elt17"
+  top: "elt17"
+}
+
+# residual block 9
+layer {
+  name: "conv18"
+  type: "Convolution"
+  bottom: "elt17"
+  top: "conv18"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn18"
+  type: "BatchNorm"
+  bottom: "conv18"
+  top: "conv18"
+}
+
+layer {
+  name: "relu18"
+  type: "ReLU"
+  bottom: "conv18"
+  top: "conv18"
+}
+
+layer {
+  name: "conv19"
+  type: "Convolution"
+  bottom: "conv18"
+  top: "conv19"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn19"
+  type: "BatchNorm"
+  bottom: "conv19"
+  top: "conv19"
+}
+
+layer {
+  name: "elt19"
+  type: "Eltwise"
+  bottom: "elt17"
+  bottom: "conv19"
+  top: "elt19"
+}
+
+layer {
+  name: "relu19"
+  type: "ReLU"
+  bottom: "elt19"
+  top: "elt19"
+}
+
+# residual block 10
+layer {
+  name: "conv20"
+  type: "Convolution"
+  bottom: "elt19"
+  top: "conv20"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn20"
+  type: "BatchNorm"
+  bottom: "conv20"
+  top: "conv20"
+}
+
+layer {
+  name: "relu20"
+  type: "ReLU"
+  bottom: "conv20"
+  top: "conv20"
+}
+
+layer {
+  name: "conv21"
+  type: "Convolution"
+  bottom: "conv20"
+  top: "conv21"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn21"
+  type: "BatchNorm"
+  bottom: "conv21"
+  top: "conv21"
+}
+
+layer {
+  name: "elt21"
+  type: "Eltwise"
+  bottom: "elt19"
+  bottom: "conv21"
+  top: "elt21"
+}
+
+layer {
+  name: "relu21"
+  type: "ReLU"
+  bottom: "elt21"
+  top: "elt21"
+}
+
+# residual block 11
+layer {
+  name: "conv22"
+  type: "Convolution"
+  bottom: "elt21"
+  top: "conv22"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn22"
+  type: "BatchNorm"
+  bottom: "conv22"
+  top: "conv22"
+}
+
+layer {
+  name: "relu22"
+  type: "ReLU"
+  bottom: "conv22"
+  top: "conv22"
+}
+
+layer {
+  name: "conv23"
+  type: "Convolution"
+  bottom: "conv22"
+  top: "conv23"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn23"
+  type: "BatchNorm"
+  bottom: "conv23"
+  top: "conv23"
+}
+
+layer {
+  name: "elt23"
+  type: "Eltwise"
+  bottom: "elt21"
+  bottom: "conv23"
+  top: "elt23"
+}
+
+layer {
+  name: "relu23"
+  type: "ReLU"
+  bottom: "elt23"
+  top: "elt23"
+}
+
+# residual block 12
+layer {
+  name: "conv24"
+  type: "Convolution"
+  bottom: "elt23"
+  top: "conv24"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn24"
+  type: "BatchNorm"
+  bottom: "conv24"
+  top: "conv24"
+}
+
+layer {
+  name: "relu24"
+  type: "ReLU"
+  bottom: "conv24"
+  top: "conv24"
+}
+
+layer {
+  name: "conv25"
+  type: "Convolution"
+  bottom: "conv24"
+  top: "conv25"
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+    pad: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "bn25"
+  type: "BatchNorm"
+  bottom: "conv25"
+  top: "conv25"
+}
+
+layer {
+  name: "elt25"
+  type: "Eltwise"
+  bottom: "elt23"
+  bottom: "conv25"
+  top: "elt25"
+}
+
+layer {
+  name: "relu25"
+  type: "ReLU"
+  bottom: "elt25"
+  top: "elt25"
+}
+
+layer {
+  name: "p_conv1"
+  type: "Convolution"
+  bottom: "elt25"
+  top: "pol1"
+  convolution_param {
+    num_output: 2
+    kernel_size: 1
+    pad: 0
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "p_bn1"
+  type: "BatchNorm"
+  bottom: "pol1"
+  top: "pol1"
+}
+
+layer {
+  name: "p_relu1"
+  type: "ReLU"
+  bottom: "pol1"
+  top: "pol1"
+}
+
+layer {
+  name: "p_ip1"
+  type: "InnerProduct"
+  inner_product_param {
+    num_output: 362
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  bottom: "pol1"
+  top: "pol2"
+}
+
+layer {
+  name: "pol_out"
+  type: "Softmax"
+  bottom: "pol2"
+  top: "pol_out"
+}
+
+layer {
+  name: "v_conv1"
+  type: "Convolution"
+  bottom: "elt25"
+  top: "val1"
+  convolution_param {
+    num_output: 1
+    kernel_size: 1
+    pad: 0
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "v_bn1"
+  type: "BatchNorm"
+  bottom: "val1"
+  top: "val1"
+}
+
+layer {
+  name: "v_relu1"
+  type: "ReLU"
+  bottom: "val1"
+  top: "val1"
+}
+
+layer {
+  name: "v_ip1"
+  type: "InnerProduct"
+  inner_product_param {
+    num_output: 256
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  bottom: "val1"
+  top: "val2"
+}
+
+layer {
+  name: "v_relu2"
+  type: "ReLU"
+  bottom: "val2"
+  top: "val2"
+}
+
+layer {
+  name: "v_ip2"
+  type: "InnerProduct"
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+  bottom: "val2"
+  top: "val3"
+}
+
+layer {
+  name: "v_tanh"
+  type: "TanH"
+  bottom: "val3"
+  top: "score"
+}
+
