@@ -58,7 +58,8 @@ Run make and hope it works. You might need to edit the paths in the Makefile.
 
 The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
 
-Add the --gtp commandline option to enable it.
+Add the --gtp commandline option to enable it. You will need a weights file,
+specify that with the -w option.
 
 All required commands are supported, as well as the tournament subset, and
 "loadsgf". The full set can be seen with "list_commands". The time control
@@ -76,33 +77,45 @@ The layout of the network is as in the AlphaGo Zero paper, but the number of
 residual blocks is allowed to vary. The program will autodetect the amount on
 startup.
 
-A Caffe-style protobuff with the full description is in the zero\_mini.protoxt file,
-describing the 12 residual layer case.
-
-Convolutional layers have 2 weight rows: convolution weights and channel biases
-Batchnorm layers have 3 weight rows: batchnorm means, batchnorm variances, and a single 0
-Innerproduct (fully connected) layers have 2 weight rows: weights and biases
+* Convolutional layers have 2 weight rows:
+    1) convolution weights
+    2) channel biases
+* Batchnorm layers have 3 weight rows:
+    1) batchnorm means
+    2) batchnorm variances
+    3) a single 0 (this is an nv-caffe oddity)
+* Innerproduct (fully connected) layers have 2 weight rows:
+    1) weights
+    2) output biases
 
 You might note there are 18 inputs instead of 17 as in the paper. The original
 AlphaGo Zero design has a slight imbalance in that it is easier for the white
 player to see the board edge (due to how padding works in neural networks).
 This has been fixed in Leela Zero. The inputs are:
 
+```
 1) Side to move stones at time T=0
 2) Side to move stones at time T=-1  (0 if T=0)
-..
+...
 8) Side to move stones at time T=-8  (0 if T<=7)
 9) Other side stones at time T=0
 10) Other side stones at time T=-1   (0 if T=0)
-..
+...
 16) Other side stones at time T=-8   (0 if T<=7)
-17) All 1 if black is to move, 0 otherwhise
-18) All 1 if white is to move, 0 otherwhise
+17) All 1 if black is to move, 0 otherwise
+18) All 1 if white is to move, 0 otherwise
+```
+
+The zero.prototxt file contains a description of the full 40 residual layer design,
+in (NVIDIA)-Caffe protobuff format. It can be used to set up nv-caffe for training
+a suitable network. The zero\_mini.protoxt file describes the 12 residual layer
+case that was used for the example supervised network listed in "I just want to
+play".
 
 # Todo
 
 - [ ] Less atrocious build instructions, list of package names for distros
-- [ ] Add the ability to provide the softmax temperate on the search results
+- [ ] Add the ability to provide the softmax temperature on the search results
 (this is required for randomizing the engine more in the opening)
 - [ ] CPU support for Xeon Phi and for people without GPU
 - [ ] Faster GPU usage via batching
