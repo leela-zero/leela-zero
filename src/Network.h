@@ -55,7 +55,6 @@ public:
     void benchmark(GameState * state);
     static void show_heatmap(FastState * state, Netresult & netres, bool topmoves);
     static Network* get_Network(void);
-    std::string get_backend();
     static int rotate_nn_idx(const int vertex, int symmetry);
     static int rev_rotate_nn_idx(const int vertex, int symmetry);
     static void softmax(const std::vector<float>& input,

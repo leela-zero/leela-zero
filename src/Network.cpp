@@ -601,26 +601,3 @@ int Network::rotate_nn_idx(const int vertex, int symmetry) {
     return newvtx;
 }
 
-std::string Network::get_backend() {
-#if defined(USE_OPENCL)
-    return opencl.get_device_name();
-#elif defined(USE_CAFFE)
-    return std::string("Caffe");
-#else
-#ifdef USE_BLAS
-#ifndef __APPLE__
-#ifdef USE_OPENBLAS
-    return std::string("BLAS core: " + std::string(openblas_get_corename()));
-#endif
-#ifdef USE_MKL
-    MKLVersion Version;
-    mkl_get_version(&Version);
-    return std::string("BLAS core: " + std::string(Version.Processor));
-#endif
-#else
-    return std::string("BLAS core: Apple Accelerate");
-#endif
-#endif
-#endif
-    return std::string("No BLAS backend active");
-}
