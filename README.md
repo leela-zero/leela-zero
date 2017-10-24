@@ -27,16 +27,17 @@ when starting on a smaller scale, it will take less than 1700 years to get
 a good network (which you can feed into this program, suddenly making it strong).
 Further details about this will be announced soon.
 
-# I just want to play
+# I just want to play right now
 
-A small network with some very limited training from human games is available here: https://sjeng.org/zero/supervised.txt.zst
+A small network with some very limited training from human games is available here: https://sjeng.org/zero/best.txt.zst.
 
-It's not very strong right now. It will clobber gnugo, but lose to any serious
-engine.
+It's not very strong right now (and it's trained from human games, boo!).
+It will clobber gnugo, but lose to any serious engine. Hey, you said you just
+wanted to play right now!
 
-I plan to update this network with more training when available - just feeding it
-into this program will make it stronger. Unzip it with unzstd (zstandard/zstd package)
-and specify it on the command line with the -w option.
+I plan to update this network with more or better training when available - just
+feeding it into this program will make it stronger. Unzip it with unzstd
+(zstandard/zstd package) and specify it on the command line with the -w option.
 
 # Compiling
 
