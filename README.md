@@ -118,6 +118,7 @@ play".
 - [ ] Less atrocious build instructions, list of package names for distros
 - [ ] Add the ability to provide the softmax temperature on the search results
 (this is required for randomizing the engine more in the opening)
+- [ ] Add Dirichlet noise at the root (more randomization for self-play)
 - [ ] CPU support for Xeon Phi and for people without GPU
 - [ ] Faster GPU usage via batching
 - [ ] Faster GPU usage via Winograd transforms
