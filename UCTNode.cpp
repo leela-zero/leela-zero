@@ -1,0 +1,476 @@
+/*
+    This file is part of Leela Zero.
+    Copyright (C) 2017 Gian-Carlo Pascutto
+
+    Leela Zero is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Leela Zero is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include "config.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <assert.h>
+#include <cmath>
+
+#include <iostream>
+#include <vector>
+#include <functional>
+#include <algorithm>
+
+#include "FastState.h"
+#include "UCTNode.h"
+#include "UCTSearch.h"
+#include "Utils.h"
+#include "Network.h"
+#include "GTP.h"
+#include "Random.h"
+#ifdef USE_OPENCL
+#include "OpenCL.h"
+#endif
+
+using namespace Utils;
+
+UCTNode::UCTNode(int vertex, float score)
+    : m_move(vertex), m_score(score) {
+}
+
+UCTNode::~UCTNode() {
+    LOCK(get_mutex(), lock);
+    UCTNode * next = m_firstchild;
+
+    while (next != NULL) {
+        UCTNode * tmp = next->m_nextsibling;
+        delete next;
+        next = tmp;
+    }
+}
+
+bool UCTNode::first_visit() const {
+    return m_visits == 0;
+}
+
+void UCTNode::link_child(UCTNode * newchild) {
+    newchild->m_nextsibling = m_firstchild;
+    m_firstchild = newchild;
+}
+
+SMP::Mutex & UCTNode::get_mutex() {
+    return m_nodemutex;
+}
+
+bool UCTNode::create_children(std::atomic<int> & nodecount,
+                              GameState & state) {
+    // check whether somebody beat us to it (atomic)
+    if (has_children()) {
+        return false;
+    }
+    // acquire the lock
+    LOCK(get_mutex(), lock);
+    // no successors in final state
+    if (state.get_passes() >= 2) {
+        return false;
+    }
+    // check whether somebody beat us to it (after taking the lock)
+    if (has_children()) {
+        return false;
+    }
+    // Someone else is running the expansion
+    if (m_is_expanding) {
+        return false;
+    }
+    // We'll be the one queueing this node for expansion, stop others
+    m_is_expanding = true;
+    lock.unlock();
+
+    auto raw_netlist = Network::get_Network()->get_scored_moves(
+        &state, Network::Ensemble::RANDOM_ROTATION);
+
+    // DCNN returns winrate as side to move
+    auto eval = raw_netlist.second;
+    auto tomove = state.board.get_to_move();
+    if (tomove == FastBoard::WHITE) {
+        eval = 1.0f - eval;
+    }
+    accumulate_eval(eval);
+
+    FastBoard & board = state.board;
+    std::vector<Network::scored_node> nodelist;
+
+    for (auto& node : raw_netlist.first) {
+        auto vertex = node.second;
+        if (vertex != FastBoard::PASS) {
+            if (vertex != state.m_komove
+                && !board.is_suicide(vertex, board.get_to_move())) {
+                nodelist.emplace_back(node);
+            }
+        } else {
+            nodelist.emplace_back(node);
+        }
+    }
+    link_nodelist(nodecount, nodelist);
+
+    return eval;
+}
+
+void UCTNode::link_nodelist(std::atomic<int> & nodecount,
+                            std::vector<Network::scored_node> & nodelist)
+{
+    size_t totalchildren = nodelist.size();
+    if (!totalchildren)
+        return;
+
+    // sort (this will reverse scores, but linking is backwards too)
+    std::sort(begin(nodelist), end(nodelist));
+
+    // link the nodes together, we only really link the last few
+    size_t maxchilds = 362;
+    int childrenadded = 0;
+    size_t childrenseen = 0;
+
+    LOCK(get_mutex(), lock);
+
+    for (const auto& node : nodelist) {
+        if (totalchildren - childrenseen <= maxchilds) {
+            UCTNode *vtx = new UCTNode(node.second, node.first);
+            link_child(vtx);
+            childrenadded++;
+        }
+        childrenseen++;
+    }
+
+    nodecount += childrenadded;
+    m_has_children = true;
+}
+
+void UCTNode::kill_superkos(KoState & state) {
+    UCTNode * child = m_firstchild;
+
+    while (child != nullptr) {
+        int move = child->get_move();
+
+        if (move != FastBoard::PASS) {
+            KoState mystate = state;
+            mystate.play_move(move);
+
+            if (mystate.superko()) {
+                UCTNode * tmp = child->m_nextsibling;
+                delete_child(child);
+                child = tmp;
+                continue;
+            }
+        }
+        child = child->m_nextsibling;
+    }
+}
+
+int UCTNode::get_move() const {
+    return m_move;
+}
+
+void UCTNode::set_move(int move) {
+    m_move = move;
+}
+
+void UCTNode::virtual_loss() {
+    m_visits++;
+}
+
+void UCTNode::update(bool update_eval, float eval) {
+    if (update_eval) {
+        accumulate_eval(eval);
+    }
+}
+
+bool UCTNode::has_children() const {
+    return m_has_children;
+}
+
+void UCTNode::set_visits(int visits) {
+    m_visits = visits;
+}
+
+float UCTNode::get_score() const {
+    return m_score;
+}
+
+void UCTNode::set_score(float score) {
+    m_score = score;
+}
+
+int UCTNode::get_visits() const {
+    return m_visits;
+}
+
+float UCTNode::get_eval() const {
+    assert(!first_visit());
+    return m_blackevals / (double)get_visits();
+}
+
+float UCTNode::get_eval(int tomove) const {
+    float score = get_eval();
+    if (tomove == FastBoard::WHITE) {
+        score = 1.0f - score;
+    }
+    return score;
+}
+
+double UCTNode::get_blackevals() const {
+    return m_blackevals;
+}
+
+void UCTNode::set_blackevals(double blackevals) {
+    m_blackevals = blackevals;
+}
+
+void UCTNode::accumulate_eval(float eval) {
+    atomic_add(m_blackevals, (double)eval);
+}
+
+UCTNode* UCTNode::uct_select_child(int color) {
+    UCTNode * best = nullptr;
+    float best_value = -1000.0f;
+
+    LOCK(get_mutex(), lock);
+    // Progressive widening
+    // int childbound = std::max(2, (int)(((log((double)get_visits()) - 3.0) * 3.0) + 2.0));
+    int childbound = 362;
+    int childcount = 0;
+    UCTNode * child = m_firstchild;
+
+    // Count parentvisits.
+    // We do this manually to avoid issues with transpositions.
+    int parentvisits = 0;
+    // Make sure we are at a valid successor.
+    while (child != nullptr && !child->valid()) {
+        child = child->m_nextsibling;
+    }
+    while (child != nullptr  && childcount < childbound) {
+        parentvisits      += child->get_visits();
+        child = child->m_nextsibling;
+        // Make sure we are at a valid successor.
+        while (child != nullptr && !child->valid()) {
+            child = child->m_nextsibling;
+        }
+        childcount++;
+    }
+
+    childcount = 0;
+    child = m_firstchild;
+    // Make sure we are at a valid successor.
+    while (child != nullptr && !child->valid()) {
+        child = child->m_nextsibling;
+    }
+    if (child == nullptr) {
+        return nullptr;
+    }
+
+    // Prune bad probabilities
+    // auto parent_log = std::log((float)parentvisits);
+    // auto cutoff_ratio = cfg_cutoff_offset + cfg_cutoff_ratio * parent_log;
+    // auto best_probability = child->get_score();
+    // assert(best_probability > 0.001f);
+
+    while (child != nullptr && childcount < childbound) {
+        // Prune bad probabilities
+        // if (child->get_score() * cutoff_ratio < best_probability) {
+        //     break;
+        // }
+
+        float winrate = 1.1f;
+        if (!child->first_visit()) {
+            winrate = child->get_eval(color);
+        }
+        float psa = child->get_score();
+        float denom = 1.0f + child->get_visits();
+        float puct = cfg_puct * psa * ((float)std::sqrt((double)parentvisits) / denom);
+        float value = winrate + puct;
+        assert(value > -1000.0f);
+
+        if (value > best_value) {
+            best_value = value;
+            best = child;
+        }
+
+        child = child->m_nextsibling;
+        // Make sure we are at a valid successor.
+        while (child != nullptr && !child->valid()) {
+            child = child->m_nextsibling;
+        }
+        childcount++;
+    }
+
+    assert(best != nullptr);
+
+    return best;
+}
+
+class NodeComp : public std::binary_function<UCTNode::sortnode_t,
+                                             UCTNode::sortnode_t, bool> {
+private:
+    const int m_maxvisits;
+public:
+    NodeComp(const int maxvisits) : m_maxvisits(maxvisits) {}
+
+    bool operator()(const UCTNode::sortnode_t a, const UCTNode::sortnode_t b) {
+        // edge cases, one playout or none
+        if (!std::get<1>(a) && std::get<1>(b)) {
+            return false;
+        }
+
+        if (!std::get<1>(b) && std::get<1>(a)) {
+            return true;
+        }
+
+        if (!std::get<1>(a) && !std::get<1>(b)) {
+            if ((std::get<2>(a))->get_score() > (std::get<2>(b))->get_score()) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        // prefer playouts
+        if (std::get<1>(a) > std::get<1>(b)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+};
+
+/*
+    sort children by converting linked list to vector,
+    sorting the vector, and reconstructing to linked list again
+    Requires node mutex to be held.
+*/
+void UCTNode::sort_children() {
+    assert(get_mutex().is_held());
+    std::vector<std::tuple<float, UCTNode*>> tmp;
+
+    UCTNode * child = m_firstchild;
+
+    while (child != nullptr) {
+        tmp.emplace_back(child->get_score(), child);
+        child = child->m_nextsibling;
+    }
+
+    std::sort(begin(tmp), end(tmp));
+
+    m_firstchild = nullptr;
+
+    for (auto& sortnode : tmp) {
+        link_child(std::get<1>(sortnode));
+    }
+}
+
+void UCTNode::sort_root_children(int color) {
+    LOCK(get_mutex(), lock);
+    std::vector<sortnode_t> tmp;
+
+    UCTNode * child = m_firstchild;
+    int maxvisits = 0;
+
+    while (child != nullptr) {
+        int visits = child->get_visits();
+        if (visits) {
+            float winrate = child->get_eval(color);
+            tmp.emplace_back(winrate, visits, child);
+        } else {
+            tmp.emplace_back(0.0f, 0, child);
+        }
+        maxvisits = std::max(maxvisits, visits);
+        child = child->m_nextsibling;
+    }
+
+    // reverse sort, because list reconstruction is backwards
+    std::stable_sort(rbegin(tmp), rend(tmp), NodeComp(maxvisits));
+
+    m_firstchild = nullptr;
+
+    for (auto& sortnode : tmp) {
+        link_child(std::get<2>(sortnode));
+    }
+}
+
+UCTNode* UCTNode::get_first_child() const {
+    return m_firstchild;
+}
+
+UCTNode* UCTNode::get_sibling() const {
+    return m_nextsibling;
+}
+
+UCTNode* UCTNode::get_pass_child() const {
+    UCTNode * child = m_firstchild;
+
+    while (child != nullptr) {
+        if (child->m_move == FastBoard::PASS) {
+            return child;
+        }
+        child = child->m_nextsibling;
+    }
+
+    return nullptr;
+}
+
+UCTNode* UCTNode::get_nopass_child() const {
+    UCTNode * child = m_firstchild;
+
+    while (child != nullptr) {
+        if (child->m_move != FastBoard::PASS) {
+            return child;
+        }
+        child = child->m_nextsibling;
+    }
+
+    return nullptr;
+}
+
+void UCTNode::invalidate() {
+    m_valid = false;
+}
+
+bool UCTNode::valid() const {
+    return m_valid;
+}
+
+// unsafe in SMP, we don't know if people hold pointers to the
+// child which they might dereference
+void UCTNode::delete_child(UCTNode * del_child) {
+    LOCK(get_mutex(), lock);
+    assert(del_child != nullptr);
+
+    if (del_child == m_firstchild) {
+        m_firstchild = m_firstchild->m_nextsibling;
+        delete del_child;
+        return;
+    } else {
+        UCTNode * child = m_firstchild;
+        UCTNode * prev  = nullptr;
+
+        do {
+            prev  = child;
+            child = child->m_nextsibling;
+
+            if (child == del_child) {
+                prev->m_nextsibling = child->m_nextsibling;
+                delete del_child;
+                return;
+            }
+        } while (child != nullptr);
+    }
+
+    assert(false && "Child to delete not found");
+}
