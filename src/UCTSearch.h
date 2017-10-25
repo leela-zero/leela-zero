@@ -70,7 +70,7 @@ public:
 private:
     void dump_stats(KoState & state, UCTNode & parent);
     std::string get_pv(KoState & state, UCTNode & parent);
-    void dump_analysis();
+    void dump_analysis(int playouts);
     int get_best_move(passflag_t passflag);
 
     GameState & m_rootstate;
@@ -83,10 +83,6 @@ private:
     // For external control
     bool m_hasrunflag;
     std::atomic<bool> * m_runflag;
-
-    // Special modes
-    bool m_analyzing;
-    bool m_quiet;
 };
 
 class UCTWorker {

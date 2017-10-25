@@ -47,9 +47,7 @@ UCTSearch::UCTSearch(GameState & g)
       m_nodes(0),
       m_playouts(0),
       m_hasrunflag(false),
-      m_runflag(nullptr),
-      m_analyzing(false),
-      m_quiet(false) {
+      m_runflag(nullptr) {
     set_playout_limit(cfg_max_playouts);
 }
 
@@ -276,14 +274,14 @@ std::string UCTSearch::get_pv(KoState & state, UCTNode & parent) {
     return res;
 }
 
-void UCTSearch::dump_analysis(void) {
+void UCTSearch::dump_analysis(int playouts) {
     GameState tempstate = m_rootstate;
     int color = tempstate.board.get_to_move();
 
     std::string pvstring = get_pv(tempstate, m_root);
     float winrate = 100.0f * m_root.get_eval(color);
-    myprintf("Nodes: %d, Win: %5.2f%%, PV: %s\n",
-                m_root.get_visits(), winrate, pvstring.c_str());
+    myprintf("Playouts: %d, Win: %5.2f%%, PV: %s\n",
+             playouts, winrate, pvstring.c_str());
 }
 
 bool UCTSearch::is_running() {
@@ -315,17 +313,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     // set up timing info
     Time start;
-    int time_for_move;
 
-    if (!m_analyzing) {
-        m_rootstate.get_timecontrol().set_boardsize(m_rootstate.board.get_boardsize());
-        time_for_move = m_rootstate.get_timecontrol().max_time_for_move(color);
+    m_rootstate.get_timecontrol().set_boardsize(m_rootstate.board.get_boardsize());
+    auto time_for_move = m_rootstate.get_timecontrol().max_time_for_move(color);
 
-        myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
-    } else {
-        time_for_move = std::numeric_limits<decltype(time_for_move)>::max();
-        myprintf("Thinking...\n");
-    }
+    myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
 
     // create a sorted list off legal moves (make sure we
     // play something legal and decent even in time trouble)
@@ -355,23 +347,15 @@ int UCTSearch::think(int color, passflag_t passflag) {
         Time elapsed;
         int centiseconds_elapsed = Time::timediff(start, elapsed);
 
-        // output some stats every second
+        // output some stats every few seconds
         // check if we should still search
-        if (!m_analyzing) {
-            if (centiseconds_elapsed - last_update > 250) {
-                last_update = centiseconds_elapsed;
-                dump_analysis();
-            }
-            keeprunning = (centiseconds_elapsed < time_for_move
-                           && (!m_hasrunflag || (*m_runflag)));
-            keeprunning &= !playout_limit_reached();
-        } else {
-            if (centiseconds_elapsed - last_update > 100) {
-                last_update = centiseconds_elapsed;
-                dump_analysis();
-            }
-            keeprunning = (!m_hasrunflag || (*m_runflag));
+        if (centiseconds_elapsed - last_update > 250) {
+            last_update = centiseconds_elapsed;
+            dump_analysis(static_cast<int>(m_playouts));
         }
+        keeprunning = (centiseconds_elapsed < time_for_move
+                        && (!m_hasrunflag || (*m_runflag)));
+        keeprunning &= !playout_limit_reached();
     } while(keeprunning);
 
     // stop the search
@@ -392,8 +376,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
     if (centiseconds_elapsed > 0) {
         myprintf("%d visits, %d nodes, %d playouts, %d n/s\n\n",
                  m_root.get_visits(),
-                 (int)m_nodes,
-                 (int)m_playouts,
+                 static_cast<int>(m_nodes),
+                 static_cast<int>(m_playouts),
                  (m_playouts * 100) / (centiseconds_elapsed+1));
     }
     int bestmove = get_best_move(passflag);
@@ -433,12 +417,4 @@ void UCTSearch::set_playout_limit(int playouts) {
     } else {
         m_maxplayouts = playouts;
     }
-}
-
-void UCTSearch::set_analyzing(bool flag) {
-    m_analyzing = flag;
-}
-
-void UCTSearch::set_quiet(bool flag) {
-    m_quiet = flag;
 }
