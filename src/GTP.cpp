@@ -496,7 +496,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("heatmap") == 0) {
         gtp_printf(id, "");
         auto vec = Network::get_scored_moves(
-            &game, Network::Ensemble::DIRECT);
+            &game, Network::Ensemble::DIRECT, 0);
         Network::show_heatmap(&game, vec, false);
         return true;
     } else if (command.find("fixed_handicap") == 0) {

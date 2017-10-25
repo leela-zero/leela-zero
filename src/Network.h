@@ -46,7 +46,7 @@ public:
 
     static Netresult get_scored_moves(GameState * state,
                                       Ensemble ensemble,
-                                      int rotation = 0);
+                                      int rotation = -1);
     static constexpr int INPUT_CHANNELS = 18;
     static constexpr int MAX_CHANNELS = 256;
 
