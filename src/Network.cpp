@@ -38,7 +38,7 @@
 #include <mkl.h>
 #endif
 #ifdef USE_OPENBLAS
-#include <cblas.h>
+#include <openblas/cblas.h>
 #endif
 #ifdef USE_OPENCL
 #include "OpenCL.h"

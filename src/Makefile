@@ -27,8 +27,6 @@ DYNAMIC_LIBS += -lOpenCL
 # for MKL instead of OpenBLAS
 #DYNAMIC_LIBS += -lmkl_rt
 
-CXXFLAGS += -I/opt/OpenBLAS/include
-LDFLAGS += -L/opt/OpenBLAS/lib
 # for MKL
 #CXXFLAGS += -I/opt/intel/mkl/include
 #LDFLAGS  += -L/opt/intel/mkl/lib/intel64/
