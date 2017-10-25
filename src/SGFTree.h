@@ -51,7 +51,7 @@ public:
     };
     FastBoard::square_t get_winner();
 
-    static std::string state_to_string(GameState * state, int compcolor);
+    static std::string state_to_string(GameState& state, int compcolor);
 
 private:
     void populate_states(void);

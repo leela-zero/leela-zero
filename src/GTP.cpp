@@ -641,7 +641,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> tmp;   // eat printsgf
         cmdstream >> filename;
 
-        auto sgf_text = SGFTree::state_to_string(&game, 0);
+        auto sgf_text = SGFTree::state_to_string(game, 0);
 
         if (cmdstream.fail()) {
             gtp_printf(id, "%s\n", sgf_text.c_str());

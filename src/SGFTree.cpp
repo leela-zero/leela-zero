@@ -397,11 +397,11 @@ std::vector<int> SGFTree::get_mainline() {
     return moves;
 }
 
-std::string SGFTree::state_to_string(GameState * pstate, int compcolor) {
-    std::unique_ptr<GameState> state(new GameState);
+std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
+    auto state = std::make_unique<GameState>();
 
     // make a working copy
-    *state = *pstate;
+    *state = pstate;
 
     std::string header;
     std::string moves;
