@@ -423,6 +423,7 @@ Network::Netresult Network::get_scored_moves_internal(
     // Sigmoid
     float winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
+#error "Not implemented"
     // Not implemented yet - not very useful unless you have some
     // sort of Xeon Phi
     softmax(output_data, softmax_data, cfg_softmax_temp);
