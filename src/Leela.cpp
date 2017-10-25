@@ -208,13 +208,13 @@ int main (int argc, char *argv[]) {
     thread_pool.initialize(cfg_num_threads);
 
     // Use deterministic random numbers for hashing
-    std::unique_ptr<Random> rng(new Random(5489));
+    auto rng = std::make_unique<Random>(5489);
     Zobrist::init_zobrist(*rng);
 
     // Initialize network
     Network::initialize();
 
-    std::unique_ptr<GameState> maingame(new GameState);
+    auto maingame = std::make_unique<GameState>();
 
     /* set board limits */
     float komi = 7.5;
