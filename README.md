@@ -112,6 +112,18 @@ a suitable network. The zero\_mini.protoxt file describes the 12 residual layer
 case that was used for the example supervised network listed in "I just want to
 play".
 
+# Training
+
+For training a new network, you need some tooling to produce input data
+suitable for an existing DCNN training framework (Caffe, TensorFlow, Torch, Theano)
+with the inputs laid out as above, a model description (2 examples are provided)
+and a way to covert the output to a weights file in the above format.
+
+This tooling isn't included in this repository. It should be fairly straightforward
+to modify Mugo (https://github.com/brilee/MuGo) to do both of these things, and
+the code of Mugo is much cleaner and understandable than what I have.
+(Bonus points for modifying Mugo into Mugo Zero, which is also not difficult)
+
 # Todo
 
 - [ ] Less atrocious build instructions, list of package names for distros
