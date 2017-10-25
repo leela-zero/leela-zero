@@ -418,10 +418,12 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     header.append("SZ[" + std::to_string(size) + "]");
     header.append("KM[" + str(boost::format("%.1f") % komi) + "]");
     if (compcolor == FastBoard::WHITE) {
-        header.append("PW[Leela " + std::string(PROGRAM_VERSION) + "]");
+        header.append("PW[" + std::string(PROGRAM_NAME) + " "
+                            + std::string(PROGRAM_VERSION) + "]");
         header.append("PB[Human]");
     } else {
-        header.append("PB[Leela " + std::string(PROGRAM_VERSION) + "]");
+        header.append("PB[" + std::string(PROGRAM_NAME) + " "
+                            + std::string(PROGRAM_VERSION) + "]");
         header.append("PW[Human]");
     }
 
