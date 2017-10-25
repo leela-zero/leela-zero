@@ -45,10 +45,10 @@ Requirements:
 
 * GCC, Clang or MSVC, any C++14 compiler
 * OpenBLAS or (optional) Intel MKL
-* OpenCL C++ headers, https://github.com/KhronosGroup/OpenCL-CLHPP
-(You can just copy input_cl.hpp into CL/cl2.hpp)
-* Standard OpenCL headers (opencl-headers on Debian/Ubuntu)
-* OpenCL ICD loader (ocl-icd-libopencl1, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
+* Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
+https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
+* Standard OpenCL C++ headers (opencl-headers on Debian/Ubuntu, or at https://github.com/KhronosGroup/OpenCL-CLHPP, you can just copy input_cl.hpp into CL/cl2.hpp)
+* OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
 * An OpenCL capable device, preferably a very, very fast GPU, with drivers
 (OpenCL 1.2 support should be enough, even OpenCL 1.1 might work)
 * The program has been tested on Windows, Linux and MacOS.
@@ -130,4 +130,5 @@ done with multiple processes each bound to a GPU)
 # License
 
 The code is released under the GPLv3 or later, except for ThreadPool.h, which
-has a specific license mentioned in that file.
+has a specific license (zlib License - compatible with GPLv3) mentioned in
+that file.
