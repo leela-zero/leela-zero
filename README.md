@@ -44,7 +44,7 @@ weights.txt file on the command line with the -w option.
 Requirements:
 
 * GCC, Clang or MSVC, any C++14 compiler
-* OpenBLAS or (optional) Intel MKL
+* BLAS Library: OpenBLAS (libopenblas-dev) or (optionally) Intel MKL
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
 https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 * Standard OpenCL C++ headers (opencl-headers on Debian/Ubuntu, or at https://github.com/KhronosGroup/OpenCL-CLHPP, you can just copy input_cl.hpp into CL/cl2.hpp)
