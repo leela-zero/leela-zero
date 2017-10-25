@@ -58,11 +58,13 @@ using namespace Utils;
 
 Network* Network::s_Net = nullptr;
 
+// Input + residual block tower
 std::vector<std::vector<float>> conv_weights;
 std::vector<std::vector<float>> conv_biases;
 std::vector<std::vector<float>> batchnorm_means;
 std::vector<std::vector<float>> batchnorm_variances;
 
+// Policy head
 std::array<float, 512> conv_pol_w;
 std::array<float, 2> conv_pol_b;
 std::array<float, 2> bn_pol_w1;
@@ -71,6 +73,7 @@ std::array<float, 2> bn_pol_w2;
 std::array<float, 261364> ip_pol_w;
 std::array<float, 362> ip_pol_b;
 
+// Value head
 std::array<float, 256> conv_val_w;
 std::array<float, 1> conv_val_b;
 std::array<float, 1> bn_val_w1;
@@ -135,14 +138,14 @@ void Network::initialize(void) {
     while (std::getline(wtfile, line)) {
         linecount++;
     }
-    // 1 input layer (5 x weights), 15 ending weights, the rest are residuals
-    // every residual has 10 x weight lines
-    auto residual_layers = linecount - (5 + 16);
-    if (residual_layers % 10 != 0) {
+    // 1 input layer (4 x weights), 14 ending weights, the rest are residuals
+    // every residual has 8 x weight lines
+    auto residual_layers = linecount - (4 + 14);
+    if (residual_layers % 8 != 0) {
         myprintf("\nInconsistent number of weights in the file.\n");
         exit(EXIT_FAILURE);
     }
-    residual_layers /= 10;
+    residual_layers /= 8;
     myprintf("%d\nTransferring weights to GPU...", residual_layers);
 
     // Re-read file and process
@@ -150,7 +153,7 @@ void Network::initialize(void) {
     wtfile.seekg(0, std::ios::beg);
 
     auto plain_conv_layers = 1 + (residual_layers * 2);
-    auto plain_conv_wts = plain_conv_layers * 5;
+    auto plain_conv_wts = plain_conv_layers * 4;
     linecount = 0;
     while (std::getline(wtfile, line)) {
         std::vector<float> weights;
@@ -160,16 +163,14 @@ void Network::initialize(void) {
             weights.emplace_back(weight);
         }
         if (linecount < plain_conv_wts) {
-            if (linecount % 5 == 0) {
+            if (linecount % 4 == 0) {
                 conv_weights.emplace_back(weights);
-            } else if (linecount % 5 == 1) {
+            } else if (linecount % 4 == 1) {
                 conv_biases.emplace_back(weights);
-            } else if (linecount % 5 == 2) {
+            } else if (linecount % 4 == 2) {
                 batchnorm_means.emplace_back(weights);
-            } else if (linecount % 5 == 3) {
+            } else if (linecount % 4 == 3) {
                 batchnorm_variances.emplace_back(weights);
-            } else {
-                // Throw away empty third batchnorm weights
             }
         } else if (linecount == plain_conv_wts) {
             std::copy(begin(weights), end(weights), begin(conv_pol_w));
@@ -179,29 +180,25 @@ void Network::initialize(void) {
             std::copy(begin(weights), end(weights), begin(bn_pol_w1));
         } else if (linecount == plain_conv_wts + 3) {
             std::copy(begin(weights), end(weights), begin(bn_pol_w2));
-        } else if (linecount == plain_conv_wts + 3) {
-            // Empty batchnorm layer
-        } else if (linecount == plain_conv_wts + 5) {
+        } else if (linecount == plain_conv_wts + 4) {
             std::copy(begin(weights), end(weights), begin(ip_pol_w));
-        } else if (linecount == plain_conv_wts + 6) {
+        } else if (linecount == plain_conv_wts + 5) {
             std::copy(begin(weights), end(weights), begin(ip_pol_b));
-        } else if (linecount == plain_conv_wts + 7) {
+        } else if (linecount == plain_conv_wts + 6) {
             std::copy(begin(weights), end(weights), begin(conv_val_w));
-        } else if (linecount == plain_conv_wts + 8) {
+        } else if (linecount == plain_conv_wts + 7) {
             std::copy(begin(weights), end(weights), begin(conv_val_b));
-        } else if (linecount == plain_conv_wts + 9) {
+        } else if (linecount == plain_conv_wts + 8) {
             std::copy(begin(weights), end(weights), begin(bn_val_w1));
-        } else if (linecount == plain_conv_wts + 10) {
+        } else if (linecount == plain_conv_wts + 9) {
             std::copy(begin(weights), end(weights), begin(bn_val_w2));
-        } else if (linecount == plain_conv_wts + 11) {
-            // Empty batchnorm layer
-        } else if (linecount == plain_conv_wts + 12) {
+        } else if (linecount == plain_conv_wts + 10) {
             std::copy(begin(weights), end(weights), begin(ip1_val_w));
-        } else if (linecount == plain_conv_wts + 13) {
+        } else if (linecount == plain_conv_wts + 11) {
             std::copy(begin(weights), end(weights), begin(ip1_val_b));
-        } else if (linecount == plain_conv_wts + 14) {
+        } else if (linecount == plain_conv_wts + 12) {
             std::copy(begin(weights), end(weights), begin(ip2_val_w));
-        } else if (linecount == plain_conv_wts + 15) {
+        } else if (linecount == plain_conv_wts + 13) {
             std::copy(begin(weights), end(weights), begin(ip2_val_b));
         }
         linecount++;
@@ -600,4 +597,3 @@ int Network::rotate_nn_idx(const int vertex, int symmetry) {
     assert(newvtx >= 0 && newvtx < 19*19);
     return newvtx;
 }
-

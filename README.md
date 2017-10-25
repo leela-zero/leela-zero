@@ -13,8 +13,8 @@ If you are wondering what the catch is: you still need the network weights.
 No network weights are in this repository. If you manage to obtain the
 AlphaGo Zero weights, this program will be about as strong, provided you
 also obtain a few Tensor Processing Units. Lacking those TPU, I'd recommend
-a top of the line GPU - it's not the same, but the result would stil be an
-engine that is far stronger than the top humans.
+a top of the line GPU - it's not exactly the same, but the result would stil
+be an engine that is far stronger than the top humans.
 
 # Gimme the weights
 
@@ -29,15 +29,15 @@ Further details about this will be announced soon.
 
 # I just want to play right now
 
-A small network with some very limited training from human games is available here: https://sjeng.org/zero/best.txt.zst.
+A small network with some very limited training from human games is available here: https://sjeng.org/zero/best.txt.zip.
 
 It's not very strong right now (and it's trained from human games, boo!).
 It will clobber gnugo, but lose to any serious engine. Hey, you said you just
 wanted to play right now!
 
 I plan to update this network with more or better training when available - just
-feeding it into this program will make it stronger. Unzip it with unzstd
-(zstandard/zstd package) and specify it on the command line with the -w option.
+feeding it into this program will make it stronger. Unzip it and specify the
+weights.txt file on the command line with the -w option.
 
 # Compiling
 
@@ -81,12 +81,11 @@ startup.
 * Convolutional layers have 2 weight rows:
     1) convolution weights
     2) channel biases
-* Batchnorm layers have 3 weight rows:
+* Batchnorm layers have 2 weight rows:
     1) batchnorm means
     2) batchnorm variances
-    3) a single 0 (this is an nv-caffe oddity)
 * Innerproduct (fully connected) layers have 2 weight rows:
-    1) weights
+    1) layer weights
     2) output biases
 
 You might note there are 18 inputs instead of 17 as in the paper. The original
