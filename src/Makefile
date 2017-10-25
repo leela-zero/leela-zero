@@ -21,6 +21,9 @@ LIBS += -lopenblas
 DYNAMIC_LIBS += -lpthread
 DYNAMIC_LIBS += -lOpenCL
 
+# for OpenBLAS
+CXXFLAGS += -I/usr/include/openblas
+
 # for MacOS
 #LIBS += -framework Accelerate
 #LIBS += -framework OpenCL
