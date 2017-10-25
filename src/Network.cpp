@@ -56,8 +56,6 @@
 
 using namespace Utils;
 
-Network* Network::s_Net = nullptr;
-
 // Input + residual block tower
 std::vector<std::vector<float>> conv_weights;
 std::vector<std::vector<float>> conv_biases;
@@ -84,14 +82,6 @@ std::array<float, 256> ip1_val_b;
 
 std::array<float, 256> ip2_val_w;
 std::array<float, 1> ip2_val_b;
-
-Network * Network::get_Network(void) {
-    if (!s_Net) {
-        s_Net = new Network();
-        s_Net->initialize();
-    }
-    return s_Net;
-}
 
 void Network::benchmark(GameState * state) {
     {

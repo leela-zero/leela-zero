@@ -212,7 +212,7 @@ int main (int argc, char *argv[]) {
     Zobrist::init_zobrist(*rng);
 
     // Initialize network
-    Network::get_Network();
+    Network::initialize();
 
     std::unique_ptr<GameState> maingame(new GameState);
 

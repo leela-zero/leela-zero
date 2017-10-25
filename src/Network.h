@@ -34,7 +34,6 @@ class UCTNode;
 #include "FastState.h"
 #include "GameState.h"
 
-// Move attributes
 class Network {
 public:
     enum Ensemble {
@@ -51,12 +50,9 @@ public:
     static constexpr int INPUT_CHANNELS = 18;
     static constexpr int MAX_CHANNELS = 256;
 
-    void initialize();
-    void benchmark(GameState * state);
+    static void initialize();
+    static void benchmark(GameState * state);
     static void show_heatmap(FastState * state, Netresult & netres, bool topmoves);
-    static Network* get_Network(void);
-    static int rotate_nn_idx(const int vertex, int symmetry);
-    static int rev_rotate_nn_idx(const int vertex, int symmetry);
     static void softmax(const std::vector<float>& input,
                         std::vector<float>& output,
                         float temperature = 1.0f);
@@ -65,7 +61,8 @@ private:
     static Netresult get_scored_moves_internal(
       GameState * state, NNPlanes & planes, int rotation);
     static void gather_features(GameState * state, NNPlanes & planes);
-    static Network* s_Net;
+    static int rotate_nn_idx(const int vertex, int symmetry);
+    static int rev_rotate_nn_idx(const int vertex, int symmetry);
 };
 
 #endif

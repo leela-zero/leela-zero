@@ -50,7 +50,7 @@ UCTNode::~UCTNode() {
     LOCK(get_mutex(), lock);
     UCTNode * next = m_firstchild;
 
-    while (next != NULL) {
+    while (next != nullptr) {
         UCTNode * tmp = next->m_nextsibling;
         delete next;
         next = tmp;
@@ -94,7 +94,7 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
     m_is_expanding = true;
     lock.unlock();
 
-    auto raw_netlist = Network::get_Network()->get_scored_moves(
+    auto raw_netlist = Network::get_scored_moves(
         &state, Network::Ensemble::RANDOM_ROTATION);
 
     // DCNN returns winrate as side to move
@@ -143,7 +143,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
 
     for (const auto& node : nodelist) {
         if (totalchildren - childrenseen <= maxchilds) {
-            UCTNode *vtx = new UCTNode(node.second, node.first);
+            auto vtx = new UCTNode(node.second, node.first);
             link_child(vtx);
             childrenadded++;
         }

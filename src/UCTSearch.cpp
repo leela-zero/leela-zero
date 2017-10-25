@@ -25,6 +25,7 @@
 #include <utility>
 #include <thread>
 #include <algorithm>
+#include <type_traits>
 
 #include "FastBoard.h"
 #include "UCTSearch.h"
@@ -322,7 +323,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
         myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
     } else {
-        time_for_move = INT_MAX;
+        time_for_move = std::numeric_limits<decltype(time_for_move)>::max();
         myprintf("Thinking...\n");
     }
 
@@ -424,8 +425,11 @@ void UCTSearch::ponder() {
 }
 
 void UCTSearch::set_playout_limit(int playouts) {
+    static_assert(std::is_same<decltype(playouts),
+                               decltype(m_maxplayouts)>::value,
+                  "Inconsistent types for playout amount.");
     if (playouts == 0) {
-        m_maxplayouts = INT_MAX;
+        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max();
     } else {
         m_maxplayouts = playouts;
     }

@@ -45,10 +45,10 @@ public:
         prefer to pass, or we might prefer not to pass unless
         it's the last resort. Same for resigning.
     */
-    typedef int passflag_t;
-    static const passflag_t NORMAL   = 0;
-    static const passflag_t NOPASS   = 1 << 0;
-    static const passflag_t NORESIGN = 1 << 1;
+    using passflag_t = int;
+    static constexpr passflag_t NORMAL   = 0;
+    static constexpr passflag_t NOPASS   = 1 << 0;
+    static constexpr passflag_t NORESIGN = 1 << 1;
 
     /*
         Maximum size of the tree in memory.

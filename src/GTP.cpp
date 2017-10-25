@@ -61,7 +61,7 @@ bool cfg_quiet;
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
     cfg_num_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
-    cfg_max_playouts = INT_MAX;
+    cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL
     cfg_gpus = { };
@@ -491,7 +491,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         return true;
     } else if (command.find("heatmap") == 0) {
         gtp_printf(id, "");
-        auto vec = Network::get_Network()->get_scored_moves(
+        auto vec = Network::get_scored_moves(
             &game, Network::Ensemble::DIRECT);
         Network::show_heatmap(&game, vec, false);
         return true;
@@ -630,7 +630,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         }
         return true;
     } else if (command.find("netbench") == 0) {
-        Network::get_Network()->benchmark(&game);
+        Network::benchmark(&game);
         gtp_printf(id, "");
         return true;
 
