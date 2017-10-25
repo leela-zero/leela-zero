@@ -128,7 +128,7 @@ the code of Mugo is much cleaner and understandable than what I have.
 # Todo
 
 - [ ] Less atrocious build instructions, list of package names for distros
-- [ ] Add the ability to provide the softmax temperature on the search results
+- [x] Add the ability to provide the softmax temperature on the search results
 (this is required for randomizing the engine more in the opening)
 - [x] Add Dirichlet noise at the root (more randomization for self-play)
 - [ ] CPU support for Xeon Phi and for people without GPU

@@ -147,8 +147,15 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
 int UCTSearch::get_best_move(passflag_t passflag) {
     int color = m_rootstate.board.get_to_move();
 
-    // make sure best is first
+    // Make sure best is first
     m_root.sort_root_children(color);
+
+    // Check whether to randomize the best move proportional
+    // to the playout counts, early game only.
+    auto movenum = int(m_rootstate.get_movenum());
+    if (movenum < cfg_random_cnt) {
+        m_root.randomize_first_proportionally();
+    }
 
     int bestmove = m_root.get_first_child()->get_move();
 

@@ -209,6 +209,55 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
     }
 }
 
+void UCTNode::randomize_first_proportionally() {
+    auto accum_vector = std::vector<uint32>{};
+
+    auto child = m_firstchild;
+    auto accum = uint32{0};
+    while (child != nullptr) {
+        accum += child->get_visits();
+        accum_vector.emplace_back(accum);
+        child = child->m_nextsibling;
+    }
+
+    auto pick = Random::get_Rng()->randuint32(accum);
+    auto index = size_t{0};
+    for (size_t i = 0; i < accum_vector.size(); i++) {
+        if (pick < accum_vector[i]) {
+            index = i;
+            break;
+        }
+    }
+
+    // Take the early out
+    if (index == 0) {
+        return;
+    }
+
+    // Now swap the child at index with the first child
+    child = m_firstchild;
+    auto child_cnt = size_t{0};
+    while (child != nullptr) {
+        // Because of the early out we can't be swapping the first
+        // child. Stop at the predecessor, so we can put the nextsibling
+        // pointer.
+        if (index == child_cnt + 1) {
+            // We stopped one early, so we should have a successor
+            assert(child->m_nextsibling != nullptr);
+            auto old_first = m_firstchild;
+            auto old_next = child->m_nextsibling->m_nextsibling;
+            // Set up links for the new first node
+            m_firstchild = child->m_nextsibling;
+            m_firstchild->m_nextsibling = old_first;
+            // Point through our nextsibling ptr
+            child->m_nextsibling = old_next;
+            return;
+        }
+        child_cnt++;
+        child = child->m_nextsibling;
+    }
+}
+
 int UCTNode::get_move() const {
     return m_move;
 }
