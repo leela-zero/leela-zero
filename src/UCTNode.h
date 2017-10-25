@@ -31,7 +31,7 @@
 
 class UCTNode {
 public:
-    using sortnode_t = std::tuple<float, int, UCTNode*>;
+    using sortnode_t = std::tuple<float, int, float, UCTNode*>;
 
     explicit UCTNode(int vertex, float score);
     ~UCTNode();

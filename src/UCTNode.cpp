@@ -401,13 +401,13 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
 class NodeComp : public std::binary_function<UCTNode::sortnode_t,
                                              UCTNode::sortnode_t, bool> {
-private:
-    const int m_maxvisits;
 public:
-    NodeComp(const int maxvisits) : m_maxvisits(maxvisits) {}
+    NodeComp() = default;
+    // winrate, visits, score, child
+    //        0,     1,     2,     3
 
     bool operator()(const UCTNode::sortnode_t a, const UCTNode::sortnode_t b) {
-        // edge cases, one playout or none
+        // One node has visits, the other does not
         if (!std::get<1>(a) && std::get<1>(b)) {
             return false;
         }
@@ -416,15 +416,25 @@ public:
             return true;
         }
 
+        // Neither has visits, sort on prior score
         if (!std::get<1>(a) && !std::get<1>(b)) {
-            if ((std::get<2>(a))->get_score() > (std::get<2>(b))->get_score()) {
+            if (std::get<2>(a) > std::get<2>(b)) {
                 return true;
             } else {
                 return false;
             }
         }
 
-        // prefer playouts
+        // Both have visits, but the same amount, prefer winrate
+        if (std::get<1>(a) == std::get<1>(b)) {
+            if (std::get<0>(a) > std::get<0>(b)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        // Both have different visits, prefer greater visits
         if (std::get<1>(a) > std::get<1>(b)) {
             return true;
         } else {
@@ -460,30 +470,28 @@ void UCTNode::sort_children() {
 
 void UCTNode::sort_root_children(int color) {
     LOCK(get_mutex(), lock);
-    std::vector<sortnode_t> tmp;
+    auto tmp = std::vector<sortnode_t>{};
 
-    UCTNode * child = m_firstchild;
-    int maxvisits = 0;
-
+    auto child = m_firstchild;
     while (child != nullptr) {
-        int visits = child->get_visits();
+        auto visits = child->get_visits();
+        auto score = child->get_score();
         if (visits) {
-            float winrate = child->get_eval(color);
-            tmp.emplace_back(winrate, visits, child);
+            auto winrate = child->get_eval(color);
+            tmp.emplace_back(winrate, visits, score, child);
         } else {
-            tmp.emplace_back(0.0f, 0, child);
+            tmp.emplace_back(0.0f, 0, score, child);
         }
-        maxvisits = std::max(maxvisits, visits);
         child = child->m_nextsibling;
     }
 
     // reverse sort, because list reconstruction is backwards
-    std::stable_sort(rbegin(tmp), rend(tmp), NodeComp(maxvisits));
+    std::stable_sort(rbegin(tmp), rend(tmp), NodeComp());
 
     m_firstchild = nullptr;
 
     for (auto& sortnode : tmp) {
-        link_child(std::get<2>(sortnode));
+        link_child(std::get<3>(sortnode));
     }
 }
 
