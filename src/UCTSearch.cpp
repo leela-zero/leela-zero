@@ -425,8 +425,8 @@ void UCTSearch::ponder() {
 }
 
 void UCTSearch::set_playout_limit(int playouts) {
-    static_assert(std::is_same<decltype(playouts),
-                               decltype(m_maxplayouts)>::value,
+    static_assert(std::is_convertible<decltype(playouts),
+                                      decltype(m_maxplayouts)>::value,
                   "Inconsistent types for playout amount.");
     if (playouts == 0) {
         m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max();
