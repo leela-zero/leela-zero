@@ -45,6 +45,8 @@ int cfg_num_threads;
 int cfg_max_playouts;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
+int cfg_noise;
+int cfg_random_cnt;
 #ifdef USE_OPENCL
 std::vector<int> cfg_gpus;
 int cfg_rowtiles;
@@ -72,6 +74,8 @@ void GTP::setup_default_parameters() {
     cfg_cutoff_offset = 25.0f;
     cfg_cutoff_ratio = 5.0f;
     cfg_resignpct = 10;
+    cfg_noise = false;
+    cfg_random_cnt = 0;
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
 }

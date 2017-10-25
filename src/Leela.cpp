@@ -58,8 +58,11 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
                        "Requires --noponder.")
         ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
                         "Safety margin for time usage in centiseconds.")
-        ("resignpct,r", po::value<int>()->default_value(10),
+        ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
                         "Resign when winrate is less than x%.")
+        ("randomcnt,m", po::value<int>()->default_value(cfg_random_cnt),
+                        "Play more randomly the first x moves.")
+        ("noise,n", "Enable policy network randomization.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
         ("quiet,q", "Disable all diagnostic output.")
@@ -143,6 +146,10 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         cfg_allow_pondering = false;
     }
 
+    if (vm.count("noise")) {
+        cfg_noise = true;
+    }
+
     if (vm.count("playouts")) {
         cfg_max_playouts = vm["playouts"].as<int>();
         if (!vm.count("noponder")) {
@@ -155,6 +162,10 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
 
     if (vm.count("resignpct")) {
         cfg_resignpct = vm["resignpct"].as<int>();
+    }
+
+    if (vm.count("randomcnt")) {
+        cfg_random_cnt = vm["randomcnt"].as<int>();
     }
 
     if (vm.count("lagbuffer")) {

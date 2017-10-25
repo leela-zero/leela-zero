@@ -51,6 +51,18 @@ public:
     // return the thread local RNG
     static Random* get_Rng(void);
 
+    // UniformRandomBitGenerator interface
+    using result_type = uint64;
+    constexpr static result_type min() {
+        return std::numeric_limits<result_type>::min();
+    }
+    constexpr static result_type max() {
+        return std::numeric_limits<result_type>::max();
+    }
+    result_type operator()() {
+        return random();
+    }
+
 private:
     uint64 random(void);
     uint64 m_s[2];

@@ -28,7 +28,7 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
-
+#include <random>
 #include "FastState.h"
 #include "UCTNode.h"
 #include "UCTSearch.h"
@@ -171,6 +171,40 @@ void UCTNode::kill_superkos(KoState & state) {
                 continue;
             }
         }
+        child = child->m_nextsibling;
+    }
+}
+
+void UCTNode::dirichlet_noise(float epsilon, float alpha) {
+    auto child = m_firstchild;
+    auto child_cnt = size_t{0};
+
+    while (child != nullptr) {
+        child_cnt++;
+        child = child->m_nextsibling;
+    }
+
+    auto dirichlet_vector = std::vector<float>{};
+
+    std::gamma_distribution<> gamma(alpha, 1.0f);
+    for (size_t i = 0; i < child_cnt; i++) {
+        dirichlet_vector.emplace_back(gamma(*Random::get_Rng()));
+    }
+
+    auto sample_sum = std::accumulate(begin(dirichlet_vector),
+                                      end(dirichlet_vector), 0.0f);
+
+    for (auto& v: dirichlet_vector) {
+        v /= sample_sum;
+    }
+
+    child = m_firstchild;
+    child_cnt = 0;
+    while (child != nullptr) {
+        auto score = child->get_score();
+        auto eta_a = dirichlet_vector[child_cnt];
+        score = score * (1 - epsilon) + epsilon * eta_a;
+        child->set_score(score);
         child = child->m_nextsibling;
     }
 }

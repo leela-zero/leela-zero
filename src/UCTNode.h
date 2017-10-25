@@ -56,6 +56,7 @@ public:
     void set_eval(float eval);
     void accumulate_eval(float eval);
     void virtual_loss(void);
+    void dirichlet_noise(float epsilon, float alpha);
     void update(bool update_eval,
                 float eval = std::numeric_limits<float>::quiet_NaN());
 

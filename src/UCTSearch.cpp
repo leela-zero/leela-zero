@@ -324,6 +324,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
     m_root.virtual_loss();
     m_root.create_children(m_nodes, m_rootstate);
     m_root.kill_superkos(m_rootstate);
+    if (cfg_noise) {
+        m_root.dirichlet_noise(0.25f, 0.03f);
+    }
 
     myprintf("NN eval=%f\n", m_root.get_eval(color));
 
