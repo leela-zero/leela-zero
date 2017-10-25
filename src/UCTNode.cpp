@@ -29,6 +29,7 @@
 #include <functional>
 #include <algorithm>
 #include <random>
+#include <numeric>
 #include "FastState.h"
 #include "UCTNode.h"
 #include "UCTSearch.h"
@@ -186,7 +187,7 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 
     auto dirichlet_vector = std::vector<float>{};
 
-    std::gamma_distribution<> gamma(alpha, 1.0f);
+    std::gamma_distribution<float> gamma(alpha, 1.0f);
     for (size_t i = 0; i < child_cnt; i++) {
         dirichlet_vector.emplace_back(gamma(*Random::get_Rng()));
     }
@@ -298,7 +299,7 @@ int UCTNode::get_visits() const {
 
 float UCTNode::get_eval() const {
     assert(!first_visit());
-    return m_blackevals / (double)get_visits();
+    return static_cast<float>(m_blackevals / (double)get_visits());
 }
 
 float UCTNode::get_eval(int tomove) const {

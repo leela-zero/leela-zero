@@ -25,7 +25,7 @@
 #include <stdarg.h>
 #include <thread>
 #include <mutex>
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/select.h>
@@ -71,7 +71,7 @@ bool Utils::input_pending(void) {
         }
 
         if (dw) {
-            return input_causes_stop();
+            return true;
         } else {
             return false;
         }
@@ -84,7 +84,7 @@ bool Utils::input_pending(void) {
         if (dw <= 1) {
             return false;
         } else {
-            return input_causes_stop();
+            return true;
         }
     }
 #endif
