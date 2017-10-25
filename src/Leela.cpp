@@ -36,7 +36,7 @@
 using namespace Utils;
 
 void license_blurb() {
-    myprintf(
+    printf(
         "Leela Zero  Copyright (C) 2017  Gian-Carlo Pascutto\n"
         "This program comes with ABSOLUTELY NO WARRANTY.\n"
         "This is free software, and you are welcome to redistribute it\n"
