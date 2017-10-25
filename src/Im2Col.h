@@ -24,9 +24,9 @@
 #include <algorithm>
 #include "Utils.h"
 
-template <unsigned long channels,
-          unsigned long filter_size>
-void im2col(const std::vector<float>& input,
+template <unsigned long filter_size>
+void im2col(const int channels,
+            const std::vector<float>& input,
             std::vector<float>& output) {
     constexpr unsigned int height = 19;
     constexpr unsigned int width = 19;

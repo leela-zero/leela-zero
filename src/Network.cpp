@@ -63,8 +63,8 @@ std::vector<std::vector<float>> batchnorm_means;
 std::vector<std::vector<float>> batchnorm_variances;
 
 // Policy head
-std::array<float, 512> conv_pol_w;
-std::array<float, 2> conv_pol_b;
+std::vector<float> conv_pol_w;
+std::vector<float> conv_pol_b;
 std::array<float, 2> bn_pol_w1;
 std::array<float, 2> bn_pol_w2;
 
@@ -72,8 +72,8 @@ std::array<float, 261364> ip_pol_w;
 std::array<float, 362> ip_pol_b;
 
 // Value head
-std::array<float, 256> conv_val_w;
-std::array<float, 1> conv_val_b;
+std::vector<float> conv_val_w;
+std::vector<float> conv_val_b;
 std::array<float, 1> bn_val_w1;
 std::array<float, 1> bn_val_w2;
 
@@ -126,6 +126,15 @@ void Network::initialize(void) {
     std::string line;
     auto linecount = size_t{0};
     while (std::getline(wtfile, line)) {
+        // Second line of parameters are the convolution layer biases,
+        // so this tells us the amount of channels in the residual layers.
+        // (Provided they're all equally large - that's not actually required!)
+        if (linecount == 1) {
+            std::stringstream ss(line);
+            auto count = std::distance(std::istream_iterator<std::string>(ss),
+                                       std::istream_iterator<std::string>());
+            myprintf("%d channels...", count);
+        }
         linecount++;
     }
     // 1 input layer (4 x weights), 14 ending weights, the rest are residuals
@@ -136,7 +145,7 @@ void Network::initialize(void) {
         exit(EXIT_FAILURE);
     }
     residual_layers /= 8;
-    myprintf("%d\nTransferring weights to GPU...", residual_layers);
+    myprintf("%d layers\nTransferring weights to GPU...", residual_layers);
 
     // Re-read file and process
     wtfile.clear();
@@ -163,9 +172,9 @@ void Network::initialize(void) {
                 batchnorm_variances.emplace_back(weights);
             }
         } else if (linecount == plain_conv_wts) {
-            std::copy(begin(weights), end(weights), begin(conv_pol_w));
+            conv_pol_w = std::move(weights);
         } else if (linecount == plain_conv_wts + 1) {
-            std::copy(begin(weights), end(weights), begin(conv_pol_b));
+            conv_pol_b = std::move(weights);
         } else if (linecount == plain_conv_wts + 2) {
             std::copy(begin(weights), end(weights), begin(bn_pol_w1));
         } else if (linecount == plain_conv_wts + 3) {
@@ -175,9 +184,9 @@ void Network::initialize(void) {
         } else if (linecount == plain_conv_wts + 5) {
             std::copy(begin(weights), end(weights), begin(ip_pol_b));
         } else if (linecount == plain_conv_wts + 6) {
-            std::copy(begin(weights), end(weights), begin(conv_val_w));
+            conv_val_w = std::move(weights);
         } else if (linecount == plain_conv_wts + 7) {
-            std::copy(begin(weights), end(weights), begin(conv_val_b));
+            conv_val_b = std::move(weights);
         } else if (linecount == plain_conv_wts + 8) {
             std::copy(begin(weights), end(weights), begin(bn_val_w1));
         } else if (linecount == plain_conv_wts + 9) {
@@ -236,22 +245,22 @@ void Network::initialize(void) {
 
 #ifdef USE_BLAS
 template<unsigned int filter_size,
-         unsigned int channels, unsigned int outputs,
-         size_t W, size_t B>
+         unsigned int outputs>
 void convolve(const std::vector<float>& input,
-              const std::array<float, W>& weights,
-              const std::array<float, B>& biases,
+              const std::vector<float>& weights,
+              const std::vector<float>& biases,
               std::vector<float>& output) {
     // fixed for 19x19
     constexpr unsigned int width = 19;
     constexpr unsigned int height = 19;
     constexpr unsigned int spatial_out = width * height;
-
     constexpr unsigned int filter_len = filter_size * filter_size;
-    constexpr unsigned int filter_dim = filter_len * channels;
+
+    auto channels = int(weights.size() / (biases.size() * filter_len));
+    unsigned int filter_dim = filter_len * channels;
 
     std::vector<float> col(filter_dim * width * height);
-    im2col<channels, filter_size>(input, col);
+    im2col<filter_size>(channels, input, col);
 
     // Weight shape (output, input, filter_size, filter_size)
     // 96 22 5 5
@@ -408,14 +417,14 @@ Network::Netresult Network::get_scored_moves_internal(
 #ifdef USE_OPENCL
     opencl_net.forward(input_data, output_data);
     // Get the moves
-    convolve<1, 256, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
+    convolve<1, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
     batchnorm<2, 361>(policy_data_1, bn_pol_w1, bn_pol_w2, policy_data_2);
     innerproduct<2*361, 362>(policy_data_2, ip_pol_w, ip_pol_b, policy_out);
     softmax(policy_out, softmax_data, cfg_softmax_temp);
     std::vector<float>& outputs = softmax_data;
 
     // Now get the score
-    convolve<1, 256, 1>(output_data, conv_val_w, conv_val_b, value_data_1);
+    convolve<1, 1>(output_data, conv_val_w, conv_val_b, value_data_1);
     batchnorm<1, 361>(value_data_1, bn_val_w1, bn_val_w2, value_data_2);
     innerproduct<361, 256>(value_data_2, ip1_val_w, ip1_val_b, winrate_data);
     innerproduct<256, 1>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
