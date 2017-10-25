@@ -36,10 +36,6 @@
 
 Utils::ThreadPool thread_pool;
 
-bool Utils::input_causes_stop() {
-    return true;
-}
-
 bool Utils::input_pending(void) {
 #ifdef HAVE_SELECT
     fd_set read_fds;
@@ -49,7 +45,7 @@ bool Utils::input_pending(void) {
     timeout.tv_sec = timeout.tv_usec = 0;
     select(1,&read_fds,NULL,NULL,&timeout);
     if (FD_ISSET(0,&read_fds)) {
-        return input_causes_stop();
+        return true;
     } else {
         return false;
     }
