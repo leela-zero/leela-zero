@@ -70,7 +70,7 @@ extension is also supported. These have to be supplied by the GTP 2 interface,
 not via the command line!
 
 Sabaki (http://sabaki.yichuanshen.de/) is a very nice looking GUI with GTP 2
-capablity. It should work with this engine.
+capability. It should work with this engine.
 
 # Weights format
 
@@ -109,7 +109,7 @@ This has been fixed in Leela Zero. The inputs are:
 
 The zero.prototxt file contains a description of the full 40 residual layer design,
 in (NVIDIA)-Caffe protobuff format. It can be used to set up nv-caffe for training
-a suitable network. The zero\_mini.protoxt file describes the 12 residual layer
+a suitable network. The zero\_mini.prototxt file describes the 12 residual layer
 case that was used for the example supervised network listed in "I just want to
 play".
 
@@ -118,18 +118,18 @@ play".
 For training a new network, you need some tooling to produce input data
 suitable for an existing DCNN training framework (Caffe, TensorFlow, Torch, Theano)
 with the inputs laid out as above, a model description (2 examples are provided)
-and a way to covert the output to a weights file in the above format.
+and a way to convert the output to a weights file in the above format.
 
 This tooling isn't included in this repository. It should be fairly straightforward
 to modify Mugo (https://github.com/brilee/MuGo) to do both of these things, and
 the code of Mugo is much cleaner and understandable than what I have.
-(Bonus points for modifying Mugo into Mugo Zero, which is also not difficult)
+(Bonus points for modifying Mugo into Mugo Zero, which is also not difficult.)
 
 # Todo
 
 - [ ] Less atrocious build instructions, list of package names for distros
 - [ ] Provide or link to self-play tooling
-- [ ] CPU support for Xeon Phi and for people without GPU
+- [ ] CPU support for Xeon Phi and for people without a GPU
 - [ ] Faster GPU usage via batching
 - [ ] Faster GPU usage via Winograd transforms
 - [ ] CUDA specific version using cuDNN
