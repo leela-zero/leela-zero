@@ -12,8 +12,8 @@ For all intents and purposes, it is an open source AlphaGo Zero.
 If you are wondering what the catch is: you still need the network weights.
 No network weights are in this repository. If you manage to obtain the
 AlphaGo Zero weights, this program will be about as strong, provided you
-also obtain a few Tensor Processing Units. Lacking those TPU, I'd recommend
-a top of the line GPU - it's not exactly the same, but the result would stil
+also obtain a few Tensor Processing Units. Lacking those TPUs, I'd recommend
+a top of the line GPU - it's not exactly the same, but the result would still
 be an engine that is far stronger than the top humans.
 
 # Gimme the weights
@@ -128,9 +128,7 @@ the code of Mugo is much cleaner and understandable than what I have.
 # Todo
 
 - [ ] Less atrocious build instructions, list of package names for distros
-- [x] Add the ability to provide the softmax temperature on the search results
-(this is required for randomizing the engine more in the opening)
-- [x] Add Dirichlet noise at the root (more randomization for self-play)
+- [ ] Provide or link to self-play tooling
 - [ ] CPU support for Xeon Phi and for people without GPU
 - [ ] Faster GPU usage via batching
 - [ ] Faster GPU usage via Winograd transforms
