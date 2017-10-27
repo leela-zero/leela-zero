@@ -56,13 +56,15 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 
 Run make and hope it works. You might need to edit the paths in the Makefile.
 
-    # Example of compiling
+    # Example of compiling - Ubuntu 17.04
+
+    # test for OpenCL compatibility
+    sudo apt install clinfo && clinfo
     
-    # Ubuntu - tested with 17.04
     cd && mkdir -p src && cd src
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
-    sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev 
+    sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev
     make
     cd ..
     wget https://sjeng.org/zero/best.txt.zip
