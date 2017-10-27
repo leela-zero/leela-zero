@@ -35,9 +35,16 @@ public:
 class Training {
 public:
     static void clear_training();
-    static void dump_training(int winner_color, std::string filename);
-    static void record(GameState& state, UCTNode& node);
+    static void dump_training(int winner_color,
+                              const std::string& out_filename);
+    static void record(GameState& state, const UCTNode& node);
+
+    static void dump_supervised(const std::string& sgf_file,
+                                const std::string& out_filename);
 private:
+    static void process_game(GameState& state, size_t& train_pos, int who_won,
+                             const std::vector<int>& tree_moves,
+                             const std::string& out_filename);
 
     static std::vector<TimeStep> m_data;
 };

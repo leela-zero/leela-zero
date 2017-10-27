@@ -139,6 +139,16 @@ e.g:
 This will save (append) the training data to disk, in the format described below.
 Training data is reset on a new game.
 
+## Supervised learning
+
+Leela can convert a database of concatenated SGF games into a datafile suitable
+for learning:
+
+    dump_supervised sgffile.sgf train.txt
+
+The file format is not very space efficient so be wary of trying this with a
+large game collection.
+
 ## File format
 
 The training data consists of a file with the following data, all in text
@@ -159,13 +169,6 @@ PyTorch, Theano), with a set of training data as described above. You still need
 to contruct a model description (2 examples are provided for Caffe), parse the
 input file format, and outputs weights in the proper format.
 
-## Supervised learning
-
-For experimenting with supervised learning, you'll need a tool that takes SGF,
-extracts the input features as described above, the move that was played and
-whether the side to move won, and runs the training. Leela Zero doesn't have
-this code yet, so your best bet is to modify Mugo (https://github.com/brilee/MuGo),
-which is fairly accessible Python code that is ready to interface to TensorFlow.
 
 # Todo
 

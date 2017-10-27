@@ -664,6 +664,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         std::string tmp, winner_color, filename;
         int who_won;
 
+        // tmp will eat "dump_training"
         cmdstream >> tmp >> winner_color >> filename;
 
         if (winner_color == "w" || winner_color == "white") {
@@ -676,6 +677,22 @@ bool GTP::execute(GameState & game, std::string xinput) {
         }
 
         Training::dump_training(who_won, filename);
+
+        if (!cmdstream.fail()) {
+            gtp_printf(id, "");
+        } else {
+            gtp_fail_printf(id, "syntax not understood");
+        }
+
+        return true;
+    } else if (command.find("dump_supervised") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp, winner_color, sgfname, outname;
+
+        // tmp will eat dump_supervised
+        cmdstream >> tmp >> sgfname >> outname;
+
+        Training::dump_supervised(sgfname, outname);
 
         if (!cmdstream.fail()) {
             gtp_printf(id, "");
