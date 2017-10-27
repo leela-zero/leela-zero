@@ -518,7 +518,8 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
     BoardPlane& black_to_move  = planes[16];
     BoardPlane& white_to_move  = planes[17];
 
-    bool whites_move = state->get_to_move() == FastBoard::WHITE;
+    int to_move = state->get_to_move();
+    bool whites_move = to_move == FastBoard::WHITE;
     if (whites_move) {
         white_to_move.set();
     } else {
@@ -528,7 +529,6 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
     // Go back in time, fill history boards
     size_t backtracks = 0;
     for (int h = 0; h < 8; h++) {
-        int tomove = state->get_to_move();
         // collect white, black occupation planes
         for (int j = 0; j < 19; j++) {
             for(int i = 0; i < 19; i++) {
@@ -537,7 +537,7 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
                     state->board.get_square(vtx);
                 int idx = j * 19 + i;
                 if (color != FastBoard::EMPTY) {
-                    if (color == tomove) {
+                    if (color == to_move) {
                         planes[our_offset + h][idx] = true;
                     } else {
                         planes[their_offset + h][idx] = true;
