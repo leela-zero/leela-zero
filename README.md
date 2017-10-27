@@ -64,6 +64,11 @@ Run make and hope it works. You might need to edit the paths in the Makefile.
     cd leela-zero/src
     sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev 
     make
+    cd ..
+    wget https://sjeng.org/zero/best.txt.zip
+    unzip https://sjeng.org/zero/best.txt.zip
+    src/leelaz --help
+    src/leelaz --weights weights.txt
 
 # Usage
 
