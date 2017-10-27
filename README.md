@@ -62,7 +62,7 @@ Run make and hope it works. You might need to edit the paths in the Makefile.
     cd && mkdir -p src && cd src
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
-    sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1
+    sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev 
     make
 
 # Usage
