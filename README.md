@@ -29,7 +29,7 @@ Further details about this will be announced soon.
 
 # I just want to play right now
 
-A small network with some very limited training from human games is available here: https://sjeng.org/zero/best.txt.zip.
+A small network with some very limited training from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
 
 It's not very strong right now (and it's trained from human games, boo!).
 It will clobber gnugo, but lose to any serious engine. Hey, you said you just
@@ -65,8 +65,8 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev
     make
     cd ..
-    wget https://sjeng.org/zero/best.txt.zip
-    unzip https://sjeng.org/zero/best.txt.zip
+    wget https://sjeng.org/zero/best_v1.txt.zip
+    unzip https://sjeng.org/zero/best_v1.txt.zip
     src/leelaz --weights weights.txt
 
 # Usage
@@ -90,7 +90,7 @@ capability. It should work with this engine.
 The weights file is a text file with each line containing a row of coefficients.
 The layout of the network is as in the AlphaGo Zero paper, but the number of
 residual blocks is allowed to vary. The program will autodetect the amount on
-startup.
+startup. The first line contains a version number.
 
 * Convolutional layers have 2 weight rows:
     1) convolution weights
@@ -130,7 +130,7 @@ play".
 
 ## Getting the data
 
-At the end of the game, you can send Leela Zero a "dump_training" command,
+At the end of the game, you can send Leela Zero a "dump\_training" command,
 followed by the winner of the game (either "white" or "black") and a filename,
 e.g:
 

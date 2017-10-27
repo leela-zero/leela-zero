@@ -125,21 +125,32 @@ void Network::initialize(void) {
     }
     std::string line;
     auto linecount = size_t{0};
+    auto format_version = -1;
     while (std::getline(wtfile, line)) {
-        // Second line of parameters are the convolution layer biases,
+        std::stringstream iss(line);
+        // First line is the file format version id
+        if (linecount == 0) {
+           iss >> format_version;
+           if (iss.fail() || format_version != FORMAT_VERSION) {
+               myprintf("Weights file is the wrong version.\n");
+               exit(EXIT_FAILURE);
+           } else {
+               myprintf("v%d...", format_version);
+           }
+        }
+        // Third line of parameters are the convolution layer biases,
         // so this tells us the amount of channels in the residual layers.
         // (Provided they're all equally large - that's not actually required!)
-        if (linecount == 1) {
-            std::stringstream ss(line);
-            auto count = std::distance(std::istream_iterator<std::string>(ss),
+        if (linecount == 2) {
+            auto count = std::distance(std::istream_iterator<std::string>(iss),
                                        std::istream_iterator<std::string>());
             myprintf("%d channels...", count);
         }
         linecount++;
     }
-    // 1 input layer (4 x weights), 14 ending weights, the rest are residuals
-    // every residual has 8 x weight lines
-    auto residual_layers = linecount - (4 + 14);
+    // 1 format id, 1 input layer (4 x weights), 14 ending weights,
+    // the rest are residuals, every residual has 8 x weight lines
+    auto residual_layers = linecount - (1 + 4 + 14);
     if (residual_layers % 8 != 0) {
         myprintf("\nInconsistent number of weights in the file.\n");
         exit(EXIT_FAILURE);
@@ -150,6 +161,9 @@ void Network::initialize(void) {
     // Re-read file and process
     wtfile.clear();
     wtfile.seekg(0, std::ios::beg);
+
+    // Get the file format id out of the way
+    std::getline(wtfile, line);
 
     auto plain_conv_layers = 1 + (residual_layers * 2);
     auto plain_conv_wts = plain_conv_layers * 4;

@@ -47,6 +47,8 @@ public:
     static Netresult get_scored_moves(GameState * state,
                                       Ensemble ensemble,
                                       int rotation = -1);
+    // File format version
+    static constexpr int FORMAT_VERSION = 1;
     static constexpr int INPUT_CHANNELS = 18;
     static constexpr int MAX_CHANNELS = 256;
 
