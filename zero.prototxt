@@ -108,11 +108,11 @@ layer {
 layer {
   name: "scale1"
   type: "Scale"
-	bottom: "conv1"
-	top: "conv1"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv1"
+  top: "conv1"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -151,11 +151,11 @@ layer {
 layer {
   name: "scale2"
   type: "Scale"
-	bottom: "conv2"
-	top: "conv2"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv2"
+  top: "conv2"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -193,11 +193,11 @@ layer {
 layer {
   name: "scale3"
   type: "Scale"
-	bottom: "conv3"
-	top: "conv3"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv3"
+  top: "conv3"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -245,11 +245,11 @@ layer {
 layer {
   name: "scale4"
   type: "Scale"
-	bottom: "conv4"
-	top: "conv4"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv4"
+  top: "conv4"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -287,11 +287,11 @@ layer {
 layer {
   name: "scale5"
   type: "Scale"
-	bottom: "conv5"
-	top: "conv5"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv5"
+  top: "conv5"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -338,11 +338,11 @@ layer {
 layer {
   name: "scale6"
   type: "Scale"
-	bottom: "conv6"
-	top: "conv6"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv6"
+  top: "conv6"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -380,11 +380,11 @@ layer {
 layer {
   name: "scale7"
   type: "Scale"
-	bottom: "conv7"
-	top: "conv7"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv7"
+  top: "conv7"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -431,11 +431,11 @@ layer {
 layer {
   name: "scale8"
   type: "Scale"
-	bottom: "conv8"
-	top: "conv8"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv8"
+  top: "conv8"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -473,11 +473,11 @@ layer {
 layer {
   name: "scale9"
   type: "Scale"
-	bottom: "conv9"
-	top: "conv9"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv9"
+  top: "conv9"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -524,11 +524,11 @@ layer {
 layer {
   name: "scale10"
   type: "Scale"
-	bottom: "conv10"
-	top: "conv10"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv10"
+  top: "conv10"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -566,11 +566,11 @@ layer {
 layer {
   name: "scale11"
   type: "Scale"
-	bottom: "conv11"
-	top: "conv11"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv11"
+  top: "conv11"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -617,11 +617,11 @@ layer {
 layer {
   name: "scale12"
   type: "Scale"
-	bottom: "conv12"
-	top: "conv12"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv12"
+  top: "conv12"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -659,11 +659,11 @@ layer {
 layer {
   name: "scale13"
   type: "Scale"
-	bottom: "conv13"
-	top: "conv13"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv13"
+  top: "conv13"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -710,11 +710,11 @@ layer {
 layer {
   name: "scale14"
   type: "Scale"
-	bottom: "conv14"
-	top: "conv14"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv14"
+  top: "conv14"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -752,11 +752,11 @@ layer {
 layer {
   name: "scale15"
   type: "Scale"
-	bottom: "conv15"
-	top: "conv15"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv15"
+  top: "conv15"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -803,11 +803,11 @@ layer {
 layer {
   name: "scale16"
   type: "Scale"
-	bottom: "conv16"
-	top: "conv16"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv16"
+  top: "conv16"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -845,11 +845,11 @@ layer {
 layer {
   name: "scale17"
   type: "Scale"
-	bottom: "conv17"
-	top: "conv17"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv17"
+  top: "conv17"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -896,11 +896,11 @@ layer {
 layer {
   name: "scale18"
   type: "Scale"
-	bottom: "conv18"
-	top: "conv18"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv18"
+  top: "conv18"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -938,11 +938,11 @@ layer {
 layer {
   name: "scale19"
   type: "Scale"
-	bottom: "conv19"
-	top: "conv19"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv19"
+  top: "conv19"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -989,11 +989,11 @@ layer {
 layer {
   name: "scale20"
   type: "Scale"
-	bottom: "conv20"
-	top: "conv20"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv20"
+  top: "conv20"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1031,11 +1031,11 @@ layer {
 layer {
   name: "scale21"
   type: "Scale"
-	bottom: "conv21"
-	top: "conv21"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv21"
+  top: "conv21"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1082,11 +1082,11 @@ layer {
 layer {
   name: "scale22"
   type: "Scale"
-	bottom: "conv22"
-	top: "conv22"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv22"
+  top: "conv22"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1124,11 +1124,11 @@ layer {
 layer {
   name: "scale23"
   type: "Scale"
-	bottom: "conv23"
-	top: "conv23"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv23"
+  top: "conv23"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1175,11 +1175,11 @@ layer {
 layer {
   name: "scale24"
   type: "Scale"
-	bottom: "conv24"
-	top: "conv24"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv24"
+  top: "conv24"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1217,11 +1217,11 @@ layer {
 layer {
   name: "scale25"
   type: "Scale"
-	bottom: "conv25"
-	top: "conv25"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv25"
+  top: "conv25"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1268,11 +1268,11 @@ layer {
 layer {
   name: "scale26"
   type: "Scale"
-	bottom: "conv26"
-	top: "conv26"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv26"
+  top: "conv26"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1310,11 +1310,11 @@ layer {
 layer {
   name: "scale27"
   type: "Scale"
-	bottom: "conv27"
-	top: "conv27"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv27"
+  top: "conv27"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1361,11 +1361,11 @@ layer {
 layer {
   name: "scale28"
   type: "Scale"
-	bottom: "conv28"
-	top: "conv28"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv28"
+  top: "conv28"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1403,11 +1403,11 @@ layer {
 layer {
   name: "scale29"
   type: "Scale"
-	bottom: "conv29"
-	top: "conv29"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv29"
+  top: "conv29"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1454,11 +1454,11 @@ layer {
 layer {
   name: "scale30"
   type: "Scale"
-	bottom: "conv30"
-	top: "conv30"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv30"
+  top: "conv30"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1496,11 +1496,11 @@ layer {
 layer {
   name: "scale31"
   type: "Scale"
-	bottom: "conv31"
-	top: "conv31"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv31"
+  top: "conv31"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1547,11 +1547,11 @@ layer {
 layer {
   name: "scale32"
   type: "Scale"
-	bottom: "conv32"
-	top: "conv32"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv32"
+  top: "conv32"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1589,11 +1589,11 @@ layer {
 layer {
   name: "scale33"
   type: "Scale"
-	bottom: "conv33"
-	top: "conv33"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv33"
+  top: "conv33"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1640,11 +1640,11 @@ layer {
 layer {
   name: "scale34"
   type: "Scale"
-	bottom: "conv34"
-	top: "conv34"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv34"
+  top: "conv34"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1682,11 +1682,11 @@ layer {
 layer {
   name: "scale35"
   type: "Scale"
-	bottom: "conv35"
-	top: "conv35"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv35"
+  top: "conv35"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1733,11 +1733,11 @@ layer {
 layer {
   name: "scale36"
   type: "Scale"
-	bottom: "conv36"
-	top: "conv36"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv36"
+  top: "conv36"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1775,11 +1775,11 @@ layer {
 layer {
   name: "scale37"
   type: "Scale"
-	bottom: "conv37"
-	top: "conv37"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv37"
+  top: "conv37"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1826,11 +1826,11 @@ layer {
 layer {
   name: "scale38"
   type: "Scale"
-	bottom: "conv38"
-	top: "conv38"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv38"
+  top: "conv38"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1868,11 +1868,11 @@ layer {
 layer {
   name: "scale39"
   type: "Scale"
-	bottom: "conv39"
-	top: "conv39"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv39"
+  top: "conv39"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1919,11 +1919,11 @@ layer {
 layer {
   name: "scale40"
   type: "Scale"
-	bottom: "conv40"
-	top: "conv40"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv40"
+  top: "conv40"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -1961,11 +1961,11 @@ layer {
 layer {
   name: "scale41"
   type: "Scale"
-	bottom: "conv41"
-	top: "conv41"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv41"
+  top: "conv41"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2012,11 +2012,11 @@ layer {
 layer {
   name: "scale42"
   type: "Scale"
-	bottom: "conv42"
-	top: "conv42"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv42"
+  top: "conv42"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2054,11 +2054,11 @@ layer {
 layer {
   name: "scale43"
   type: "Scale"
-	bottom: "conv43"
-	top: "conv43"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv43"
+  top: "conv43"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2105,11 +2105,11 @@ layer {
 layer {
   name: "scale44"
   type: "Scale"
-	bottom: "conv44"
-	top: "conv44"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv44"
+  top: "conv44"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2147,11 +2147,11 @@ layer {
 layer {
   name: "scale45"
   type: "Scale"
-	bottom: "conv45"
-	top: "conv45"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv45"
+  top: "conv45"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2198,11 +2198,11 @@ layer {
 layer {
   name: "scale46"
   type: "Scale"
-	bottom: "conv46"
-	top: "conv46"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv46"
+  top: "conv46"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2240,11 +2240,11 @@ layer {
 layer {
   name: "scale47"
   type: "Scale"
-	bottom: "conv47"
-	top: "conv47"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv47"
+  top: "conv47"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2291,11 +2291,11 @@ layer {
 layer {
   name: "scale48"
   type: "Scale"
-	bottom: "conv48"
-	top: "conv48"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv48"
+  top: "conv48"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2333,11 +2333,11 @@ layer {
 layer {
   name: "scale49"
   type: "Scale"
-	bottom: "conv49"
-	top: "conv49"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv49"
+  top: "conv49"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2384,11 +2384,11 @@ layer {
 layer {
   name: "scale50"
   type: "Scale"
-	bottom: "conv50"
-	top: "conv50"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv50"
+  top: "conv50"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2426,11 +2426,11 @@ layer {
 layer {
   name: "scale51"
   type: "Scale"
-	bottom: "conv51"
-	top: "conv51"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv51"
+  top: "conv51"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2477,11 +2477,11 @@ layer {
 layer {
   name: "scale52"
   type: "Scale"
-	bottom: "conv52"
-	top: "conv52"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv52"
+  top: "conv52"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2519,11 +2519,11 @@ layer {
 layer {
   name: "scale53"
   type: "Scale"
-	bottom: "conv53"
-	top: "conv53"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv53"
+  top: "conv53"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2570,11 +2570,11 @@ layer {
 layer {
   name: "scale54"
   type: "Scale"
-	bottom: "conv54"
-	top: "conv54"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv54"
+  top: "conv54"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2612,11 +2612,11 @@ layer {
 layer {
   name: "scale55"
   type: "Scale"
-	bottom: "conv55"
-	top: "conv55"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv55"
+  top: "conv55"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2663,11 +2663,11 @@ layer {
 layer {
   name: "scale56"
   type: "Scale"
-	bottom: "conv56"
-	top: "conv56"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv56"
+  top: "conv56"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2705,11 +2705,11 @@ layer {
 layer {
   name: "scale57"
   type: "Scale"
-	bottom: "conv57"
-	top: "conv57"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv57"
+  top: "conv57"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2756,11 +2756,11 @@ layer {
 layer {
   name: "scale58"
   type: "Scale"
-	bottom: "conv58"
-	top: "conv58"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv58"
+  top: "conv58"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2798,11 +2798,11 @@ layer {
 layer {
   name: "scale59"
   type: "Scale"
-	bottom: "conv59"
-	top: "conv59"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv59"
+  top: "conv59"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2849,11 +2849,11 @@ layer {
 layer {
   name: "scale60"
   type: "Scale"
-	bottom: "conv60"
-	top: "conv60"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv60"
+  top: "conv60"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2891,11 +2891,11 @@ layer {
 layer {
   name: "scale61"
   type: "Scale"
-	bottom: "conv61"
-	top: "conv61"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv61"
+  top: "conv61"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2942,11 +2942,11 @@ layer {
 layer {
   name: "scale62"
   type: "Scale"
-	bottom: "conv62"
-	top: "conv62"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv62"
+  top: "conv62"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -2984,11 +2984,11 @@ layer {
 layer {
   name: "scale63"
   type: "Scale"
-	bottom: "conv63"
-	top: "conv63"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv63"
+  top: "conv63"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3035,11 +3035,11 @@ layer {
 layer {
   name: "scale64"
   type: "Scale"
-	bottom: "conv64"
-	top: "conv64"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv64"
+  top: "conv64"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3077,11 +3077,11 @@ layer {
 layer {
   name: "scale65"
   type: "Scale"
-	bottom: "conv65"
-	top: "conv65"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv65"
+  top: "conv65"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3128,11 +3128,11 @@ layer {
 layer {
   name: "scale66"
   type: "Scale"
-	bottom: "conv66"
-	top: "conv66"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv66"
+  top: "conv66"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3170,11 +3170,11 @@ layer {
 layer {
   name: "scale67"
   type: "Scale"
-	bottom: "conv67"
-	top: "conv67"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv67"
+  top: "conv67"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3221,11 +3221,11 @@ layer {
 layer {
   name: "scale68"
   type: "Scale"
-	bottom: "conv68"
-	top: "conv68"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv68"
+  top: "conv68"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3263,11 +3263,11 @@ layer {
 layer {
   name: "scale69"
   type: "Scale"
-	bottom: "conv69"
-	top: "conv69"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv69"
+  top: "conv69"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3314,11 +3314,11 @@ layer {
 layer {
   name: "scale70"
   type: "Scale"
-	bottom: "conv70"
-	top: "conv70"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv70"
+  top: "conv70"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3356,11 +3356,11 @@ layer {
 layer {
   name: "scale71"
   type: "Scale"
-	bottom: "conv71"
-	top: "conv71"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv71"
+  top: "conv71"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3407,11 +3407,11 @@ layer {
 layer {
   name: "scale72"
   type: "Scale"
-	bottom: "conv72"
-	top: "conv72"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv72"
+  top: "conv72"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3449,11 +3449,11 @@ layer {
 layer {
   name: "scale73"
   type: "Scale"
-	bottom: "conv73"
-	top: "conv73"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv73"
+  top: "conv73"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3500,11 +3500,11 @@ layer {
 layer {
   name: "scale74"
   type: "Scale"
-	bottom: "conv74"
-	top: "conv74"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv74"
+  top: "conv74"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3542,11 +3542,11 @@ layer {
 layer {
   name: "scale75"
   type: "Scale"
-	bottom: "conv75"
-	top: "conv75"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv75"
+  top: "conv75"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3593,11 +3593,11 @@ layer {
 layer {
   name: "scale76"
   type: "Scale"
-	bottom: "conv76"
-	top: "conv76"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv76"
+  top: "conv76"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3635,11 +3635,11 @@ layer {
 layer {
   name: "scale77"
   type: "Scale"
-	bottom: "conv77"
-	top: "conv77"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv77"
+  top: "conv77"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3686,11 +3686,11 @@ layer {
 layer {
   name: "scale78"
   type: "Scale"
-	bottom: "conv78"
-	top: "conv78"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv78"
+  top: "conv78"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3728,11 +3728,11 @@ layer {
 layer {
   name: "scale79"
   type: "Scale"
-	bottom: "conv79"
-	top: "conv79"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "conv79"
+  top: "conv79"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3778,11 +3778,11 @@ layer {
 layer {
   name: "p_scale1"
   type: "Scale"
-	bottom: "pol1"
-	top: "pol1"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "pol1"
+  top: "pol1"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
@@ -3836,11 +3836,11 @@ layer {
 layer {
   name: "v_scale1"
   type: "Scale"
-	bottom: "val1"
-	top: "val1"
-	scale_param {
-		bias_term: true
-	}
+  bottom: "val1"
+  top: "val1"
+  scale_param {
+    bias_term: true
+  }
 }
 
 layer {
