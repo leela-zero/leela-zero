@@ -56,6 +56,22 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 
 Run make and hope it works. You might need to edit the paths in the Makefile.
 
+    # Example of compiling - Ubuntu 17.04
+
+    # test for OpenCL compatibility
+    sudo apt install clinfo && clinfo
+    
+    cd && mkdir -p src && cd src
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero/src
+    sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev
+    make
+    cd ..
+    wget https://sjeng.org/zero/best.txt.zip
+    unzip https://sjeng.org/zero/best.txt.zip
+    src/leelaz --help
+    src/leelaz --weights weights.txt
+
 # Usage
 
 The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
