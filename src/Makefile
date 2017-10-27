@@ -39,7 +39,7 @@ CXXFLAGS += -I/usr/include/openblas
 CXXFLAGS += -I.
 CPPFLAGS += -MD -MP
 
-sources = Network.cpp FullBoard.cpp KoState.cpp \
+sources = Network.cpp FullBoard.cpp KoState.cpp Training.cpp \
 	  TimeControl.cpp UCTSearch.cpp GameState.cpp Leela.cpp \
 	  SGFParser.cpp Timing.cpp Utils.cpp FastBoard.cpp \
 	  SGFTree.cpp Zobrist.cpp FastState.cpp GTP.cpp Random.cpp \

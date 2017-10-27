@@ -128,19 +128,49 @@ play".
 
 # Training
 
-For training a new network, you need some tooling to produce input data
-suitable for an existing DCNN training framework (Caffe, TensorFlow, Torch, Theano)
-with the inputs laid out as above, a model description (2 examples are provided)
-and a way to convert the output to a weights file in the above format.
+## Getting the data
 
-This tooling isn't included in this repository. It should be fairly straightforward
-to modify Mugo (https://github.com/brilee/MuGo) to do both of these things, and
-the code of Mugo is much cleaner and understandable than what I have.
-(Bonus points for modifying Mugo into Mugo Zero, which is also not difficult.)
+At the end of the game, you can send Leela Zero a "dump_training" command,
+followed by the winner of the game (either "white" or "black") and a filename,
+e.g:
+
+    dump_training white train.txt
+
+This will save (append) the training data to disk, in the format described below.
+Training data is reset on a new game.
+
+## File format
+
+The training data consists of a file with the following data, all in text
+format:
+
+* 18 lines of 361 0's or 1's, corresponding to the inputs from the previous
+section
+* 1 line with 362 floating point numbers, indicating the search probabilities
+(visit counts) at the end of the search for the move in question. The last number
+is the probability of passing.
+* 1 line with either 1 or -1, corresponding to the outcome of the game for the
+player to move
+
+## Running the training
+
+For training a new network, you can use an existing framework (Caffe, TensorFlow,
+PyTorch, Theano), with a set of training data as described above. You still need
+to contruct a model description (2 examples are provided for Caffe), parse the
+input file format, and outputs weights in the proper format.
+
+## Supervised learning
+
+For experimenting with supervised learning, you'll need a tool that takes SGF,
+extracts the input features as described above, the move that was played and
+whether the side to move won, and runs the training. Leela Zero doesn't have
+this code yet, so your best bet is to modify Mugo (https://github.com/brilee/MuGo),
+which is fairly accessible Python code that is ready to interface to TensorFlow.
 
 # Todo
 
-- [ ] Less atrocious build instructions, list of package names for distros
+- [ ] List of package names for more distros
+- [ ] A real build system like CMake would nice
 - [ ] Provide or link to self-play tooling
 - [ ] CPU support for Xeon Phi and for people without a GPU
 - [ ] Faster GPU usage via batching

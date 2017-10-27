@@ -513,8 +513,8 @@ void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) 
 
 void Network::gather_features(GameState * state, NNPlanes & planes) {
     planes.resize(18);
-    const size_t our_offset   = 0;
-    const size_t their_offset = 8;
+    constexpr size_t our_offset   = 0;
+    constexpr size_t their_offset = 8;
     BoardPlane& black_to_move  = planes[16];
     BoardPlane& white_to_move  = planes[17];
 

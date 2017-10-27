@@ -36,6 +36,7 @@
 #include "SGFTree.h"
 #include "Network.h"
 #include "TTable.h"
+#include "Training.h"
 
 using namespace Utils;
 
@@ -245,6 +246,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 gtp_fail_printf(id, "unacceptable size");
             } else {
                 float old_komi = game.get_komi();
+                Training::clear_training();
                 game.init_game(tmp, old_komi);
                 gtp_printf(id, "");
             }
@@ -254,6 +256,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         return true;
     } else if (command.find("clear_board") == 0) {
+        Training::clear_training();
         game.reset_game();
         gtp_printf(id, "");
         return true;
@@ -653,6 +656,31 @@ bool GTP::execute(GameState & game, std::string xinput) {
             std::ofstream out(filename);
             out << sgf_text;
             out.close();
+        }
+
+        return true;
+    } else if (command.find("dump_training") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp, winner_color, filename;
+        int who_won;
+
+        cmdstream >> tmp >> winner_color >> filename;
+
+        if (winner_color == "w" || winner_color == "white") {
+            who_won = FullBoard::WHITE;
+        } else if (winner_color == "b" || winner_color == "black") {
+            who_won = FullBoard::BLACK;
+        } else {
+            gtp_fail_printf(id, "syntax not understood");
+            return true;
+        }
+
+        Training::dump_training(who_won, filename);
+
+        if (!cmdstream.fail()) {
+            gtp_printf(id, "");
+        } else {
+            gtp_fail_printf(id, "syntax not understood");
         }
 
         return true;

@@ -56,11 +56,11 @@ public:
     static void softmax(const std::vector<float>& input,
                         std::vector<float>& output,
                         float temperature = 1.0f);
+    static void gather_features(GameState* state, NNPlanes & planes);
 
 private:
     static Netresult get_scored_moves_internal(
       GameState * state, NNPlanes & planes, int rotation);
-    static void gather_features(GameState * state, NNPlanes & planes);
     static int rotate_nn_idx(const int vertex, int symmetry);
     static int rev_rotate_nn_idx(const int vertex, int symmetry);
 };

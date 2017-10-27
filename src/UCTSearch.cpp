@@ -35,6 +35,7 @@
 #include "Network.h"
 #include "GTP.h"
 #include "TTable.h"
+#include "Training.h"
 #ifdef USE_OPENCL
 #include "OpenCL.h"
 #endif
@@ -380,6 +381,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     myprintf("\n");
 
     dump_stats(m_rootstate, m_root);
+    Training::record(m_rootstate, m_root);
 
     Time elapsed;
     int centiseconds_elapsed = Time::timediff(start, elapsed);
