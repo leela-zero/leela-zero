@@ -150,13 +150,13 @@ void Network::initialize(void) {
     }
     // 1 format id, 1 input layer (4 x weights), 14 ending weights,
     // the rest are residuals, every residual has 8 x weight lines
-    auto residual_layers = linecount - (1 + 4 + 14);
-    if (residual_layers % 8 != 0) {
+    auto residual_blocks = linecount - (1 + 4 + 14);
+    if (residual_blocks % 8 != 0) {
         myprintf("\nInconsistent number of weights in the file.\n");
         exit(EXIT_FAILURE);
     }
-    residual_layers /= 8;
-    myprintf("%d layers\nTransferring weights to GPU...", residual_layers);
+    residual_blocks /= 8;
+    myprintf("%d blocks\nTransferring weights to GPU...", residual_blocks);
 
     // Re-read file and process
     wtfile.clear();
@@ -165,7 +165,7 @@ void Network::initialize(void) {
     // Get the file format id out of the way
     std::getline(wtfile, line);
 
-    auto plain_conv_layers = 1 + (residual_layers * 2);
+    auto plain_conv_layers = 1 + (residual_blocks * 2);
     auto plain_conv_wts = plain_conv_layers * 4;
     linecount = 0;
     while (std::getline(wtfile, line)) {
@@ -227,7 +227,7 @@ void Network::initialize(void) {
     weight_index++;
 
     // residual blocks
-    for (auto i = size_t{0}; i < residual_layers; i++) {
+    for (auto i = size_t{0}; i < residual_blocks; i++) {
         opencl_net.push_residual(3, conv_weights[weight_index],
                                     conv_biases[weight_index],
                                     batchnorm_means[weight_index],
