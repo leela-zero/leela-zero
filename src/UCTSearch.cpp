@@ -170,7 +170,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     float bestscore = m_root.get_first_child()->get_eval(color);
 
     // do we want to fiddle with the best move because of the rule set?
-     if (passflag & UCTSearch::NOPASS) {
+    if (passflag & UCTSearch::NOPASS) {
         // were we going to pass?
         if (bestmove == FastBoard::PASS) {
             UCTNode * nopass = m_root.get_nopass_child();
@@ -188,21 +188,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
             }
         }
     } else {
-        // Opponents last move was passing
-        if (m_rootstate.get_last_move() == FastBoard::PASS) {
-            // We didn't consider passing. Should we have and
-            // end the game immediately?
-            float score = m_rootstate.final_score();
-            // do we lose by passing?
-            if ((score > 0.0f && color == FastBoard::WHITE)
-                ||
-                (score < 0.0f && color == FastBoard::BLACK)) {
-                myprintf("Passing loses, I'll play on.\n");
-            } else {
-                myprintf("Passing wins, I'll pass out.\n");
-                bestmove = FastBoard::PASS;
-            }
-        } else if (bestmove == FastBoard::PASS) {
+        if (bestmove == FastBoard::PASS) {
             // Either by forcing or coincidence passing is
             // on top...check whether passing loses instantly
             // do full count including dead stones
@@ -227,6 +213,20 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 }
             } else {
                 myprintf("Passing wins :-)\n");
+            }
+        } else if (m_rootstate.get_last_move() == FastBoard::PASS) {
+            // Opponents last move was passing
+            // We didn't consider passing. Should we have and
+            // end the game immediately?
+            float score = m_rootstate.final_score();
+            // do we lose by passing?
+            if ((score > 0.0f && color == FastBoard::WHITE)
+                ||
+                (score < 0.0f && color == FastBoard::BLACK)) {
+                myprintf("Passing loses, I'll play on.\n");
+            } else {
+                myprintf("Passing wins, I'll pass out.\n");
+                bestmove = FastBoard::PASS;
             }
         }
     }
