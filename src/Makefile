@@ -16,10 +16,8 @@ clang:
 		LDFLAGS='$(LDFLAGS) -flto -fuse-linker-plugin' \
 		leelaz
 
-LIBS = -lboost_program_options
-LIBS += -lopenblas
-DYNAMIC_LIBS += -lpthread
-DYNAMIC_LIBS += -lOpenCL
+DYNAMIC_LIBS = -lboost_program_options -lopenblas -lpthread -lOpenCL -lz
+LIBS =
 
 # for OpenBLAS
 CXXFLAGS += -I/usr/include/openblas

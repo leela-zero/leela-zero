@@ -32,6 +32,23 @@ public:
     int to_move;
 };
 
+class OutputChunker {
+public:
+    OutputChunker(const std::string& basename, bool compress = false);
+    ~OutputChunker();
+    void append(const std::string& str);
+
+    static constexpr size_t CHUNK_SIZE = 8192;
+private:
+    std::string gen_chunk_name() const;
+    void flush_chunks();
+    size_t m_step_count{0};
+    size_t m_chunk_count{0};
+    std::string m_buffer;
+    std::string m_basename;
+    bool m_compress{false};
+};
+
 class Training {
 public:
     static void clear_training();
@@ -44,8 +61,9 @@ public:
 private:
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,
-                             const std::string& out_filename);
-
+                             OutputChunker& outchunker);
+    static void dump_training(int winner_color,
+                              OutputChunker& outchunker);
     static std::vector<TimeStep> m_data;
 };
 

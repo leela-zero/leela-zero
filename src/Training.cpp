@@ -22,6 +22,9 @@
 #include <fstream>
 #include <algorithm>
 #include <boost/utility.hpp>
+#include "stdlib.h"
+#include "zlib.h"
+#include "string.h"
 
 #include "Training.h"
 #include "UCTNode.h"
@@ -30,6 +33,57 @@
 #include "Random.h"
 
 std::vector<TimeStep> Training::m_data{};
+
+std::string OutputChunker::gen_chunk_name(void) const {
+    auto base = std::string{m_basename};
+    base.append("." + std::to_string(m_chunk_count) + ".gz");
+    return base;
+}
+
+OutputChunker::OutputChunker(const std::string& basename,
+                             bool compress)
+    : m_basename(basename), m_compress(compress) {
+}
+
+OutputChunker::~OutputChunker() {
+    flush_chunks();
+}
+
+void OutputChunker::append(const std::string& str) {
+    m_buffer.append(str);
+    m_step_count++;
+    if (m_step_count >= CHUNK_SIZE) {
+        flush_chunks();
+    }
+}
+
+void OutputChunker::flush_chunks() {
+    if (m_compress) {
+        auto chunk_name = gen_chunk_name();
+        auto out = gzopen(chunk_name.c_str(), "wb9");
+
+        auto in_buff_size = m_buffer.size();
+        auto in_buff = std::make_unique<char[]>(in_buff_size);
+        memcpy(in_buff.get(), m_buffer.data(), in_buff_size);
+
+        auto comp_size = gzwrite(out, in_buff.get(), in_buff_size);
+        if (!comp_size) {
+            throw std::runtime_error("Error in gzip output");
+        }
+        std::cout << "Writing chunk " << m_chunk_count << std::endl;
+        gzclose(out);
+    } else {
+        auto chunk_name = m_basename;
+        auto flags = std::ofstream::out;
+        auto out = std::ofstream{chunk_name, flags};
+        out << m_buffer;
+        out.close();
+    }
+
+    m_buffer.clear();
+    m_chunk_count++;
+    m_step_count = 0;
+}
 
 void Training::clear_training() {
     Training::m_data.clear();
@@ -69,10 +123,13 @@ void Training::record(GameState& state, const UCTNode& root) {
 }
 
 void Training::dump_training(int winner_color, const std::string& filename) {
-    auto out = std::ofstream{filename, std::ofstream::out
-                                       | std::ofstream::app};
+    auto chunker = OutputChunker{filename};
+    dump_training(winner_color, chunker);
+}
 
+void Training::dump_training(int winner_color, OutputChunker& outchunk) {
     for (const auto& step : m_data) {
+        auto out = std::stringstream{};
         // First output 16 times an input feature plane
         for (auto p = size_t{0}; p < 16; p++) {
             const auto& plane = step.planes[p];
@@ -108,14 +165,13 @@ void Training::dump_training(int winner_color, const std::string& filename) {
             out << "-1";
         }
         out << std::endl;
+        outchunk.append(out.str());
     }
-
-    out.close();
 }
 
 void Training::process_game(GameState& state, size_t& train_pos, int who_won,
                             const std::vector<int>& tree_moves,
-                            const std::string& out_filename) {
+                            OutputChunker& outchunker) {
     clear_training();
     auto counter = size_t{0};
     state.rewind();
@@ -165,11 +221,12 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         counter++;
     } while (state.forward_move() && counter < tree_moves.size());
 
-    dump_training(who_won, out_filename);
+    dump_training(who_won, outchunker);
 }
 
 void Training::dump_supervised(const std::string& sgf_name,
                                const std::string& out_filename) {
+    auto outchunker = OutputChunker{out_filename, true};
     auto games = SGFParser::chop_all(sgf_name);
     auto gametotal = games.size();
     auto gamecount = size_t{0};
@@ -186,28 +243,37 @@ void Training::dump_supervised(const std::string& sgf_name,
         try {
             sgftree->load_from_string(games[gamecount]);
         } catch (...) {
+            gamecount++;
             continue;
         };
-
-        auto tree_moves = sgftree->get_mainline();
-        auto state =
-            std::make_unique<GameState>(sgftree->follow_mainline_state());
-
-        auto who_won = sgftree->get_winner();
-        // Accept all komis and handicaps, but reject no usable result
-        if (who_won == FastBoard::BLACK || who_won == FastBoard::WHITE) {
-            // Our board size is hardcoded in several places
-            if (state->board.get_boardsize() == 19) {
-                process_game(*state, train_pos, who_won, tree_moves,
-                             out_filename);
-            }
-        }
 
         gamecount++;
         if (gamecount % (1000) == 0) {
             std::cout << "Game " << gamecount
                       << ", " << train_pos << " positions" << std::endl;
         }
+
+        auto tree_moves = sgftree->get_mainline();
+        // Empty game or couldn't be parsed?
+        if (tree_moves.size() == 0) {
+            continue;
+        }
+
+        auto who_won = sgftree->get_winner();
+        // Accept all komis and handicaps, but reject no usable result
+        if (who_won != FastBoard::BLACK && who_won != FastBoard::WHITE) {
+            continue;
+        }
+
+        auto state =
+            std::make_unique<GameState>(sgftree->follow_mainline_state());
+        // Our board size is hardcoded in several places
+        if (state->board.get_boardsize() != 19) {
+            continue;
+        }
+
+        process_game(*state, train_pos, who_won, tree_moves,
+                     outchunker);
     }
 
     std::cout << "Dumped " << train_pos << " training positions." << std::endl;
