@@ -20,6 +20,7 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <boost/utility.hpp>
 
 #include "Training.h"
@@ -175,12 +176,15 @@ void Training::dump_supervised(const std::string& sgf_name,
     auto train_pos = size_t{0};
 
     std::cout << "Total games in file: " << gametotal << std::endl;
+    // Shuffle games around
+    std::cout << "Shuffling...";
+    std::shuffle(begin(games), end(games), *Random::get_Rng());
+    std::cout << "done." << std::endl;
 
     while (gamecount < gametotal) {
         auto sgftree = std::make_unique<SGFTree>();
-        auto rand_idx = Random::get_Rng()->randuint32(gametotal);
         try {
-            sgftree->load_from_string(games[rand_idx]);
+            sgftree->load_from_string(games[gamecount]);
         } catch (...) {
             continue;
         };
