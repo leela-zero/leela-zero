@@ -102,10 +102,10 @@ startup. The first line contains a version number.
     1) layer weights
     2) output biases
 
-You might note there are 18 inputs instead of 17 as in the paper. The original
-AlphaGo Zero design has a slight imbalance in that it is easier for the white
-player to see the board edge (due to how padding works in neural networks).
-This has been fixed in Leela Zero. The inputs are:
+There are 18 inputs to the first layer, instead of 17 as in the paper. The
+original AlphaGo Zero design has a slight imbalance in that it is easier
+for the white player to see the board edge (due to how padding works in
+neural networks). This has been fixed in Leela Zero. The inputs are:
 
 ```
 1) Side to move stones at time T=0
@@ -119,6 +119,8 @@ This has been fixed in Leela Zero. The inputs are:
 17) All 1 if black is to move, 0 otherwise
 18) All 1 if white is to move, 0 otherwise
 ```
+
+Each of these forms a 19 x 19 bit plane.
 
 The zero.prototxt file contains a description of the full 40 residual layer design,
 in (NVIDIA)-Caffe protobuff format. It can be used to set up nv-caffe for training
@@ -146,16 +148,19 @@ for learning:
 
     dump_supervised sgffile.sgf train.txt
 
-The file format is not very space efficient so be wary of trying this with a
-large game collection.
+This will cause a sequence of gzip compressed files to be generated,
+starting with the name train.txt and containing training data generated from
+the specified SGF, suitable for use in a Deep Learning framework.
 
-## File format
+## Training data format
 
-The training data consists of a file with the following data, all in text
+The training data consists of files with the following data, all in text
 format:
 
-* 18 lines of 361 0's or 1's, corresponding to the inputs from the previous
-section
+* 16 lines of hexadecimal strings, each 361 bits longs, corresponding to the
+first 16 input planes from the previous section
+* 1 line with 1 number indicating who is to move, 0=black, 1=white, from which
+the last 2 input planes can be reconstructed
 * 1 line with 362 floating point numbers, indicating the search probabilities
 (visit counts) at the end of the search for the move in question. The last number
 is the probability of passing.
@@ -169,12 +174,11 @@ PyTorch, Theano), with a set of training data as described above. You still need
 to contruct a model description (2 examples are provided for Caffe), parse the
 input file format, and outputs weights in the proper format.
 
-
 # Todo
 
 - [ ] List of package names for more distros
 - [ ] A real build system like CMake would nice
-- [ ] Provide or link to self-play tooling
+- [x] Provide or link to self-play tooling
 - [ ] CPU support for Xeon Phi and for people without a GPU
 - [ ] Faster GPU usage via batching
 - [ ] Faster GPU usage via Winograd transforms
