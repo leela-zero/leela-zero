@@ -74,7 +74,7 @@ void OutputChunker::flush_chunks() {
         gzclose(out);
     } else {
         auto chunk_name = m_basename;
-        auto flags = std::ofstream::out;
+        auto flags = std::ofstream::out | std::ofstream::app;
         auto out = std::ofstream{chunk_name, flags};
         out << m_buffer;
         out.close();

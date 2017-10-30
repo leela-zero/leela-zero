@@ -656,6 +656,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             std::ofstream out(filename);
             out << sgf_text;
             out.close();
+            gtp_printf(id, "");
         }
 
         return true;
