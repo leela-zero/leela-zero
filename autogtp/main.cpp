@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    prog_cmdline.append(" -g -n -m 30 -w weights.txt -p 1000 --noponder");
+    prog_cmdline.append(" -g -n -m 30 -r 0 -w weights.txt -p 800 --noponder");
 
     cerr << prog_cmdline << endl;
 
