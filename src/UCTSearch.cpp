@@ -191,14 +191,28 @@ int UCTSearch::get_best_move(passflag_t passflag) {
         if (bestmove == FastBoard::PASS) {
             // Either by forcing or coincidence passing is
             // on top...check whether passing loses instantly
-            // do full count including dead stones
+            // do full count including dead stones.
+            // In a reinforcement learning setup, it is possible for the
+            // network to learn that, after passing in the tree, the two last
+            // positions are identical, and this means the position is only won
+            // if there are no dead stones in our own territory (because we use
+            // Trump-Taylor scoring there). So strictly speaking, the next
+            // heuristic isn't required for a pure RL network.
+            // On the other hand, with a supervised learning setup, we fully
+            // expect that the engine will pass out anything that looks like
+            // a finished game even with dead stones on the board (because the
+            // training games were using scoring with dead stone removal).
+            // So in order to play games with a SL network, we need this
+            // heuristic so the engine can "clean up" the board. It will still
+            // only clean up the bare necessity to win. For full dead stone
+            // removal, kgs-genmove_cleanup and the NOPASS mode must be used.
             float score = m_rootstate.final_score();
-            // do we lose by passing?
+            // Do we lose by passing?
             if ((score > 0.0f && color == FastBoard::WHITE)
                 ||
                 (score < 0.0f && color == FastBoard::BLACK)) {
                 myprintf("Passing loses :-(\n");
-                // find a valid non-pass move
+                // Find a valid non-pass move.
                 UCTNode * nopass = m_root.get_nopass_child(m_rootstate);
                 if (nopass != nullptr) {
                     myprintf("Avoiding pass because it loses.\n");
