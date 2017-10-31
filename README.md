@@ -49,11 +49,10 @@ weights.txt file on the command line with the -w option.
 * zlib library (zlib1g & zlib1g-dev on Debian/Ubuntu)
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
 https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
-* Standard OpenCL C++ headers (opencl-headers on Debian/Ubuntu, or at https://github.com/KhronosGroup/OpenCL-CLHPP, you can just copy input_cl.hpp into CL/cl2.hpp)
 * OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
 * An OpenCL capable device, preferably a very, very fast GPU, with drivers
 (OpenCL 1.2 support should be enough, even OpenCL 1.1 might work)
-* The program has been tested on Windows, Linux and MacOS.
+* The program has been tested on Windows, Linux and macOS.
 
 ## Example of compiling and running - Ubuntu
 
@@ -67,6 +66,20 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     make
     cd ..
     wget https://sjeng.org/zero/best_v1.txt.zip
+    unzip https://sjeng.org/zero/best_v1.txt.zip
+    src/leelaz --weights weights.txt
+
+## Example of compiling and running - macOS
+
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero/src
+    brew install boost
+    edit config.h, remove the USE_OPENBLAS line
+    edit Makefile, uncomment the "for macOS" lines
+    make
+    cd ..
+    curl -O https://sjeng.org/zero/best_v1.txt.zip
     unzip https://sjeng.org/zero/best_v1.txt.zip
     src/leelaz --weights weights.txt
 
@@ -191,6 +204,6 @@ done with multiple processes each bound to a GPU)
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h, which
-has a specific license (zlib License - compatible with GPLv3) mentioned in
-that file.
+The code is released under the GPLv3 or later, except for ThreadPool.h and
+cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
+those files.
