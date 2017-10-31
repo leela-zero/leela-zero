@@ -64,7 +64,7 @@ public:
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
     UCTNode* get_pass_child() const;
-    UCTNode* get_nopass_child() const;
+    UCTNode* get_nopass_child(FastState& state) const;
     UCTNode* get_sibling() const;
 
     void sort_root_children(int color);
