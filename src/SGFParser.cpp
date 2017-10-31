@@ -236,10 +236,10 @@ int SGFParser::count_games_in_file(std::string filename) {
 
     char c;
     while (ins >> c) {
-        if (!isascii(c)) {
+        if (!Utils::is7bit(c)) {
             do {
                 ins >> c;
-            } while (!isascii(c));
+            } while (!Utils::is7bit(c));
             continue;
         }
 
