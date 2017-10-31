@@ -46,6 +46,7 @@ weights.txt file on the command line with the -w option.
 * GCC, Clang or MSVC, any C++14 compiler
 * boost 1.58.x or later (libboost-all-dev on Debian/Ubuntu)
 * BLAS Library: OpenBLAS (libopenblas-dev) or (optionally) Intel MKL
+* zlib library (zlib1g & zlib1g-dev on Debian/Ubuntu)
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
 https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 * Standard OpenCL C++ headers (opencl-headers on Debian/Ubuntu, or at https://github.com/KhronosGroup/OpenCL-CLHPP, you can just copy input_cl.hpp into CL/cl2.hpp)
