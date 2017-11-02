@@ -31,8 +31,8 @@ public:
     SearchResult() = default;
     explicit SearchResult(float e)
         : m_valid(true), m_eval(e) {};
-    bool valid() { return m_valid;  }
-    float eval() { return m_eval;  }
+    bool valid() const { return m_valid;  }
+    float eval() const { return m_eval;  }
 private:
     bool m_valid{false};
     float m_eval{0.0f};

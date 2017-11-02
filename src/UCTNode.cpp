@@ -72,7 +72,8 @@ SMP::Mutex & UCTNode::get_mutex() {
 }
 
 bool UCTNode::create_children(std::atomic<int> & nodecount,
-                              GameState & state) {
+                              GameState & state,
+                              float & eval) {
     // check whether somebody beat us to it (atomic)
     if (has_children()) {
         return false;
@@ -99,12 +100,12 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
         &state, Network::Ensemble::RANDOM_ROTATION);
 
     // DCNN returns winrate as side to move
-    auto eval = raw_netlist.second;
-    auto tomove = state.board.get_to_move();
-    if (tomove == FastBoard::WHITE) {
-        eval = 1.0f - eval;
+    auto net_eval = raw_netlist.second;
+    auto to_move = state.board.get_to_move();
+    if (to_move == FastBoard::WHITE) {
+        net_eval = 1.0f - net_eval;
     }
-    accumulate_eval(eval);
+    eval = net_eval;
 
     FastBoard & board = state.board;
     std::vector<Network::scored_node> nodelist;
@@ -122,7 +123,7 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
     }
     link_nodelist(nodecount, nodelist);
 
-    return eval;
+    return true;
 }
 
 void UCTNode::link_nodelist(std::atomic<int> & nodecount,
@@ -268,13 +269,16 @@ void UCTNode::set_move(int move) {
 }
 
 void UCTNode::virtual_loss() {
-    m_visits++;
+    m_visits += VIRTUAL_LOSS_COUNT;
 }
 
-void UCTNode::update(bool update_eval, float eval) {
-    if (update_eval) {
-        accumulate_eval(eval);
-    }
+void UCTNode::virtual_loss_undo() {
+    m_visits -= VIRTUAL_LOSS_COUNT;
+}
+
+void UCTNode::update(float eval) {
+    m_visits++;
+    accumulate_eval(eval);
 }
 
 bool UCTNode::has_children() const {

@@ -48,29 +48,28 @@ UCTSearch::UCTSearch(GameState & g)
 }
 
 SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
-    const int color = currstate.get_to_move();
+    const auto color = currstate.get_to_move();
     const auto hash = currstate.board.get_hash();
     const auto komi = currstate.get_komi();
 
-    bool has_updated = false;
-    SearchResult result;
+    auto result = SearchResult{};
 
     TTable::get_TT()->sync(hash, komi, node);
     node->virtual_loss();
 
     if (!node->has_children() && m_nodes < MAX_TREE_SIZE) {
-        bool success = node->create_children(m_nodes, currstate);
+        float eval;
+        auto success = node->create_children(m_nodes, currstate, eval);
         if (success) {
-            result = SearchResult(node->get_eval(color));
-            has_updated = true;
+            result = SearchResult(eval);
         }
     }
 
     if (node->has_children() && !result.valid()) {
-        UCTNode * next = node->uct_select_child(color);
+        auto next = node->uct_select_child(color);
 
         if (next != nullptr) {
-            int move = next->get_move();
+            auto move = next->get_move();
 
             if (move != FastBoard::PASS) {
                 currstate.play_move(move);
@@ -87,7 +86,10 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
         }
     }
 
-    node->update(result.valid() && !has_updated, result.eval());
+    if (result.valid()) {
+        node->update(result.eval());
+    }
+    node->virtual_loss_undo();
     TTable::get_TT()->update(hash, komi, node);
 
     return result;
@@ -336,14 +338,14 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     // create a sorted list off legal moves (make sure we
     // play something legal and decent even in time trouble)
-    m_root.virtual_loss();
-    m_root.create_children(m_nodes, m_rootstate);
+    float root_eval;
+    m_root.create_children(m_nodes, m_rootstate, root_eval);
     m_root.kill_superkos(m_rootstate);
     if (cfg_noise) {
         m_root.dirichlet_noise(0.25f, 0.03f);
     }
 
-    myprintf("NN eval=%f\n", m_root.get_eval(color));
+    myprintf("NN eval=%f\n", root_eval);
 
     m_run = true;
     int cpus = cfg_num_threads;

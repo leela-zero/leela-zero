@@ -33,12 +33,17 @@ class UCTNode {
 public:
     using sortnode_t = std::tuple<float, int, float, UCTNode*>;
 
+    // When we visit a node, add this amount of virtual losses
+    // to it to encourage other CPUs to explore other parts of the
+    // search tree.
+    static constexpr auto VIRTUAL_LOSS_COUNT = 3;
+
     explicit UCTNode(int vertex, float score);
     ~UCTNode();
     bool first_visit() const;
     bool has_children() const;
     bool create_children(std::atomic<int> & nodecount,
-                         GameState & state);
+                         GameState & state, float & eval);
     void kill_superkos(KoState & state);
     void delete_child(UCTNode * child);
     void invalidate();
@@ -56,10 +61,10 @@ public:
     void set_eval(float eval);
     void accumulate_eval(float eval);
     void virtual_loss(void);
+    void virtual_loss_undo(void);
     void dirichlet_noise(float epsilon, float alpha);
     void randomize_first_proportionally();
-    void update(bool update_eval,
-                float eval = std::numeric_limits<float>::quiet_NaN());
+    void update(float eval = std::numeric_limits<float>::quiet_NaN());
 
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
