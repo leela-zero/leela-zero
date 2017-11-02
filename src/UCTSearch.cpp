@@ -345,7 +345,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
         m_root.dirichlet_noise(0.25f, 0.03f);
     }
 
-    myprintf("NN eval=%f\n", root_eval);
+    myprintf("NN eval=%f\n",
+             (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval));
 
     m_run = true;
     int cpus = cfg_num_threads;
