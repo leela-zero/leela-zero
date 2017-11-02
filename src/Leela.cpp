@@ -51,7 +51,8 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
     v_desc.add_options()
         ("help,h", "Show commandline options.")
         ("gtp,g", "Enable GTP mode.")
-        ("threads,t", po::value<int>()->default_value(1),
+        ("threads,t", po::value<int>()->default_value
+                      (std::min(2, cfg_num_threads)),
                       "Number of threads to use.")
         ("playouts,p", po::value<int>(),
                        "Weaken engine by limiting the number of playouts. "
