@@ -55,7 +55,6 @@ public:
     float get_eval() const;
     float get_eval(int tomove) const;
     double get_blackevals() const;
-    void set_move(int move);
     void set_visits(int visits);
     void set_blackevals(double blacevals);
     void set_eval(float eval);

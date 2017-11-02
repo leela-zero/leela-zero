@@ -264,10 +264,6 @@ int UCTNode::get_move() const {
     return m_move;
 }
 
-void UCTNode::set_move(int move) {
-    m_move = move;
-}
-
 void UCTNode::virtual_loss() {
     m_visits += VIRTUAL_LOSS_COUNT;
 }
