@@ -73,6 +73,6 @@ void TTable::sync(uint64 hash, const float komi, UCTNode * node) {
             entry in TT has more info (new node)
         */
         node->set_visits(m_buckets[index].m_visits);
-        node->set_blackevals(m_buckets[index].m_eval_sum);;
+        node->set_blackevals(m_buckets[index].m_eval_sum);
     }
 }

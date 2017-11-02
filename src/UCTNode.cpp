@@ -265,11 +265,11 @@ int UCTNode::get_move() const {
 }
 
 void UCTNode::virtual_loss() {
-    m_visits += VIRTUAL_LOSS_COUNT;
+    m_virtual_loss += VIRTUAL_LOSS_COUNT;
 }
 
 void UCTNode::virtual_loss_undo() {
-    m_visits -= VIRTUAL_LOSS_COUNT;
+    m_virtual_loss -= VIRTUAL_LOSS_COUNT;
 }
 
 void UCTNode::update(float eval) {
@@ -297,17 +297,23 @@ int UCTNode::get_visits() const {
     return m_visits;
 }
 
-float UCTNode::get_eval() const {
-    assert(!first_visit());
-    return static_cast<float>(m_blackevals / (double)get_visits());
-}
-
 float UCTNode::get_eval(int tomove) const {
-    float score = get_eval();
-    if (tomove == FastBoard::WHITE) {
-        score = 1.0f - score;
+    // Due to the use of atomic updates and virtual losses, it is
+    // possible for the visit count to change underneath us. Make sure
+    // to return a consistent result to the caller by caching the values.
+    auto visits = get_visits() + m_virtual_loss;
+    auto blackeval = get_blackevals();
+    if (visits > 0) {
+        auto score = static_cast<float>(blackeval / (double)visits);
+        if (tomove == FastBoard::WHITE) {
+            score = 1.0f - score;
+        }
+        return score;
+    } else {
+        // If a node has not been visited yet,
+        // the eval is the first-play-urgency.
+        return 1.1f;
     }
-    return score;
 }
 
 double UCTNode::get_blackevals() const {
@@ -372,10 +378,8 @@ UCTNode* UCTNode::uct_select_child(int color) {
         //     break;
         // }
 
-        float winrate = 1.1f;
-        if (!child->first_visit()) {
-            winrate = child->get_eval(color);
-        }
+        // get_eval() will automatically set first-play-urgency
+        float winrate = child->get_eval(color);
         float psa = child->get_score();
         float denom = 1.0f + child->get_visits();
         float puct = cfg_puct * psa * ((float)std::sqrt((double)parentvisits) / denom);

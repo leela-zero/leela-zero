@@ -52,7 +52,6 @@ public:
     int get_visits() const;
     float get_score() const;
     void set_score(float score);
-    float get_eval() const;
     float get_eval(int tomove) const;
     double get_blackevals() const;
     void set_visits(int visits);
@@ -80,6 +79,7 @@ private:
     void link_child(UCTNode * newchild);
     void link_nodelist(std::atomic<int> & nodecount,
                        std::vector<Network::scored_node> & nodelist);
+
     // Tree data
     std::atomic<bool> m_has_children{false};
     UCTNode* m_firstchild{nullptr};
@@ -88,6 +88,7 @@ private:
     int m_move;
     // UCT
     std::atomic<int> m_visits{0};
+    std::atomic<int> m_virtual_loss{0};
     // UCT eval
     float m_score;
     std::atomic<double> m_blackevals{0};

@@ -26,12 +26,9 @@
 
 class TTEntry {
 public:
-    TTEntry()
-        : m_hash(0) {
-    };
+    TTEntry() = default;
 
-    uint64 m_hash;
-
+    uint64 m_hash{0};
     int m_visits;
     double m_eval_sum;
 };
