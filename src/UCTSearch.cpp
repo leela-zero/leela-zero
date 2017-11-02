@@ -43,18 +43,8 @@
 using namespace Utils;
 
 UCTSearch::UCTSearch(GameState & g)
-    : m_rootstate(g),
-      m_root(FastBoard::PASS, 0.0f),
-      m_nodes(0),
-      m_playouts(0),
-      m_hasrunflag(false),
-      m_runflag(nullptr) {
+    : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
-}
-
-void UCTSearch::set_runflag(std::atomic<bool> * flag) {
-    m_runflag = flag;
-    m_hasrunflag = true;
 }
 
 SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
@@ -271,7 +261,7 @@ std::string UCTSearch::get_pv(KoState & state, UCTNode & parent) {
         return std::string();
     }
 
-    // This breaks best probility = first in tree assumption
+    // This temporarily breaks any best probability = first in tree assumptions
     parent.sort_root_children(state.get_to_move());
 
     LOCK(parent.get_mutex(), lock);
@@ -306,11 +296,11 @@ void UCTSearch::dump_analysis(int playouts) {
              playouts, winrate, pvstring.c_str());
 }
 
-bool UCTSearch::is_running() {
+bool UCTSearch::is_running() const {
     return m_run;
 }
 
-bool UCTSearch::playout_limit_reached() {
+bool UCTSearch::playout_limit_reached() const {
     return m_playouts >= m_maxplayouts;
 }
 
@@ -327,6 +317,9 @@ void UCTSearch::increment_playouts() {
 }
 
 int UCTSearch::think(int color, passflag_t passflag) {
+    assert(m_playouts == 0);
+    assert(m_nodes == 0);
+
     // Start counting time for us
     m_rootstate.start_clock(color);
 
@@ -353,8 +346,6 @@ int UCTSearch::think(int color, passflag_t passflag) {
     myprintf("NN eval=%f\n", m_root.get_eval(color));
 
     m_run = true;
-    m_playouts = 0;
-
     int cpus = cfg_num_threads;
     ThreadGroup tg(thread_pool);
     for (int i = 1; i < cpus; i++) {
@@ -378,8 +369,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
             last_update = centiseconds_elapsed;
             dump_analysis(static_cast<int>(m_playouts));
         }
-        keeprunning = (centiseconds_elapsed < time_for_move
-                        && (!m_hasrunflag || (*m_runflag)));
+        keeprunning  = is_running();
+        keeprunning &= (centiseconds_elapsed < time_for_move);
         keeprunning &= !playout_limit_reached();
     } while(keeprunning);
 
@@ -411,8 +402,10 @@ int UCTSearch::think(int color, passflag_t passflag) {
 }
 
 void UCTSearch::ponder() {
+    assert(m_playouts == 0);
+    assert(m_nodes == 0);
+
     m_run = true;
-    m_playouts = 0;
     int cpus = cfg_num_threads;
     ThreadGroup tg(thread_pool);
     for (int i = 1; i < cpus; i++) {
@@ -422,7 +415,7 @@ void UCTSearch::ponder() {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         play_simulation(*currstate, &m_root);
         increment_playouts();
-    } while(!Utils::input_pending() && (!m_hasrunflag || (*m_runflag)));
+    } while(!Utils::input_pending() && is_running());
 
     // stop the search
     m_run = false;

@@ -58,12 +58,11 @@ public:
     UCTSearch(GameState & g);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
-    void set_runflag(std::atomic<bool> * flag);
     void set_analyzing(bool flag);
     void set_quiet(bool flag);
     void ponder();
-    bool is_running();
-    bool playout_limit_reached();
+    bool is_running() const;
+    bool playout_limit_reached() const;
     void increment_playouts();
     SearchResult play_simulation(GameState & currstate, UCTNode * const node);
 
@@ -74,15 +73,11 @@ private:
     int get_best_move(passflag_t passflag);
 
     GameState & m_rootstate;
-    UCTNode m_root;
-    std::atomic<int> m_nodes;
-    std::atomic<int> m_playouts;
-    std::atomic<bool> m_run;
+    UCTNode m_root{FastBoard::PASS, 0.0f};
+    std::atomic<int> m_nodes{0};
+    std::atomic<int> m_playouts{0};
+    std::atomic<bool> m_run{false};
     int m_maxplayouts;
-
-    // For external control
-    bool m_hasrunflag;
-    std::atomic<bool> * m_runflag;
 };
 
 class UCTWorker {
