@@ -422,9 +422,9 @@ Network::Netresult Network::get_scored_moves_internal(
     for (int c = 0; c < channels; ++c) {
         for (int h = 0; h < height; ++h) {
             for (int w = 0; w < width; ++w) {
-                int vtx = rotate_nn_idx(h * 19 + w, rotation);
+                auto rot_idx = rotate_nn_idx(h * 19 + w, rotation);
                 input_data[(c * height + h) * width + w] =
-                    (float)planes[c][vtx];
+                    (float)planes[c][rot_idx];
             }
         }
     }
@@ -456,13 +456,13 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<scored_node> result;
     for (size_t idx = 0; idx < outputs.size(); idx++) {
         if (idx < 19*19) {
-            auto rot_idx = rev_rotate_nn_idx(idx, rotation);
-            auto val = outputs[rot_idx];
-            int x = idx % 19;
-            int y = idx / 19;
-            int vtx = state->board.get_vertex(x, y);
-            if (state->board.get_square(vtx) == FastBoard::EMPTY) {
-                result.emplace_back(val, vtx);
+            auto val = outputs[idx];
+            auto rot_idx = rotate_nn_idx(idx, rotation);
+            int x = rot_idx % 19;
+            int y = rot_idx / 19;
+            int rot_vtx = state->board.get_vertex(x, y);
+            if (state->board.get_square(rot_vtx) == FastBoard::EMPTY) {
+                result.emplace_back(val, rot_vtx);
             }
         } else {
             result.emplace_back(outputs[idx], FastBoard::PASS);
@@ -570,13 +570,6 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
     for (size_t h = 0; h < backtracks; h++) {
         state->forward_move();
     }
-}
-
-int Network::rev_rotate_nn_idx(const int vertex, int symmetry) {
-    static const int invert[] = {0, 1, 2, 3, 4, 6, 5, 7};
-    assert(rotate_nn_idx(rotate_nn_idx(vertex, symmetry), invert[symmetry])
-           == vertex);
-    return rotate_nn_idx(vertex, invert[symmetry]);
 }
 
 int Network::rotate_nn_idx(const int vertex, int symmetry) {
