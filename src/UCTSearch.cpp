@@ -386,10 +386,10 @@ int UCTSearch::think(int color, passflag_t passflag) {
     // stop the search
     m_run = false;
     tg.wait_all();
+    m_rootstate.stop_clock(color);
     if (!m_root.has_children()) {
         return FastBoard::PASS;
     }
-    m_rootstate.stop_clock(color);
 
     // display search info
     myprintf("\n");
