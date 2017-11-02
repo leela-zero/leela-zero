@@ -12,7 +12,7 @@ debug:
 
 clang:
 	$(MAKE) CC=clang-5.0 CXX=clang++-5.0 \
-		CXXFLAGS='$(CXXFLAGS) -Wall -Wextra -O3 -ffast-math -flto -march=native -std=c++14 -DNDEBUG' \
+		CXXFLAGS='$(CXXFLAGS) -Wall -Wextra -Wno-missing-braces -O3 -ffast-math -flto -march=native -std=c++14 -DNDEBUG' \
 		LDFLAGS='$(LDFLAGS) -flto -fuse-linker-plugin' \
 		leelaz
 
