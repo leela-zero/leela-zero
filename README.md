@@ -137,9 +137,9 @@ neural networks). This has been fixed in Leela Zero. The inputs are:
 
 Each of these forms a 19 x 19 bit plane.
 
-The zero.prototxt file contains a description of the full 40 residual layer design,
+The zero.prototxt file contains a description of the full 40 residual block design,
 in (NVIDIA)-Caffe protobuff format. It can be used to set up nv-caffe for training
-a suitable network. The zero\_mini.prototxt file describes a smaller 12 residual layer
+a suitable network. The zero\_mini.prototxt file describes a smaller 12 residual block
 case.
 
 # Training
