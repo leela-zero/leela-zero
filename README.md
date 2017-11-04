@@ -103,8 +103,9 @@ capability. It should work with this engine.
 
 The weights file is a text file with each line containing a row of coefficients.
 The layout of the network is as in the AlphaGo Zero paper, but the number of
-residual blocks is allowed to vary. The program will autodetect the amount on
-startup. The first line contains a version number.
+residual blocks is allowed to vary, as is the number of outputs (filters) per layer.
+The latter must be the same for all residual layers. The program will autodetect
+the amounts on startup. The first line contains a version number.
 
 * Convolutional layers have 2 weight rows:
     1) convolution weights
@@ -138,9 +139,8 @@ Each of these forms a 19 x 19 bit plane.
 
 The zero.prototxt file contains a description of the full 40 residual layer design,
 in (NVIDIA)-Caffe protobuff format. It can be used to set up nv-caffe for training
-a suitable network. The zero\_mini.prototxt file describes the 12 residual layer
-case that was used for the example supervised network listed in "I just want to
-play".
+a suitable network. The zero\_mini.prototxt file describes a smaller 12 residual layer
+case.
 
 # Training
 
