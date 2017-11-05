@@ -74,6 +74,10 @@ class TFProcess:
 
         self.session.run(self.init)
 
+    def restore(self, file):
+        print("Restoring from {0}".format(file))
+        self.saver.restore(self.session, file)
+
     def process(self, batch):
         self.steps += 1
         if self.steps % 100 == 0:
@@ -100,7 +104,7 @@ class TFProcess:
                                          self.y_: batch[1],
                                          self.z_: batch[2]})
             print("step {0}, training accuracy={1}%, mse={2}".format(
-                self.steps, train_accuracy*100.0, train_mse))
+                  self.steps, train_accuracy*100.0, train_mse))
             path = os.path.join(os.getcwd(), "model_" + str(self.steps) + ".ckpt")
             save_path = self.saver.save(self.session, path)
             print("Model saved in file: {0}".format(save_path))

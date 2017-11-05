@@ -99,6 +99,9 @@ def main(args):
 
     if chunks:
         tfprocess = TFProcess()
+        if args:
+            restore_file = args.pop(0)
+            tfprocess.restore(restore_file)
         do_train_loop(chunks, tfprocess)
 
 if __name__ == "__main__":
