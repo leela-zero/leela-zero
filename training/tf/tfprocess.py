@@ -37,9 +37,9 @@ class TFProcess:
         self.cross_entropy = \
             tf.nn.softmax_cross_entropy_with_logits(labels=self.y_,
                                                     logits=self.y_conv)
-        self.cross_entropy_mean = tf.reduce_mean(self.cross_entropy)
+        self.loss = tf.reduce_mean(self.cross_entropy)
         self.train_step = \
-            tf.train.GradientDescentOptimizer(learning_rate=0.05).minimize(self.cross_entropy)
+            tf.train.GradientDescentOptimizer(learning_rate=0.05).minimize(self.loss)
 
         self.correct_prediction = \
             tf.equal(tf.argmax(self.y_conv, 1), tf.argmax(self.y_, 1))
@@ -57,8 +57,8 @@ class TFProcess:
             #    feed_dict={self.x: batch[0], self.y_: batch[1]})
             # print('step %d, training accuracy %g' % (self.steps, train_accuracy))
             train_loss = \
-                self.cross_entropy_mean.eval(session=self.session,
-                                             feed_dict={self.x: batch[0], self.y_: batch[1]})
+                self.loss.eval(session=self.session,
+                               feed_dict={self.x: batch[0], self.y_: batch[1]})
             print('step %d, loss %g' % (self.steps, train_loss))
         self.train_step.run(session=self.session,
                             feed_dict={self.x: batch[0], self.y_: batch[1]})
@@ -74,9 +74,10 @@ class TFProcess:
         b_conv = relu_bias_variable([output_channels])
         s_conv = scale_variable([output_channels])
         o_conv = offset_variable([output_channels])
-        h_bn, bm, vn = tf.nn.fused_batch_norm(tf.nn.bias_add(conv2d(inputs, W_conv),
-                                                                    b_conv, data_format='NCHW'),
-                                              s_conv, o_conv, None, None, data_format='NCHW')
+        h_bn, bm, vn = \
+            tf.nn.fused_batch_norm(tf.nn.bias_add(conv2d(inputs, W_conv),
+                                                  b_conv, data_format='NCHW'),
+                                   s_conv, o_conv, None, None, data_format='NCHW')
         h_conv = tf.nn.relu(h_bn)
         return h_conv
 
