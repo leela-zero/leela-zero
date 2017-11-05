@@ -40,8 +40,8 @@ def conv2d(x, W):
 
 class TFProcess:
     def __init__(self):
-        self.steps = 0
         self.session = tf.Session()
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
         self.x = tf.placeholder(tf.float32, [None, 18, 19 * 19])
         self.y_ = tf.placeholder(tf.float32, [None, 362])
         self.z_ = tf.placeholder(tf.float32, [None, 1])
@@ -51,23 +51,29 @@ class TFProcess:
             tf.nn.softmax_cross_entropy_with_logits(labels=self.y_,
                                                     logits=self.y_conv)
         self.policy_loss = tf.reduce_mean(self.cross_entropy)
+        tf.summary.scalar('policy_loss', self.policy_loss)
 
         self.mse_loss = \
             tf.reduce_mean(tf.squared_difference(self.z_, self.z_conv))
+        tf.summary.scalar('mse_loss', self.mse_loss)
 
         self.loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss
 
         self.train_step = \
             tf.train.MomentumOptimizer(
-                learning_rate=0.1, momentum=0.9, use_nesterov=True).\
-                minimize(self.loss)
+                learning_rate=0.05, momentum=0.9, use_nesterov=True).\
+                minimize(self.loss, global_step=self.global_step)
 
         self.correct_prediction = \
             tf.equal(tf.argmax(self.y_conv, 1), tf.argmax(self.y_, 1))
         self.correct_prediction = \
             tf.cast(self.correct_prediction, tf.float32)
         self.accuracy = tf.reduce_mean(self.correct_prediction)
-        self.mse = tf.reduce_mean(tf.squared_difference(self.z_, self.z_conv))
+        tf.summary.scalar('accuracy', self.accuracy)
+
+        # Running averages
+        self.avg_policy_loss = 8.0
+        self.avg_mse_loss = 2.0
 
         self.init = tf.global_variables_initializer()
         self.saver = tf.train.Saver()
@@ -79,34 +85,35 @@ class TFProcess:
         self.saver.restore(self.session, file)
 
     def process(self, batch):
-        self.steps += 1
-        if self.steps % 100 == 0:
-            train_loss = \
-                self.loss.eval(session=self.session,
-                               feed_dict={self.x: batch[0],
-                                          self.y_: batch[1],
-                                          self.z_: batch[2]})
-            print("step {0}, batch loss={1}".format(self.steps, train_loss))
-        self.train_step.run(session=self.session,
-                            feed_dict={self.x: batch[0],
-                                       self.y_: batch[1],
-                                       self.z_: batch[2]})
-
-        if self.steps % 1000 == 0:
+        # Run training for this batch
+        _, policy_loss, mse_loss = self.session.run(
+            [self.train_step, self.policy_loss, self.mse_loss],
+            feed_dict={self.x: batch[0],
+                       self.y_: batch[1],
+                       self.z_: batch[2]})
+        steps = tf.train.global_step(self.session, self.global_step)
+        # Keep running averages
+        self.avg_policy_loss = 0.99 * self.avg_policy_loss + 0.01 * policy_loss
+        self.avg_mse_loss = 0.99 * self.avg_mse_loss + 0.01 * mse_loss
+        if steps % 100 == 0:
+            print("step {0}, policy loss={1} mse={2}".format(
+                steps, self.avg_policy_loss, self.avg_mse_loss))
+        # Ideally this would use a seperate dataset and so on...
+        if steps % 1000 == 0:
             train_accuracy = \
                 self.accuracy.eval(session=self.session,
                                    feed_dict={self.x: batch[0],
                                               self.y_: batch[1],
                                               self.z_: batch[2]})
             train_mse = \
-                self.mse.eval(session=self.session,
-                              feed_dict={self.x: batch[0],
-                                         self.y_: batch[1],
-                                         self.z_: batch[2]})
+                self.mse_loss.eval(session=self.session,
+                                   feed_dict={self.x: batch[0],
+                                              self.y_: batch[1],
+                                              self.z_: batch[2]})
             print("step {0}, training accuracy={1}%, mse={2}".format(
-                  self.steps, train_accuracy*100.0, train_mse))
-            path = os.path.join(os.getcwd(), "model_" + str(self.steps) + ".ckpt")
-            save_path = self.saver.save(self.session, path)
+                steps, train_accuracy*100.0, train_mse))
+            path = os.path.join(os.getcwd(), "leelaz-model")
+            save_path = self.saver.save(self.session, path, global_step=steps)
             print("Model saved in file: {0}".format(save_path))
 
     def conv_block(self, inputs, input_channels, output_channels):
