@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import tensorflow as tf
 
 def weight_variable(shape):
@@ -58,7 +59,8 @@ class TFProcess:
 
         self.train_step = \
             tf.train.MomentumOptimizer(
-                learning_rate=0.1, momentum=0.9, use_nesterov=True).minimize(self.loss)
+                learning_rate=0.1, momentum=0.9, use_nesterov=True).\
+                minimize(self.loss)
 
         self.correct_prediction = \
             tf.equal(tf.argmax(self.y_conv, 1), tf.argmax(self.y_, 1))
@@ -68,6 +70,8 @@ class TFProcess:
         self.mse = tf.reduce_mean(tf.squared_difference(self.z_, self.z_conv))
 
         self.init = tf.global_variables_initializer()
+        self.saver = tf.train.Saver()
+
         self.session.run(self.init)
 
     def process(self, batch):
@@ -97,6 +101,9 @@ class TFProcess:
                                          self.z_: batch[2]})
             print("step {0}, training accuracy={1}%, mse={2}".format(
                 self.steps, train_accuracy*100.0, train_mse))
+            path = os.path.join(os.getcwd(), "model_" + str(self.steps) + ".ckpt")
+            save_path = self.saver.save(self.session, path)
+            print("Model saved in file: {0}".format(save_path))
 
     def conv_block(self, inputs, input_channels, output_channels):
         W_conv = weight_variable([3, 3, input_channels, output_channels])
