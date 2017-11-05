@@ -75,17 +75,17 @@ def convert_train_data(text_item):
     probabilities = [float(val) for val in text_item[17].split()]
     winner = float(text_item[18])
     assert winner == 1.0 or winner == -1.0
-    return (planes, probabilities, winner)
+    return (planes, probabilities, [winner])
 
 def do_train_loop(chunks, tfprocess):
     while True:
         batch = get_batch(chunks, BATCH_SIZE)
-        batch_data = [[], []]
+        batch_data = [[], [], []]
         for item in batch:
             planes, probs, winner = convert_train_data(item)
             batch_data[0].append(planes)
             batch_data[1].append(probs)
-            # batch_data[2].append(winner)
+            batch_data[2].append(winner)
         tfprocess.process(batch_data)
 
 def get_chunks(data_prefix):
