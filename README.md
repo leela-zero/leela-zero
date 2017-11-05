@@ -188,6 +188,9 @@ PyTorch, Theano), with a set of training data as described above. You still need
 to contruct a model description (2 examples are provided for Caffe), parse the
 input file format, and outputs weights in the proper format.
 
+There is a partial implementation for TensforFlow in the training/tf directory.
+It is missing the ability to dump the weights during the training.
+
 # Todo
 
 - [ ] List of package names for more distros
