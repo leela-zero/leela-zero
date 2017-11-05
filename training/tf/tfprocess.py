@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import numpy as np
 import tensorflow as tf
 
 def weight_variable(shape):
@@ -40,7 +41,14 @@ def conv2d(x, W):
 
 class TFProcess:
     def __init__(self):
-        self.session = tf.Session()
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+        config = tf.ConfigProto(gpu_options=gpu_options)
+        self.session = tf.Session(config=config)
+
+        # For exporting
+        self.weights = []
+
+        # TF variables
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
         self.x = tf.placeholder(tf.float32, [None, 18, 19 * 19])
         self.y_ = tf.placeholder(tf.float32, [None, 362])
@@ -93,6 +101,7 @@ class TFProcess:
                        self.z_: batch[2]})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
+        # XXX: use built-in support like tf.moving_average_variables
         self.avg_policy_loss = 0.99 * self.avg_policy_loss + 0.01 * policy_loss
         self.avg_mse_loss = 0.99 * self.avg_mse_loss + 0.01 * mse_loss
         if steps % 100 == 0:
@@ -114,13 +123,41 @@ class TFProcess:
                 steps, train_accuracy*100.0, train_mse))
             path = os.path.join(os.getcwd(), "leelaz-model")
             save_path = self.saver.save(self.session, path, global_step=steps)
-            print("Model saved in file: {0}".format(save_path))
+            print("Model saved in file: {}".format(save_path))
+            leela_path = path + ".txt"
+            self.save_leelaz_weights(leela_path)
+            print("Leela weights saved to {}".format(leela_path))
+
+    def save_leelaz_weights(self, filename):
+        with open(filename, "w") as file:
+            # Version tag
+            file.write("1\n")
+            for weights in self.weights:
+                # TF
+                # [filter_height, filter_width, in_channels, out_channels]
+                # Leela
+                # (output, input, filter_size, filter_size]
+                # Fully connected layers are [in, out] in both
+                work_weights = None
+                if weights.shape.ndims == 4:
+                    work_weights = tf.transpose(weights, [3, 2, 0, 1])
+                else:
+                    work_weights = weights
+                nparray = work_weights.eval(session=self.session)
+                wt_str = (str(wt) for wt in np.ravel(nparray))
+                file.write(" ".join(wt_str))
+                # Newline unless last line (single bias)
+                if len(wt_str) > 1:
+                    file.write("\n")
 
     def conv_block(self, inputs, input_channels, output_channels):
         W_conv = weight_variable([3, 3, input_channels, output_channels])
         b_conv = bn_bias_variable([output_channels])
         s_conv = scale_variable([output_channels])
         o_conv = offset_variable([output_channels])
+        self.weights.append(W_conv)
+        self.weights.append(b_conv)
+
         h_bn, bm, vn = \
             tf.nn.fused_batch_norm(tf.nn.bias_add(conv2d(inputs, W_conv),
                                                   b_conv, data_format='NCHW'),
@@ -134,11 +171,17 @@ class TFProcess:
         b_conv_1 = bn_bias_variable([channels])
         s_conv_1 = scale_variable([channels])
         o_conv_1 = offset_variable([channels])
+        self.weights.append(W_conv_1)
+        self.weights.append(b_conv_1)
+
         # Second convnet
         W_conv_2 = weight_variable([3, 3, channels, channels])
         b_conv_2 = bn_bias_variable([channels])
         s_conv_2 = scale_variable([channels])
         o_conv_2 = offset_variable([channels])
+        self.weights.append(W_conv_2)
+        self.weights.append(b_conv_2)
+
         h_bn1, bm1, vn1 = \
             tf.nn.fused_batch_norm(tf.nn.bias_add(conv2d(inputs, W_conv_1),
                                                   b_conv_1, data_format='NCHW'),
@@ -169,6 +212,8 @@ class TFProcess:
         h_conv8_flat = tf.reshape(conv8, [-1, 2*19*19])
         W_fc1 = weight_variable([2 * 19 * 19, (19 * 19) + 1])
         b_fc1 = bias_variable([(19 * 19) + 1])
+        self.weights.append(W_fc1)
+        self.weights.append(b_fc1)
         h_fc1 = tf.nn.relu(tf.matmul(h_conv8_flat, W_fc1) + b_fc1)
 
         # Value head
@@ -176,9 +221,13 @@ class TFProcess:
         h_conv9_flat = tf.reshape(conv9, [-1, 19*19])
         W_fc2 = weight_variable([19 * 19, 256])
         b_fc2 = bias_variable([256])
+        self.weights.append(W_fc2)
+        self.weights.append(b_fc2)
         h_fc2 = tf.nn.relu(tf.matmul(h_conv9_flat, W_fc2) + b_fc2)
         W_fc3 = weight_variable([256, 1])
         b_fc3 = bias_variable([1])
+        self.weights.append(W_fc3)
+        self.weights.append(b_fc3)
         h_fc3 = tf.nn.tanh(tf.matmul(h_fc2, W_fc3) + b_fc3)
 
         return h_fc1, h_fc3
