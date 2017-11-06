@@ -102,10 +102,10 @@ capability. It should work with this engine.
 # Weights format
 
 The weights file is a text file with each line containing a row of coefficients.
-The layout of the network is as in the AlphaGo Zero paper, but the number of
-residual blocks is allowed to vary, as is the number of outputs (filters) per layer.
-The latter must be the same for all residual layers. The program will autodetect
-the amounts on startup. The first line contains a version number.
+The layout of the network is as in the AlphaGo Zero paper, but any number of
+residual blocks is allowed, and any number of outputs (filters) per layer,
+as long as the latter is the same for all residual layers. The program will
+autodetect the amounts on startup. The first line contains a version number.
 
 * Convolutional layers have 2 weight rows:
     1) convolution weights
@@ -116,6 +116,9 @@ the amounts on startup. The first line contains a version number.
 * Innerproduct (fully connected) layers have 2 weight rows:
     1) layer weights
     2) output biases
+
+ The convolution weights are in [output, input, filter\_size, filter\_size] order.
+ The residual tower is first, followed by the policy head, and then the value head.
 
 There are 18 inputs to the first layer, instead of 17 as in the paper. The
 original AlphaGo Zero design has a slight imbalance in that it is easier
