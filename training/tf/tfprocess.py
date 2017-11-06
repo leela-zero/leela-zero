@@ -2,7 +2,6 @@
 
 import os
 import numpy as np
-import uuid
 import tensorflow as tf
 
 def weight_variable(shape):
@@ -26,7 +25,7 @@ def conv2d(x, W):
 
 class TFProcess:
     def __init__(self):
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
         config = tf.ConfigProto(gpu_options=gpu_options)
         self.session = tf.Session(config=config)
 
@@ -39,6 +38,7 @@ class TFProcess:
         self.y_ = tf.placeholder(tf.float32, [None, 362])
         self.z_ = tf.placeholder(tf.float32, [None, 1])
         self.training = tf.placeholder(tf.bool)
+        self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
 
         cross_entropy = \
@@ -67,8 +67,8 @@ class TFProcess:
         self.accuracy = tf.reduce_mean(correct_prediction)
         tf.summary.scalar('accuracy', self.accuracy)
 
-        self.avg_policy_loss = 8.0
-        self.avg_mse_loss = 2.0
+        self.avg_policy_loss = None
+        self.avg_mse_loss = None
 
         self.init = tf.global_variables_initializer()
         self.saver = tf.train.Saver()
@@ -90,8 +90,14 @@ class TFProcess:
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
         # XXX: use built-in support like tf.moving_average_variables
-        self.avg_policy_loss = 0.99 * self.avg_policy_loss + 0.01 * policy_loss
-        self.avg_mse_loss = 0.99 * self.avg_mse_loss + 0.01 * mse_loss
+        if self.avg_policy_loss:
+            self.avg_policy_loss = 0.99 * self.avg_policy_loss + 0.01 * policy_loss
+        else:
+            self.avg_policy_loss = policy_loss
+        if self.avg_mse_loss:
+            self.avg_mse_loss = 0.99 * self.avg_mse_loss + 0.01 * mse_loss
+        else:
+            self.avg_mse_loss = mse_loss
         if steps % 100 == 0:
             print("step {0}, policy loss={1} mse={2}".format(
                 steps, self.avg_policy_loss, self.avg_mse_loss))
@@ -144,6 +150,11 @@ class TFProcess:
                 wt_str = [str(wt) for wt in np.ravel(nparray)]
                 file.write(" ".join(wt_str))
 
+    def get_batchnorm_key(self):
+        result = "bn" + str(self.batch_norm_count)
+        self.batch_norm_count += 1
+        return result
+
     def conv_block(self, inputs, input_channels, output_channels):
         W_conv = weight_variable([3, 3, input_channels, output_channels])
         b_conv = bn_bias_variable([output_channels])
@@ -152,7 +163,7 @@ class TFProcess:
         # The weights are internal to the batchnorm layer, so apply
         # a unique scope that we can store, and use to look them back up
         # later on.
-        weight_key = uuid.uuid4().hex
+        weight_key = self.get_batchnorm_key()
         self.weights.append(weight_key + "/batch_normalization/moving_mean:0")
         self.weights.append(weight_key + "/batch_normalization/moving_variance:0")
 
@@ -173,7 +184,7 @@ class TFProcess:
         b_conv_1 = bn_bias_variable([channels])
         self.weights.append(W_conv_1)
         self.weights.append(b_conv_1)
-        weight_key_1 = uuid.uuid4().hex
+        weight_key_1 = self.get_batchnorm_key()
         self.weights.append(weight_key_1 + "/batch_normalization/moving_mean:0")
         self.weights.append(weight_key_1 + "/batch_normalization/moving_variance:0")
 
@@ -182,7 +193,7 @@ class TFProcess:
         b_conv_2 = bn_bias_variable([channels])
         self.weights.append(W_conv_2)
         self.weights.append(b_conv_2)
-        weight_key_2 = uuid.uuid4().hex
+        weight_key_2 = self.get_batchnorm_key()
         self.weights.append(weight_key_2 + "/batch_normalization/moving_mean:0")
         self.weights.append(weight_key_2 + "/batch_normalization/moving_variance:0")
 
