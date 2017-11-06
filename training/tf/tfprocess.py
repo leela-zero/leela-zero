@@ -41,17 +41,25 @@ class TFProcess:
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
 
+        # Calculate loss on policy head
         cross_entropy = \
             tf.nn.softmax_cross_entropy_with_logits(labels=self.y_,
                                                     logits=self.y_conv)
         self.policy_loss = tf.reduce_mean(cross_entropy)
         tf.summary.scalar('policy_loss', self.policy_loss)
 
+        # Loss on value head
         self.mse_loss = \
             tf.reduce_mean(tf.squared_difference(self.z_, self.z_conv))
         tf.summary.scalar('mse_loss', self.mse_loss)
 
-        loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss
+        # Regularizer
+        regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
+        reg_variables = tf.trainable_variables()
+        reg_term = \
+            tf.contrib.layers.apply_regularization(regularizer, reg_variables)
+
+        loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss + reg_term
 
         opt_op = tf.train.MomentumOptimizer(
             learning_rate=0.05, momentum=0.9, use_nesterov=True)
