@@ -87,17 +87,21 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 
 The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
 
-Add the --gtp commandline option to enable it. You will need a weights file,
-specify that with the -w option.
+Leela Zero is not meant to be used directly. You need a graphical interface
+for it, which will interface with Leela Zero through the GTP protocol.
+
+Sabaki (http://sabaki.yichuanshen.de/) is a very nice looking GUI with GTP 2
+capability. It should work with this engine. A lot of go software can
+interface to an engine via GTP, so look around.
+
+Add the --gtp commandline option on the engine command line to enable Leela
+Zero's GTP support. You will need a weights file, specify that with the -w option.
 
 All required commands are supported, as well as the tournament subset, and
 "loadsgf". The full set can be seen with "list_commands". The time control
 can be specified over GTP via the time\_settings command. The kgs-time\_settings
 extension is also supported. These have to be supplied by the GTP 2 interface,
 not via the command line!
-
-Sabaki (http://sabaki.yichuanshen.de/) is a very nice looking GUI with GTP 2
-capability. It should work with this engine.
 
 # Weights format
 
