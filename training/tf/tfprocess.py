@@ -145,9 +145,11 @@ class TFProcess:
                     work_weights = tf.get_default_graph().get_tensor_by_name(weights)
                 elif weights.shape.ndims == 4:
                     # Convolution weights need a transpose
-                    # TF
+                    #
+                    # TF (kYXInputOutput)
                     # [filter_height, filter_width, in_channels, out_channels]
-                    # Leela
+                    #
+                    # Leela/cuDNN/Caffe (kOutputInputYX)
                     # [output, input, filter_size, filter_size]
                     work_weights = tf.transpose(weights, [3, 2, 0, 1])
                 else:
@@ -248,7 +250,7 @@ class TFProcess:
         b_fc1 = bias_variable([(19 * 19) + 1])
         self.weights.append(W_fc1)
         self.weights.append(b_fc1)
-        h_fc1 = tf.nn.relu(tf.matmul(h_conv8_flat, W_fc1) + b_fc1)
+        h_fc1 = tf.matmul(h_conv8_flat, W_fc1) + b_fc1
 
         # Value head
         conv9 = self.conv_block(conv7, filter_size=1,
