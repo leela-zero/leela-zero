@@ -119,6 +119,8 @@ autodetect the amounts on startup. The first line contains a version number.
 
  The convolution weights are in [output, input, filter\_size, filter\_size] order.
  The residual tower is first, followed by the policy head, and then the value head.
+ All convolution filters are 3x3 except for the ones at the start of the policy and
+ value head, which are 1x1 (as in the paper).
 
 There are 18 inputs to the first layer, instead of 17 as in the paper. The
 original AlphaGo Zero design has a slight imbalance in that it is easier
