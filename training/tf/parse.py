@@ -66,13 +66,14 @@ def convert_train_data(text_item):
     stm = text_item[16][0]
     assert stm == "0" or stm == "1"
     if stm == "0":
-        planes.append([1.0 for _ in range(0, 361)])
-        planes.append([0.0 for _ in range(0, 361)])
+        planes.append([1.0] * 361)
+        planes.append([0.0] * 361)
     else:
-        planes.append([0.0 for _ in range(0, 361)])
-        planes.append([1.0 for _ in range(0, 361)])
+        planes.append([0.0] * 361)
+        planes.append([1.0] * 361)
     assert len(planes) == 18
     probabilities = [float(val) for val in text_item[17].split()]
+    assert len(probabilities) == 362
     winner = float(text_item[18])
     assert winner == 1.0 or winner == -1.0
     return (planes, probabilities, [winner])

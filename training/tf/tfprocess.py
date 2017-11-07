@@ -182,15 +182,16 @@ class TFProcess:
             h_bn = \
                 tf.layers.batch_normalization(
                     tf.nn.bias_add(conv2d(inputs, W_conv),
-                                          b_conv, data_format='NCHW'),
-                                   epsilon=1e-5, axis=1, fused=True,
-                                   center=False, scale=False,
-                                   training=self.training)
+                                   b_conv, data_format='NCHW'),
+                    epsilon=1e-5, axis=1, fused=True,
+                    center=False, scale=False,
+                    training=self.training)
         h_conv = tf.nn.relu(h_bn)
         return h_conv
 
     def residual_block(self, inputs, channels):
         # First convnet
+        orig = tf.identity(inputs)
         W_conv_1 = weight_variable([3, 3, channels, channels])
         b_conv_1 = bn_bias_variable([channels])
         self.weights.append(W_conv_1)
@@ -213,19 +214,19 @@ class TFProcess:
                 tf.layers.batch_normalization(
                     tf.nn.bias_add(conv2d(inputs, W_conv_1),
                                    b_conv_1, data_format='NCHW'),
-                                   epsilon=1e-5, axis=1, fused=True,
-                                   center=False, scale=False,
-                                   training=self.training)
+                    epsilon=1e-5, axis=1, fused=True,
+                    center=False, scale=False,
+                    training=self.training)
         h_out_1 = tf.nn.relu(h_bn1)
         with tf.variable_scope(weight_key_2):
             h_bn2 = \
                 tf.layers.batch_normalization(
                     tf.nn.bias_add(conv2d(h_out_1, W_conv_2),
-                                          b_conv_2, data_format='NCHW'),
-                                   epsilon=1e-5, axis=1, fused=True,
-                                   center=False, scale=False,
-                                   training=self.training)
-        h_out_2 = tf.nn.relu(h_bn2 + inputs)
+                                   b_conv_2, data_format='NCHW'),
+                    epsilon=1e-5, axis=1, fused=True,
+                    center=False, scale=False,
+                    training=self.training)
+        h_out_2 = tf.nn.relu(tf.add(h_bn2, orig))
         return h_out_2
 
     def construct_net(self, planes):
@@ -250,7 +251,7 @@ class TFProcess:
         b_fc1 = bias_variable([(19 * 19) + 1])
         self.weights.append(W_fc1)
         self.weights.append(b_fc1)
-        h_fc1 = tf.matmul(h_conv8_flat, W_fc1) + b_fc1
+        h_fc1 = tf.add(tf.matmul(h_conv8_flat, W_fc1), b_fc1)
 
         # Value head
         conv9 = self.conv_block(conv7, filter_size=1,
@@ -260,11 +261,11 @@ class TFProcess:
         b_fc2 = bias_variable([256])
         self.weights.append(W_fc2)
         self.weights.append(b_fc2)
-        h_fc2 = tf.nn.relu(tf.matmul(h_conv9_flat, W_fc2) + b_fc2)
+        h_fc2 = tf.nn.relu(tf.add(tf.matmul(h_conv9_flat, W_fc2), b_fc2))
         W_fc3 = weight_variable([256, 1])
         b_fc3 = bias_variable([1])
         self.weights.append(W_fc3)
         self.weights.append(b_fc3)
-        h_fc3 = tf.nn.tanh(tf.matmul(h_fc2, W_fc3) + b_fc3)
+        h_fc3 = tf.nn.tanh(tf.add(tf.matmul(h_fc2, W_fc3), b_fc3))
 
         return h_fc1, h_fc3
