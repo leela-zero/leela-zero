@@ -117,7 +117,8 @@ autodetect the amounts on startup. The first line contains a version number.
     1) layer weights
     2) output biases
 
- The convolution weights are in [output, input, filter\_size, filter\_size] order.
+ The convolution weights are in [output, input, filter\_size, filter\_size] order,
+ the fully connected layer weights are in [output, input] order.
  The residual tower is first, followed by the policy head, and then the value head.
  All convolution filters are 3x3 except for the ones at the start of the policy and
  value head, which are 1x1 (as in the paper).

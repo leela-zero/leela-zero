@@ -152,9 +152,14 @@ class TFProcess:
                     # Leela/cuDNN/Caffe (kOutputInputYX)
                     # [output, input, filter_size, filter_size]
                     work_weights = tf.transpose(weights, [3, 2, 0, 1])
+                elif weights.shape.ndims == 2:
+                    # Fully connected layers are [in, out] in TF
+                    #
+                    # [out, in] in Leela
+                    #
+                    work_weights = tf.transpose(weights, [1, 0])
                 else:
-                    # Fully connected layers are [in, out] in both
-                    # As are biases etc
+                    # Biases, batchnorm etc
                     work_weights = weights
                 nparray = work_weights.eval(session=self.session)
                 wt_str = [str(wt) for wt in np.ravel(nparray)]
