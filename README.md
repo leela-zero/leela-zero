@@ -186,20 +186,32 @@ first 16 input planes from the previous section
 * 1 line with 1 number indicating who is to move, 0=black, 1=white, from which
 the last 2 input planes can be reconstructed
 * 1 line with 362 floating point numbers, indicating the search probabilities
-(visit counts) at the end of the search for the move in question. The last number
-is the probability of passing.
+(visit counts) at the end of the search for the move in question. The last
+number is the probability of passing.
 * 1 line with either 1 or -1, corresponding to the outcome of the game for the
 player to move
 
 ## Running the training
 
-For training a new network, you can use an existing framework (Caffe, TensorFlow,
-PyTorch, Theano), with a set of training data as described above. You still need
-to contruct a model description (2 examples are provided for Caffe), parse the
-input file format, and outputs weights in the proper format.
+For training a new network, you can use an existing framework (Caffe,
+TensorFlow, PyTorch, Theano), with a set of training data as described above.
+You still need to contruct a model description (2 examples are provided for
+Caffe), parse the input file format, and outputs weights in the proper format.
 
-There is a partial implementation for TensforFlow in the training/tf directory.
-It is missing the ability to dump the weights during the training.
+There are implementations for TensorFlow in the training/tf directory.
+
+### Supervised learning with TensorFlow
+
+Assuming you have a working TensorFlow installation:
+
+    dump_supervised bigsgf.sgf train.out
+    training/tf/parse.py train.out
+
+This will run and regularly dump Leela Zero weight files to disk, as
+well as snapshots of the learning state numbered by the batch number.
+If interrupted, training can be resumed with:
+
+    training/tf/parse.py train.out leelaz-model-batchnumber
 
 # Todo
 
