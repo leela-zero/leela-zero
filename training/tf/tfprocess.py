@@ -128,7 +128,7 @@ class TFProcess:
             train_accuracy, _ = self.session.run(
                 [self.accuracy, self.next_batch],
                 feed_dict={self.training: False})
-            train_mse, _ = self.session.rin(
+            train_mse, _ = self.session.run(
                 [self.mse_loss, self.next_batch],
                 feed_dict={self.training: False})
             print("step {0}, training accuracy={1}%, mse={2}".format(

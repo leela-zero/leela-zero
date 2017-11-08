@@ -20,6 +20,7 @@ import sys
 import glob
 import gzip
 import random
+import multiprocessing as mp
 import tensorflow as tf
 from tfprocess import TFProcess
 
@@ -104,11 +105,15 @@ def convert_train_data(text_item):
 class ChunkParser:
     def __init__(self, chunks):
         self.chunks = chunks
-        self.epoch = 0
+        self.queue = mp.Queue(4096)
+        # Start worker processes, leave 2 for TensorFlow
+        workers = max(1, mp.cpu_count() - 2)
+        print("Using {} worker processes.".format(workers))
+        for _ in range(workers):
+            mp.Process(target=self.task, args=(self.queue,)).start()
 
-    def parse_chunk(self):
+    def task(self, queue):
         while True:
-            print("Epoch {}".format(self.epoch))
             random.shuffle(self.chunks)
             for chunk in self.chunks:
                 with gzip.open(chunk, 'r') as chunk_file:
@@ -118,8 +123,11 @@ class ChunkParser:
                         pick_offset = item_idx * DATA_ITEM_LINES
                         item = file_content[pick_offset:pick_offset + DATA_ITEM_LINES]
                         str_items = [str(line, 'ascii') for line in item]
-                        yield convert_train_data(str_items)
-            self.epoch += 1
+                        queue.put(convert_train_data(str_items))
+
+    def parse_chunk(self):
+        while True:
+            yield self.queue.get()
 
 def get_chunks(data_prefix):
     return glob.glob(data_prefix + "*.gz")
@@ -137,8 +145,9 @@ def main(args):
 
     dataset = tf.data.Dataset.from_generator(
         parser.parse_chunk, output_types=(tf.float32, tf.float32, tf.float32))
-    dataset = dataset.shuffle(65536)
+    dataset = dataset.shuffle(100000)
     dataset = dataset.batch(BATCH_SIZE)
+    dataset = dataset.prefetch(64)
     iterator = dataset.make_one_shot_iterator()
     next_batch = iterator.get_next()
 
@@ -151,3 +160,4 @@ def main(args):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+    mp.freeze_support()
