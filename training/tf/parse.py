@@ -105,8 +105,8 @@ def convert_train_data(text_item):
 class ChunkParser:
     def __init__(self, chunks):
         self.queue = mp.Queue(4096)
-        # Start worker processes, leave 2 for TensorFlow
-        workers = max(1, mp.cpu_count() - 2)
+        # Start worker processes, leave 1 for TensorFlow
+        workers = max(1, mp.cpu_count() - 1)
         print("Using {} worker processes.".format(workers))
         for _ in range(workers):
             mp.Process(target=self.task,
@@ -147,7 +147,7 @@ def main(args):
         parser.parse_chunk, output_types=(tf.float32, tf.float32, tf.float32))
     dataset = dataset.shuffle(65536)
     dataset = dataset.batch(BATCH_SIZE)
-    dataset = dataset.prefetch(128)
+    dataset = dataset.prefetch(16)
     iterator = dataset.make_one_shot_iterator()
     next_batch = iterator.get_next()
 
