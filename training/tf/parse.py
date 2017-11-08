@@ -41,6 +41,38 @@ def get_batch(chunks, batch_size):
                     batch = []
     return BATCH_CACHE.pop()
 
+def remap_vertex(vertex, symmetry):
+    """
+        Remap a go board coordinate according to a symmetry.
+    """
+    assert vertex >= 0 and vertex < 361
+    x = vertex % 19
+    y = vertex // 19
+    if symmetry >= 4:
+        x, y = y, x
+        symmetry -= 4
+    if symmetry == 1 or symmetry == 3:
+        x = 19 - x - 1
+    elif symmetry == 2 or symmetry == 3:
+        y = 19 - y - 1
+    return y * 19 + x
+
+def apply_symmetry(plane, symmetry):
+    """
+        Applies one of 8 symmetries to the go board.
+
+        The supplied go board can have 361 or 362 elements. The 362th
+        element is pass will which get the identity mapping.
+    """
+    assert symmetry >= 0 and symmetry < 8
+    work_plane = [0.0] * 361
+    for vertex in range(0, 361):
+        work_plane[vertex] = plane[remap_vertex(vertex, symmetry)]
+    # Map back "pass"
+    if len(plane) == 362:
+        work_plane.append(plane[361])
+    return work_plane
+
 def convert_train_data(text_item):
     """"
         Convert textual training data to python lists.
@@ -76,7 +108,11 @@ def convert_train_data(text_item):
     assert len(probabilities) == 362
     winner = float(text_item[18])
     assert winner == 1.0 or winner == -1.0
-    return (planes, probabilities, [winner])
+    # Get one of 8 symmetries
+    symmetry = random.randrange(8)
+    sym_planes = [apply_symmetry(plane, symmetry) for plane in planes]
+    sym_probabilities = apply_symmetry(probabilities, symmetry)
+    return (sym_planes, sym_probabilities, [winner])
 
 def do_train_loop(chunks, tfprocess):
     while True:
