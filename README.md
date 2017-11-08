@@ -202,7 +202,7 @@ There are implementations for TensorFlow in the training/tf directory.
 
 ### Supervised learning with TensorFlow
 
-Assuming you have a working TensorFlow installation:
+This requires a working installation of TensorFlow 1.4 or later:
 
     src/leelaz -w weights.txt
     dump_supervised bigsgf.sgf train.out

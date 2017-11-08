@@ -40,7 +40,7 @@ def conv2d(x, W):
                         strides=[1, 1, 1, 1], padding='SAME')
 
 class TFProcess:
-    def __init__(self):
+    def __init__(self, next_batch):
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
         config = tf.ConfigProto(gpu_options=gpu_options)
         self.session = tf.Session(config=config)
@@ -49,10 +49,11 @@ class TFProcess:
         self.weights = []
 
         # TF variables
+        self.next_batch = next_batch
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
-        self.x = tf.placeholder(tf.float32, [None, 18, 19 * 19])
-        self.y_ = tf.placeholder(tf.float32, [None, 362])
-        self.z_ = tf.placeholder(tf.float32, [None, 1])
+        self.x = next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 19 * 19])
+        self.y_ = next_batch[1] # tf.placeholder(tf.float32, [None, 362])
+        self.z_ = next_batch[2] # tf.placeholder(tf.float32, [None, 1])
         self.training = tf.placeholder(tf.bool)
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
@@ -103,14 +104,11 @@ class TFProcess:
         print("Restoring from {0}".format(file))
         self.saver.restore(self.session, file)
 
-    def process(self, batch):
+    def process(self):
         # Run training for this batch
-        _, policy_loss, mse_loss = self.session.run(
-            [self.train_op, self.policy_loss, self.mse_loss],
-            feed_dict={self.x: batch[0],
-                       self.y_: batch[1],
-                       self.z_: batch[2],
-                       self.training: True})
+        policy_loss, mse_loss, _, _ = self.session.run(
+            [self.policy_loss, self.mse_loss, self.train_op, self.next_batch],
+            feed_dict={self.training: True})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
         # XXX: use built-in support like tf.moving_average_variables
@@ -127,18 +125,12 @@ class TFProcess:
                 steps, self.avg_policy_loss, self.avg_mse_loss))
         # Ideally this would use a seperate dataset and so on...
         if steps % 1000 == 0:
-            train_accuracy = \
-                self.accuracy.eval(session=self.session,
-                                   feed_dict={self.x: batch[0],
-                                              self.y_: batch[1],
-                                              self.z_: batch[2],
-                                              self.training: False})
-            train_mse = \
-                self.mse_loss.eval(session=self.session,
-                                   feed_dict={self.x: batch[0],
-                                              self.y_: batch[1],
-                                              self.z_: batch[2],
-                                              self.training: False})
+            train_accuracy, _ = self.session.run(
+                [self.accuracy, self.next_batch],
+                feed_dict={self.training: False})
+            train_mse, _ = self.session.rin(
+                [self.mse_loss, self.next_batch],
+                feed_dict={self.training: False})
             print("step {0}, training accuracy={1}%, mse={2}".format(
                 steps, train_accuracy*100.0, train_mse))
             path = os.path.join(os.getcwd(), "leelaz-model")
