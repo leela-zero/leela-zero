@@ -18,6 +18,7 @@
 
 import os
 import numpy as np
+import time
 import tensorflow as tf
 
 def weight_variable(shape):
@@ -94,6 +95,7 @@ class TFProcess:
 
         self.avg_policy_loss = None
         self.avg_mse_loss = None
+        self.time_start = None
 
         self.init = tf.global_variables_initializer()
         self.saver = tf.train.Saver()
@@ -104,7 +106,7 @@ class TFProcess:
         print("Restoring from {0}".format(file))
         self.saver.restore(self.session, file)
 
-    def process(self):
+    def process(self, batch_size):
         # Run training for this batch
         policy_loss, mse_loss, _, _ = self.session.run(
             [self.policy_loss, self.mse_loss, self.train_op, self.next_batch],
@@ -121,8 +123,14 @@ class TFProcess:
         else:
             self.avg_mse_loss = mse_loss
         if steps % 100 == 0:
-            print("step {0}, policy loss={1} mse={2}".format(
-                steps, self.avg_policy_loss, self.avg_mse_loss))
+            time_end = time.time()
+            speed = 0
+            if self.time_start:
+                elapsed = time_end - self.time_start
+                speed = batch_size * (100.0 / elapsed)
+            print("step {}, policy loss={:g} mse={:g} ({:g} pos/s)".format(
+                steps, self.avg_policy_loss, self.avg_mse_loss, speed))
+            self.time_start = time_end
         # Ideally this would use a seperate dataset and so on...
         if steps % 1000 == 0:
             train_accuracy, _ = self.session.run(
@@ -131,7 +139,7 @@ class TFProcess:
             train_mse, _ = self.session.run(
                 [self.mse_loss, self.next_batch],
                 feed_dict={self.training: False})
-            print("step {0}, training accuracy={1}%, mse={2}".format(
+            print("step {}, training accuracy={:g}%, mse={:g}".format(
                 steps, train_accuracy*100.0, train_mse))
             path = os.path.join(os.getcwd(), "leelaz-model")
             save_path = self.saver.save(self.session, path, global_step=steps)

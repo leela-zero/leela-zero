@@ -104,18 +104,18 @@ def convert_train_data(text_item):
 
 class ChunkParser:
     def __init__(self, chunks):
-        self.chunks = chunks
         self.queue = mp.Queue(4096)
         # Start worker processes, leave 2 for TensorFlow
         workers = max(1, mp.cpu_count() - 2)
         print("Using {} worker processes.".format(workers))
         for _ in range(workers):
-            mp.Process(target=self.task, args=(self.queue,)).start()
+            mp.Process(target=self.task,
+                       args=(chunks, self.queue)).start()
 
-    def task(self, queue):
+    def task(self, chunks, queue):
         while True:
-            random.shuffle(self.chunks)
-            for chunk in self.chunks:
+            random.shuffle(chunks)
+            for chunk in chunks:
                 with gzip.open(chunk, 'r') as chunk_file:
                     file_content = chunk_file.readlines()
                     item_count = len(file_content) // DATA_ITEM_LINES
@@ -145,9 +145,9 @@ def main(args):
 
     dataset = tf.data.Dataset.from_generator(
         parser.parse_chunk, output_types=(tf.float32, tf.float32, tf.float32))
-    dataset = dataset.shuffle(100000)
+    dataset = dataset.shuffle(65536)
     dataset = dataset.batch(BATCH_SIZE)
-    dataset = dataset.prefetch(64)
+    dataset = dataset.prefetch(128)
     iterator = dataset.make_one_shot_iterator()
     next_batch = iterator.get_next()
 
@@ -156,7 +156,7 @@ def main(args):
         restore_file = args.pop(0)
         tfprocess.restore(restore_file)
     while True:
-        tfprocess.process()
+        tfprocess.process(BATCH_SIZE)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
