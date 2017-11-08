@@ -123,7 +123,7 @@ void Training::record(GameState& state, const UCTNode& root) {
 }
 
 void Training::dump_training(int winner_color, const std::string& filename) {
-    auto chunker = OutputChunker{filename};
+    auto chunker = OutputChunker{filename + ".gz", true};
     dump_training(winner_color, chunker);
 }
 
