@@ -204,7 +204,9 @@ There are implementations for TensorFlow in the training/tf directory.
 
 Assuming you have a working TensorFlow installation:
 
+    src/leelaz -w weights.txt
     dump_supervised bigsgf.sgf train.out
+    exit
     training/tf/parse.py train.out
 
 This will run and regularly dump Leela Zero weight files to disk, as
