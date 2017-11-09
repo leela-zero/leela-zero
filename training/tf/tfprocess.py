@@ -113,7 +113,10 @@ class TFProcess:
             feed_dict={self.training: True})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
-        # XXX: use built-in support like tf.moving_average_variables
+        # XXX: use built-in support like tf.moving_average_variables?
+        # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
+        # get comparable values.
+        mse_loss = mse_loss / 4.0
         if self.avg_policy_loss:
             self.avg_policy_loss = 0.99 * self.avg_policy_loss + 0.01 * policy_loss
         else:
