@@ -113,7 +113,10 @@ class TFProcess:
             feed_dict={self.training: True})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
-        # XXX: use built-in support like tf.moving_average_variables
+        # XXX: use built-in support like tf.moving_average_variables?
+        # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
+        # get comparable values.
+        mse_loss = mse_loss / 4.0
         if self.avg_policy_loss:
             self.avg_policy_loss = 0.99 * self.avg_policy_loss + 0.01 * policy_loss
         else:
@@ -132,15 +135,23 @@ class TFProcess:
                 steps, self.avg_policy_loss, self.avg_mse_loss, speed))
             self.time_start = time_end
         # Ideally this would use a seperate dataset and so on...
-        if steps % 1000 == 0:
-            train_accuracy, _ = self.session.run(
-                [self.accuracy, self.next_batch],
-                feed_dict={self.training: False})
-            train_mse, _ = self.session.run(
-                [self.mse_loss, self.next_batch],
-                feed_dict={self.training: False})
+        if steps % 2000 == 0:
+            sum_accuracy = 0
+            sum_mse = 0
+            for _ in range(0, 10):
+                train_accuracy, _ = self.session.run(
+                    [self.accuracy, self.next_batch],
+                    feed_dict={self.training: False})
+                train_mse, _ = self.session.run(
+                    [self.mse_loss, self.next_batch],
+                    feed_dict={self.training: False})
+                sum_accuracy += train_accuracy
+                sum_mse += train_mse
+            sum_accuracy /= 10.0
+            # Additionally rescale to [0, 1] so divide by 4
+            sum_mse /= (4.0 * 10.0)
             print("step {}, training accuracy={:g}%, mse={:g}".format(
-                steps, train_accuracy*100.0, train_mse))
+                steps, sum_accuracy*100.0, sum_mse))
             path = os.path.join(os.getcwd(), "leelaz-model")
             save_path = self.saver.save(self.session, path, global_step=steps)
             print("Model saved in file: {}".format(save_path))
