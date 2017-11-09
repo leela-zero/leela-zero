@@ -41,7 +41,7 @@ def remap_vertex(vertex, symmetry):
         symmetry -= 4
     if symmetry == 1 or symmetry == 3:
         x = 19 - x - 1
-    elif symmetry == 2 or symmetry == 3:
+    if symmetry == 2 or symmetry == 3:
         y = 19 - y - 1
     return y * 19 + x
 
