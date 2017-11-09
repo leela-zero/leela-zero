@@ -38,7 +38,8 @@ public:
     ~OutputChunker();
     void append(const std::string& str);
 
-    static constexpr size_t CHUNK_SIZE = 8192;
+    // Group this many positions in a batch.
+    static constexpr size_t CHUNK_SIZE = 16384;
 private:
     std::string gen_chunk_name() const;
     void flush_chunks();
@@ -59,6 +60,10 @@ public:
     static void dump_supervised(const std::string& sgf_file,
                                 const std::string& out_filename);
 private:
+    // Consider only every 1/th position in a game.
+    // This ensures that positions in a chunk are from disjoint games.
+    static constexpr size_t SKIP_SIZE = 16;
+
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,
                              OutputChunker& outchunker);

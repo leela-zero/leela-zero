@@ -87,8 +87,15 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 
 The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
 
-Add the --gtp commandline option to enable it. You will need a weights file,
-specify that with the -w option.
+Leela Zero is not meant to be used directly. You need a graphical interface
+for it, which will interface with Leela Zero through the GTP protocol.
+
+Sabaki (http://sabaki.yichuanshen.de/) is a very nice looking GUI with GTP 2
+capability. It should work with this engine. A lot of go software can
+interface to an engine via GTP, so look around.
+
+Add the --gtp commandline option on the engine command line to enable Leela
+Zero's GTP support. You will need a weights file, specify that with the -w option.
 
 All required commands are supported, as well as the tournament subset, and
 "loadsgf". The full set can be seen with "list_commands". The time control
@@ -96,16 +103,13 @@ can be specified over GTP via the time\_settings command. The kgs-time\_settings
 extension is also supported. These have to be supplied by the GTP 2 interface,
 not via the command line!
 
-Sabaki (http://sabaki.yichuanshen.de/) is a very nice looking GUI with GTP 2
-capability. It should work with this engine.
-
 # Weights format
 
 The weights file is a text file with each line containing a row of coefficients.
-The layout of the network is as in the AlphaGo Zero paper, but the number of
-residual blocks is allowed to vary, as is the number of outputs (filters) per layer.
-The latter must be the same for all residual layers. The program will autodetect
-the amounts on startup. The first line contains a version number.
+The layout of the network is as in the AlphaGo Zero paper, but any number of
+residual blocks is allowed, and any number of outputs (filters) per layer,
+as long as the latter is the same for all residual layers. The program will
+autodetect the amounts on startup. The first line contains a version number.
 
 * Convolutional layers have 2 weight rows:
     1) convolution weights
@@ -116,6 +120,12 @@ the amounts on startup. The first line contains a version number.
 * Innerproduct (fully connected) layers have 2 weight rows:
     1) layer weights
     2) output biases
+
+ The convolution weights are in [output, input, filter\_size, filter\_size] order,
+ the fully connected layer weights are in [output, input] order.
+ The residual tower is first, followed by the policy head, and then the value head.
+ All convolution filters are 3x3 except for the ones at the start of the policy and
+ value head, which are 1x1 (as in the paper).
 
 There are 18 inputs to the first layer, instead of 17 as in the paper. The
 original AlphaGo Zero design has a slight imbalance in that it is easier
@@ -176,17 +186,34 @@ first 16 input planes from the previous section
 * 1 line with 1 number indicating who is to move, 0=black, 1=white, from which
 the last 2 input planes can be reconstructed
 * 1 line with 362 floating point numbers, indicating the search probabilities
-(visit counts) at the end of the search for the move in question. The last number
-is the probability of passing.
+(visit counts) at the end of the search for the move in question. The last
+number is the probability of passing.
 * 1 line with either 1 or -1, corresponding to the outcome of the game for the
 player to move
 
 ## Running the training
 
-For training a new network, you can use an existing framework (Caffe, TensorFlow,
-PyTorch, Theano), with a set of training data as described above. You still need
-to contruct a model description (2 examples are provided for Caffe), parse the
-input file format, and outputs weights in the proper format.
+For training a new network, you can use an existing framework (Caffe,
+TensorFlow, PyTorch, Theano), with a set of training data as described above.
+You still need to contruct a model description (2 examples are provided for
+Caffe), parse the input file format, and outputs weights in the proper format.
+
+There are implementations for TensorFlow in the training/tf directory.
+
+### Supervised learning with TensorFlow
+
+This requires a working installation of TensorFlow 1.4 or later:
+
+    src/leelaz -w weights.txt
+    dump_supervised bigsgf.sgf train.out
+    exit
+    training/tf/parse.py train.out
+
+This will run and regularly dump Leela Zero weight files to disk, as
+well as snapshots of the learning state numbered by the batch number.
+If interrupted, training can be resumed with:
+
+    training/tf/parse.py train.out leelaz-model-batchnumber
 
 # Todo
 

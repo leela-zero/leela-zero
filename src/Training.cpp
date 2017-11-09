@@ -123,7 +123,7 @@ void Training::record(GameState& state, const UCTNode& root) {
 }
 
 void Training::dump_training(int winner_color, const std::string& filename) {
-    auto chunker = OutputChunker{filename};
+    auto chunker = OutputChunker{filename + ".gz", true};
     dump_training(winner_color, chunker);
 }
 
@@ -203,8 +203,8 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
             return;
         }
 
-        // Pick every 1/8th position.
-        auto skip = Random::get_Rng()->randfix<8>();
+        // Pick every 1/SKIP_SIZE th position.
+        auto skip = Random::get_Rng()->randfix<SKIP_SIZE>();
         if (skip == 0) {
             auto step = TimeStep{};
             step.to_move = state.board.get_to_move();
@@ -229,7 +229,6 @@ void Training::dump_supervised(const std::string& sgf_name,
     auto outchunker = OutputChunker{out_filename, true};
     auto games = SGFParser::chop_all(sgf_name);
     auto gametotal = games.size();
-    auto gamecount = size_t{0};
     auto train_pos = size_t{0};
 
     std::cout << "Total games in file: " << gametotal << std::endl;
@@ -238,42 +237,44 @@ void Training::dump_supervised(const std::string& sgf_name,
     std::shuffle(begin(games), end(games), *Random::get_Rng());
     std::cout << "done." << std::endl;
 
-    while (gamecount < gametotal) {
-        auto sgftree = std::make_unique<SGFTree>();
-        try {
-            sgftree->load_from_string(games[gamecount]);
-        } catch (...) {
-            gamecount++;
-            continue;
-        };
+    // Loop over the database multiple times. We will select different
+    // positions from each game on every pass.
+    for (auto repeat = 0; repeat < SKIP_SIZE; repeat++) {
+        for (auto gamecount = size_t{0}; gamecount < gametotal; gamecount++) {
+            auto sgftree = std::make_unique<SGFTree>();
+            try {
+                sgftree->load_from_string(games[gamecount]);
+            } catch (...) {
+                continue;
+            };
 
-        gamecount++;
-        if (gamecount % (1000) == 0) {
-            std::cout << "Game " << gamecount
-                      << ", " << train_pos << " positions" << std::endl;
+            if (gamecount % (1000) == 0) {
+                std::cout << "Game " << gamecount
+                          << ", " << train_pos << " positions" << std::endl;
+            }
+
+            auto tree_moves = sgftree->get_mainline();
+            // Empty game or couldn't be parsed?
+            if (tree_moves.size() == 0) {
+                continue;
+            }
+
+            auto who_won = sgftree->get_winner();
+            // Accept all komis and handicaps, but reject no usable result
+            if (who_won != FastBoard::BLACK && who_won != FastBoard::WHITE) {
+                continue;
+            }
+
+            auto state =
+                std::make_unique<GameState>(sgftree->follow_mainline_state());
+            // Our board size is hardcoded in several places
+            if (state->board.get_boardsize() != 19) {
+                continue;
+            }
+
+            process_game(*state, train_pos, who_won, tree_moves,
+                        outchunker);
         }
-
-        auto tree_moves = sgftree->get_mainline();
-        // Empty game or couldn't be parsed?
-        if (tree_moves.size() == 0) {
-            continue;
-        }
-
-        auto who_won = sgftree->get_winner();
-        // Accept all komis and handicaps, but reject no usable result
-        if (who_won != FastBoard::BLACK && who_won != FastBoard::WHITE) {
-            continue;
-        }
-
-        auto state =
-            std::make_unique<GameState>(sgftree->follow_mainline_state());
-        // Our board size is hardcoded in several places
-        if (state->board.get_boardsize() != 19) {
-            continue;
-        }
-
-        process_game(*state, train_pos, who_won, tree_moves,
-                     outchunker);
     }
 
     std::cout << "Dumped " << train_pos << " training positions." << std::endl;
