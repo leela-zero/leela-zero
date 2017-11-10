@@ -40,8 +40,21 @@ find_path(BLAS_INCLUDE_DIRS openblas_config.h
 SET(IncludePath "CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
-SET(CMAKE_CXX_FLAGS "-Wall -Wextra -pipe -O3 -g -ffast-math -flto -march=native -std=c++14 -DNDEBUG")
-SET(CMAKE_EXE_LINKER_FLAGS "-flto -g")
+# See if we can set optimization flags as expected.
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  SET(GccSpecificFlags 1)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  SET(GccSpecificFlags 1)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+  SET(GccSpecificFlags 0)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  SET(GccSpecificFlags 0)
+endif()
+
+if (GccSpecificFlags)
+  SET(CMAKE_CXX_FLAGS "-Wall -Wextra -pipe -O3 -g -ffast-math -flto -march=native -std=c++14 -DNDEBUG")
+  SET(CMAKE_EXE_LINKER_FLAGS "-flto -g")
+endif(GccSpecificFlags)
 
 INCLUDE_DIRECTORIES(${IncludePath})
 FILE(GLOB leelaz_SRC "${SrcPath}/*.cpp")
