@@ -1,3 +1,21 @@
+/*
+    This file is part of Leela Zero.
+    Copyright (C) 2017 Gian-Carlo Pascutto
+
+    Leela Zero is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Leela Zero is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <QtCore/QCoreApplication>
 #include <QtCore/QTimer>
 #include <QtCore/QTextStream>
@@ -48,40 +66,95 @@ bool sendGtpCommand(QProcess& proc, QString cmd) {
     return true;
 }
 
-int main(int argc, char *argv[])
-{
-    QCoreApplication app(argc, argv);
-    QTimer::singleShot(0, &app, SLOT(quit()));
-
-    // Map streams
-    QTextStream cin(stdin, QIODevice::ReadOnly);
-    QTextStream cout(stdout, QIODevice::WriteOnly);
-#if defined(LOG_ERRORS_TO_FILE)
-    // Log stderr to file
-    QFile caFile("output.txt");
-    caFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append);
-    if(!caFile.isOpen()){
-        qDebug() << "- Error, unable to open" << "outputFilename" << "for output";
-    }
-    QTextStream cerr(&caFile);
-#else
-    QTextStream cerr(stderr, QIODevice::WriteOnly);
+bool fetch_best_network(QTextStream& cerr, QString& netname) {
+    QString prog_cmdline("curl");
+#ifdef WIN32
+    prog_cmdline.append(".exe");
 #endif
+    // Be quiet, but output the real file name we saved to
+    // Use the filename from the server
+    // Resume download if file exists (aka avoid redownloading, and don't
+    // error out if it exists)
+    prog_cmdline.append(" -s -C - -O -J");
+    prog_cmdline.append(" -w %{filename_effective}");
+    prog_cmdline.append(" http://zero-test.sjeng.org/best-network");
 
-    cerr << "autogtp v0.1" << endl;
+    cerr << prog_cmdline << endl;
 
-    QStringList slargs = app.arguments();
+    QProcess curl;
+    curl.start(prog_cmdline);
+    curl.waitForFinished(-1);
 
-    if (slargs.size() > 1) {
-        cerr << "Invalid number of arguments (" << slargs.size() << ")" << endl;
-        exit(EXIT_FAILURE);
+    QByteArray output = curl.readAllStandardOutput();
+    QString outstr(output);
+    QStringList outlst = outstr.split("\n");
+    QString outfile = outlst[0];
+    cerr << "Curl filename: " << outfile << endl;
+#ifdef WIN32
+    QProcess::execute("gunzip.exe -q " + outfile);
+#else
+    QProcess::execute("gunzip -q " + outfile);
+#endif
+    // Remove extension (.gz)
+    outfile.chop(3);
+    cerr << "Net filename: " << outfile << endl;
+    netname = outfile;
+
+    return true;
+}
+
+bool upload_data(QTextStream& cerr, QString& netname) {
+    // Find output SGF and txt files
+    QDir dir;
+    QStringList filters;
+    filters << "*.sgf";
+    dir.setNameFilters(filters);
+    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+
+    QFileInfoList list = dir.entryInfoList();
+    for (int i = 0; i < list.size(); ++i) {
+        QFileInfo fileInfo = list.at(i);
+        QString sgf_file = fileInfo.fileName();
+        QString data_file = sgf_file;
+        // Cut .sgf, add .txt.0.gz
+        data_file.chop(4);
+        data_file += ".txt.0.gz";
+        // Gzip up the sgf too
+#ifdef WIN32
+        QProcess::execute("gzip.exe " + sgf_file);
+#else
+        QProcess::execute("gzip " + sgf_file);
+#endif
+        sgf_file += ".gz";
+        QString prog_cmdline("curl");
+#ifdef WIN32
+        prog_cmdline.append(".exe");
+#endif
+        prog_cmdline.append(" -F networkhash=" + netname);
+        prog_cmdline.append(" -F sgf=@" + sgf_file);
+        prog_cmdline.append(" -F trainingdata=@" + data_file);
+        prog_cmdline.append(" http://zero-test.sjeng.org/submit");
+        cerr << prog_cmdline << endl;
+        QProcess curl;
+        curl.start(prog_cmdline);
+        curl.waitForFinished(-1);
+        QByteArray output = curl.readAllStandardOutput();
+        QString outstr(output);
+        cerr << outstr;
+        dir.remove(sgf_file);
+        dir.remove(data_file);
     }
+    return true;
+}
 
+bool run_one_game(QTextStream& cerr, QString weightsname) {
     QString prog_cmdline("./leelaz");
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    prog_cmdline.append(" -g -n -m 30 -r 0 -w weights.txt -p 800 --noponder");
+    prog_cmdline.append(" -g -q -n -m 30 -r 0 -w ");
+    prog_cmdline.append(weightsname);
+    prog_cmdline.append(" -p 400 --noponder");
 
     cerr << prog_cmdline << endl;
 
@@ -106,13 +179,13 @@ int main(int argc, char *argv[])
     // Set infinite time
     if (!sendGtpCommand(first_process,
                         QStringLiteral("time_settings 0 1 0"))) {
-        exit(EXIT_FAILURE);
+        return false;
     }
     if (!sendGtpCommand(second_process,
                         QStringLiteral("time_settings 0 1 0"))) {
-        exit(EXIT_FAILURE);
+        return false;
     }
-    cerr << "Time successfully set." << endl;
+    cerr << "Infinite thinking time set." << endl;
 
     do {
         move_num++;
@@ -130,7 +203,7 @@ int main(int argc, char *argv[])
         proc.get().write(qPrintable(move_cmd));
         proc.get().waitForBytesWritten(-1);
         if (!waitForReadyRead(proc)) {
-            exit(EXIT_FAILURE);
+            return false;
         }
         // Eat response
         read_cnt = proc.get().readLine(readbuff, 256);
@@ -139,7 +212,7 @@ int main(int argc, char *argv[])
                  << " '" << readbuff << "'" << endl;
             second_process.terminate();
             first_process.terminate();
-            exit(EXIT_FAILURE);
+            return false;
         }
         // Skip "= "
         QString resp_move(&readbuff[2]);
@@ -147,12 +220,13 @@ int main(int argc, char *argv[])
 
         // Eat double newline from GTP protocol
         if (!waitForReadyRead(proc)) {
-            exit(EXIT_FAILURE);
+            return false;
         }
         read_cnt = proc.get().readLine(readbuff, 256);
         Q_ASSERT(read_cnt > 0);
 
-        cerr << "Move received: " << resp_move << endl;
+        cerr << move_num << " (" << resp_move << ") ";
+        cerr.flush();
 
         QString move_side(QStringLiteral("play "));
         QString side_prefix;
@@ -187,10 +261,12 @@ int main(int argc, char *argv[])
                 next = std::ref(second_process);
             }
             if (!sendGtpCommand(next, qPrintable(move_side))) {
-                exit(EXIT_FAILURE);
+                return false;
             }
         }
     } while (!stop && passes < 2 && move_num < (19 * 19 * 2));
+
+    cerr << endl;
 
     // Nobody resigned, we will have to count
     if (!stop) {
@@ -198,7 +274,7 @@ int main(int argc, char *argv[])
         first_process.write(qPrintable("final_score\n"));
         first_process.waitForBytesWritten(-1);
         if (!waitForReadyRead(first_process)) {
-            exit(EXIT_FAILURE);
+            return false;
         }
         read_cnt = first_process.readLine(readbuff, 256);
         QString score(&readbuff[2]);
@@ -213,7 +289,7 @@ int main(int argc, char *argv[])
         cerr << "Winner: " << winner << endl;
         // Double newline
         if (!waitForReadyRead(first_process)) {
-            exit(EXIT_FAILURE);
+            return false;
         }
         read_cnt = first_process.readLine(readbuff, 256);
         Q_ASSERT(read_cnt > 0);
@@ -232,7 +308,7 @@ int main(int argc, char *argv[])
 
         first_process.waitForFinished(-1);
         second_process.waitForFinished(-1);
-        exit(EXIT_FAILURE);
+        return false;
     }
 
     // Write the game SGF
@@ -248,7 +324,7 @@ int main(int argc, char *argv[])
 
     if (!sendGtpCommand(first_process,
                         qPrintable("printsgf " + sgf_name + "\n"))) {
-        exit(EXIT_FAILURE);
+        return false;
     }
 
     QString dump_cmd(qPrintable("dump_training " + winner +
@@ -257,10 +333,10 @@ int main(int argc, char *argv[])
 
     // Now dump the training
     if (!sendGtpCommand(first_process, dump_cmd)) {
-        exit(EXIT_FAILURE);
+        return false;
     }
     if (!sendGtpCommand(second_process, dump_cmd)) {
-        exit(EXIT_FAILURE);
+        return false;
     }
 
     // Close down
@@ -269,6 +345,43 @@ int main(int argc, char *argv[])
 
     first_process.waitForFinished(-1);
     second_process.waitForFinished(-1);
+
+    return true;
+}
+
+int main(int argc, char *argv[])
+{
+    QCoreApplication app(argc, argv);
+    QTimer::singleShot(0, &app, SLOT(quit()));
+
+    // Map streams
+    QTextStream cin(stdin, QIODevice::ReadOnly);
+    QTextStream cout(stdout, QIODevice::WriteOnly);
+#if defined(LOG_ERRORS_TO_FILE)
+    // Log stderr to file
+    QFile caFile("output.txt");
+    caFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append);
+    if(!caFile.isOpen()){
+        qDebug() << "- Error, unable to open" << "outputFilename" << "for output";
+    }
+    QTextStream cerr(&caFile);
+#else
+    QTextStream cerr(stderr, QIODevice::WriteOnly);
+#endif
+
+    cerr << "autogtp v0.1" << endl;
+
+    auto success = true;
+    auto games_played = 0;
+
+    do {
+        QString netname;
+        success &= fetch_best_network(cerr, netname);
+        success &= run_one_game(cerr, netname);
+        success &= upload_data(cerr, netname);
+        games_played++;
+        cerr << games_played << " games played." << endl;
+    } while (success);
 
     cerr.flush();
     cout.flush();
