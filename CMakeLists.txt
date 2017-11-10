@@ -12,6 +12,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 
+
 CMAKE_MINIMUM_REQUIRED (VERSION 3.1)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
@@ -56,6 +57,7 @@ if (GccSpecificFlags)
   SET(CMAKE_CXX_FLAGS "-Wall -Wextra -pipe -O3 -g -ffast-math -flto -march=native -std=c++14 -DNDEBUG")
   SET(CMAKE_EXE_LINKER_FLAGS "-flto -g")
 endif(GccSpecificFlags)
+
 
 SET(IncludePath "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
