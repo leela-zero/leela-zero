@@ -5,48 +5,38 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
 #Required Packages
 PROJECT(leelaz)
 
-SET (BOOST_MIN_VERSION "1.58.0")
+SET(BOOST_MIN_VERSION "1.58.0")
 FIND_PACKAGE(Boost ${BOOST_MIN_VERSION} REQUIRED)
-FIND_PACKAGE( BLAS REQUIRED )
-FIND_PACKAGE( ZLIB REQUIRED )
-FIND_PACKAGE( OpenCL REQUIRED )
+FIND_PACKAGE(BLAS REQUIRED)
+FIND_PACKAGE(ZLIB REQUIRED)
+FIND_PACKAGE(OPENCL REQUIRED)
+
+
+if(BOOST_FOUND)
+  INCLUDE_DIRECTORIES(${BOOST_INCLUDE_DIRS})
+  TARGET_LINK_LIBRARIES(leelaz ${BOOST_LIBRARIES})
+endif(BOOST_FOUND)
+
+if(BLAS_FOUND)
+  INCLUDE_DIRECTORIES(${BLAS_INCLUDE_DIRS})
+  TARGET_LINK_LIBRARIES(leelaz ${BLAS_LIBRARIES})
+endif(BLAS_FOUND)
+
+if(OPENCL_FOUND)
+  INCLUDE_DIRECTORIES(${OPENCL_INCLUDE_DIRS})
+  TARGET_LINK_LIBRARIES(leelaz ${OPENCL_LIBRARIES})
+endif(OPENCL_FOUND)
 
 SET(IncludePath "CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 INCLUDE_DIRECTORIES(${IncludePath})
-INCLUDE_DIRECTORIES(/usr/include/openblas)
 
-SET(SOURCES
-    "${SrcPath}/FastBoard.cpp"
-    "${SrcPath}/FastState.cpp"
-    "${SrcPath}/FullBoard.cpp"
-    "${SrcPath}/GameState.cpp"
-    "${SrcPath}/GTP.cpp"
-    "${SrcPath}/KoState.cpp"
-    "${SrcPath}/Leela.cpp"
-    "${SrcPath}/Network.cpp"
-    "${SrcPath}/OpenCL.cpp"
-    "${SrcPath}/Random.cpp"
-    "${SrcPath}/SGFParser.cpp"
-    "${SrcPath}/SGFTree.cpp"
-    "${SrcPath}/SMP.cpp"
-    "${SrcPath}/TimeControl.cpp"
-    "${SrcPath}/Timing.cpp"
-    "${SrcPath}/Training.cpp"
-    "${SrcPath}/TTable.cpp"
-    "${SrcPath}/UCTNode.cpp"
-    "${SrcPath}/UCTSearch.cpp"
-    "${SrcPath}/Utils.cpp"
-    "${SrcPath}/Zobrist.cpp"
-)
+FILE(GLOB leelaz_SRC "${SrcPath}/*.cpp")
 
-ADD_EXECUTABLE(leelaz ${SOURCES})
+ADD_EXECUTABLE(leelaz ${leelaz_SRC})
 
-TARGET_LINK_LIBRARIES(leelaz openblas)
-TARGET_LINK_LIBRARIES(leelaz OpenCL)
 TARGET_LINK_LIBRARIES(leelaz pthread)
-TARGET_LINK_LIBRARIES(leelaz boost_program_options)
 TARGET_LINK_LIBRARIES(leelaz m)
 TARGET_LINK_LIBRARIES(leelaz z)
 
