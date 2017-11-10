@@ -2,4 +2,4 @@ leelaz
 *.o
 *.d
 .vscode/settings.json
-train.out.*
+training/tf/venv
