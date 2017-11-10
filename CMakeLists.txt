@@ -41,6 +41,7 @@ find_path(BLAS_INCLUDE_DIRS openblas_config.h
   /usr/include/x86_64-linux-gnu
   $ENV{BLAS_HOME}/include)
 
+
 # See if we can set optimization flags as expected.
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   SET(GccSpecificFlags 1)
