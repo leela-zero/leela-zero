@@ -334,6 +334,6 @@ class StatisticsCollector(object):
         avg_cost = sum(self.costs) / len(self.costs)
         self.accuracies = []
         self.costs = []
-        summary = self.session.run(self.accuracy_summaries,
+        summary = self.session.run(self.test_summaries,
             feed_dict={self.accuracy:avg_acc, self.cost: avg_cost})
         return avg_acc, avg_cost, summary
