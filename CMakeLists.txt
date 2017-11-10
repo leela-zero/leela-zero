@@ -12,16 +12,30 @@
 # along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 
 CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 PROJECT(leelaz)
 
 # Required Packages
+
 SET(BOOST_MIN_VERSION "1.58.0")
 FIND_PACKAGE(Boost ${BOOST_MIN_VERSION} REQUIRED)
 FIND_PACKAGE(BLAS REQUIRED)
 FIND_PACKAGE(ZLIB REQUIRED)
-FIND_PACKAGE(OPENCL REQUIRED)
+FIND_PACKAGE(OpenCL REQUIRED)
 
+SET(IncludePath "CMAKE_CURRENT_SOURCE_DIR}/src")
+SET(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+SET(CMAKE_CXX_FLAGS "-Wall -Wextra -pipe -O3 -g -ffast-math -flto -march=native -std=c++14 -DNDEBUG")
+SET(CMAKE_EXE_LINKER_FLAGS "-flto -g")
+
+INCLUDE_DIRECTORIES(${IncludePath})
+FILE(GLOB leelaz_SRC "${SrcPath}/*.cpp")
+
+ADD_EXECUTABLE(leelaz ${leelaz_SRC})
+
+TARGET_LINK_LIBRARIES(leelaz pthread)
 if(BOOST_FOUND)
   INCLUDE_DIRECTORIES(${BOOST_INCLUDE_DIRS})
   TARGET_LINK_LIBRARIES(leelaz ${BOOST_LIBRARIES})
@@ -41,17 +55,3 @@ if(ZLIB_FOUND)
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIRS})
   TARGET_LINK_LIBRARIES(leelaz ${ZLIB_LIBRARIES})
 endif(ZLIB_FOUND)
-
-SET(IncludePath "CMAKE_CURRENT_SOURCE_DIR}/src")
-SET(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
-
-INCLUDE_DIRECTORIES(${IncludePath})
-
-FILE(GLOB leelaz_SRC "${SrcPath}/*.cpp")
-
-ADD_EXECUTABLE(leelaz ${leelaz_SRC})
-
-TARGET_LINK_LIBRARIES(leelaz pthread)
-
-SET(CMAKE_CXX_FLAGS "-Wall -Wextra -pipe -O3 -g -ffast-math -flto -march=native -std=c++14 -DNDEBUG")
-SET(CMAKE_EXE_LINKER_FLAGS "-flto -g")
