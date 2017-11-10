@@ -41,6 +41,11 @@ if(OPENCL_FOUND)
   TARGET_LINK_LIBRARIES(leelaz ${OPENCL_LIBRARIES})
 endif(OPENCL_FOUND)
 
+if(ZLIB_FOUND)
+  INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIRS})
+  TARGET_LINK_LIBRARIES(leelaz ${ZLIB_LIBRARIES})
+endif(ZLIB_FOUND)
+
 SET(IncludePath "CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
@@ -51,8 +56,6 @@ FILE(GLOB leelaz_SRC "${SrcPath}/*.cpp")
 ADD_EXECUTABLE(leelaz ${leelaz_SRC})
 
 TARGET_LINK_LIBRARIES(leelaz pthread)
-TARGET_LINK_LIBRARIES(leelaz m)
-TARGET_LINK_LIBRARIES(leelaz z)
 
 SET(CMAKE_CXX_FLAGS "-Wall -Wextra -pipe -O3 -g -ffast-math -flto -march=native -std=c++14 -DNDEBUG")
 SET(CMAKE_EXE_LINKER_FLAGS "-flto -g")
