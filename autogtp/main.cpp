@@ -66,32 +66,37 @@ bool sendGtpCommand(QProcess& proc, QString cmd) {
     return true;
 }
 
-bool fetch_best_network_hash(QTextStream& cerr, QString& netname) {
+bool fetch_best_network(QTextStream& cerr, QString& netname) {
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    prog_cmdline.append(" http://zero-test.sjeng.org/best-network-hash");
-        QProcess curl;
-    curl.start(prog_cmdline);
-    curl.waitForFinished(-1);
-    QByteArray output = curl.readAllStandardOutput();
-    QString outstr(output);
-    QStringList outlst = outstr.split("\n");
+    // Be quiet, but output the real file name we saved to
+    // Use the filename from the server
+    // Resume download if file exists (aka avoid redownloading, and don't
+    // error out if it exists)
+    prog_cmdline.append(" -s -C - -O -J");
+    prog_cmdline.append(" -w %{filename_effective}");
+    prog_cmdline.append(" http://zero-test.sjeng.org/best-network");
     QString outhash = outlst[0];
     cerr << "Best network hash: " << outhash << endl;
     netname = outhash;
     return true;
 }
 
-bool fetch_best_network(QTextStream& cerr, QString& netname) {
-    if (QFileInfo::exists(netname)) {
-        cerr << "Already downloaded network." << endl;
-        return true;
-    }
+    cerr << prog_cmdline << endl;
 
-    QString prog_cmdline("curl");
+    QProcess curl;
+    curl.start(prog_cmdline);
+    curl.waitForFinished(-1);
+
+    QByteArray output = curl.readAllStandardOutput();
+    QString outstr(output);
+    QStringList outlst = outstr.split("\n");
+    QString outfile = outlst[0];
+    cerr << "Curl filename: " << outfile << endl;
 #ifdef WIN32
+    QProcess::execute("gunzip.exe -q " + outfile);
     prog_cmdline.append(".exe");
 #endif
     // Be quiet, but output the real file name we saved to
@@ -116,7 +121,7 @@ bool fetch_best_network(QTextStream& cerr, QString& netname) {
 #ifdef WIN32
     QProcess::execute("gunzip.exe -k -q " + outfile);
 #else
-    QProcess::execute("gunzip -k -q " + outfile);
+    QProcess::execute("gunzip -q " + outfile);
 #endif
     // Remove extension (.gz)
     outfile.chop(3);
@@ -399,13 +404,13 @@ int main(int argc, char *argv[])
 
     do {
         QString netname;
-        success &= fetch_best_network_hash(cerr, netname);
         success &= fetch_best_network(cerr, netname);
         success &= run_one_game(cerr, netname);
         success &= upload_data(cerr, netname);
         games_played++;
         cerr << games_played << " games played." << endl;
     } while (success);
+
 
     cerr.flush();
     cout.flush();
