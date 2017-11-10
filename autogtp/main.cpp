@@ -66,7 +66,30 @@ bool sendGtpCommand(QProcess& proc, QString cmd) {
     return true;
 }
 
+bool fetch_best_network_hash(QTextStream& cerr, QString& netname) {
+    QString prog_cmdline("curl");
+#ifdef WIN32
+    prog_cmdline.append(".exe");
+#endif
+    prog_cmdline.append(" http://zero-test.sjeng.org/best-network-hash");
+        QProcess curl;
+    curl.start(prog_cmdline);
+    curl.waitForFinished(-1);
+    QByteArray output = curl.readAllStandardOutput();
+    QString outstr(output);
+    QStringList outlst = outstr.split("\n");
+    QString outhash = outlst[0];
+    cerr << "Best network hash: " << outhash << endl;
+    netname = outhash;
+    return true;
+}
+
 bool fetch_best_network(QTextStream& cerr, QString& netname) {
+    if (QFileInfo::exists(netname)) {
+        cerr << "Already downloaded network." << endl;
+        return true;
+    }
+
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
@@ -96,7 +119,7 @@ bool fetch_best_network(QTextStream& cerr, QString& netname) {
     QString outfile = outlst[0];
     cerr << "Curl filename: " << outfile << endl;
 #ifdef WIN32
-    QProcess::execute("gunzip.exe -q " + outfile);
+    QProcess::execute("gunzip.exe -k -q " + outfile);
     prog_cmdline.append(".exe");
 #endif
     // Be quiet, but output the real file name we saved to
@@ -121,7 +144,7 @@ bool fetch_best_network(QTextStream& cerr, QString& netname) {
 #ifdef WIN32
     QProcess::execute("gunzip.exe -k -q " + outfile);
 #else
-    QProcess::execute("gunzip -q " + outfile);
+    QProcess::execute("gunzip -k -q " + outfile);
 #endif
     // Remove extension (.gz)
     outfile.chop(3);
@@ -404,6 +427,7 @@ int main(int argc, char *argv[])
 
     do {
         QString netname;
+        success &= fetch_best_network_hash(cerr, netname);
         success &= fetch_best_network(cerr, netname);
         success &= run_one_game(cerr, netname);
         success &= upload_data(cerr, netname);
