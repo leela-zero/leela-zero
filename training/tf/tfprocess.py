@@ -138,10 +138,6 @@ class TFProcess:
             if self.time_start:
                 elapsed = time_end - self.time_start
                 speed = batch_size * (100.0 / elapsed)
-            # train_summary = tf.summary.merge([
-            #                 tf.summary.scalar('train_policy_loss', self.avg_policy_loss),
-            #                 tf.summary.scalar('train_mse_loss', self.avg_mse_loss)])
-            # self.train_writer.add_summary(self.session.run(train_summary), steps)
             print("step {}, policy loss={:g} mse={:g} ({:g} pos/s)".format(
                 steps, self.avg_policy_loss, self.avg_mse_loss, speed))
             self.time_start = time_end
