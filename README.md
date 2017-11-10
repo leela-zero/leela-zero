@@ -69,6 +69,17 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     unzip https://sjeng.org/zero/best_v1.txt.zip
     src/leelaz --weights weights.txt
 
+## Example of compiling using cmake - Ubuntu
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero
+    mkdir build
+    cd build
+    cmake ..
+    make
+    leelaz --weights weights.txt
+    
+
 ## Example of compiling and running - macOS
 
     # Clone github repo
