@@ -1,5 +1,6 @@
 # This file is part of Leela Zero.
 # Copyright (C) 2017 Marco Calignano
+# Copyright (C) 2017 Gian-Carlo Pascutto
 # Leela Zero is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -19,10 +20,22 @@ PROJECT(leelaz)
 # Required Packages
 
 SET(BOOST_MIN_VERSION "1.58.0")
-FIND_PACKAGE(Boost ${BOOST_MIN_VERSION} REQUIRED)
-FIND_PACKAGE(BLAS REQUIRED)
+FIND_PACKAGE(Boost ${BOOST_MIN_VERSION} REQUIRED program_options)
 FIND_PACKAGE(ZLIB REQUIRED)
 FIND_PACKAGE(OpenCL REQUIRED)
+
+# We need OpenBLAS for now, because we make some specific
+# calls. Ideally we'd use OpenBLAS is possible and fall back to
+# not doing those calls if it's not present.
+set(BLA_VENDOR OpenBLAS)
+FIND_PACKAGE(BLAS REQUIRED)
+find_path(BLAS_INCLUDE_DIRS openblas_config.h
+  /usr/include
+  /usr/local/include
+  /usr/include/openblas
+  /opt/OpenBLAS/include
+  /usr/include/x86_64-linux-gnu
+  $ENV{BLAS_HOME}/include)
 
 SET(IncludePath "CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -36,20 +49,20 @@ FILE(GLOB leelaz_SRC "${SrcPath}/*.cpp")
 ADD_EXECUTABLE(leelaz ${leelaz_SRC})
 
 TARGET_LINK_LIBRARIES(leelaz pthread)
-if(BOOST_FOUND)
+if(Boost_FOUND)
   INCLUDE_DIRECTORIES(${BOOST_INCLUDE_DIRS})
-  TARGET_LINK_LIBRARIES(leelaz ${BOOST_LIBRARIES})
-endif(BOOST_FOUND)
+  TARGET_LINK_LIBRARIES(leelaz ${Boost_LIBRARIES})
+endif(Boost_FOUND)
 
 if(BLAS_FOUND)
   INCLUDE_DIRECTORIES(${BLAS_INCLUDE_DIRS})
   TARGET_LINK_LIBRARIES(leelaz ${BLAS_LIBRARIES})
 endif(BLAS_FOUND)
 
-if(OPENCL_FOUND)
-  INCLUDE_DIRECTORIES(${OPENCL_INCLUDE_DIRS})
-  TARGET_LINK_LIBRARIES(leelaz ${OPENCL_LIBRARIES})
-endif(OPENCL_FOUND)
+if(OpenCL_FOUND)
+  INCLUDE_DIRECTORIES(${OpenCL_INCLUDE_DIRS})
+  TARGET_LINK_LIBRARIES(leelaz ${OpenCL_LIBRARIES})
+endif(OpenCL_FOUND)
 
 if(ZLIB_FOUND)
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIRS})
