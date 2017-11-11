@@ -66,10 +66,8 @@ class TFProcess:
         self.policy_loss = tf.reduce_mean(cross_entropy)
 
         # Loss on value head
-        # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
-        # get comparable values.
         self.mse_loss = \
-            tf.reduce_mean(tf.squared_difference(self.z_, self.z_conv)) / 4.0
+            tf.reduce_mean(tf.squared_difference(self.z_, self.z_conv))
 
         # Regularizer
         regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
@@ -97,14 +95,10 @@ class TFProcess:
         self.time_start = None
 
         # Summary part
-        self.test_stats = StatisticsCollector()
         self.test_writer = tf.summary.FileWriter(
                     os.path.join(os.getcwd(), "leelalogs/test"), self.session.graph)
         self.train_writer = tf.summary.FileWriter(
                     os.path.join(os.getcwd(), "leelalogs/train"), self.session.graph)
-        self.train_summary = tf.summary.merge([
-                    tf.summary.scalar('policy_loss', self.policy_loss), 
-                    tf.summary.scalar('train_mse_loss', self.mse_loss)])
 
         self.init = tf.global_variables_initializer()
         self.saver = tf.train.Saver()
@@ -117,13 +111,15 @@ class TFProcess:
 
     def process(self, batch_size):
         # Run training for this batch
-        train_sum, policy_loss, mse_loss, _, _ = self.session.run(
-            [self.train_summary, self.policy_loss, self.mse_loss, self.train_op, self.next_batch],
+        policy_loss, mse_loss, _, _ = self.session.run(
+            [self.policy_loss, self.mse_loss, self.train_op, self.next_batch],
             feed_dict={self.training: True})
         steps = tf.train.global_step(self.session, self.global_step)
-        self.train_writer.add_summary(train_sum, steps)
         # Keep running averages
         # XXX: use built-in support like tf.moving_average_variables?
+        # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
+        # get comparable values.
+        mse_loss = mse_loss / 4.0
         if self.avg_policy_loss:
             self.avg_policy_loss = 0.99 * self.avg_policy_loss + 0.01 * policy_loss
         else:
@@ -140,9 +136,15 @@ class TFProcess:
                 speed = batch_size * (100.0 / elapsed)
             print("step {}, policy loss={:g} mse={:g} ({:g} pos/s)".format(
                 steps, self.avg_policy_loss, self.avg_mse_loss, speed))
+            train_summaries = tf.Summary(value=[
+                tf.Summary.Value(tag="Policy Loss", simple_value=self.avg_policy_loss),
+                tf.Summary.Value(tag="MSE Loss", simple_value=self.avg_mse_loss)])
+            self.train_writer.add_summary(train_summaries, steps)
             self.time_start = time_end
         # Ideally this would use a seperate dataset and so on...
-        if steps % 2000 == 0:
+        if steps % 200 == 0:
+            sum_accuracy = 0
+            sum_mse = 0
             for _ in range(0, 10):
                 train_accuracy, _ = self.session.run(
                     [self.accuracy, self.next_batch],
@@ -150,12 +152,18 @@ class TFProcess:
                 train_mse, _ = self.session.run(
                     [self.mse_loss, self.next_batch],
                     feed_dict={self.training: False})
-                self.test_stats.report(train_accuracy, train_mse)
-            avg_accuracy, avg_mse, test_summaries = self.test_stats.collect()
+                sum_accuracy += train_accuracy
+                sum_mse += train_mse
+            sum_accuracy /= 10.0
+            # Additionally rescale to [0, 1] so divide by 4
+            sum_mse /= (4.0 * 10.0)
+            test_summaries = tf.Summary(value=[
+                tf.Summary.Value(tag="Accuracy", simple_value=sum_accuracy),
+                tf.Summary.Value(tag="MSE Loss", simple_value=sum_mse)])
             self.test_writer.add_summary(test_summaries, steps)
             print("step {}, training accuracy={:g}%, mse={:g}".format(
-                steps, avg_accuracy*100.0, avg_mse))
-            path = os.path.join(os.getcwd(), "leelamodel/leelaz-model")
+                steps, sum_accuracy*100.0, sum_mse))
+            path = os.path.join(os.getcwd(), "leelaz-model")
             save_path = self.saver.save(self.session, path, global_step=steps)
             print("Model saved in file: {}".format(save_path))
             leela_path = path + ".txt"
@@ -304,36 +312,3 @@ class TFProcess:
         h_fc3 = tf.nn.tanh(tf.add(tf.matmul(h_fc2, W_fc3), b_fc3))
 
         return h_fc1, h_fc3
-
-
-class StatisticsCollector(object):
-    '''
-    The built-in TF summary nodes cannot be told to aggregate multiple
-    executions. Therefore, we aggregate the accuracy/cost ourselves at
-    the python level.
-    '''
-    graph = tf.Graph()
-    with tf.device("/cpu:0"), graph.as_default():
-        accuracy = tf.placeholder(tf.float32, [])
-        cost = tf.placeholder(tf.float32, [])
-        accuracy_summary = tf.summary.scalar("accuracy", accuracy)
-        cost_summary = tf.summary.scalar("test_mse_cost", cost)
-        test_summaries = tf.summary.merge([accuracy_summary, cost_summary], name="test_summaries")
-    session = tf.Session(graph=graph)
-
-    def __init__(self):
-        self.accuracies = []
-        self.costs = []
-
-    def report(self, accuracy, cost):
-        self.accuracies.append(accuracy)
-        self.costs.append(cost)
-
-    def collect(self):
-        avg_acc = sum(self.accuracies) / len(self.accuracies)
-        avg_cost = sum(self.costs) / len(self.costs)
-        self.accuracies = []
-        self.costs = []
-        summary = self.session.run(self.test_summaries,
-            feed_dict={self.accuracy:avg_acc, self.cost: avg_cost})
-        return avg_acc, avg_cost, summary
