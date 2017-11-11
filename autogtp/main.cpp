@@ -209,12 +209,10 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
 
     cerr << prog_cmdline << endl;
 
-    QProcess first_process, second_process;
-    first_process.start(prog_cmdline);
-    second_process.start(prog_cmdline);
+    QProcess process;
+    process.start(prog_cmdline);
 
-    first_process.waitForStarted();
-    second_process.waitForStarted();
+    process.waitForStarted();
 
     char readbuff[256];
     int read_cnt;
@@ -223,21 +221,17 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
     bool stop = false;
     bool black_to_move = true;
     bool black_resigned = false;
-    bool first_to_move = true;
     int passes = 0;
     int move_num = 0;
 
     // Set infinite time
-    if (!sendGtpCommand(first_process,
-                        QStringLiteral("time_settings 0 1 0"))) {
-        return false;
-    }
-    if (!sendGtpCommand(second_process,
+    if (!sendGtpCommand(process,
                         QStringLiteral("time_settings 0 1 0"))) {
         return false;
     }
     cerr << "Infinite thinking time set." << endl;
 
+    auto proc = std::ref(process);
     do {
         move_num++;
         QString move_cmd;
@@ -247,24 +241,21 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
             move_cmd = "genmove w\n";
         }
         /// Send genmove to the right process
-        auto proc = std::ref(first_process);
-        if (!first_to_move) {
-            proc = std::ref(second_process);
-        }
         proc.get().write(qPrintable(move_cmd));
         proc.get().waitForBytesWritten(-1);
         if (!waitForReadyRead(proc)) {
             return false;
         }
+     
         // Eat response
         read_cnt = proc.get().readLine(readbuff, 256);
         if (read_cnt <= 3 || readbuff[0] != '=') {
             cerr << "Error read " << read_cnt
                  << " '" << readbuff << "'" << endl;
-            second_process.terminate();
-            first_process.terminate();
+            process.terminate();
             return false;
         }
+         
         // Skip "= "
         QString resp_move(&readbuff[2]);
         resp_move = resp_move.simplified();
@@ -278,18 +269,6 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
 
         cerr << move_num << " (" << resp_move << ") ";
         cerr.flush();
-
-        QString move_side(QStringLiteral("play "));
-        QString side_prefix;
-
-        if (black_to_move) {
-            side_prefix = QStringLiteral("b ");
-        } else {
-            side_prefix = QStringLiteral("w ");
-        }
-
-        move_side += side_prefix + resp_move + "\n";
-
         if (resp_move.compare(QStringLiteral("pass"),
                               Qt::CaseInsensitive) == 0) {
             passes++;
@@ -301,20 +280,7 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
         } else {
             passes = 0;
         }
-
-        // Got move, swap sides now
-        first_to_move = !first_to_move;
         black_to_move = !black_to_move;
-
-        if (!stop) {
-            auto next = std::ref(first_process);
-            if (!first_to_move) {
-                next = std::ref(second_process);
-            }
-            if (!sendGtpCommand(next, qPrintable(move_side))) {
-                return false;
-            }
-        }
     } while (!stop && passes < 2 && move_num < (19 * 19 * 2));
 
     cerr << endl;
@@ -322,12 +288,12 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
     // Nobody resigned, we will have to count
     if (!stop) {
         // Ask for the winner
-        first_process.write(qPrintable("final_score\n"));
-        first_process.waitForBytesWritten(-1);
-        if (!waitForReadyRead(first_process)) {
+        process.write(qPrintable("final_score\n"));
+        process.waitForBytesWritten(-1);
+        if (!waitForReadyRead(process)) {
             return false;
         }
-        read_cnt = first_process.readLine(readbuff, 256);
+        read_cnt = process.readLine(readbuff, 256);
         QString score(&readbuff[2]);
         cerr << "Score: " << score;
         // final_score returns
@@ -339,10 +305,10 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
         }
         cerr << "Winner: " << winner << endl;
         // Double newline
-        if (!waitForReadyRead(first_process)) {
+        if (!waitForReadyRead(process)) {
             return false;
         }
-        read_cnt = first_process.readLine(readbuff, 256);
+        read_cnt = process.readLine(readbuff, 256);
         Q_ASSERT(read_cnt > 0);
     } else {
         if (black_resigned) {
@@ -354,11 +320,8 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
 
     if (winner.isNull()) {
         cerr << "No winner found" << endl;
-        first_process.write(qPrintable("quit\n"));
-        second_process.write(qPrintable("quit\n"));
-
-        first_process.waitForFinished(-1);
-        second_process.waitForFinished(-1);
+        process.write(qPrintable("quit\n"));
+        process.waitForFinished(-1);
         return false;
     }
 
@@ -373,7 +336,7 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
 
     cerr << "Writing " << sgf_name << endl;
 
-    if (!sendGtpCommand(first_process,
+    if (!sendGtpCommand(process,
                         qPrintable("printsgf " + sgf_name + "\n"))) {
         return false;
     }
@@ -383,19 +346,13 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
     cerr << dump_cmd;
 
     // Now dump the training
-    if (!sendGtpCommand(first_process, dump_cmd)) {
+    if (!sendGtpCommand(process, dump_cmd)) {
         return false;
     }
-    if (!sendGtpCommand(second_process, dump_cmd)) {
-        return false;
-    }
-
     // Close down
-    first_process.write(qPrintable("quit\n"));
-    second_process.write(qPrintable("quit\n"));
+    process.write(qPrintable("quit\n"));
 
-    first_process.waitForFinished(-1);
-    second_process.waitForFinished(-1);
+    process.waitForFinished(-1);
 
     return true;
 }
