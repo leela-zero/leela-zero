@@ -142,7 +142,7 @@ class TFProcess:
             self.train_writer.add_summary(train_summaries, steps)
             self.time_start = time_end
         # Ideally this would use a seperate dataset and so on...
-        if steps % 200 == 0:
+        if steps % 2000 == 0:
             sum_accuracy = 0
             sum_mse = 0
             for _ in range(0, 10):
