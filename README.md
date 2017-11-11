@@ -63,10 +63,11 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
     sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev
+    sudo apt-get install zlib1g-dev
     make
     cd ..
     wget https://sjeng.org/zero/best_v1.txt.zip
-    unzip https://sjeng.org/zero/best_v1.txt.zip
+    unzip best_v1.txt.zip
     src/leelaz --weights weights.txt
 
 ## Example of compiling and running - macOS
