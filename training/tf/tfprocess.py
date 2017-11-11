@@ -96,9 +96,9 @@ class TFProcess:
 
         # Summary part
         self.test_writer = tf.summary.FileWriter(
-                    os.path.join(os.getcwd(), "leelalogs/test"), self.session.graph)
+            os.path.join(os.getcwd(), "leelalogs/test"), self.session.graph)
         self.train_writer = tf.summary.FileWriter(
-                    os.path.join(os.getcwd(), "leelalogs/train"), self.session.graph)
+            os.path.join(os.getcwd(), "leelalogs/train"), self.session.graph)
 
         self.init = tf.global_variables_initializer()
         self.saver = tf.train.Saver()
