@@ -1,0 +1,7 @@
+# git shortlog -sn | cut -c8- with manually removed duplicates
+
+Gian-Carlo Pascutto
+Marco Calignano
+Barry Becker
+Mankit Pong
+Nate
