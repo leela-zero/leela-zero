@@ -106,6 +106,14 @@ void Training::record(GameState& state, const UCTNode& root) {
         child = child->get_sibling();
     }
 
+    // In a terminal position (with 2 passes), we can have children, but we
+    // will not able to accumulate search results on them because every attempt
+    // to evaluate will bail immediately. So in this case there will be 0 total
+    // visits, and we should not construct the (non-existent) probabilities.
+    if (sum_visits <= 0.0) {
+        return;
+    }
+
     child = root.get_first_child();
     while (child != nullptr) {
         auto prob = child->get_visits() / sum_visits;
