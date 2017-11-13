@@ -273,38 +273,43 @@ class TFProcess:
         return h_out_2
 
     def construct_net(self, planes):
+        # Network structure
+        RESIDUAL_FILTERS = 128
+        RESIDUAL_BLOCKS = 6
+
         # NCHW format
         # batch, 18 channels, 19 x 19
         x_planes = tf.reshape(planes, [-1, 18, 19, 19])
 
-        conv1 = self.conv_block(x_planes, filter_size=3,
-                                input_channels=18, output_channels=128)
-        conv2 = self.residual_block(conv1, 128)
-        conv3 = self.residual_block(conv2, 128)
-        conv4 = self.residual_block(conv3, 128)
-        conv5 = self.residual_block(conv4, 128)
-        conv6 = self.residual_block(conv5, 128)
-        conv7 = self.residual_block(conv6, 128)
+        # Input convolution
+        flow = self.conv_block(x_planes, filter_size=3,
+                               input_channels=18,
+                               output_channels=RESIDUAL_FILTERS)
+        # Residual tower
+        for _ in range(0, RESIDUAL_BLOCKS):
+            flow = self.residual_block(flow, RESIDUAL_FILTERS)
 
         # Policy head
-        conv8 = self.conv_block(conv7, filter_size=1,
-                                input_channels=128, output_channels=2)
-        h_conv8_flat = tf.reshape(conv8, [-1, 2*19*19])
+        conv_pol = self.conv_block(flow, filter_size=1,
+                                   input_channels=RESIDUAL_FILTERS,
+                                   output_channels=2)
+        h_conv_pol_flat = tf.reshape(conv_pol, [-1, 2*19*19])
         W_fc1 = weight_variable([2 * 19 * 19, (19 * 19) + 1])
         b_fc1 = bias_variable([(19 * 19) + 1])
         self.weights.append(W_fc1)
         self.weights.append(b_fc1)
-        h_fc1 = tf.add(tf.matmul(h_conv8_flat, W_fc1), b_fc1)
+        h_fc1 = tf.add(tf.matmul(h_conv_pol_flat, W_fc1), b_fc1)
 
         # Value head
-        conv9 = self.conv_block(conv7, filter_size=1,
-                                input_channels=128, output_channels=1)
-        h_conv9_flat = tf.reshape(conv9, [-1, 19*19])
+        conv_val = self.conv_block(flow, filter_size=1,
+                                   input_channels=RESIDUAL_FILTERS,
+                                   output_channels=1)
+        h_conv_val_flat = tf.reshape(conv_val, [-1, 19*19])
         W_fc2 = weight_variable([19 * 19, 256])
         b_fc2 = bias_variable([256])
         self.weights.append(W_fc2)
         self.weights.append(b_fc2)
-        h_fc2 = tf.nn.relu(tf.add(tf.matmul(h_conv9_flat, W_fc2), b_fc2))
+        h_fc2 = tf.nn.relu(tf.add(tf.matmul(h_conv_val_flat, W_fc2), b_fc2))
         W_fc3 = weight_variable([256, 1])
         b_fc3 = bias_variable([1])
         self.weights.append(W_fc3)
