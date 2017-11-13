@@ -24,7 +24,6 @@ Game::Game(QString weights, QTextStream *out) :
     output(out),
     cmdLine("./leelaz"),
     timeSettings("time_settings 0 1 0"),
-    readCount(0),
     resignation(false),
     blackToMove(true),
     blackResigned(false),
@@ -37,21 +36,19 @@ Game::Game(QString weights, QTextStream *out) :
     cmdLine.append(" -g -q -n -m 30 -r 0 -w ");
     cmdLine.append(weights);
     cmdLine.append(" -p 400 --noponder");
-    QString randomName(QUuid::createUuid().toRfc4122().toHex());
-    sgfName = randomName + ".sgf";
-    trainingName = randomName + ".txt";
-    *output << cmdLine << endl;
+    QString name(QUuid::createUuid().toRfc4122().toHex());
+    fileName = name;
 }
 
-
-    
+   
 bool Game::sendGtpCommand(QString cmd){
     write(qPrintable(cmd.append("\n")));
     waitForBytesWritten(-1);
     if (!waitReady()) {
         return false;
     }
-    readCount = readLine(readBuffer, 256);
+    char readBuffer[256];
+    int readCount = readLine(readBuffer, 256);
     Q_ASSERT(readCount > 0);
     Q_ASSERT(readBuffer[0] == '=');
     // Eat double newline from GTP protocol
@@ -98,7 +95,8 @@ bool Game::waitReady()
 }
 
 bool Game::readMove(){
-    readCount = readLine(readBuffer, 256);
+    char readBuffer[256];
+    int readCount = readLine(readBuffer, 256);
     if (readCount <= 3 || readBuffer[0] != '=') {
         *output << "Error read ";
         *output << readCount;
@@ -110,7 +108,7 @@ bool Game::readMove(){
         return false;
     }
     // Skip "= "
-    moveDone = readBuffer;
+    QString moveDone = readBuffer;
     moveDone.remove(0, 2);
     moveDone = moveDone.simplified();
 
@@ -157,8 +155,9 @@ bool Game::getScore()
         waitForBytesWritten(-1);
         if(!waitReady())
             return false;
-        readCount = readLine(readBuffer, 256);
-        score = readBuffer;
+        char readBuffer[256];
+        readLine(readBuffer, 256);
+        QString score = readBuffer;
         score.remove(0, 2);
         *output << score << endl;
         if (readBuffer[2] == 'W') {
@@ -184,10 +183,10 @@ bool Game::getScore()
 
 bool Game::writeSgf(){
     *output << "Writing ";
-    *output<< sgfName;
+    *output<< fileName + ".sgf";
     *output << endl;
 
-    if (!sendGtpCommand(qPrintable("printsgf " + sgfName + "\n"))) {
+    if (!sendGtpCommand(qPrintable("printsgf " + fileName + ".sgf\n"))) {
         return false;
     }
     return true;
@@ -195,11 +194,11 @@ bool Game::writeSgf(){
 
 bool Game::dumpTraining(){
     *output << "Dumping ";
-    *output<< trainingName;
+    *output<< fileName + ".txt";
     *output << endl;
 
     if (!sendGtpCommand(qPrintable("dump_training " + winner +
-                        " " + trainingName + "\n"))) {
+                        " " + fileName + ".txt\n"))) {
         return false;
     }
     return true;

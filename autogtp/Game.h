@@ -39,13 +39,8 @@ private:
     QTextStream *output;
     QString cmdLine;
     QString timeSettings;
-    QString moveDone;
     QString winner;
-    QString score;
-    QString sgfName;
-    QString trainingName;
-    int readCount;
-    char readBuffer[256];
+    QString fileName;
     bool resignation;
     bool blackToMove;
     bool blackResigned;
