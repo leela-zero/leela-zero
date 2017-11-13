@@ -356,6 +356,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
         }
         childcount++;
     }
+    float numerator = std::sqrt((double)parentvisits);
 
     childcount = 0;
     child = m_firstchild;
@@ -383,7 +384,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
         float winrate = child->get_eval(color);
         float psa = child->get_score();
         float denom = 1.0f + child->get_visits();
-        float puct = cfg_puct * psa * ((float)std::sqrt((double)parentvisits) / denom);
+        float puct = cfg_puct * psa * (numerator / denom);
         float value = winrate + puct;
         assert(value > -1000.0f);
 
