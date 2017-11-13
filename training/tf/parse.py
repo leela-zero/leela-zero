@@ -20,6 +20,7 @@ import sys
 import glob
 import gzip
 import random
+import math
 import multiprocessing as mp
 import tensorflow as tf
 from tfprocess import TFProcess
@@ -92,7 +93,13 @@ def convert_train_data(text_item):
         planes.append([0.0] * 361)
         planes.append([1.0] * 361)
     assert len(planes) == 18
-    probabilities = [float(val) for val in text_item[17].split()]
+    probabilities = []
+    for val in text_item[17].split():
+        float_val = float(val)
+        # Work around a bug in leela-zero v0.3
+        if math.isnan(float_val):
+            return False, None
+        probabilities.append(float_val)
     assert len(probabilities) == 362
     winner = float(text_item[18])
     assert winner == 1.0 or winner == -1.0
@@ -100,7 +107,7 @@ def convert_train_data(text_item):
     symmetry = random.randrange(8)
     sym_planes = [apply_symmetry(plane, symmetry) for plane in planes]
     sym_probabilities = apply_symmetry(probabilities, symmetry)
-    return sym_planes, sym_probabilities, [winner]
+    return True, (sym_planes, sym_probabilities, [winner])
 
 class ChunkParser:
     def __init__(self, chunks):
@@ -123,7 +130,9 @@ class ChunkParser:
                         pick_offset = item_idx * DATA_ITEM_LINES
                         item = file_content[pick_offset:pick_offset + DATA_ITEM_LINES]
                         str_items = [str(line, 'ascii') for line in item]
-                        queue.put(convert_train_data(str_items))
+                        success, data = convert_train_data(str_items)
+                        if success:
+                            queue.put(data)
 
     def parse_chunk(self):
         while True:
