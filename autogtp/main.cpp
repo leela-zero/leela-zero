@@ -30,6 +30,8 @@
 #include <QDebug>
 #include <iostream>
 
+constexpr int AUTOGTP_VERSION = 1;
+
 bool waitForReadyRead(QProcess& process) {
     while (!process.canReadLine() && process.state() == QProcess::Running) {
         process.waitForReadyRead(-1);
@@ -77,8 +79,24 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& netname) {
     QByteArray output = curl.readAllStandardOutput();
     QString outstr(output);
     QStringList outlst = outstr.split("\n");
+    if (outlst.size() != 2) {
+        cerr << "Unexpected output from server: " << endl << output << endl;
+        exit(EXIT_FAILURE);
+    }
     QString outhash = outlst[0];
     cerr << "Best network hash: " << outhash << endl;
+    QString client_version = outlst[1];
+    auto server_expected = client_version.toInt();
+    cerr << "Required client version: " << client_version;
+    if (server_expected != AUTOGTP_VERSION) {
+        cerr << endl;
+        cerr << "Server requires client version " << server_expected
+             << " but we are version " << AUTOGTP_VERSION << endl;
+        cerr << "Check https://github.com/gcp/leela-zero for updates." << endl;
+        exit(EXIT_FAILURE);
+    } else {
+        cerr << " (OK)" << endl;
+    }
     netname = outhash;
     return true;
 }
@@ -153,6 +171,7 @@ bool upload_data(QTextStream& cerr, QString& netname) {
         prog_cmdline.append(".exe");
 #endif
         prog_cmdline.append(" -F networkhash=" + netname);
+        prog_cmdline.append(" -F clientversion=" + QString::number(AUTOGTP_VERSION));
         prog_cmdline.append(" -F sgf=@" + sgf_file);
         prog_cmdline.append(" -F trainingdata=@" + data_file);
         prog_cmdline.append(" http://zero-test.sjeng.org/submit");
@@ -347,7 +366,7 @@ int main(int argc, char *argv[])
     QTextStream cerr(stderr, QIODevice::WriteOnly);
 #endif
 
-    cerr << "autogtp v0.1" << endl;
+    cerr << "autogtp v" << AUTOGTP_VERSION << endl;
 
     auto success = true;
     auto games_played = 0;
