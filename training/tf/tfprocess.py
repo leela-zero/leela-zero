@@ -64,12 +64,10 @@ class TFProcess:
             tf.nn.softmax_cross_entropy_with_logits(labels=self.y_,
                                                     logits=self.y_conv)
         self.policy_loss = tf.reduce_mean(cross_entropy)
-        tf.summary.scalar('policy_loss', self.policy_loss)
 
         # Loss on value head
         self.mse_loss = \
             tf.reduce_mean(tf.squared_difference(self.z_, self.z_conv))
-        tf.summary.scalar('mse_loss', self.mse_loss)
 
         # Regularizer
         regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
@@ -91,11 +89,16 @@ class TFProcess:
             tf.equal(tf.argmax(self.y_conv, 1), tf.argmax(self.y_, 1))
         correct_prediction = tf.cast(correct_prediction, tf.float32)
         self.accuracy = tf.reduce_mean(correct_prediction)
-        tf.summary.scalar('accuracy', self.accuracy)
 
         self.avg_policy_loss = None
         self.avg_mse_loss = None
         self.time_start = None
+
+        # Summary part
+        self.test_writer = tf.summary.FileWriter(
+            os.path.join(os.getcwd(), "leelalogs/test"), self.session.graph)
+        self.train_writer = tf.summary.FileWriter(
+            os.path.join(os.getcwd(), "leelalogs/train"), self.session.graph)
 
         self.init = tf.global_variables_initializer()
         self.saver = tf.train.Saver()
@@ -133,6 +136,10 @@ class TFProcess:
                 speed = batch_size * (100.0 / elapsed)
             print("step {}, policy loss={:g} mse={:g} ({:g} pos/s)".format(
                 steps, self.avg_policy_loss, self.avg_mse_loss, speed))
+            train_summaries = tf.Summary(value=[
+                tf.Summary.Value(tag="Policy Loss", simple_value=self.avg_policy_loss),
+                tf.Summary.Value(tag="MSE Loss", simple_value=self.avg_mse_loss)])
+            self.train_writer.add_summary(train_summaries, steps)
             self.time_start = time_end
         # Ideally this would use a seperate dataset and so on...
         if steps % 2000 == 0:
@@ -150,6 +157,10 @@ class TFProcess:
             sum_accuracy /= 10.0
             # Additionally rescale to [0, 1] so divide by 4
             sum_mse /= (4.0 * 10.0)
+            test_summaries = tf.Summary(value=[
+                tf.Summary.Value(tag="Accuracy", simple_value=sum_accuracy),
+                tf.Summary.Value(tag="MSE Loss", simple_value=sum_mse)])
+            self.test_writer.add_summary(test_summaries, steps)
             print("step {}, training accuracy={:g}%, mse={:g}".format(
                 steps, sum_accuracy*100.0, sum_mse))
             path = os.path.join(os.getcwd(), "leelaz-model")
