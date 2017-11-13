@@ -19,7 +19,7 @@
 #include<QUuid>
 #include "Game.h"
 
-Game::Game(QString weights, QTextStream *out) :
+Game::Game(QString weights, QTextStream &out) :
     QProcess(),
     output(out),
     cmdLine("./leelaz"),
@@ -63,11 +63,9 @@ bool Game::sendGtpCommand(QString cmd){
 void Game::gameStart(){
     start(cmdLine);
     waitForStarted();
-    *output << "Game Started";
-    *output << endl;
+    output << "Game Started" << endl;
     sendGtpCommand(timeSettings);
-    *output << "Infinite thinking time set.";
-    *output << endl;
+    output << "Infinite thinking time set." << endl;
 }
 
 void Game::move(){
@@ -98,12 +96,8 @@ bool Game::readMove(){
     char readBuffer[256];
     int readCount = readLine(readBuffer, 256);
     if (readCount <= 3 || readBuffer[0] != '=') {
-        *output << "Error read ";
-        *output << readCount;
-        *output << " '";
-        *output << readBuffer;
-        *output << "'";
-        *output << endl;
+        output << "Error read " << readCount << " '";
+        output << readBuffer << "'" << endl;
         terminate();
         return false;
     }
@@ -118,8 +112,8 @@ bool Game::readMove(){
     }
     readCount = readLine(readBuffer, 256);
     Q_ASSERT(readCount > 0);
-    *output << moveNum << " (" << moveDone << ") ";
-    output->flush();
+    output << moveNum << " (" << moveDone << ") ";
+    output.flush();
     if (moveDone.compare(QStringLiteral("pass"),
                           Qt::CaseInsensitive) == 0) {
         passes++;
@@ -142,7 +136,7 @@ bool Game::nextMove(){
 
 bool Game::getScore()
 {
-    *output << endl;
+    output << endl;
     if(resignation){
         if (blackResigned) {
             winner = QString(QStringLiteral("white"));
@@ -159,7 +153,7 @@ bool Game::getScore()
         readLine(readBuffer, 256);
         QString score = readBuffer;
         score.remove(0, 2);
-        *output << score << endl;
+        output << score << endl;
         if (readBuffer[2] == 'W') {
             winner = QString(QStringLiteral("white"));
         } else if (readBuffer[2] == 'B') {
@@ -167,24 +161,18 @@ bool Game::getScore()
         }
         if(!waitReady())
             return false;
-        *output << "Score: ";
-        *output << score;
+        output << "Score: " << score;
     }
     if (winner.isNull()) {
-        *output << "No winner found";
-        *output << endl;
+        output << "No winner found" << endl;
         return false;
     }
-    *output << "Winner: ";
-    *output << winner;
-    *output << endl;
+    output << "Winner: " << winner << endl;
     return true;
 }
 
 bool Game::writeSgf(){
-    *output << "Writing ";
-    *output<< fileName + ".sgf";
-    *output << endl;
+    output << "Writing " << fileName + ".sgf" << endl;
 
     if (!sendGtpCommand(qPrintable("printsgf " + fileName + ".sgf\n"))) {
         return false;
@@ -193,9 +181,7 @@ bool Game::writeSgf(){
 }
 
 bool Game::dumpTraining(){
-    *output << "Dumping ";
-    *output<< fileName + ".txt";
-    *output << endl;
+    output << "Dumping " << fileName + ".txt" << endl;
 
     if (!sendGtpCommand(qPrintable("dump_training " + winner +
                         " " + fileName + ".txt\n"))) {

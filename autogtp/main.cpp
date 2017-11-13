@@ -158,7 +158,7 @@ bool upload_data(QTextStream& cerr, QString& netname) {
 
 bool run_one_game(QTextStream& cerr, QString weightsname) {
 
-    Game game(weightsname, &cerr);
+    Game game(weightsname, cerr);
     game.gameStart();
     do{
         game.move();

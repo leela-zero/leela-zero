@@ -23,7 +23,7 @@
 
 class Game : QProcess {
 public:
-    Game(QString weights, QTextStream *out);
+    Game(QString weights, QTextStream &out);
     ~Game(){}
     void gameStart();
     void move();
@@ -36,7 +36,7 @@ public:
     void gameQuit();
 
 private:
-    QTextStream *output;
+    QTextStream &output;
     QString cmdLine;
     QString timeSettings;
     QString winner;
