@@ -29,7 +29,6 @@
 #include <QUuid>
 #include <QDebug>
 #include <iostream>
-#include <functional>
 
 bool waitForReadyRead(QProcess& process) {
     while (!process.canReadLine() && process.state() == QProcess::Running) {
@@ -72,7 +71,7 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& netname) {
     prog_cmdline.append(".exe");
 #endif
     prog_cmdline.append(" http://zero-test.sjeng.org/best-network-hash");
-        QProcess curl;
+    QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
     QByteArray output = curl.readAllStandardOutput();
@@ -210,15 +209,13 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
         } else {
             move_cmd = "genmove w\n";
         }
-        /// Send genmove to the right process
-        auto proc = std::ref(process);
-        proc.get().write(qPrintable(move_cmd));
-        proc.get().waitForBytesWritten(-1);
-        if (!waitForReadyRead(proc)) {
+        process.write(qPrintable(move_cmd));
+        process.waitForBytesWritten(-1);
+        if (!waitForReadyRead(process)) {
             return false;
         }
         // Eat response
-        read_cnt = proc.get().readLine(readbuff, 256);
+        read_cnt = process.readLine(readbuff, 256);
         if (read_cnt <= 3 || readbuff[0] != '=') {
             cerr << "Error read " << read_cnt
                  << " '" << readbuff << "'" << endl;
@@ -230,10 +227,10 @@ bool run_one_game(QTextStream& cerr, QString weightsname) {
         resp_move = resp_move.simplified();
 
         // Eat double newline from GTP protocol
-        if (!waitForReadyRead(proc)) {
+        if (!waitForReadyRead(process)) {
             return false;
         }
-        read_cnt = proc.get().readLine(readbuff, 256);
+        read_cnt = process.readLine(readbuff, 256);
         Q_ASSERT(read_cnt > 0);
 
         cerr << move_num << " (" << resp_move << ") ";
