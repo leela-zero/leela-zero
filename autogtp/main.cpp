@@ -29,43 +29,11 @@
 #include <QUuid>
 #include <QDebug>
 #include <iostream>
+#include <functional>
+#include "Game.h"
 
 constexpr int AUTOGTP_VERSION = 1;
 
-bool waitForReadyRead(QProcess& process) {
-    while (!process.canReadLine() && process.state() == QProcess::Running) {
-        process.waitForReadyRead(-1);
-    }
-
-    // somebody crashed
-    if (process.state() != QProcess::Running) {
-        return false;
-    }
-
-    return true;
-}
-
-bool sendGtpCommand(QProcess& proc, QString cmd) {
-    QString cmdEndl(cmd);
-    cmdEndl.append(qPrintable("\n"));
-
-    proc.write(qPrintable(cmdEndl));
-    proc.waitForBytesWritten(-1);
-    if (!waitForReadyRead(proc)) {
-        return false;
-    }
-    char readbuff[256];
-    auto read_cnt = proc.readLine(readbuff, 256);
-    Q_ASSERT(read_cnt > 0);
-    Q_ASSERT(readbuff[0] == '=');
-    // Eat double newline from GTP protocol
-    if (!waitForReadyRead(proc)) {
-        return false;
-    }
-    read_cnt = proc.readLine(readbuff, 256);
-    Q_ASSERT(read_cnt > 0);
-    return true;
-}
 
 bool fetch_best_network_hash(QTextStream& cerr, QString& netname) {
     QString prog_cmdline("curl");
@@ -189,160 +157,26 @@ bool upload_data(QTextStream& cerr, QString& netname) {
 }
 
 bool run_one_game(QTextStream& cerr, QString weightsname) {
-    QString prog_cmdline("./leelaz");
-#ifdef WIN32
-    prog_cmdline.append(".exe");
-#endif
-    prog_cmdline.append(" -g -q -n -m 30 -r 0 -w ");
-    prog_cmdline.append(weightsname);
-    prog_cmdline.append(" -p 400 --noponder");
 
-    cerr << prog_cmdline << endl;
-
-    QProcess process;
-    process.start(prog_cmdline);
-    process.waitForStarted();
-
-    char readbuff[256];
-    int read_cnt;
-
-    QString winner;
-    bool stop = false;
-    bool black_to_move = true;
-    bool black_resigned = false;
-    int passes = 0;
-    int move_num = 0;
-
-    // Set infinite time
-    if (!sendGtpCommand(process,
-                        QStringLiteral("time_settings 0 1 0"))) {
-        return false;
-    }
-    cerr << "Infinite thinking time set." << endl;
-
-    do {
-        move_num++;
-        QString move_cmd;
-        if (black_to_move) {
-            move_cmd = "genmove b\n";
-        } else {
-            move_cmd = "genmove w\n";
-        }
-        process.write(qPrintable(move_cmd));
-        process.waitForBytesWritten(-1);
-        if (!waitForReadyRead(process)) {
+    Game game(weightsname, &cerr);
+    game.gameStart();
+    do{
+        game.move();
+        if(!game.waitForMove())
             return false;
-        }
-        // Eat response
-        read_cnt = process.readLine(readbuff, 256);
-        if (read_cnt <= 3 || readbuff[0] != '=') {
-            cerr << "Error read " << read_cnt
-                 << " '" << readbuff << "'" << endl;
-            process.terminate();
-            return false;
-        }
-        // Skip "= "
-        QString resp_move(&readbuff[2]);
-        resp_move = resp_move.simplified();
-
-        // Eat double newline from GTP protocol
-        if (!waitForReadyRead(process)) {
-            return false;
-        }
-        read_cnt = process.readLine(readbuff, 256);
-        Q_ASSERT(read_cnt > 0);
-
-        cerr << move_num << " (" << resp_move << ") ";
-        cerr.flush();
-
-        if (resp_move.compare(QStringLiteral("pass"),
-                              Qt::CaseInsensitive) == 0) {
-            passes++;
-        } else if (resp_move.compare(QStringLiteral("resign"),
-                                     Qt::CaseInsensitive) == 0) {
-            passes++;
-            stop = true;
-            black_resigned = black_to_move;
-        } else {
-            passes = 0;
-        }
-
-        // Got move, swap sides now
-        black_to_move = !black_to_move;
-
-    } while (!stop && passes < 2 && move_num < (19 * 19 * 2));
-
-    cerr << endl;
-
-    // Nobody resigned, we will have to count
-    if (!stop) {
-        // Ask for the winner
-        process.write(qPrintable("final_score\n"));
-        process.waitForBytesWritten(-1);
-        if (!waitForReadyRead(process)) {
-            return false;
-        }
-        read_cnt = process.readLine(readbuff, 256);
-        QString score(&readbuff[2]);
-        cerr << "Score: " << score;
-        // final_score returns
-        // "= W+" or "= B+"
-        if (readbuff[2] == 'W') {
-            winner = QString(QStringLiteral("white"));
-        } else if (readbuff[2] == 'B') {
-            winner = QString(QStringLiteral("black"));
-        }
-        cerr << "Winner: " << winner << endl;
-        // Double newline
-        if (!waitForReadyRead(process)) {
-            return false;
-        }
-        read_cnt = process.readLine(readbuff, 256);
-        Q_ASSERT(read_cnt > 0);
-    } else {
-        if (black_resigned) {
-            winner = QString(QStringLiteral("white"));
-        } else {
-            winner = QString(QStringLiteral("black"));
-        }
+        game.readMove();
     }
-
-    if (winner.isNull()) {
-        cerr << "No winner found" << endl;
-        process.write(qPrintable("quit\n"));
-        process.waitForFinished(-1);
-        return false;
+    while(game.nextMove());
+    cerr << "no more moves" << endl;
+    if(game.getScore())
+    {
+        cerr << "writing sgf" << endl;
+        game.writeSgf();
+        cerr << "writing training" << endl;
+        game.dumpTraining();
     }
-
-    // Write the game SGF
-    QString sgf_name, training_name;
-    QString random_name(QUuid::createUuid().toRfc4122().toHex());
-
-    sgf_name += random_name;
-    sgf_name += ".sgf";
-    training_name += random_name;
-    training_name += ".txt";
-
-    cerr << "Writing " << sgf_name << endl;
-
-    if (!sendGtpCommand(process,
-                        qPrintable("printsgf " + sgf_name + "\n"))) {
-        return false;
-    }
-
-    QString dump_cmd(qPrintable("dump_training " + winner +
-                     " " + training_name + "\n"));
-    cerr << dump_cmd;
-
-    // Now dump the training
-    if (!sendGtpCommand(process, dump_cmd)) {
-        return false;
-    }
-
-    // Close down
-    process.write(qPrintable("quit\n"));
-    process.waitForFinished(-1);
-
+    cerr  << "game quit" << endl;
+    game.gameQuit();
     return true;
 }
 
