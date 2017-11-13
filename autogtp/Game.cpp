@@ -35,7 +35,7 @@ Game::Game(const QString& weights, QTextStream& out) :
 #endif
     cmdLine.append(" -g -q -n -m 30 -r 0 -w ");
     cmdLine.append(weights);
-    cmdLine.append(" -p 400 --noponder");
+    cmdLine.append(" -p 1000 --noponder");
     fileName = QUuid::createUuid().toRfc4122().toHex();
 }
 
