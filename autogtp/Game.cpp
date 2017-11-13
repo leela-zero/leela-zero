@@ -135,7 +135,6 @@ bool Game::nextMove() {
 
 
 bool Game::getScore() {
-    output << endl;
     if(resignation) {
         if (blackResigned) {
             winner = QString(QStringLiteral("white"));
