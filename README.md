@@ -147,10 +147,12 @@ neural networks). This has been fixed in Leela Zero. The inputs are:
 
 Each of these forms a 19 x 19 bit plane.
 
-The zero.prototxt file contains a description of the full 40 residual block design,
-in (NVIDIA)-Caffe protobuff format. It can be used to set up nv-caffe for training
-a suitable network. The zero\_mini.prototxt file describes a smaller 12 residual block
-case.
+In the training/caffe directory there is a zero.prototxt file which contains a
+description of the full 40 residual block design, in (NVIDIA)-Caffe protobuff
+format. It can be used to set up nv-caffe for training a suitable network.
+The zero\_mini.prototxt file describes a smaller 12 residual block case. The
+training/tf directory contains a 6 residual block version in TensorFlow format,
+in the tfprocess.py file.
 
 # Training
 
@@ -162,7 +164,9 @@ e.g:
 
     dump_training white train.txt
 
-This will save (append) the training data to disk, in the format described below.
+This will save (append) the training data to disk, in the format described below,
+and compressed with gzip.
+
 Training data is reset on a new game.
 
 ## Supervised learning
@@ -198,7 +202,7 @@ TensorFlow, PyTorch, Theano), with a set of training data as described above.
 You still need to contruct a model description (2 examples are provided for
 Caffe), parse the input file format, and outputs weights in the proper format.
 
-There are implementations for TensorFlow in the training/tf directory.
+There is a complete implementation for TensorFlow in the training/tf directory.
 
 ### Supervised learning with TensorFlow
 
@@ -218,7 +222,7 @@ If interrupted, training can be resumed with:
 # Todo
 
 - [ ] List of package names for more distros
-- [ ] A real build system like CMake would nice
+- [x] A real build system like CMake would nice
 - [x] Provide or link to self-play tooling
 - [ ] CPU support for Xeon Phi and for people without a GPU
 - [ ] Faster GPU usage via batching
