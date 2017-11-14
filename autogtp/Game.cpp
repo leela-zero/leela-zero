@@ -84,13 +84,13 @@ bool Game::sendGtpCommand(QString cmd) {
     }
     char readBuffer[256];
     int readCount = readLine(readBuffer, 256);
-    if (readCount <= 0 || readBuffer[0] != '=') {
-        output << "GTP: " << readBuffer << endl;
-        error(Game::WRONG_GTP);
-    }
+    Q_ASSERT(readCount > 0);
+    Q_ASSERT(readBuffer[0] == '=');
     if (!eatNewLine()) {
+        error(Game::PROCESS_DIED);
         return false;
     }
+    Q_ASSERT(readCount > 0);
     return true;
 }
 
@@ -186,8 +186,10 @@ bool Game::readMove() {
     moveDone.remove(0, 2);
     moveDone = moveDone.simplified();
     if (!eatNewLine()) {
+        error(Game::PROCESS_DIED);
         return false;
     }
+    Q_ASSERT(readCount > 0);
     output << moveNum << " (" << moveDone << ") ";
     output.flush();
     if (moveDone.compare(QStringLiteral("pass"),
@@ -235,6 +237,7 @@ bool Game::getScore() {
             winner = QString(QStringLiteral("black"));
         }
         if (!eatNewLine()) {
+            error(Game::PROCESS_DIED);
             return false;
         }
         output << "Score: " << score;
