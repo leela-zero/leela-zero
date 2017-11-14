@@ -90,6 +90,9 @@ bool Game::sendGtpCommand(QString cmd) {
         error(Game::PROCESS_DIED);
         return false;
     }
+    if(readCount == 0) {
+        error(Game::WRONG_GTP);
+    }
     Q_ASSERT(readCount > 0);
     return true;
 }
@@ -189,7 +192,9 @@ bool Game::readMove() {
         error(Game::PROCESS_DIED);
         return false;
     }
-    Q_ASSERT(readCount > 0);
+    if(readCount == 0) {
+        error(Game::WRONG_GTP);
+    }
     output << moveNum << " (" << moveDone << ") ";
     output.flush();
     if (moveDone.compare(QStringLiteral("pass"),
