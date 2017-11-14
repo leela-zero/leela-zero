@@ -26,7 +26,7 @@ class Game : QProcess {
 public:
     Game(const QString& weights, QTextStream& out);
     ~Game() = default;
-    void gameStart();
+    bool gameStart();
     void move();
     bool waitForMove() { return waitReady(); }
     bool readMove();
@@ -37,6 +37,12 @@ public:
     void gameQuit();
 
 private:
+    enum {
+        NO_LEELAZ = 1,
+        PROCESS_DIED,
+        WRONG_GTP
+    };
+
     QTextStream& output;
     QString cmdLine;
     QString timeSettings;
@@ -49,6 +55,7 @@ private:
     int moveNum;
     bool sendGtpCommand(QString cmd);
     bool waitReady();
+    void error(int errnum);
 };
 
 #endif /* GAME_H */
