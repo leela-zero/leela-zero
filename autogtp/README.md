@@ -17,3 +17,5 @@ Run:
 
     qmake
     make
+    copy the compiled leelaz to the same directory as autogtp
+    ./autogtp
