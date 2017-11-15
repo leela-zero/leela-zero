@@ -54,7 +54,7 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QString client_version = outlst[1];
     auto server_expected = client_version.toInt();
     cerr << "Required client version: " << client_version;
-    if (server_expected != AUTOGTP_VERSION) {
+    if (server_expected > AUTOGTP_VERSION) {
         cerr << endl;
         cerr << "Server requires client version " << server_expected
              << " but we are version " << AUTOGTP_VERSION << endl;
