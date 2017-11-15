@@ -17,3 +17,12 @@ Run:
 
     qmake
     make
+
+# Running
+
+Copy the compiled leelaz binary into the autogtp directory, and run
+autogtp.
+
+    cp ../src/leelaz .
+    ./autogtp
+
