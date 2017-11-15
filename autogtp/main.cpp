@@ -26,6 +26,7 @@
 #include <QDir>
 #include <QDebug>
 #include <chrono>
+#include <QCommandLineParser>
 #include <iostream>
 #include "Game.h"
 
@@ -202,6 +203,23 @@ int main(int argc, char *argv[])
     app.setApplicationName("autogtp");
     app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
     QTimer::singleShot(0, &app, SLOT(quit()));
+
+    QCommandLineParser parser;
+    parser.setApplicationDescription("autogtp");
+    parser.addHelpOption();
+    parser.addVersionOption();
+    QCommandLineOption competitionOption(QStringList() << "c" << "competition", "Play two networks  against each other.");
+    QCommandLineOption networkOption(QStringList() << "n" << "network", "Networks to use ad players (two are needed).", "filename");
+    parser.addOption(competitionOption);
+    parser.addOption(networkOption);
+
+    // Process the actual command line arguments given by the user
+    parser.process(app);
+    bool competition  = parser.isSet(competitionOption);
+    QStringList netList = parser.values(networkOption);
+    if(competition && netList.count() != 2) {
+        parser.showHelp();
+    }
 
     QCommandLineOption keep_sgf_option(
         { "k", "keep-sgf" }, "Save SGF files after each self-play game.",
