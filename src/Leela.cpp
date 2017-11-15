@@ -64,6 +64,7 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("randomcnt,m", po::value<int>()->default_value(cfg_random_cnt),
                         "Play more randomly the first x moves.")
         ("noise,n", "Enable policy network randomization.")
+        ("dumbpass,d", "Don't use heuristics for smarter passing.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
         ("quiet,q", "Disable all diagnostic output.")
@@ -171,6 +172,10 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
 
     if (vm.count("noise")) {
         cfg_noise = true;
+    }
+
+    if (vm.count("dumbpass")) {
+        cfg_dumbpass = true;
     }
 
     if (vm.count("playouts")) {

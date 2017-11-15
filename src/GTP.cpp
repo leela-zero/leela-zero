@@ -48,6 +48,7 @@ int cfg_lagbuffer_cs;
 int cfg_resignpct;
 int cfg_noise;
 int cfg_random_cnt;
+bool cfg_dumbpass;
 #ifdef USE_OPENCL
 std::vector<int> cfg_gpus;
 int cfg_rowtiles;
@@ -77,6 +78,7 @@ void GTP::setup_default_parameters() {
     cfg_resignpct = 10;
     cfg_noise = false;
     cfg_random_cnt = 0;
+    cfg_dumbpass = false;
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
 }

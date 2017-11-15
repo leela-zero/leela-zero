@@ -33,7 +33,7 @@ Game::Game(const QString& weights, QTextStream& out) :
 #ifdef WIN32
     cmdLine.append(".exe");
 #endif
-    cmdLine.append(" -g -q -n -m 30 -r 0 -w ");
+    cmdLine.append(" -g -q -n -d -m 30 -r 0 -w ");
     cmdLine.append(weights);
     cmdLine.append(" -p 1000 --noponder");
     fileName = QUuid::createUuid().toRfc4122().toHex();

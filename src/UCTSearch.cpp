@@ -180,7 +180,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
             }
         }
     } else {
-        if (bestmove == FastBoard::PASS) {
+        if (!cfg_dumbpass && bestmove == FastBoard::PASS) {
             // Either by forcing or coincidence passing is
             // on top...check whether passing loses instantly
             // do full count including dead stones.
@@ -189,7 +189,8 @@ int UCTSearch::get_best_move(passflag_t passflag) {
             // positions are identical, and this means the position is only won
             // if there are no dead stones in our own territory (because we use
             // Trump-Taylor scoring there). So strictly speaking, the next
-            // heuristic isn't required for a pure RL network.
+            // heuristic isn't required for a pure RL network, and we have
+            // a commandline option to disable the behavior during learning.
             // On the other hand, with a supervised learning setup, we fully
             // expect that the engine will pass out anything that looks like
             // a finished game even with dead stones on the board (because the
@@ -220,8 +221,9 @@ int UCTSearch::get_best_move(passflag_t passflag) {
             } else {
                 myprintf("Passing wins :-)\n");
             }
-        } else if (m_rootstate.get_last_move() == FastBoard::PASS) {
-            // Opponents last move was passing
+        } else if (!cfg_dumbpass
+                   && m_rootstate.get_last_move() == FastBoard::PASS) {
+            // Opponents last move was passing.
             // We didn't consider passing. Should we have and
             // end the game immediately?
             float score = m_rootstate.final_score();
