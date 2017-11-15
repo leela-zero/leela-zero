@@ -31,14 +31,14 @@
 #include <iostream>
 #include "Game.h"
 
-constexpr int AUTOGTP_VERSION = 1;
+constexpr int AUTOGTP_VERSION = 2;
 
 bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    prog_cmdline.append(" http://zero-test.sjeng.org/best-network-hash");
+    prog_cmdline.append(" http://zero.sjeng.org/best-network-hash");
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
@@ -83,7 +83,7 @@ bool fetch_best_network(QTextStream& cerr, QString& netname) {
     // error out if it exists)
     prog_cmdline.append(" -s -O -J");
     prog_cmdline.append(" -w %{filename_effective}");
-    prog_cmdline.append(" http://zero-test.sjeng.org/best-network");
+    prog_cmdline.append(" http://zero.sjeng.org/best-network");
 
     cerr << prog_cmdline << endl;
 
@@ -140,7 +140,7 @@ bool upload_data(QTextStream& cerr, const QString& netname) {
         prog_cmdline.append(" -F clientversion=" + QString::number(AUTOGTP_VERSION));
         prog_cmdline.append(" -F sgf=@" + sgf_file);
         prog_cmdline.append(" -F trainingdata=@" + data_file);
-        prog_cmdline.append(" http://zero-test.sjeng.org/submit");
+        prog_cmdline.append(" http://zero.sjeng.org/submit");
         cerr << prog_cmdline << endl;
         QProcess curl;
         curl.start(prog_cmdline);
