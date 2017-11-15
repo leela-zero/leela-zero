@@ -259,6 +259,7 @@ int main(int argc, char *argv[])
     auto games_played = 0;
     auto start = std::chrono::high_resolution_clock::now();
 
+<<<<<<< HEAD
     do {
         auto game_start = std::chrono::high_resolution_clock::now();
         QString netname;
@@ -270,6 +271,21 @@ int main(int argc, char *argv[])
         print_timing_info(cerr, games_played, start, game_start);
     } while (success);
 
+=======
+    if(competition) {
+        run_competition(cerr, netList.at(0), netList.at(1));
+    } else {    
+        do {
+            QString netname;
+            success &= fetch_best_network_hash(cerr, netname);
+            success &= fetch_best_network(cerr, netname);
+            success &= run_one_game(cerr, netname);
+            success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
+            games_played++;
+            cerr << games_played << " games played." << endl;
+        } while (success);
+    }
+>>>>>>> autogtp: new mode 'competition'
     cerr.flush();
     cout.flush();
     return app.exec();
