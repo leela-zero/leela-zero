@@ -55,6 +55,7 @@ private:
     int moveNum;
     bool sendGtpCommand(QString cmd);
     bool waitReady();
+    bool eatNewLine();
     void error(int errnum);
 };
 

@@ -40,7 +40,7 @@ Game::Game(const QString& weights, QTextStream& out) :
 }
 
 void Game::error(int errnum) {
-    output << "*ERROR* :";
+    output << "*ERROR*: ";
     switch(errnum) {
         case Game::NO_LEELAZ:
             output << "No 'leelaz' binary found." << endl;
@@ -57,6 +57,21 @@ void Game::error(int errnum) {
     }
 }
 
+bool Game::eatNewLine() {
+    char readBuffer[256];
+    // Eat double newline from GTP protocol
+    if (!waitReady()) {
+        error(Game::PROCESS_DIED);
+        return false;
+    }
+    auto readCount = readLine(readBuffer, 256);
+    if(readCount < 0) {
+        error(Game::WRONG_GTP);
+        return false;
+    }
+    return true;
+}
+
 bool Game::sendGtpCommand(QString cmd) {
     write(qPrintable(cmd.append("\n")));
     waitForBytesWritten(-1);
@@ -66,18 +81,12 @@ bool Game::sendGtpCommand(QString cmd) {
     }
     char readBuffer[256];
     int readCount = readLine(readBuffer, 256);
-    if(readCount == 0 || readBuffer[0] != '=') {
+    if (readCount <= 0 || readBuffer[0] != '=') {
+        output << "GTP: " << readBuffer << endl;
         error(Game::WRONG_GTP);
     }
-
-    // Eat double newline from GTP protocol
-    if (!waitReady()) {
-        error(Game::PROCESS_DIED);
+    if (!eatNewLine()) {
         return false;
-    }
-    readCount = readLine(readBuffer, 256);
-    if(readCount == 0) {
-        error(Game::WRONG_GTP);
     }
     return true;
 }
@@ -106,8 +115,7 @@ void Game::move() {
     waitForBytesWritten(-1);
 }
 
-bool Game::waitReady()
-{
+bool Game::waitReady() {
     while (!canReadLine() && state() == QProcess::Running) {
         waitForReadyRead(-1);
     }
@@ -132,15 +140,8 @@ bool Game::readMove() {
     QString moveDone = readBuffer;
     moveDone.remove(0, 2);
     moveDone = moveDone.simplified();
-
-    // Eat double newline from GTP protocol
-    if (!waitReady()) {
-        error(Game::PROCESS_DIED);
+    if (!eatNewLine()) {
         return false;
-    }
-    readCount = readLine(readBuffer, 256);
-    if(readCount == 0) {
-        error(Game::WRONG_GTP);
     }
     output << moveNum << " (" << moveDone << ") ";
     output.flush();
@@ -165,7 +166,6 @@ bool Game::nextMove() {
     return true;
 }
 
-
 bool Game::getScore() {
     if(resignation) {
         if (blackResigned) {
@@ -189,8 +189,7 @@ bool Game::getScore() {
         } else if (readBuffer[2] == 'B') {
             winner = QString(QStringLiteral("black"));
         }
-        if(!waitReady()) {
-            error(Game::PROCESS_DIED);
+        if (!eatNewLine()) {
             return false;
         }
         output << "Score: " << score;
@@ -206,7 +205,7 @@ bool Game::getScore() {
 bool Game::writeSgf() {
     output << "Writing " << fileName + ".sgf" << endl;
 
-    if (!sendGtpCommand(qPrintable("printsgf " + fileName + ".sgf\n"))) {
+    if (!sendGtpCommand(qPrintable("printsgf " + fileName + ".sgf"))) {
         return false;
     }
     return true;
@@ -216,7 +215,7 @@ bool Game::dumpTraining() {
     output << "Dumping " << fileName + ".txt" << endl;
 
     if (!sendGtpCommand(qPrintable("dump_training " + winner +
-                        " " + fileName + ".txt\n"))) {
+                        " " + fileName + ".txt"))) {
         return false;
     }
     return true;
