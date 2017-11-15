@@ -38,6 +38,8 @@ public:
     bool writeSgf();
     bool dumpTraining();
     void gameQuit();
+    QString getMove() { return moveDone; } 
+    bool setMove(const QString &m); 
 
 private:
     enum {
@@ -52,6 +54,7 @@ private:
     QString timeSettings;
     QString winner;
     QString fileName;
+    QString moveDone;
     bool resignation;
     bool blackToMove;
     bool blackResigned;

@@ -185,7 +185,7 @@ bool Game::readMove() {
         return false;
     }
     // Skip "= "
-    QString moveDone = readBuffer;
+    moveDone = readBuffer;
     moveDone.remove(0, 2);
     moveDone = moveDone.simplified();
     if (!eatNewLine()) {
@@ -202,6 +202,22 @@ bool Game::readMove() {
         passes++;
     } else if (moveDone.compare(QStringLiteral("resign"),
                                  Qt::CaseInsensitive) == 0) {
+        resignation = true;
+        blackResigned = blackToMove;
+    } else {
+        passes = 0;
+    }
+    return true;
+}
+
+bool Game::setMove(const QString& m) {
+    if (!sendGtpCommand(m)) {
+        return false;
+    }
+    QStringList moves = m.split(" "); 
+    if (moves.at(2).compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
+        passes++;
+    } else if (moves.at(2).compare(QStringLiteral("resign"), Qt::CaseInsensitive) == 0) {
         resignation = true;
         blackResigned = blackToMove;
     } else {
