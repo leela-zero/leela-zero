@@ -247,7 +247,7 @@ void Training::dump_supervised(const std::string& sgf_name,
 
     // Loop over the database multiple times. We will select different
     // positions from each game on every pass.
-    for (auto repeat = 0; repeat < SKIP_SIZE; repeat++) {
+    for (auto repeat = size_t{0}; repeat < SKIP_SIZE; repeat++) {
         for (auto gamecount = size_t{0}; gamecount < gametotal; gamecount++) {
             auto sgftree = std::make_unique<SGFTree>();
             try {
