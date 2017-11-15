@@ -61,7 +61,10 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
         float eval;
         auto success = node->create_children(m_nodes, currstate, eval);
         if (success) {
-            result = SearchResult(eval);
+            result = SearchResult::from_eval(eval);
+        } else if (currstate.get_passes() >= 2) {
+            auto score = currstate.final_score();
+            result = SearchResult::from_score(score);
         }
     }
 

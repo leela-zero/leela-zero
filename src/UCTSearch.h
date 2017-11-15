@@ -29,11 +29,23 @@
 class SearchResult {
 public:
     SearchResult() = default;
-    explicit SearchResult(float e)
-        : m_valid(true), m_eval(e) {};
     bool valid() const { return m_valid;  }
     float eval() const { return m_eval;  }
+    static SearchResult from_eval(float eval) {
+        return SearchResult(eval);
+    }
+    static SearchResult from_score(float board_score) {
+        if (board_score > 0.0f) {
+            return SearchResult(1.0f);
+        } else if (board_score < 0.0f) {
+            return SearchResult(0.0f);
+        } else {
+            return SearchResult(0.5f);
+        }
+    }
 private:
+    explicit SearchResult(float eval)
+        : m_valid(true), m_eval(eval) {};
     bool m_valid{false};
     float m_eval{0.0f};
 };

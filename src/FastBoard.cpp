@@ -358,11 +358,11 @@ int FastBoard::remove_string_fast(int i) {
 }
 
 std::vector<bool> FastBoard::calc_reach_color(int col) {
-    std::vector<bool> bd(m_maxsq);
-    std::vector<bool> last(m_maxsq);
+    auto bd = std::vector<bool>(m_maxsq);
+    auto last = std::vector<bool>(m_maxsq);
 
-    std::fill(bd.begin(), bd.end(), false);
-    std::fill(last.begin(), last.end(), false);
+    std::fill(begin(bd), end(bd), false);
+    std::fill(begin(last), end(last), false);
 
     /* needs multi pass propagation, slow */
     do {
@@ -392,18 +392,16 @@ std::vector<bool> FastBoard::calc_reach_color(int col) {
     return bd;
 }
 
-
 // Needed for scoring passed out games not in MC playouts
 float FastBoard::area_score(float komi) {
+    auto white = calc_reach_color(WHITE);
+    auto black = calc_reach_color(BLACK);
 
-    std::vector<bool> white = calc_reach_color(WHITE);
-    std::vector<bool> black = calc_reach_color(BLACK);
-
-    float score = -komi;
+    auto score = -komi;
 
     for (int i = 0; i < m_boardsize; i++) {
         for (int j = 0; j < m_boardsize; j++) {
-            int vertex = get_vertex(i, j);
+            auto vertex = get_vertex(i, j);
 
             if (white[vertex] && !black[vertex]) {
                 score -= 1.0f;
