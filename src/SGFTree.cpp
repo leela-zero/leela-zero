@@ -30,6 +30,7 @@
 #include "KoState.h"
 #include "SGFParser.h"
 #include "Utils.h"
+#include "GTP.h"
 
 using namespace Utils;
 
@@ -417,13 +418,18 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     header.append("DT[" + std::string(timestr) + "]");
     header.append("SZ[" + std::to_string(size) + "]");
     header.append("KM[" + str(boost::format("%.1f") % komi) + "]");
+
+    auto leela_name = std::string{PROGRAM_NAME};
+    leela_name.append(" " + std::string(PROGRAM_VERSION));
+    if (!cfg_weightsfile.empty()) {
+        leela_name.append(" " + cfg_weightsfile);
+    }
+
     if (compcolor == FastBoard::WHITE) {
-        header.append("PW[" + std::string(PROGRAM_NAME) + " "
-                            + std::string(PROGRAM_VERSION) + "]");
+        header.append("PW[" + leela_name + "]");
         header.append("PB[Human]");
     } else {
-        header.append("PB[" + std::string(PROGRAM_NAME) + " "
-                            + std::string(PROGRAM_VERSION) + "]");
+        header.append("PB[" + leela_name + "]");
         header.append("PW[Human]");
     }
 
