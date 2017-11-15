@@ -81,7 +81,7 @@ bool fetch_best_network(QTextStream& cerr, QString& netname) {
     // Use the filename from the server
     // Resume download if file exists (aka avoid redownloading, and don't
     // error out if it exists)
-    prog_cmdline.append(" -s -C - -O -J");
+    prog_cmdline.append(" -s -O -J");
     prog_cmdline.append(" -w %{filename_effective}");
     prog_cmdline.append(" http://zero-test.sjeng.org/best-network");
 
