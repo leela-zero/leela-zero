@@ -31,6 +31,7 @@
 #include "SGFParser.h"
 #include "SGFTree.h"
 #include "Random.h"
+#include "Utils.h"
 
 std::vector<TimeStep> Training::m_data{};
 
@@ -70,7 +71,7 @@ void OutputChunker::flush_chunks() {
         if (!comp_size) {
             throw std::runtime_error("Error in gzip output");
         }
-        std::cout << "Writing chunk " << m_chunk_count << std::endl;
+        Utils::myprintf("Writing chunk %d\n",  m_chunk_count);
         gzclose(out);
     } else {
         auto chunk_name = m_basename;
