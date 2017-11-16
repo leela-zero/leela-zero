@@ -90,9 +90,7 @@ bool Game::sendGtpCommand(QString cmd) {
         error(Game::PROCESS_DIED);
         return false;
     }
-    if(readCount == 0) {
-        error(Game::WRONG_GTP);
-    }
+
     Q_ASSERT(readCount > 0);
     return true;
 }
@@ -207,6 +205,7 @@ bool Game::readMove() {
     } else {
         passes = 0;
     }
+    blackToMove = !blackToMove;
     return true;
 }
 
@@ -271,6 +270,12 @@ bool Game::getScore() {
     return true;
 }
 
+int Game::getWinner() {
+    if(winner.compare(QStringLiteral("white"), Qt::CaseInsensitive) == 0)
+        return Game::WHITE;
+    else
+        return Game::BLACK;
+}
 bool Game::writeSgf() {
     output << "Writing " << fileName + ".sgf" << endl;
 

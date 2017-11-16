@@ -40,6 +40,12 @@ public:
     void gameQuit();
     QString getMove() { return moveDone; } 
     bool setMove(const QString &m); 
+    void setCmdLine(const QString &cmd)  { cmdLine = cmd; }
+    int getWinner();
+    enum {
+        BLACK = 0,
+        WHITE = 1,
+    };
 
 private:
     enum {
