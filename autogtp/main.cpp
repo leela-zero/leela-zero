@@ -29,6 +29,7 @@
 #include <QCommandLineParser>
 #include <iostream>
 #include "Game.h"
+#include "sprt.h"
 
 constexpr int AUTOGTP_VERSION = 4;
 
@@ -257,6 +258,7 @@ int main(int argc, char *argv[])
 
     auto success = true;
     auto games_played = 0;
+<<<<<<< HEAD
     auto start = std::chrono::high_resolution_clock::now();
 
 <<<<<<< HEAD
@@ -272,9 +274,50 @@ int main(int argc, char *argv[])
     } while (success);
 
 =======
+=======
+>>>>>>> Alternate each net Black and White and calcoulate the new LOG Likelyhood after every game
     if(competition) {
-        run_competition(cerr, netList.at(0), netList.at(1));
-    } else {    
+        int winner;
+        Sprt stat;
+        stat.initialize(25.0,35.0,0.05,0.05);
+        stat.addGameResult(Sprt::Win);
+        stat.addGameResult(Sprt::Loss);
+        stat.addGameResult(Sprt::Draw);
+        Sprt::Status status;
+        int player = Game::BLACK;
+        
+        do {
+            if(player == Game::BLACK) 
+                winner = run_competition(cerr, netList.at(0), netList.at(1));
+            else
+                winner = run_competition(cerr, netList.at(1), netList.at(0));
+            if(winner < 0) {
+                cerr << "ERROR" << endl;
+                return 1;
+            }
+            if(winner == player) {
+               stat.addGameResult(Sprt::Win);
+            }
+            else {
+               stat.addGameResult(Sprt::Loss);
+            }
+            status = stat.status();
+            games_played++;
+            cerr << games_played << " games played." << endl;
+            cerr << "Status: " << status.result << " Log-Likelyhood Ratio " 
+                 << status.llr <<  " Lower Bound " << status.lBound 
+                 << " Upper Bound " << status.uBound << endl;
+            if(player == Game::BLACK) 
+                player = Game::WHITE;
+            else
+                player = Game::BLACK;
+        }
+        while(status.result == Sprt::Continue);
+        cerr << "The first net is " 
+             <<  ((stat.status().result ==  Sprt::AcceptH0) ? "wrost " : "better ")
+             << "then the second" << endl;
+    } 
+    else {    
         do {
             QString netname;
             success &= fetch_best_network_hash(cerr, netname);
