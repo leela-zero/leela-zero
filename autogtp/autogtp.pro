@@ -9,7 +9,9 @@ CONFIG   -= app_bundle
 TEMPLATE = app
 
 SOURCES += main.cpp \
-    Game.cpp
+    Game.cpp \
+    sprt.cpp
 
 HEADERS += \
-    Game.h
+    Game.h \
+    sprt.h
