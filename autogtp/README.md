@@ -12,7 +12,7 @@ the SGF and training data at the end of the game.
 * gzip and gunzip
 
 ## Example of compiling - Ubuntu
-    sudo apt install qt5-default
+    sudo apt install qt5-default qt5-qmake
     qmake
     make
 
