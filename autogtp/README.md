@@ -13,7 +13,7 @@ the SGF and training data at the end of the game.
 
 ## Example of compiling - Ubuntu
     sudo apt install qt5-default qt5-qmake
-    qmake
+    qmake -qt5
     make
 
 # Running
