@@ -258,10 +258,7 @@ int main(int argc, char *argv[])
 
     auto success = true;
     auto games_played = 0;
-<<<<<<< HEAD
     auto start = std::chrono::high_resolution_clock::now();
-
-<<<<<<< HEAD
     do {
         auto game_start = std::chrono::high_resolution_clock::now();
         QString netname;
@@ -272,10 +269,6 @@ int main(int argc, char *argv[])
         games_played++;
         print_timing_info(cerr, games_played, start, game_start);
     } while (success);
-
-=======
-=======
->>>>>>> Alternate each net Black and White and calcoulate the new LOG Likelyhood after every game
     if(competition) {
         int winner;
         Sprt stat;
@@ -328,7 +321,6 @@ int main(int argc, char *argv[])
             cerr << games_played << " games played." << endl;
         } while (success);
     }
->>>>>>> autogtp: new mode 'competition'
     cerr.flush();
     cout.flush();
     return app.exec();
