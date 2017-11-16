@@ -1,5 +1,5 @@
 default:
-	$(MAKE) CC=gcc CXX=g++ \
+	$(MAKE) CC=gcc-5 CXX=g++-6 \
 		CXXFLAGS='$(CXXFLAGS) -Wall -Wextra -pipe -O3 -g -ffast-math -flto -march=native -std=c++14 -DNDEBUG'  \
 		LDFLAGS='$(LDFLAGS) -flto -g' \
 		leelaz
