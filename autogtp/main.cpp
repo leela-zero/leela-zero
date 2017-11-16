@@ -20,6 +20,7 @@
 #include <QtCore/QTimer>
 #include <QtCore/QTextStream>
 #include <QtCore/QStringList>
+#include <QCommandLineParser>
 #include <QProcess>
 #include <QFile>
 #include <QDir>
@@ -105,7 +106,7 @@ bool fetch_best_network(QTextStream& cerr, QString& netname) {
     return true;
 }
 
-bool upload_data(QTextStream& cerr, const QString& netname) {
+bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_path) {
     // Find output SGF and txt files
     QDir dir;
     QStringList filters;
@@ -118,6 +119,10 @@ bool upload_data(QTextStream& cerr, const QString& netname) {
         QFileInfo fileInfo = list.at(i);
         QString sgf_file = fileInfo.fileName();
         QString data_file = sgf_file;
+        // Save first if requested
+        if (!sgf_output_path.isEmpty()) {
+            QFile(sgf_file).copy(sgf_output_path + '/' + fileInfo.fileName());
+        }
         // Cut .sgf, add .txt.0.gz
         data_file.chop(4);
         data_file += ".txt.0.gz";
@@ -176,7 +181,18 @@ bool run_one_game(QTextStream& cerr, const QString& weightsname) {
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
+    app.setApplicationName("autogtp");
+    app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
     QTimer::singleShot(0, &app, SLOT(quit()));
+
+    QCommandLineOption keep_sgf_option(
+        { "k", "keep-sgf" }, "Save SGF files after each self-play game.",
+                             "output directory");
+    QCommandLineParser parser;
+    parser.addHelpOption();
+    parser.addVersionOption();
+    parser.addOption(keep_sgf_option);
+    parser.process(app);
 
     // Map streams
     QTextStream cin(stdin, QIODevice::ReadOnly);
@@ -195,6 +211,14 @@ int main(int argc, char *argv[])
 
     cerr << "autogtp v" << AUTOGTP_VERSION << endl;
 
+    if (parser.isSet(keep_sgf_option)) {
+        if (!QDir().mkpath(parser.value(keep_sgf_option))) {
+            cerr << "Couldn't create output directory for self-play SGF files!"
+                 << endl;
+            return EXIT_FAILURE;
+        }
+    }
+
     auto success = true;
     auto games_played = 0;
 
@@ -203,7 +227,7 @@ int main(int argc, char *argv[])
         success &= fetch_best_network_hash(cerr, netname);
         success &= fetch_best_network(cerr, netname);
         success &= run_one_game(cerr, netname);
-        success &= upload_data(cerr, netname);
+        success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
         games_played++;
         cerr << games_played << " games played." << endl;
     } while (success);
