@@ -20,13 +20,9 @@
 #include <QtCore/QTimer>
 #include <QtCore/QTextStream>
 #include <QtCore/QStringList>
-#include <QtCore/QPair>
-#include <QtCore/QVector>
 #include <QProcess>
 #include <QFile>
 #include <QDir>
-#include <QRegularExpression>
-#include <QUuid>
 #include <QDebug>
 #include <iostream>
 #include "Game.h"
