@@ -20,13 +20,9 @@
 #include <QtCore/QTimer>
 #include <QtCore/QTextStream>
 #include <QtCore/QStringList>
-#include <QtCore/QPair>
-#include <QtCore/QVector>
 #include <QProcess>
 #include <QFile>
 #include <QDir>
-#include <QRegularExpression>
-#include <QUuid>
 #include <QDebug>
 #include <iostream>
 #include "Game.h"
@@ -97,7 +93,7 @@ bool fetch_best_network(QTextStream& cerr, QString& netname) {
     QString outfile = outlst[0];
     cerr << "Curl filename: " << outfile << endl;
 #ifdef WIN32
-    QProcess::execute("gunzip.exe -k -q " + outfile);
+    QProcess::execute("gzip.exe -d -k -q " + outfile);
 #else
     QProcess::execute("gunzip -k -q " + outfile);
 #endif
