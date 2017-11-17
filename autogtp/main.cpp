@@ -28,12 +28,13 @@
 #include <QRegularExpression>
 #include <QUuid>
 #include <QDebug>
+#include <chrono>
 #include <iostream>
 #include "Game.h"
 
 constexpr int AUTOGTP_VERSION = 2;
 
-bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
+bool fetch_best_network_hash(QTextStream& cerr, QString& nethash, long games_played) {
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
@@ -50,26 +51,27 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
         exit(EXIT_FAILURE);
     }
     QString outhash = outlst[0];
-    cerr << "Best network hash: " << outhash << endl;
     QString client_version = outlst[1];
     auto server_expected = client_version.toInt();
-    cerr << "Required client version: " << client_version;
     if (server_expected > AUTOGTP_VERSION) {
-        cerr << endl;
         cerr << "Server requires client version " << server_expected
              << " but we are version " << AUTOGTP_VERSION << endl;
         cerr << "Check https://github.com/gcp/leela-zero for updates." << endl;
         exit(EXIT_FAILURE);
-    } else {
-        cerr << " (OK)" << endl;
+    }
+    if (games_played == 0) {
+        cerr << "Best network hash: " << outhash << endl;
+        cerr << "Required client version: " << server_expected << " (OK)" << endl;
     }
     nethash = outhash;
     return true;
 }
 
-bool fetch_best_network(QTextStream& cerr, QString& netname) {
+bool fetch_best_network(QTextStream& cerr, QString& netname, long games_played) {
     if (QFileInfo::exists(netname)) {
-        cerr << "Already downloaded network." << endl;
+        if (games_played == 0) {
+            cerr << "Already downloaded network." << endl;
+        }
         return true;
     }
 
@@ -196,20 +198,28 @@ int main(int argc, char *argv[])
 #else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
 #endif
-
     cerr << "autogtp v" << AUTOGTP_VERSION << endl;
 
+    auto start = std::chrono::high_resolution_clock::now();
     auto success = true;
-    auto games_played = 0;
+    long games_played = 0;
 
     do {
+        auto game_start = std::chrono::high_resolution_clock::now();
         QString netname;
-        success &= fetch_best_network_hash(cerr, netname);
-        success &= fetch_best_network(cerr, netname);
+        success &= fetch_best_network_hash(cerr, netname, games_played);
+        success &= fetch_best_network(cerr, netname, games_played);
         success &= run_one_game(cerr, netname);
         success &= upload_data(cerr, netname);
         games_played++;
-        cerr << games_played << " games played." << endl;
+
+        auto game_end = std::chrono::high_resolution_clock::now();
+        auto game_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - game_start);
+        auto total_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - start);
+        cerr << games_played << " games_played in "
+             << (total_time_s.count() / 60) << " minutes = "
+             << (total_time_s.count() / games_played) << " seconds/game, last game "
+             << game_time_s.count() << " seconds\n\n";
     } while (success);
 
     cerr.flush();
