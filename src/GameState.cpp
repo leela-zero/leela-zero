@@ -37,7 +37,7 @@ void GameState::init_game(int size, float komi) {
     KoState::init_game(size, komi);
 
     game_history.clear();
-    game_history.push_back(*this);
+    game_history.emplace_back(std::make_shared<KoState>(*this));
 
     m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
@@ -49,7 +49,7 @@ void GameState::reset_game() {
     KoState::reset_game();
 
     game_history.clear();
-    game_history.push_back(*this);
+    game_history.emplace_back(std::make_shared<KoState>(*this));
 
     m_timecontrol.reset_clocks();
 }
@@ -57,7 +57,7 @@ void GameState::reset_game() {
 bool GameState::forward_move(void) {
     if (game_history.size() > m_movenum + 1) {
         m_movenum++;
-        *(static_cast<KoState*>(this)) = game_history[m_movenum];
+        *(static_cast<KoState*>(this)) = *game_history[m_movenum];
         return true;
     } else {
         return false;
@@ -72,7 +72,7 @@ bool GameState::undo_move(void) {
         //game_history.pop_back();
 
         // this is not so nice, but it should work
-        *(static_cast<KoState*>(this)) = game_history[m_movenum];
+        *(static_cast<KoState*>(this)) = *game_history[m_movenum];
 
         // This also restores hashes as they're part of state
         return true;
@@ -82,7 +82,7 @@ bool GameState::undo_move(void) {
 }
 
 void GameState::rewind(void) {
-    *(static_cast<KoState*>(this)) = game_history[0];
+    *(static_cast<KoState*>(this)) = *game_history[0];
     m_movenum = 0;
 }
 
@@ -109,7 +109,7 @@ void GameState::play_move(int color, int vertex) {
 
     // cut off any leftover moves from navigating
     game_history.resize(m_movenum);
-    game_history.push_back(*this);
+    game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
 bool GameState::play_textmove(std::string color, std::string vertex) {
@@ -197,7 +197,7 @@ void GameState::anchor_game_history(void) {
     // handicap moves don't count in game history
     m_movenum = 0;
     game_history.clear();
-    game_history.push_back(*this);
+    game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
 void GameState::trim_game_history(int lastmove) {
