@@ -28,6 +28,9 @@
  *
  * \sa http://en.wikipedia.org/wiki/Sequential_probability_ratio_test
  */
+
+#include <QMutex>
+
 class Sprt
 {
 	public:
@@ -42,7 +45,7 @@ class Sprt
 		/*! The result of a chess game. */
 		enum GameResult
 		{
-			NoResult,	//!< Game ended with no result
+			NoResult = 0,	//!< Game ended with no result
 			Win,		//!< First player won
 			Loss,		//!< First player lost
 			Draw		//!< Game was drawn
@@ -95,6 +98,7 @@ class Sprt
 		int m_wins;
 		int m_losses;
 		int m_draws;
+		mutable QMutex m_mutex;
 };
 
 #endif // SPRT_H

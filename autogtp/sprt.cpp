@@ -136,7 +136,8 @@ Sprt::Sprt()
 	  m_beta(0),
 	  m_wins(0),
 	  m_losses(0),
-	  m_draws(0)
+	  m_draws(0),
+	  m_mutex()
 {
 }
 
@@ -156,6 +157,7 @@ void Sprt::initialize(double elo0, double elo1,
 
 Sprt::Status Sprt::status() const
 {
+	QMutexLocker locker(&m_mutex);
 	Status status = {
 		Continue,
 		0.0,
@@ -195,6 +197,7 @@ Sprt::Status Sprt::status() const
 
 void Sprt::addGameResult(GameResult result)
 {
+	QMutexLocker locker(&m_mutex);
 	if (result == Win)
 		m_wins++;
 	else if (result == Draw)
