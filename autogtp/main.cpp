@@ -234,8 +234,8 @@ int main(int argc, char *argv[])
         auto game_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - game_start);
         auto total_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - start);
         cerr << games_played << " games_played in "
-             << (total_time_s.count() / 60) << " minutes = "
-             << (total_time_s.count() / games_played) << " seconds/game, last game "
+             << (std::chrono::duration_cast<std::chrono::minutes>(total_time_s)).count() << " minutes = "
+             << total_time_s.count() / games_played << " seconds/game, last game "
              << game_time_s.count() << " seconds\n\n";
     } while (success);
 
