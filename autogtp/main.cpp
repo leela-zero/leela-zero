@@ -20,13 +20,10 @@
 #include <QtCore/QTimer>
 #include <QtCore/QTextStream>
 #include <QtCore/QStringList>
-#include <QtCore/QPair>
-#include <QtCore/QVector>
+#include <QCommandLineParser>
 #include <QProcess>
 #include <QFile>
 #include <QDir>
-#include <QRegularExpression>
-#include <QUuid>
 #include <QDebug>
 #include <chrono>
 #include <iostream>
@@ -34,7 +31,7 @@
 
 constexpr int AUTOGTP_VERSION = 2;
 
-bool fetch_best_network_hash(QTextStream& cerr, QString& nethash, long games_played) {
+bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
@@ -59,19 +56,15 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& nethash, long games_pla
         cerr << "Check https://github.com/gcp/leela-zero for updates." << endl;
         exit(EXIT_FAILURE);
     }
-    if (games_played == 0) {
-        cerr << "Best network hash: " << outhash << endl;
-        cerr << "Required client version: " << server_expected << " (OK)" << endl;
-    }
+    cerr << "Best network hash: " << outhash << endl;
+    cerr << "Required client version: " << server_expected << " (OK)" << endl;
     nethash = outhash;
     return true;
 }
 
-bool fetch_best_network(QTextStream& cerr, QString& netname, long games_played) {
+bool fetch_best_network(QTextStream& cerr, QString& netname) {
     if (QFileInfo::exists(netname)) {
-        if (games_played == 0) {
-            cerr << "Already downloaded network." << endl;
-        }
+        cerr << "Already downloaded network." << endl;
         return true;
     }
 
@@ -99,7 +92,7 @@ bool fetch_best_network(QTextStream& cerr, QString& netname, long games_played) 
     QString outfile = outlst[0];
     cerr << "Curl filename: " << outfile << endl;
 #ifdef WIN32
-    QProcess::execute("gunzip.exe -k -q " + outfile);
+    QProcess::execute("gzip.exe -d -k -q " + outfile);
 #else
     QProcess::execute("gunzip -k -q " + outfile);
 #endif
@@ -111,7 +104,7 @@ bool fetch_best_network(QTextStream& cerr, QString& netname, long games_played) 
     return true;
 }
 
-bool upload_data(QTextStream& cerr, const QString& netname) {
+bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_path) {
     // Find output SGF and txt files
     QDir dir;
     QStringList filters;
@@ -124,6 +117,10 @@ bool upload_data(QTextStream& cerr, const QString& netname) {
         QFileInfo fileInfo = list.at(i);
         QString sgf_file = fileInfo.fileName();
         QString data_file = sgf_file;
+        // Save first if requested
+        if (!sgf_output_path.isEmpty()) {
+            QFile(sgf_file).copy(sgf_output_path + '/' + fileInfo.fileName());
+        }
         // Cut .sgf, add .txt.0.gz
         data_file.chop(4);
         data_file += ".txt.0.gz";
@@ -182,7 +179,18 @@ bool run_one_game(QTextStream& cerr, const QString& weightsname) {
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
+    app.setApplicationName("autogtp");
+    app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
     QTimer::singleShot(0, &app, SLOT(quit()));
+
+    QCommandLineOption keep_sgf_option(
+        { "k", "keep-sgf" }, "Save SGF files after each self-play game.",
+                             "output directory");
+    QCommandLineParser parser;
+    parser.addHelpOption();
+    parser.addVersionOption();
+    parser.addOption(keep_sgf_option);
+    parser.process(app);
 
     // Map streams
     QTextStream cin(stdin, QIODevice::ReadOnly);
@@ -198,19 +206,28 @@ int main(int argc, char *argv[])
 #else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
 #endif
+
     cerr << "autogtp v" << AUTOGTP_VERSION << endl;
+
+    if (parser.isSet(keep_sgf_option)) {
+        if (!QDir().mkpath(parser.value(keep_sgf_option))) {
+            cerr << "Couldn't create output directory for self-play SGF files!"
+                 << endl;
+            return EXIT_FAILURE;
+        }
+    }
 
     auto start = std::chrono::high_resolution_clock::now();
     auto success = true;
-    long games_played = 0;
+    auto games_played = 0;
 
     do {
         auto game_start = std::chrono::high_resolution_clock::now();
         QString netname;
-        success &= fetch_best_network_hash(cerr, netname, games_played);
-        success &= fetch_best_network(cerr, netname, games_played);
+        success &= fetch_best_network_hash(cerr, netname);
+        success &= fetch_best_network(cerr, netname);
         success &= run_one_game(cerr, netname);
-        success &= upload_data(cerr, netname);
+        success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
         games_played++;
 
         auto game_end = std::chrono::high_resolution_clock::now();

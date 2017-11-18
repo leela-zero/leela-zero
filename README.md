@@ -21,11 +21,29 @@ be an engine that is far stronger than the top humans.
 Recomputing the AlphaGo Zero weights will take about 1700 years on commodity
 hardware, see for example: http://computer-go.org/pipermail/computer-go/2017-October/010307.html
 
-One reason for publishing this program is that we are setting up a public,
+One reason for publishing this program is that we are running a public,
 distributed effort to repeat the work. Working together, and especially
 when starting on a smaller scale, it will take less than 1700 years to get
 a good network (which you can feed into this program, suddenly making it strong).
-Further details about this will be announced soon.
+
+# I want to help
+
+You need a PC with a GPU, i.e. a discrete graphics card made by NVIDIA or AMD,
+preferably not too old, and with the most recent drivers installed.
+
+## Windows
+
+Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
+download the latest release, unzip, and launch autogtp.exe. It will connect to
+the server automatically and do its work in the background, uploading results
+after each game. You can just close the autogtp window to stop it.
+
+## macOS and Linux
+
+Follow the instructions below to compile the leelaz binary, then go into
+the autogtp subdirectory and follow the instructions there to build the
+autogtp binary. Copy the leelaz binary into the autogtp dir, and launch
+autogtp.
 
 # I just want to play right now
 

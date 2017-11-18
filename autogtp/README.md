@@ -6,16 +6,15 @@ the SGF and training data at the end of the game.
 
 # Requirements
 
-* Qt 4.x or 5.x with qmake
+* Qt 5.x with qmake
 * C++14 capable compiler
 * curl
 * gzip and gunzip
 
-# Compiling
+## Example of compiling - Ubuntu
 
-Run:
-
-    qmake
+    sudo apt install qt5-default qt5-qmake curl
+    qmake -qt5
     make
 
 # Running
