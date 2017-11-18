@@ -69,6 +69,7 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
         ("quiet,q", "Disable all diagnostic output.")
         ("noponder", "Disable thinking on opponent's time.")
+        ("selfplay,s", "Self-play game.  Only modifies the sgf output.")
 #ifdef USE_OPENCL
         ("gpu",  po::value<std::vector<int> >(),
                 "ID of the OpenCL device(s) to use (disables autodetection).")
@@ -202,6 +203,10 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
             myprintf("Using per-move time margin of %.2fs.\n", lagbuffer/100.0f);
             cfg_lagbuffer_cs = lagbuffer;
         }
+    }
+
+    if (vm.count("selfplay")) {
+      cfg_selfplay = true;
     }
 
 #ifdef USE_OPENCL

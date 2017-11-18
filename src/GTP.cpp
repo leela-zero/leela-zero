@@ -61,6 +61,7 @@ std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
+bool cfg_selfplay;
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
@@ -663,7 +664,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> tmp;   // eat printsgf
         cmdstream >> filename;
 
-        auto sgf_text = SGFTree::state_to_string(game, 0);
+        auto sgf_text = SGFTree::state_to_string(game, 0, cfg_selfplay);
 
         if (cmdstream.fail()) {
             gtp_printf(id, "%s\n", sgf_text.c_str());
