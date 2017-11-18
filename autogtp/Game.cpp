@@ -19,9 +19,8 @@
 #include <QUuid>
 #include "Game.h"
 
-Game::Game(const QString& weights, QTextStream& out) :
+Game::Game(const QString& weights, const QString& opt) :
     QProcess(),
-    output(out),
     cmdLine("./leelaz"),
     timeSettings("time_settings 0 1 0"),
     resignation(false),
@@ -33,7 +32,7 @@ Game::Game(const QString& weights, QTextStream& out) :
 #ifdef WIN32
     cmdLine.append(".exe");
 #endif
-    cmdLine.append(" -g -q -n -d -m 30 -r 0 -w ");
+    cmdLine.append(opt);
     cmdLine.append(weights);
     cmdLine.append(" -p 1000 --noponder");
     fileName = QUuid::createUuid().toRfc4122().toHex();
@@ -43,19 +42,19 @@ void Game::error(int errnum) {
     output << "*ERROR*: ";
     switch(errnum) {
         case Game::NO_LEELAZ:
-            output << "No 'leelaz' binary found." << endl;
+            QTextStream(stdout) << "No 'leelaz' binary found." << endl;
             break;
         case Game::PROCESS_DIED:
-            output << "The 'leelaz' process died unexpected." << endl;
+            QTextStream(stdout) << "The 'leelaz' process died unexpected." << endl;
             break;
         case Game::WRONG_GTP:
-            output << "Error in GTP response." << endl;
+            QTextStream(stdout) << "Error in GTP response." << endl;
             break;
         case Game::LAUNCH_FAILURE:
             output << "Could not talk to engine after launching." << endl;
             break;
         default:
-            output << "Unexpected error." << endl;
+            QTextStream(stdout) << "Unexpected error." << endl;
             break;
     }
 }
@@ -140,12 +139,12 @@ bool Game::gameStart(const VersionTuple &min_version) {
         error(Game::NO_LEELAZ);
         return false;
     }
-    output << "Engine has started." << endl;
     // This either succeeds or we exit immediately, so no need to
     // check any return values.
     checkVersion(min_version);
+    QTextStream(stdout) << "Engine has started." << endl;
     sendGtpCommand(timeSettings);
-    output << "Infinite thinking time set." << endl;
+    QTextStream(stdout) << "Infinite thinking time set." << endl;
     return true;
 }
 
@@ -177,8 +176,8 @@ bool Game::readMove() {
     int readCount = readLine(readBuffer, 256);
     if (readCount <= 3 || readBuffer[0] != '=') {
         error(Game::WRONG_GTP);
-        output << "Error read " << readCount << " '";
-        output << readBuffer << "'" << endl;
+        QTextStream(stdout) << "Error read " << readCount << " '";
+        QTextStream(stdout) << readBuffer << "'" << endl;
         terminate();
         return false;
     }
@@ -193,8 +192,8 @@ bool Game::readMove() {
     if(readCount == 0) {
         error(Game::WRONG_GTP);
     }
-    output << moveNum << " (" << moveDone << ") ";
-    output.flush();
+    QTextStream(stdout) << moveNum << " (" << moveDone << ") ";
+    QTextStream(stdout).flush();
     if (moveDone.compare(QStringLiteral("pass"),
                           Qt::CaseInsensitive) == 0) {
         passes++;
@@ -260,13 +259,13 @@ bool Game::getScore() {
             error(Game::PROCESS_DIED);
             return false;
         }
-        output << "Score: " << score;
+        QTextStream(stdout) << "Score: " << score;
     }
     if (winner.isNull()) {
-        output << "No winner found" << endl;
+        QTextStream(stdout) << "No winner found" << endl;
         return false;
     }
-    output << "Winner: " << winner << endl;
+    QTextStream(stdout) << "Winner: " << winner << endl;
     return true;
 }
 
@@ -277,7 +276,7 @@ int Game::getWinner() {
         return Game::BLACK;
 }
 bool Game::writeSgf() {
-    output << "Writing " << fileName + ".sgf" << endl;
+    QTextStream(stdout) << "Writing " << fileName + ".sgf" << endl;
 
     if (!sendGtpCommand(qPrintable("printsgf " + fileName + ".sgf"))) {
         return false;
@@ -286,7 +285,7 @@ bool Game::writeSgf() {
 }
 
 bool Game::dumpTraining() {
-    output << "Dumping " << fileName + ".txt" << endl;
+    QTextStream(stdout) << "Dumping " << fileName + ".txt" << endl;
 
     if (!sendGtpCommand(qPrintable("dump_training " + winner +
                         " " + fileName + ".txt"))) {

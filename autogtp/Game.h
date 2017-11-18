@@ -27,7 +27,7 @@ using VersionTuple = std::tuple<int, int>;
 
 class Game : QProcess {
 public:
-    Game(const QString& weights, QTextStream& out);
+    Game(const QString& weights, const QString &opt = QString(" -g -q -n -d -m 30 -r 0 -w "));
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version);
     void move();
@@ -55,7 +55,6 @@ private:
         LAUNCH_FAILURE
     };
 
-    QTextStream& output;
     QString cmdLine;
     QString timeSettings;
     QString winner;

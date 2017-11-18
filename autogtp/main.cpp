@@ -30,6 +30,7 @@
 #include <iostream>
 #include "Game.h"
 #include "sprt.h"
+#include "validation.h"
 
 constexpr int AUTOGTP_VERSION = 4;
 
@@ -158,9 +159,7 @@ bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_p
     return true;
 }
 
-bool run_one_game(QTextStream& cerr, const QString& weightsname) {
-
-    Game game(weightsname, cerr);
+    Game game(weightsname);
     if(!game.gameStart(min_leelaz_version)) {
         return false;
     }
@@ -206,12 +205,16 @@ int main(int argc, char *argv[])
     QTimer::singleShot(0, &app, SLOT(quit()));
 
     QCommandLineParser parser;
-    parser.setApplicationDescription("autogtp");
     parser.addHelpOption();
     parser.addVersionOption();
     QCommandLineOption competitionOption(QStringList() << "c" << "competition", "Play two networks  against each other.");
     QCommandLineOption networkOption(QStringList() << "n" << "network", "Networks to use ad players (two are needed).", "filename");
+    QCommandLineOption gamesNumOption(QStringList() << "g" << "gamesNum", "Play 'gamesNum' games on one GPU at the same time.", "num");
+    QCommandLineOption gpusOption(QStringList() << "u" << "gpus", "Index of the GPU for multiple GPUs support", "num");
+
     parser.addOption(competitionOption);
+    parser.addOption(gamesNumOption);
+    parser.addOption(gpusOption);
     parser.addOption(networkOption);
 
     // Process the actual command line arguments given by the user
@@ -221,13 +224,19 @@ int main(int argc, char *argv[])
     if(competition && netList.count() != 2) {
         parser.showHelp();
     }
-
+    
     QCommandLineOption keep_sgf_option(
         { "k", "keep-sgf" }, "Save SGF files after each self-play game.",
                              "output directory");
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addVersionOption();
+    int gamesNum = parser.value(gamesNumOption).toInt();
+    QStringList gpusList = parser.values(gpusOption);
+    int gpusNum = gpusList.count();
+    if(gpusNum == 0)
+        gpusNum =1;
+
     parser.addOption(keep_sgf_option);
     parser.process(app);
 
@@ -259,56 +268,12 @@ int main(int argc, char *argv[])
     auto success = true;
     auto games_played = 0;
     auto start = std::chrono::high_resolution_clock::now();
-    do {
-        auto game_start = std::chrono::high_resolution_clock::now();
-        QString netname;
-        success &= fetch_best_network_hash(cerr, netname);
-        success &= fetch_best_network(cerr, netname);
-        success &= run_one_game(cerr, netname);
-        success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
-        games_played++;
-        print_timing_info(cerr, games_played, start, game_start);
-    } while (success);
+    QMutex mutex;
     if(competition) {
-        int winner;
-        Sprt stat;
-        stat.initialize(25.0,35.0,0.05,0.05);
-        stat.addGameResult(Sprt::Win);
-        stat.addGameResult(Sprt::Loss);
-        stat.addGameResult(Sprt::Draw);
-        Sprt::Status status;
-        int player = Game::BLACK;
-        
-        do {
-            if(player == Game::BLACK) 
-                winner = run_competition(cerr, netList.at(0), netList.at(1));
-            else
-                winner = run_competition(cerr, netList.at(1), netList.at(0));
-            if(winner < 0) {
-                cerr << "ERROR" << endl;
-                return 1;
-            }
-            if(winner == player) {
-               stat.addGameResult(Sprt::Win);
-            }
-            else {
-               stat.addGameResult(Sprt::Loss);
-            }
-            status = stat.status();
-            games_played++;
-            cerr << games_played << " games played." << endl;
-            cerr << "Status: " << status.result << " Log-Likelyhood Ratio " 
-                 << status.llr <<  " Lower Bound " << status.lBound 
-                 << " Upper Bound " << status.uBound << endl;
-            if(player == Game::BLACK) 
-                player = Game::WHITE;
-            else
-                player = Game::BLACK;
-        }
-        while(status.result == Sprt::Continue);
-        cerr << "The first net is " 
-             <<  ((stat.status().result ==  Sprt::AcceptH0) ? "wrost " : "better ")
-             << "then the second" << endl;
+
+        Validation validate(gpusNum, gamesNum, gpusList, netList.at(0), netList.at(1), &mutex);
+        validate.startGames();
+        mutex.lock();
     } 
     else {    
         do {
