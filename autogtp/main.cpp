@@ -31,154 +31,13 @@
 #include "Game.h"
 #include "sprt.h"
 #include "validation.h"
+#include "production.h"
 
 constexpr int AUTOGTP_VERSION = 4;
 
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version{0, 6};
 
-bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
-    QString prog_cmdline("curl");
-#ifdef WIN32
-    prog_cmdline.append(".exe");
-#endif
-    prog_cmdline.append(" http://zero.sjeng.org/best-network-hash");
-    QProcess curl;
-    curl.start(prog_cmdline);
-    curl.waitForFinished(-1);
-    QByteArray output = curl.readAllStandardOutput();
-    QString outstr(output);
-    QStringList outlst = outstr.split("\n");
-    if (outlst.size() != 2) {
-        cerr << "Unexpected output from server: " << endl << output << endl;
-        exit(EXIT_FAILURE);
-    }
-    QString outhash = outlst[0];
-    QString client_version = outlst[1];
-    auto server_expected = client_version.toInt();
-    if (server_expected > AUTOGTP_VERSION) {
-        cerr << "Server requires client version " << server_expected
-             << " but we are version " << AUTOGTP_VERSION << endl;
-        cerr << "Check https://github.com/gcp/leela-zero for updates." << endl;
-        exit(EXIT_FAILURE);
-    }
-    cerr << "Best network hash: " << outhash << endl;
-    cerr << "Required client version: " << server_expected << " (OK)" << endl;
-    nethash = outhash;
-    return true;
-}
-
-bool fetch_best_network(QTextStream& cerr, QString& netname) {
-    if (QFileInfo::exists(netname)) {
-        cerr << "Already downloaded network." << endl;
-        return true;
-    }
-
-    QString prog_cmdline("curl");
-#ifdef WIN32
-    prog_cmdline.append(".exe");
-#endif
-    // Be quiet, but output the real file name we saved to
-    // Use the filename from the server
-    // Resume download if file exists (aka avoid redownloading, and don't
-    // error out if it exists)
-    prog_cmdline.append(" -s -O -J");
-    prog_cmdline.append(" -w %{filename_effective}");
-    prog_cmdline.append(" http://zero.sjeng.org/best-network");
-
-    cerr << prog_cmdline << endl;
-
-    QProcess curl;
-    curl.start(prog_cmdline);
-    curl.waitForFinished(-1);
-
-    QByteArray output = curl.readAllStandardOutput();
-    QString outstr(output);
-    QStringList outlst = outstr.split("\n");
-    QString outfile = outlst[0];
-    cerr << "Curl filename: " << outfile << endl;
-#ifdef WIN32
-    QProcess::execute("gzip.exe -d -k -q " + outfile);
-#else
-    QProcess::execute("gunzip -k -q " + outfile);
-#endif
-    // Remove extension (.gz)
-    outfile.chop(3);
-    cerr << "Net filename: " << outfile << endl;
-    netname = outfile;
-
-    return true;
-}
-
-bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_path) {
-    // Find output SGF and txt files
-    QDir dir;
-    QStringList filters;
-    filters << "*.sgf";
-    dir.setNameFilters(filters);
-    dir.setFilter(QDir::Files | QDir::NoSymLinks);
-
-    QFileInfoList list = dir.entryInfoList();
-    for (int i = 0; i < list.size(); ++i) {
-        QFileInfo fileInfo = list.at(i);
-        QString sgf_file = fileInfo.fileName();
-        QString data_file = sgf_file;
-        // Save first if requested
-        if (!sgf_output_path.isEmpty()) {
-            QFile(sgf_file).copy(sgf_output_path + '/' + fileInfo.fileName());
-        }
-        // Cut .sgf, add .txt.0.gz
-        data_file.chop(4);
-        data_file += ".txt.0.gz";
-        // Gzip up the sgf too
-#ifdef WIN32
-        QProcess::execute("gzip.exe " + sgf_file);
-#else
-        QProcess::execute("gzip " + sgf_file);
-#endif
-        sgf_file += ".gz";
-        QString prog_cmdline("curl");
-#ifdef WIN32
-        prog_cmdline.append(".exe");
-#endif
-        prog_cmdline.append(" -F networkhash=" + netname);
-        prog_cmdline.append(" -F clientversion=" + QString::number(AUTOGTP_VERSION));
-        prog_cmdline.append(" -F sgf=@" + sgf_file);
-        prog_cmdline.append(" -F trainingdata=@" + data_file);
-        prog_cmdline.append(" http://zero.sjeng.org/submit");
-        cerr << prog_cmdline << endl;
-        QProcess curl;
-        curl.start(prog_cmdline);
-        curl.waitForFinished(-1);
-        QByteArray output = curl.readAllStandardOutput();
-        QString outstr(output);
-        cerr << outstr;
-        dir.remove(sgf_file);
-        dir.remove(data_file);
-    }
-    return true;
-}
-
-    Game game(weightsname);
-    if(!game.gameStart(min_leelaz_version)) {
-        return false;
-    }
-    do {
-        game.move();
-        if(!game.waitForMove()) {
-            return false;
-        }
-        game.readMove();
-    } while (game.nextMove());
-    cerr << "Game has ended." << endl;
-    if (game.getScore()) {
-        game.writeSgf();
-        game.dumpTraining();
-    }
-    cerr << "Stopping engine." << endl;
-    game.gameQuit();
-    return true;
-}
 
 template<typename T>
 void print_timing_info(QTextStream& cerr, int games_played,
@@ -209,16 +68,16 @@ int main(int argc, char *argv[])
     parser.addHelpOption();
     parser.addVersionOption();
 
-    QCommandLineOption competitionOption({"c", "ompetition"},
+    QCommandLineOption competitionOption({"c", "competition"},
                                          "Play two networks  against each other.");
     QCommandLineOption networkOption({"n", "network"},
-                                     "Networks to use ad players (two are needed).",
+                                     "Networks to use as players in comprtition mode (two are needed).",
                                      "filename");
     QCommandLineOption gamesNumOption({"g", "gamesNum"},
                                       "Play 'gamesNum' games on one GPU at the same time.",
                                       "num");
     QCommandLineOption gpusOption({"u", "gpus"},
-                                  "Index of the GPU for multiple GPUs support",
+                                  "Index of the GPU to use for multiple GPUs support",
                                   "num");
     QCommandLineOption keepSgfOption({"k", "keepSgf" },
                                      "Save SGF files after each self-play game.",
@@ -276,16 +135,10 @@ int main(int argc, char *argv[])
         validate.startGames();
         mutex.lock();
     } 
-    else {    
-        do {
-            QString netname;
-            success &= fetch_best_network_hash(cerr, netname);
-            success &= fetch_best_network(cerr, netname);
-            success &= run_one_game(cerr, netname);
-            success &= upload_data(cerr, netname, parser.value(keepSgfOption));
-            games_played++;
-            cerr << games_played << " games played." << endl;
-        } while (success);
+    else {
+        Production prod(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), &mutex);
+        prod.startGames();
+        mutex.lock();
     }
     cerr.flush();
     cout.flush();

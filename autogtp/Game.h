@@ -39,6 +39,7 @@ public:
     bool dumpTraining();
     void gameQuit();
     QString getMove() { return m_moveDone; }
+    QString getFile() { return m_fileName; }
     bool setMove(const QString &m); 
     void setCmdLine(const QString &cmd)  { m_cmdLine = cmd; }
     int getWinner();
