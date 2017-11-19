@@ -38,9 +38,9 @@ public:
     bool writeSgf();
     bool dumpTraining();
     void gameQuit();
-    QString getMove() { return moveDone; } 
+    QString getMove() { return m_moveDone; }
     bool setMove(const QString &m); 
-    void setCmdLine(const QString &cmd)  { cmdLine = cmd; }
+    void setCmdLine(const QString &cmd)  { m_cmdLine = cmd; }
     int getWinner();
     enum {
         BLACK = 0,
@@ -54,16 +54,16 @@ private:
         WRONG_GTP,
         LAUNCH_FAILURE
     };
-    QString cmdLine;
-    QString timeSettings;
-    QString winner;
-    QString fileName;
-    QString moveDone;
-    bool resignation;
-    bool blackToMove;
-    bool blackResigned;
-    int passes;
-    int moveNum;
+    QString m_cmdLine;
+    QString m_timeSettings;
+    QString m_winner;
+    QString m_fileName;
+    QString m_moveDone;
+    bool m_resignation;
+    bool m_blackToMove;
+    bool m_blackResigned;
+    int m_passes;
+    int m_moveNum;
     bool sendGtpCommand(QString cmd);
     void checkVersion(const VersionTuple &min_version);
     bool waitReady();
