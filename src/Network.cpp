@@ -117,10 +117,10 @@ void Network::initialize(void) {
     opencl.initialize();
 
     // Count size of the network
-    myprintf("Detecting residual layers...");
+    myprintf("Detecting residual layers... ");
     std::ifstream wtfile(cfg_weightsfile);
     if (wtfile.fail()) {
-        myprintf("Could not open weights file: %s\n", cfg_weightsfile.c_str());
+        myprintf("\nCould not open weights file: %s\n", cfg_weightsfile.c_str());
         exit(EXIT_FAILURE);
     }
     std::string line;

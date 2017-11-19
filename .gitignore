@@ -3,3 +3,4 @@ leelaz
 *.d
 .vscode/settings.json
 training/tf/venv
+weights.txt
