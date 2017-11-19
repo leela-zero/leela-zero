@@ -3,14 +3,15 @@
 
 
  void WorkerThread::run(){
+     do {
         Game first(m_firstNet,  " -g -q  -r 0 -w ");
         if(!first.gameStart()) {
-            emit resultReady(Sprt::NoResult, m_gpu, m_game, 0);
+            emit resultReady(Sprt::NoResult);
             return;
         }
         Game second(m_secondNet, " -g -q  -r 0 -w ");
         if(!second.gameStart()) {
-            emit resultReady(Sprt::NoResult, m_gpu, m_game, 0);
+            emit resultReady(Sprt::NoResult);
             return;
         }
         QString wmove = "play white ";
@@ -18,14 +19,14 @@
         do {
             first.move();
             if(!first.waitForMove()) {
-                emit resultReady(Sprt::NoResult, m_gpu, m_game, 0);
+                emit resultReady(Sprt::NoResult);
                 return;
             }
             first.readMove();
             second.setMove(bmove + first.getMove());
             second.move();
             if(!second.waitForMove()) {
-                emit resultReady(Sprt::NoResult, m_gpu, m_game, 0);
+                emit resultReady(Sprt::NoResult);
                 return;
             }
             second.readMove();
@@ -43,31 +44,44 @@
         QTextStream(stdout) << "Stopping engine." << endl;
         first.gameQuit();
         second.gameQuit();
+
+        //game is finished send the result
         if(result == m_expected)
-            emit resultReady(Sprt::Win, m_gpu, m_game, m_expected);
+            emit resultReady(Sprt::Win);
         else
-            emit resultReady(Sprt::Loss, m_gpu, m_game, m_expected);
+            emit resultReady(Sprt::Loss);
+        //change color and play again
+        QString net;
+        net = m_secondNet;
+        m_secondNet = m_firstNet;
+        m_firstNet = net;
+        if(m_expected == Game::BLACK) {
+            m_expected = Game::WHITE;
+        }
+        else {
+            m_expected = Game::BLACK;
+        }
+    } while (1);
 }
 
-void WorkerThread::init(const int &gpu, const int &game, const QString &gpuIndex) {
-     m_gpu = gpu;
-     m_game = game;
-     m_option = " -g -q  -r 0 -w ";
-     if(!gpuIndex.isEmpty())
-         m_option.append(" -gpu=" + gpuIndex);
- }
-
- void WorkerThread::prepare(const QString &firstNet, const QString &secondNet, const int &expected) {
-     m_firstNet = firstNet;
-     m_secondNet = secondNet;
-     m_expected = expected;
+void WorkerThread::init(const int &gpu, const int &game, const QString &gpuIndex,
+                        const QString &firstNet, const QString &secondNet, const int &expected) {
+    m_gpu = gpu;
+    m_game = game;
+    m_option = " -g -q  -r 0 -w ";
+    if(!gpuIndex.isEmpty())
+        m_option.append(" -gpu=" + gpuIndex);
+    m_firstNet = firstNet;
+    m_secondNet = secondNet;
+    m_expected = expected;
  }
 
 
 Validation::Validation(const int &gpus, const int &games, const QStringList &gpuslist,
                        const QString &firstNet, const QString &secondNet, QMutex *mutex) :
-    m_mutex(mutex),
-    m_gamesThreads(games*gpus),
+    m_mainMutex(mutex),
+    m_syncMutex(),
+    m_gamesThreads(gpus*games),
     m_games(games),
     m_gpus(gpus),
     m_gpusList(gpuslist),
@@ -75,25 +89,23 @@ Validation::Validation(const int &gpus, const int &games, const QStringList &gpu
     m_firstNet(firstNet),
     m_secondNet(secondNet)
 {
+    m_statistic.initialize(25.0,35.0,0.05,0.05);
+    m_statistic.addGameResult(Sprt::Win);
+    m_statistic.addGameResult(Sprt::Loss);
+    m_statistic.addGameResult(Sprt::Draw);
 }
 
 Validation::~Validation() {
 }
 
 void Validation::startGames() { 
-    m_mutex->lock();
+    m_mainMutex->lock();
     QString n1, n2;
     int expected;
 
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
         for(int game = 0; game < m_games; ++game) {
-            connect(&m_gamesThreads[gpu * m_games + game], &WorkerThread::resultReady, this, &Validation::getResult);
-            if(m_gpusList.isEmpty()) {
-                m_gamesThreads[gpu * m_games + game].init(gpu, game, "");
-            }
-            else {
-                m_gamesThreads[gpu * m_games + game].init(gpu, game, m_gpusList.at(gpu));
-            }
+            connect(&m_gamesThreads[gpu * m_games + game], &WorkerThread::resultReady, this, &Validation::getResult, Qt::DirectConnection);
             if(game % 2) {
                 n1 = m_firstNet;
                 n2 = m_secondNet;
@@ -104,19 +116,23 @@ void Validation::startGames() {
                 n2 = m_firstNet;
                 expected = Game::WHITE;
             }
-            m_gamesThreads[gpu * m_games + game].prepare(n1, n2, expected);
+            if(m_gpusList.isEmpty()) {
+                m_gamesThreads[gpu * m_games + game].init(gpu, game, "", n1, n2, expected);
+            }
+            else {
+                m_gamesThreads[gpu * m_games + game].init(gpu, game, m_gpusList.at(gpu), n1, n2, expected);
+            }
             m_gamesThreads[gpu * m_games + game].start();
         }
     }
 }
 
-void Validation::getResult(const Sprt::GameResult &result, const int &gpu, const int &game, const int &exp) {
+void Validation::getResult(Sprt::GameResult result) {
     if(result == Sprt::NoResult) {
         QTextStream(stdout) << "Engine Error." << endl;
-        //try to restert
-        m_gamesThreads[gpu * m_games + game].start();
         return;
     }
+    m_syncMutex.lock();
     m_gamesPlayed++;
     m_statistic.addGameResult(result);
     Sprt::Status status = m_statistic.status();
@@ -125,32 +141,19 @@ void Validation::getResult(const Sprt::GameResult &result, const int &gpu, const
         QTextStream(stdout) << "The first net is ";
         QTextStream(stdout) <<  ((status.result ==  Sprt::AcceptH0) ? "wrost " : "better ");
         QTextStream(stdout) << "then the second" << endl;
-        m_mutex->unlock();
+        m_mainMutex->unlock();
     }
     else {
         QTextStream(stdout) << m_gamesPlayed << " games played." << endl;
         QTextStream(stdout) << "Status: " << status.result << " Log-Likelyhood Ratio ";
         QTextStream(stdout) << status.llr <<  " Lower Bound " << status.lBound ;
         QTextStream(stdout) << " Upper Bound " << status.uBound << endl;
-        QString n1, n2;
-        int expected;
-        if(exp == Game::BLACK) {
-            n1 = m_secondNet;
-            n2 = m_firstNet;
-            expected = Game::WHITE;
-        }
-        else {
-            n1 = m_firstNet;
-            n2 = m_secondNet;
-            expected = Game::BLACK;
-        }
-        m_gamesThreads[gpu * m_games + game].prepare(n1, n2, expected);
-        m_gamesThreads[gpu * m_games + game].start();
     }
+    m_syncMutex.unlock();
 }
 
 void Validation::quitThreads() {
-    for(int gpu = 0; gpu < m_gpus* m_games; ++gpu) {
+    for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
         m_gamesThreads[gpu].quit();
     }
 }

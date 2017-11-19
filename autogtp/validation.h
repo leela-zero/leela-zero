@@ -7,7 +7,6 @@
 #include <QVector>
 
 #include "sprt.h"
-
 class WorkerThread : public QThread
 {
     Q_OBJECT
@@ -15,12 +14,12 @@ public:
     WorkerThread() {}
     WorkerThread(const WorkerThread& w) : QThread(w.parent()){}
     ~WorkerThread() {}
-    void init(const int &gpu, const int &game, const QString &gpuIndex);
-    void prepare(const QString &firstNet, const QString &secondNet, const int &expected);
+    void init(const int &gpu, const int &game, const QString &gpuIndex,
+              const QString &firstNet, const QString &secondNet, const int &expected);
     void run() override;
 
 signals:
-    void resultReady(const Sprt::GameResult &r, const int &g, const int &c, const int &e);
+    void resultReady(Sprt::GameResult r);
 private:
     int m_gpu;
     int m_game;
@@ -43,10 +42,11 @@ public:
     void startGames();
 
 public slots:
-    void getResult(const Sprt::GameResult &result, const int &gpu, const int &game, const int &exp);
+    void getResult(Sprt::GameResult result);
 
 private:
-    QMutex *m_mutex;
+    QMutex *m_mainMutex;
+    QMutex m_syncMutex;
     Sprt m_statistic;
     QVector<WorkerThread> m_gamesThreads;
     int m_games;
