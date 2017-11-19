@@ -25,6 +25,7 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
+#include <chrono>
 #include <iostream>
 #include "Game.h"
 
@@ -47,19 +48,16 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
         exit(EXIT_FAILURE);
     }
     QString outhash = outlst[0];
-    cerr << "Best network hash: " << outhash << endl;
     QString client_version = outlst[1];
     auto server_expected = client_version.toInt();
-    cerr << "Required client version: " << client_version;
     if (server_expected > AUTOGTP_VERSION) {
-        cerr << endl;
         cerr << "Server requires client version " << server_expected
              << " but we are version " << AUTOGTP_VERSION << endl;
         cerr << "Check https://github.com/gcp/leela-zero for updates." << endl;
         exit(EXIT_FAILURE);
-    } else {
-        cerr << " (OK)" << endl;
     }
+    cerr << "Best network hash: " << outhash << endl;
+    cerr << "Required client version: " << server_expected << " (OK)" << endl;
     nethash = outhash;
     return true;
 }
@@ -219,17 +217,27 @@ int main(int argc, char *argv[])
         }
     }
 
+    auto start = std::chrono::high_resolution_clock::now();
     auto success = true;
     auto games_played = 0;
 
     do {
+        auto game_start = std::chrono::high_resolution_clock::now();
         QString netname;
         success &= fetch_best_network_hash(cerr, netname);
         success &= fetch_best_network(cerr, netname);
         success &= run_one_game(cerr, netname);
         success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
         games_played++;
-        cerr << games_played << " games played." << endl;
+
+        auto game_end = std::chrono::high_resolution_clock::now();
+        auto game_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - game_start);
+        auto total_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - start);
+        auto total_time_min = std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
+        cerr << games_played << " games_played in "
+             << total_time_min.count() << " minutes = "
+             << total_time_s.count() / games_played << " seconds/game, last game "
+             << game_time_s.count() << " seconds\n\n";
     } while (success);
 
     cerr.flush();
