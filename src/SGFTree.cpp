@@ -398,7 +398,7 @@ std::vector<int> SGFTree::get_mainline() {
     return moves;
 }
 
-std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
+std::string SGFTree::state_to_string(GameState& pstate, int compcolor, bool selfplay) {
     auto state = std::make_unique<GameState>();
 
     // make a working copy
@@ -425,7 +425,10 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         leela_name.append(" " + cfg_weightsfile.substr(0, 8));
     }
 
-    if (compcolor == FastBoard::WHITE) {
+    if (selfplay) {
+        header.append("PB[" + leela_name + "]");
+        header.append("PW[" + leela_name + "]");
+    } else if (compcolor == FastBoard::WHITE) {
         header.append("PW[" + leela_name + "]");
         header.append("PB[Human]");
     } else {

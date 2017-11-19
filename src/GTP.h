@@ -31,6 +31,7 @@ extern int cfg_resignpct;
 extern int cfg_noise;
 extern int cfg_random_cnt;
 extern bool cfg_dumbpass;
+extern bool cfg_selfplay;
 #ifdef USE_OPENCL
 extern std::vector<int> cfg_gpus;
 extern int cfg_rowtiles;
