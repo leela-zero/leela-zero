@@ -276,6 +276,13 @@ void convolve(const std::vector<float>& input,
     std::vector<float> col(filter_dim * width * height);
     im2col<filter_size>(channels, input, col);
 
+    std::vector<float> col_test(filter_dim * width * height);
+    im2col_test<filter_size>(channels, input, col_test);
+
+    for(int i = 0; i < col.size(); i++) {
+        assert(col[i] == col_test[i]);
+    }
+
     // Weight shape (output, input, filter_size, filter_size)
     // 96 22 5 5
     // outputs[96,19x19] = weights[96,22x9] x col[22x9,19x19]
@@ -431,6 +438,7 @@ Network::Netresult Network::get_scored_moves_internal(
 #ifdef USE_OPENCL
     opencl_net.forward(input_data, output_data);
     // Get the moves
+    // Here are the two call sites.
     convolve<1, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
     batchnorm<2, 361>(policy_data_1, bn_pol_w1, bn_pol_w2, policy_data_2);
     innerproduct<2*361, 362>(policy_data_2, ip_pol_w, ip_pol_b, policy_out);
