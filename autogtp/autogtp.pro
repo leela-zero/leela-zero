@@ -11,9 +11,11 @@ TEMPLATE = app
 SOURCES += main.cpp \
     Game.cpp \
     sprt.cpp \
-    validation.cpp
+    validation.cpp \
+    production.cpp
 
 HEADERS += \
     Game.h \
     sprt.h \
-    validation.h
+    validation.h \
+    production.h
