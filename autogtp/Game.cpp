@@ -39,7 +39,7 @@ Game::Game(const QString& weights, const QString& opt) :
 }
 
 void Game::error(int errnum) {
-    output << "*ERROR*: ";
+    QTextStream(stdout) << "*ERROR*: ";
     switch(errnum) {
         case Game::NO_LEELAZ:
             QTextStream(stdout) << "No 'leelaz' binary found." << endl;

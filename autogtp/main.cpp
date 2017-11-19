@@ -202,20 +202,33 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
     app.setApplicationName("autogtp");
     app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
+
     QTimer::singleShot(0, &app, SLOT(quit()));
 
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addVersionOption();
-    QCommandLineOption competitionOption(QStringList() << "c" << "competition", "Play two networks  against each other.");
-    QCommandLineOption networkOption(QStringList() << "n" << "network", "Networks to use ad players (two are needed).", "filename");
-    QCommandLineOption gamesNumOption(QStringList() << "g" << "gamesNum", "Play 'gamesNum' games on one GPU at the same time.", "num");
-    QCommandLineOption gpusOption(QStringList() << "u" << "gpus", "Index of the GPU for multiple GPUs support", "num");
+
+    QCommandLineOption competitionOption({"c", "ompetition"},
+                                         "Play two networks  against each other.");
+    QCommandLineOption networkOption({"n", "network"},
+                                     "Networks to use ad players (two are needed).",
+                                     "filename");
+    QCommandLineOption gamesNumOption({"g", "gamesNum"},
+                                      "Play 'gamesNum' games on one GPU at the same time.",
+                                      "num");
+    QCommandLineOption gpusOption({"u", "gpus"},
+                                  "Index of the GPU for multiple GPUs support",
+                                  "num");
+    QCommandLineOption keepSgfOption({"k", "keepSgf" },
+                                     "Save SGF files after each self-play game.",
+                                     "output directory");
 
     parser.addOption(competitionOption);
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(networkOption);
+    parser.addOption(keepSgfOption);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
@@ -224,21 +237,11 @@ int main(int argc, char *argv[])
     if(competition && netList.count() != 2) {
         parser.showHelp();
     }
-    
-    QCommandLineOption keep_sgf_option(
-        { "k", "keep-sgf" }, "Save SGF files after each self-play game.",
-                             "output directory");
-    QCommandLineParser parser;
-    parser.addHelpOption();
-    parser.addVersionOption();
     int gamesNum = parser.value(gamesNumOption).toInt();
     QStringList gpusList = parser.values(gpusOption);
     int gpusNum = gpusList.count();
     if(gpusNum == 0)
-        gpusNum =1;
-
-    parser.addOption(keep_sgf_option);
-    parser.process(app);
+        gpusNum = 1;
 
     // Map streams
     QTextStream cin(stdin, QIODevice::ReadOnly);
@@ -254,11 +257,9 @@ int main(int argc, char *argv[])
 #else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
 #endif
-
     cerr << "autogtp v" << AUTOGTP_VERSION << endl;
-
-    if (parser.isSet(keep_sgf_option)) {
-        if (!QDir().mkpath(parser.value(keep_sgf_option))) {
+    if (parser.isSet(keepSgfOption)) {
+        if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"
                  << endl;
             return EXIT_FAILURE;
@@ -281,7 +282,7 @@ int main(int argc, char *argv[])
             success &= fetch_best_network_hash(cerr, netname);
             success &= fetch_best_network(cerr, netname);
             success &= run_one_game(cerr, netname);
-            success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
+            success &= upload_data(cerr, netname, parser.value(keepSgfOption));
             games_played++;
             cerr << games_played << " games played." << endl;
         } while (success);

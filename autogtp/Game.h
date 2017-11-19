@@ -54,7 +54,6 @@ private:
         WRONG_GTP,
         LAUNCH_FAILURE
     };
-
     QString cmdLine;
     QString timeSettings;
     QString winner;
