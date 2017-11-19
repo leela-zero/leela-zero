@@ -176,6 +176,20 @@ bool run_one_game(QTextStream& cerr, const QString& weightsname) {
     return true;
 }
 
+template<typename Clock>
+void print_timing_info(QTextStream& cerr, int games_played,
+                       std::chrono::time_point<Clock> start,
+                       std::chrono::time_point<Clock> game_start,
+                       std::chrono::time_point<Clock> game_end) {
+    auto game_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - game_start);
+    auto total_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - start);
+    auto total_time_min = std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
+    cerr << games_played << " games_played in "
+         << total_time_min.count() << " minutes = "
+         << total_time_s.count() / games_played << " seconds/game, last game "
+         << game_time_s.count() << " seconds\n\n";
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -229,15 +243,8 @@ int main(int argc, char *argv[])
         success &= run_one_game(cerr, netname);
         success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
         games_played++;
-
         auto game_end = std::chrono::high_resolution_clock::now();
-        auto game_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - game_start);
-        auto total_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - start);
-        auto total_time_min = std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
-        cerr << games_played << " games_played in "
-             << total_time_min.count() << " minutes = "
-             << total_time_s.count() / games_played << " seconds/game, last game "
-             << game_time_s.count() << " seconds\n\n";
+        print_timing_info(cerr, games_played, start, game_start, game_end);
     } while (success);
 
     cerr.flush();
