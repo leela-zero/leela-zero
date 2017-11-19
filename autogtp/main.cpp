@@ -28,7 +28,7 @@
 #include <iostream>
 #include "Game.h"
 
-constexpr int AUTOGTP_VERSION = 2;
+constexpr int AUTOGTP_VERSION = 3;
 
 bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QString prog_cmdline("curl");
