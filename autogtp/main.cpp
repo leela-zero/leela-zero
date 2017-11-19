@@ -25,14 +25,21 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
+#include <QThread>
 #include <chrono>
 #include <iostream>
+#include <cmath>
 #include "Game.h"
 
 constexpr int AUTOGTP_VERSION = 4;
 
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version{0, 6};
+
+constexpr int RETRY_DELAY = 30; //seconds
+constexpr int MAX_RETRIES = 100;
+constexpr int BATCH_UPLOAD_DELAY = 3;
+constexpr int MAX_OFFLINE_GAMES = 100;
 
 bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QString prog_cmdline("curl");
@@ -48,7 +55,7 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QStringList outlst = outstr.split("\n");
     if (outlst.size() != 2) {
         cerr << "Unexpected output from server: " << endl << output << endl;
-        exit(EXIT_FAILURE);
+        return false;
     }
     QString outhash = outlst[0];
     QString client_version = outlst[1];
@@ -65,8 +72,12 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     return true;
 }
 
+bool network_exists(QString& netname) {
+    return QFileInfo::exists(netname);
+}
+
 bool fetch_best_network(QTextStream& cerr, QString& netname) {
-    if (QFileInfo::exists(netname)) {
+    if (network_exists(netname)) {
         cerr << "Already downloaded network." << endl;
         return true;
     }
@@ -107,7 +118,26 @@ bool fetch_best_network(QTextStream& cerr, QString& netname) {
     return true;
 }
 
-bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_path) {
+QString extract_netname(const QString& fileName) {
+    QFile inputFile(fileName);
+    if (!inputFile.open(QIODevice::ReadOnly))
+    {
+        return "";
+    }
+
+    //Read the first line
+    QTextStream in(&inputFile);
+    QString line = in.readLine();
+    inputFile.close();
+
+    auto name_start = line.indexOf("PB[");
+    auto name_end = line.indexOf("]", name_start);
+    auto netname_start = line.lastIndexOf(" ", name_end)+1;
+
+    return line.mid(netname_start, name_end-netname_start);
+}
+
+bool upload_data(QTextStream& cerr, QString sgf_output_path, QString netname) {
     // Find output SGF and txt files
     QDir dir;
     QStringList filters;
@@ -120,13 +150,37 @@ bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_p
         QFileInfo fileInfo = list.at(i);
         QString sgf_file = fileInfo.fileName();
         QString data_file = sgf_file;
-        // Save first if requested
-        if (!sgf_output_path.isEmpty()) {
-            QFile(sgf_file).copy(sgf_output_path + '/' + fileInfo.fileName());
-        }
+        QString sgf_netname = extract_netname(sgf_file);
+
         // Cut .sgf, add .txt.0.gz
         data_file.chop(4);
         data_file += ".txt.0.gz";
+
+        // Save first if requested
+        if (!sgf_output_path.isEmpty()) {
+            QString filepath = sgf_output_path + '/' + fileInfo.fileName();
+            if (!QFile::exists(filepath)) {
+                QFile(sgf_file).copy(filepath);
+            }
+        }
+
+        if (sgf_netname.length() == 0) {
+            cerr << "Skipping unknown sgf file: " << sgf_file << endl;
+            continue;
+        }
+
+        if (!netname.contains(sgf_netname)) {
+            cerr << "Deleting game played by older network: " << sgf_file << endl;
+            dir.remove(sgf_file);
+            dir.remove(data_file);
+            continue;
+        }
+
+        if (i > 0) {
+            //Wait before every upload when uploading a batch
+            QThread::sleep(BATCH_UPLOAD_DELAY);
+        }
+
         // Gzip up the sgf too
 #ifdef WIN32
         QProcess::execute("gzip.exe " + sgf_file);
@@ -150,6 +204,13 @@ bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_p
         QByteArray output = curl.readAllStandardOutput();
         QString outstr(output);
         cerr << outstr;
+
+        if (outstr.contains("An error occurred")) {
+            cerr << "Game upload failed." << endl;
+            //Abort the upload and try again later
+            break;
+        }
+
         dir.remove(sgf_file);
         dir.remove(data_file);
     }
@@ -240,14 +301,46 @@ int main(int argc, char *argv[])
     auto success = true;
     auto games_played = 0;
     auto start = std::chrono::high_resolution_clock::now();
+    auto retries = 0;
+    QString netname;
+    auto offline_games = 0;
 
     do {
         auto game_start = std::chrono::high_resolution_clock::now();
-        QString netname;
-        success &= fetch_best_network_hash(cerr, netname);
+        auto network_failure = !fetch_best_network_hash(cerr, netname);
+        if (network_failure) {
+            cerr << "Failed to get the best network from server." << endl;
+
+            if (offline_games >= MAX_OFFLINE_GAMES) {
+                cerr << "Maximum number of offline games exceeded." << endl;
+                cerr << "Waiting for server to come back online." << endl;
+                netname = "";
+                continue;
+            }
+
+            if (network_exists(netname)) {
+                cerr << "Using the previous network." << endl;
+            } else {
+                if (retries++ >= MAX_RETRIES) {
+                    cerr << "Maximum number of retries exceeded. Giving up." << endl;
+                    return EXIT_FAILURE;
+                }
+                auto retry_delay = std::min((int)(RETRY_DELAY * std::pow(1.5, retries-1)), 3600);
+                cerr << "Retrying in " <<
+                    retry_delay << " s." << endl;
+                QThread::sleep(retry_delay);
+                continue;
+            }
+        } else {
+            offline_games = 0;
+        }
+        retries = 0;
         success &= fetch_best_network(cerr, netname);
         success &= run_one_game(cerr, netname);
-        success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
+        success &= upload_data(cerr, parser.value(keep_sgf_option), netname);
+        if (network_failure) {
+            offline_games++;
+        }
         games_played++;
         print_timing_info(cerr, games_played, start, game_start);
     } while (success);
