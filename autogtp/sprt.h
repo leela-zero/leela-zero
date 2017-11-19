@@ -1,23 +1,25 @@
 /*
-    This file is part of Cute Chess.
+    This file is part of Leela Zero.
+    Copyright (C) 2017 Marco Calignano
+    originally taken from Cute Chess (http://github.com/cutechess)
+    Copyright (C) 2016 Ilari Pihlajisto
 
-    Cute Chess is free software: you can redistribute it and/or modify
+    Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    Cute Chess is distributed in the hope that it will be useful,
+    Leela Zero is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Cute Chess.  If not, see <http://www.gnu.org/licenses/>.
+    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef SPRT_H
 #define SPRT_H
-
 /*!
  * \brief A Sequential Probability Ratio Test
  *
