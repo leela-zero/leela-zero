@@ -276,13 +276,6 @@ void convolve(const std::vector<float>& input,
     std::vector<float> col(filter_dim * width * height);
     im2col<filter_size>(channels, input, col);
 
-    std::vector<float> col_test(filter_dim * width * height);
-    im2col_test<filter_size>(channels, input, col_test);
-
-    for(int i = 0; i < col.size(); i++) {
-        assert(col[i] == col_test[i]);
-    }
-
     // Weight shape (output, input, filter_size, filter_size)
     // 96 22 5 5
     // outputs[96,19x19] = weights[96,22x9] x col[22x9,19x19]

@@ -28,11 +28,12 @@ template <unsigned int filter_size>
 void im2col(const int channels,
             const std::vector<float>& input,
             std::vector<float>& output) {
-    assert
+    // Not implemented
+    exit(EXIT_FAILURE);
 }
 
 template <>
-void im2col_test(const int channels,
+void im2col<1>(const int channels,
             const std::vector<float>& input,
             std::vector<float>& output) {
     constexpr unsigned int boardsize = 19;
