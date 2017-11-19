@@ -431,7 +431,6 @@ Network::Netresult Network::get_scored_moves_internal(
 #ifdef USE_OPENCL
     opencl_net.forward(input_data, output_data);
     // Get the moves
-    // Here are the two call sites.
     convolve<1, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
     batchnorm<2, 361>(policy_data_1, bn_pol_w1, bn_pol_w2, policy_data_2);
     innerproduct<2*361, 362>(policy_data_2, ip_pol_w, ip_pol_b, policy_out);

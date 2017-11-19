@@ -19,16 +19,14 @@
 #ifndef IM2COL_H_INCLUDED
 #define IM2COL_H_INCLUDED
 
-#include "config.h"
 #include <vector>
-#include <algorithm>
-#include "Utils.h"
 
-template <unsigned int filter_size>
+template <unsigned long filter_size>
 void im2col(const int channels,
             const std::vector<float>& input,
             std::vector<float>& output) {
     // Not implemented
+    // See github.com/gcp/leela-zero/pull/104 for first pass implementation.
     exit(EXIT_FAILURE);
 }
 
