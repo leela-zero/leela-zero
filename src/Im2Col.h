@@ -39,26 +39,20 @@ void im2col(const int channels,
     const float* data_im = input.data();
     float* data_col = output.data();
 
-    for (int channel = channels; channel--; data_im += channel_size) {
+    for (int channel = 0; channel < channels; channel++, data_im += channel_size) {
         for (unsigned int kernel_row = 0; kernel_row < filter_size; kernel_row++) {
             for (unsigned int kernel_col = 0; kernel_col < filter_size; kernel_col++) {
                 int input_row = -pad + kernel_row;
                 for (int output_rows = output_h; output_rows; output_rows--) {
-                    if ((unsigned)input_row < height) {
-                        int input_col = -pad + kernel_col;
-                        for (int output_col = output_w; output_col; output_col--) {
-                            if ((unsigned)input_col < width) {
-                                *(data_col++) =
-                                    data_im[input_row * width + input_col];
-                            } else {
-                                *(data_col++) = 0;
-                            }
-                            input_col++;
-                        }
-                    } else {
-                        for (int output_cols = output_w; output_cols; output_cols--) {
+                    int input_col = -pad + kernel_col;
+                    for (int output_col = output_w; output_col; output_col--) {
+                        if (input_row > 0 && input_row < height &&
+                            input_col > 0 && input_col < width) {
+                            *(data_col++) = data_im[input_row * width + input_col];
+                        } else {
                             *(data_col++) = 0;
                         }
+                        input_col++;
                     }
                     input_row++;
                 }
