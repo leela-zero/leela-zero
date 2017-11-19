@@ -20,7 +20,7 @@
 #include "Game.h"
 
 
- void WorkerThread::run(){
+ void ValidationWorker::run(){
      do {
         Game first(m_firstNet,  " -g -q  -r 0 -w ");
         if(!first.gameStart()) {
@@ -82,13 +82,10 @@
     } while (1);
 }
 
-void WorkerThread::init(const int &gpu, const int &game, const QString &gpuIndex,
-                        const QString &firstNet, const QString &secondNet, const int &expected) {
-    m_gpu = gpu;
-    m_game = game;
+void ValidationWorker::init(const QString &gpuIndex, const QString &firstNet, const QString &secondNet, const int &expected) {
     m_option = " -g -q  -r 0 -w ";
     if(!gpuIndex.isEmpty())
-        m_option.append(" -gpu=" + gpuIndex);
+        m_option.prepend(" -gpu=" + gpuIndex + " ");
     m_firstNet = firstNet;
     m_secondNet = secondNet;
     m_expected = expected;
@@ -120,10 +117,10 @@ void Validation::startGames() {
     m_mainMutex->lock();
     QString n1, n2;
     int expected;
-
+    QString myGpu;
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
         for(int game = 0; game < m_games; ++game) {
-            connect(&m_gamesThreads[gpu * m_games + game], &WorkerThread::resultReady, this, &Validation::getResult, Qt::DirectConnection);
+            connect(&m_gamesThreads[gpu * m_games + game], &ValidationWorker::resultReady, this, &Validation::getResult, Qt::DirectConnection);
             if(game % 2) {
                 n1 = m_firstNet;
                 n2 = m_secondNet;
@@ -135,11 +132,12 @@ void Validation::startGames() {
                 expected = Game::WHITE;
             }
             if(m_gpusList.isEmpty()) {
-                m_gamesThreads[gpu * m_games + game].init(gpu, game, "", n1, n2, expected);
+                myGpu = "";
             }
             else {
-                m_gamesThreads[gpu * m_games + game].init(gpu, game, m_gpusList.at(gpu), n1, n2, expected);
+                myGpu = m_gpusList.at(gpu);
             }
+            m_gamesThreads[gpu * m_games + game].init(myGpu, n1, n2, expected);
             m_gamesThreads[gpu * m_games + game].start();
         }
     }
