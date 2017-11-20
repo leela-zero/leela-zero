@@ -314,8 +314,10 @@ bool UCTSearch::playout_limit_reached() const {
 void UCTWorker::operator()() {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        m_search->play_simulation(*currstate, m_root);
-        m_search->increment_playouts();
+        auto result = m_search->play_simulation(*currstate, m_root);
+        if (result.valid()) {
+            m_search->increment_playouts();
+        }
     } while(m_search->is_running() && !m_search->playout_limit_reached());
 }
 
@@ -365,8 +367,10 @@ int UCTSearch::think(int color, passflag_t passflag) {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
 
-        play_simulation(*currstate, &m_root);
-        increment_playouts();
+        auto result = play_simulation(*currstate, &m_root);
+        if (result.valid()) {
+            increment_playouts();
+        }
 
         Time elapsed;
         int centiseconds_elapsed = Time::timediff(start, elapsed);
@@ -421,8 +425,10 @@ void UCTSearch::ponder() {
     }
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        play_simulation(*currstate, &m_root);
-        increment_playouts();
+        auto result = play_simulation(*currstate, &m_root);
+        if (result.valid()) {
+            increment_playouts();
+        }
     } while(!Utils::input_pending() && is_running());
 
     // stop the search
