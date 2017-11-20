@@ -51,6 +51,9 @@ void Game::error(int errnum) {
         case Game::WRONG_GTP:
             output << "Error in GTP response." << endl;
             break;
+        case Game::LAUNCH_FAILURE:
+            output << "Could not talk to engine after launching." << endl;
+            break;
         default:
             output << "Unexpected error." << endl;
             break;
@@ -91,13 +94,55 @@ bool Game::sendGtpCommand(QString cmd) {
     return true;
 }
 
-bool Game::gameStart() {
+void Game::checkVersion(const VersionTuple &min_version) {
+    write(qPrintable("version\n"));
+    waitForBytesWritten(-1);
+    if (!waitReady()) {
+        error(Game::LAUNCH_FAILURE);
+        exit(EXIT_FAILURE);
+    }
+    char readBuffer[256];
+    int readCount = readLine(readBuffer, 256);
+    // We expect to read at last "=, space, something"
+    if (readCount <= 3 || readBuffer[0] != '=') {
+        output << "GTP: " << readBuffer << endl;
+        error(Game::WRONG_GTP);
+        exit(EXIT_FAILURE);
+    }
+    QString version_buff(&readBuffer[2]);
+    version_buff = version_buff.simplified();
+    QStringList version_list = version_buff.split(".");
+    if (version_list.size() < 2) {
+        output << "Unexpected Leela Zero version: " << version_buff << endl;
+        exit(EXIT_FAILURE);
+    }
+    if (version_list[0].toInt() < std::get<0>(min_version)
+        || (version_list[0].toInt() == std::get<0>(min_version)
+           && version_list[1].toInt() < std::get<1>(min_version))) {
+        output << "Leela version is too old, saw " << version_buff
+               << " but expected "
+               << std::get<0>(min_version) << "."
+               << std::get<1>(min_version) << "." << endl;
+        output << "Check https://github.com/gcp/leela-zero for updates."
+                << endl;
+        exit(EXIT_FAILURE);
+    }
+    if (!eatNewLine()) {
+        error(Game::WRONG_GTP);
+        exit(EXIT_FAILURE);
+    }
+}
+
+bool Game::gameStart(const VersionTuple &min_version) {
     start(cmdLine);
     if(!waitForStarted()) {
         error(Game::NO_LEELAZ);
         return false;
     }
     output << "Engine has started." << endl;
+    // This either succeeds or we exit immediately, so no need to
+    // check any return values.
+    checkVersion(min_version);
     sendGtpCommand(timeSettings);
     output << "Infinite thinking time set." << endl;
     return true;
