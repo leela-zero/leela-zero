@@ -19,10 +19,9 @@
 #ifndef IM2COL_H_INCLUDED
 #define IM2COL_H_INCLUDED
 
-#include "config.h"
+#include <cassert>
 #include <vector>
 #include <algorithm>
-#include "Utils.h"
 
 template <unsigned long filter_size>
 void im2col(const int channels,
@@ -67,5 +66,14 @@ void im2col(const int channels,
     }
 }
 
+template <>
+void im2col<1>(const int channels,
+               const std::vector<float>& input,
+               std::vector<float>& output) {
+    constexpr unsigned int boardsize = 19;
+    auto outSize = size_t{channels * boardsize * boardsize};
+    assert(output.size() == outSize);
+    std::copy(begin(input), begin(input) + outSize, begin(output));
+}
 
 #endif
