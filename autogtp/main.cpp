@@ -25,10 +25,11 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
+#include <chrono>
 #include <iostream>
 #include "Game.h"
 
-constexpr int AUTOGTP_VERSION = 2;
+constexpr int AUTOGTP_VERSION = 3;
 
 bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QString prog_cmdline("curl");
@@ -47,19 +48,16 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
         exit(EXIT_FAILURE);
     }
     QString outhash = outlst[0];
-    cerr << "Best network hash: " << outhash << endl;
     QString client_version = outlst[1];
     auto server_expected = client_version.toInt();
-    cerr << "Required client version: " << client_version;
     if (server_expected > AUTOGTP_VERSION) {
-        cerr << endl;
         cerr << "Server requires client version " << server_expected
              << " but we are version " << AUTOGTP_VERSION << endl;
         cerr << "Check https://github.com/gcp/leela-zero for updates." << endl;
         exit(EXIT_FAILURE);
-    } else {
-        cerr << " (OK)" << endl;
     }
+    cerr << "Best network hash: " << outhash << endl;
+    cerr << "Required client version: " << server_expected << " (OK)" << endl;
     nethash = outhash;
     return true;
 }
@@ -178,6 +176,23 @@ bool run_one_game(QTextStream& cerr, const QString& weightsname) {
     return true;
 }
 
+template<typename T>
+void print_timing_info(QTextStream& cerr, int games_played,
+                       T start, T game_start) {
+    auto game_end = std::chrono::high_resolution_clock::now();
+    auto game_time_s =
+        std::chrono::duration_cast<std::chrono::seconds>(game_end - game_start);
+    auto total_time_s =
+        std::chrono::duration_cast<std::chrono::seconds>(game_end - start);
+    auto total_time_min =
+        std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
+    cerr << games_played << " game(s) played in "
+         << total_time_min.count() << " minutes = "
+         << total_time_s.count() / games_played << " seconds/game"
+         << ", last game took "
+         << game_time_s.count() << " seconds.\n";
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -221,15 +236,17 @@ int main(int argc, char *argv[])
 
     auto success = true;
     auto games_played = 0;
+    auto start = std::chrono::high_resolution_clock::now();
 
     do {
+        auto game_start = std::chrono::high_resolution_clock::now();
         QString netname;
         success &= fetch_best_network_hash(cerr, netname);
         success &= fetch_best_network(cerr, netname);
         success &= run_one_game(cerr, netname);
         success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
         games_played++;
-        cerr << games_played << " games played." << endl;
+        print_timing_info(cerr, games_played, start, game_start);
     } while (success);
 
     cerr.flush();

@@ -20,6 +20,7 @@
 #define GAMESTATE_H_INCLUDED
 
 #include <vector>
+#include <memory>
 #include <string>
 
 #include "FastState.h"
@@ -65,7 +66,7 @@ public:
 private:
     bool valid_handicap(int stones);
 
-    std::vector<KoState> game_history;
+    std::vector<std::shared_ptr<KoState>> game_history;
     TimeControl m_timecontrol;
 };
 
