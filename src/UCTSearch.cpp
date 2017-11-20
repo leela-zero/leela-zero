@@ -94,7 +94,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
         node->update(result.eval());
         TTable::get_TT()->update(hash, komi, node);
     }
-
     node->virtual_loss_undo();
     return result;
 }
