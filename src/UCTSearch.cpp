@@ -25,7 +25,9 @@
 #include <utility>
 #include <thread>
 #include <algorithm>
+#include <iostream>
 #include <type_traits>
+#include <fstream>
 
 #include "FastBoard.h"
 #include "UCTSearch.h"
@@ -42,6 +44,12 @@
 
 using namespace Utils;
 
+static long all_count = 0;
+static long bad_count = 0;
+static long play_count = 0;
+static long good_count = 0;
+
+
 UCTSearch::UCTSearch(GameState & g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
@@ -52,11 +60,13 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
     const auto hash = currstate.board.get_hash();
     const auto komi = currstate.get_komi();
 
+    // default SearchResult is invalid.
     auto result = SearchResult{};
 
     TTable::get_TT()->sync(hash, komi, node);
     node->virtual_loss();
 
+    all_count++;
     if (!node->has_children() && m_nodes < MAX_TREE_SIZE) {
         float eval;
         auto success = node->create_children(m_nodes, currstate, eval);
@@ -65,9 +75,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
         } else if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
-        } else {
-            // default SearchResult is invalid.
-            return SearchResult();
         }
     }
 
@@ -95,10 +102,24 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
     if (result.valid()) {
         node->update(result.eval());
         TTable::get_TT()->update(hash, komi, node);
+    } else {
+        bad_count++;
     }
 
     node->virtual_loss_undo();
     return result;
+}
+
+void printAndResetStats() {
+    if (all_count > 0 && play_count > 0) {
+        std::ofstream output;
+        output.open( "test.txt", std::ios::out | std::ios::app ); 
+
+        output << "allExpand: " << all_count << " bad: " << bad_count << std::endl;
+        output<< "simulations: " << play_count << " good: " << good_count << std::endl;
+        output.close();
+    }
+    all_count = bad_count = play_count = good_count = 0;
 }
 
 void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
@@ -317,9 +338,15 @@ bool UCTSearch::playout_limit_reached() const {
 void UCTWorker::operator()() {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        m_search->play_simulation(*currstate, m_root);
+        auto result = m_search->play_simulation(*currstate, m_root);
+        play_count++;
+        // verify then move inside.
         m_search->increment_playouts();
+        if (result.valid()) {
+            good_count++;
+        }
     } while(m_search->is_running() && !m_search->playout_limit_reached());
+    printAndResetStats();
 }
 
 void UCTSearch::increment_playouts() {
@@ -368,8 +395,13 @@ int UCTSearch::think(int color, passflag_t passflag) {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
 
-        play_simulation(*currstate, &m_root);
+        auto result = play_simulation(*currstate, &m_root);
+        play_count++;
+        // verify then move inside.
         increment_playouts();
+        if (result.valid()) {
+            good_count++;
+        }
 
         Time elapsed;
         int centiseconds_elapsed = Time::timediff(start, elapsed);
@@ -409,6 +441,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
                  (m_playouts * 100) / (centiseconds_elapsed+1));
     }
     int bestmove = get_best_move(passflag);
+    printAndResetStats();
     return bestmove;
 }
 
@@ -424,8 +457,13 @@ void UCTSearch::ponder() {
     }
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        play_simulation(*currstate, &m_root);
+        auto result = play_simulation(*currstate, &m_root);
+        play_count++;
+        // verify then move inside.
         increment_playouts();
+        if (result.valid()) {
+            good_count++;
+        }
     } while(!Utils::input_pending() && is_running());
 
     // stop the search
@@ -436,6 +474,7 @@ void UCTSearch::ponder() {
     dump_stats(m_rootstate, m_root);
 
     myprintf("\n%d visits, %d nodes\n\n", m_root.get_visits(), (int)m_nodes);
+    printAndResetStats();
 }
 
 void UCTSearch::set_playout_limit(int playouts) {
