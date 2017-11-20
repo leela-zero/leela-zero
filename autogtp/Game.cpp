@@ -51,7 +51,7 @@ void Game::error(int errnum) {
             QTextStream(stdout) << "Error in GTP response." << endl;
             break;
         case Game::LAUNCH_FAILURE:
-            output << "Could not talk to engine after launching." << endl;
+            QTextStream(stdout) << "Could not talk to engine after launching." << endl;
             break;
         default:
             QTextStream(stdout) << "Unexpected error." << endl;
@@ -105,7 +105,7 @@ void Game::checkVersion(const VersionTuple &min_version) {
     int readCount = readLine(readBuffer, 256);
     // We expect to read at last "=, space, something"
     if (readCount <= 3 || readBuffer[0] != '=') {
-        output << "GTP: " << readBuffer << endl;
+        QTextStream(stdout) << "GTP: " << readBuffer << endl;
         error(Game::WRONG_GTP);
         exit(EXIT_FAILURE);
     }
@@ -113,18 +113,17 @@ void Game::checkVersion(const VersionTuple &min_version) {
     version_buff = version_buff.simplified();
     QStringList version_list = version_buff.split(".");
     if (version_list.size() < 2) {
-        output << "Unexpected Leela Zero version: " << version_buff << endl;
+        QTextStream(stdout) << "Unexpected Leela Zero version: " << version_buff << endl;
         exit(EXIT_FAILURE);
     }
     if (version_list[0].toInt() < std::get<0>(min_version)
         || (version_list[0].toInt() == std::get<0>(min_version)
            && version_list[1].toInt() < std::get<1>(min_version))) {
-        output << "Leela version is too old, saw " << version_buff
-               << " but expected "
-               << std::get<0>(min_version) << "."
-               << std::get<1>(min_version) << "." << endl;
-        output << "Check https://github.com/gcp/leela-zero for updates."
-                << endl;
+        QTextStream(stdout) << "Leela version is too old, saw " << version_buff
+                            << " but expected "
+                            << std::get<0>(min_version) << "."
+                            << std::get<1>(min_version) << "." << endl;
+        QTextStream(stdout) << "Check https://github.com/gcp/leela-zero for updates." << endl;
         exit(EXIT_FAILURE);
     }
     if (!eatNewLine()) {
@@ -134,7 +133,7 @@ void Game::checkVersion(const VersionTuple &min_version) {
 }
 
 bool Game::gameStart(const VersionTuple &min_version) {
-    start(cmdLine);
+    start(m_cmdLine);
     if(!waitForStarted()) {
         error(Game::NO_LEELAZ);
         return false;
@@ -204,7 +203,7 @@ bool Game::readMove() {
     } else {
         m_passes = 0;
     }
-    blackToMove = !blackToMove;
+    m_blackToMove = !m_blackToMove;
     return true;
 }
 
@@ -221,10 +220,7 @@ bool Game::setMove(const QString& m) {
     } else {
         m_passes = 0;
     }
-<<<<<<< HEAD
-=======
     m_blackToMove = !m_blackToMove;
->>>>>>> Refactiring of Game (renaming private variables)
     return true;
 }
 

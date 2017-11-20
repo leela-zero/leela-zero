@@ -21,12 +21,11 @@
 #include "production.h"
 #include "Game.h"
 
-
- void ProductionWorker::run(){
+void ProductionWorker::run(){
      do {
          std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
          Game game(m_network, m_option);
-         if(!game.gameStart()) {
+         if(!game.gameStart(min_leelaz_version)) {
              return;
          }
          do {

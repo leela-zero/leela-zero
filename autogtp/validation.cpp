@@ -19,16 +19,15 @@
 #include "validation.h"
 #include "Game.h"
 
-
- void ValidationWorker::run(){
+void ValidationWorker::run(){
      do {
         Game first(m_firstNet,  " -g -q  -r 0 -w ");
-        if(!first.gameStart()) {
+        if(!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
         }
         Game second(m_secondNet, " -g -q  -r 0 -w ");
-        if(!second.gameStart()) {
+        if(!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
         }

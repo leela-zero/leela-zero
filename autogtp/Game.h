@@ -24,6 +24,7 @@
 #include <tuple>
 
 using VersionTuple = std::tuple<int, int>;
+extern const VersionTuple min_leelaz_version;
 
 class Game : QProcess {
 public:
