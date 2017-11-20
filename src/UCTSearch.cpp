@@ -52,6 +52,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
     const auto hash = currstate.board.get_hash();
     const auto komi = currstate.get_komi();
 
+    // default SearchResult is invalid.
     auto result = SearchResult{};
 
     TTable::get_TT()->sync(hash, komi, node);
@@ -91,10 +92,9 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
 
     if (result.valid()) {
         node->update(result.eval());
+        TTable::get_TT()->update(hash, komi, node);
     }
     node->virtual_loss_undo();
-    TTable::get_TT()->update(hash, komi, node);
-
     return result;
 }
 
