@@ -19,53 +19,26 @@
 #ifndef IM2COL_H_INCLUDED
 #define IM2COL_H_INCLUDED
 
-#include "config.h"
 #include <vector>
-#include <algorithm>
-#include "Utils.h"
 
 template <unsigned long filter_size>
 void im2col(const int channels,
             const std::vector<float>& input,
             std::vector<float>& output) {
-    constexpr unsigned int height = 19;
-    constexpr unsigned int width = 19;
-    constexpr unsigned int channel_size = height * width;
-
-    constexpr int pad = (filter_size / 2);
-    constexpr unsigned int output_h = height + 2 * pad - filter_size  + 1;
-    constexpr unsigned int output_w = width + 2 * pad - filter_size + 1;
-
-    const float* data_im = input.data();
-    float* data_col = output.data();
-
-    for (int channel = channels; channel--; data_im += channel_size) {
-        for (unsigned int kernel_row = 0; kernel_row < filter_size; kernel_row++) {
-            for (unsigned int kernel_col = 0; kernel_col < filter_size; kernel_col++) {
-                int input_row = -pad + kernel_row;
-                for (int output_rows = output_h; output_rows; output_rows--) {
-                    if ((unsigned)input_row < height) {
-                        int input_col = -pad + kernel_col;
-                        for (int output_col = output_w; output_col; output_col--) {
-                            if ((unsigned)input_col < width) {
-                                *(data_col++) =
-                                    data_im[input_row * width + input_col];
-                            } else {
-                                *(data_col++) = 0;
-                            }
-                            input_col++;
-                        }
-                    } else {
-                        for (int output_cols = output_w; output_cols; output_cols--) {
-                            *(data_col++) = 0;
-                        }
-                    }
-                    input_row++;
-                }
-            }
-        }
-    }
+    // Not implemented
+    // See github.com/gcp/leela-zero/pull/104 for first pass implementation.
+    exit(EXIT_FAILURE);
 }
 
+template <>
+void im2col<1>(const int channels,
+            const std::vector<float>& input,
+            std::vector<float>& output) {
+    constexpr unsigned int boardsize = 19;
+    unsigned int outSize = channels * boardsize * boardsize;
+    assert(output.size() == outSize);
+
+    std::copy(input.begin(), input.begin() + outSize, output.data());
+}
 
 #endif
