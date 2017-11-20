@@ -25,14 +25,21 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
+#include <QThread>
 #include <chrono>
 #include <iostream>
+#include <cmath>
 #include "Game.h"
 
 constexpr int AUTOGTP_VERSION = 4;
 
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version{0, 6};
+
+constexpr int RETRY_DELAY_MIN = 30; //seconds
+constexpr int RETRY_DELAY_MAX = 3600;
+constexpr int MAX_RETRIES = 100;
+constexpr int BATCH_UPLOAD_DELAY = 3;
 
 bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QString prog_cmdline("curl");
@@ -48,7 +55,7 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QStringList outlst = outstr.split("\n");
     if (outlst.size() != 2) {
         cerr << "Unexpected output from server: " << endl << output << endl;
-        exit(EXIT_FAILURE);
+        return false;
     }
     QString outhash = outlst[0];
     QString client_version = outlst[1];
@@ -65,8 +72,12 @@ bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     return true;
 }
 
+bool network_exists(QString& netname) {
+    return QFileInfo::exists(netname);
+}
+
 bool fetch_best_network(QTextStream& cerr, QString& netname) {
-    if (QFileInfo::exists(netname)) {
+    if (network_exists(netname)) {
         cerr << "Already downloaded network." << endl;
         return true;
     }
@@ -107,7 +118,10 @@ bool fetch_best_network(QTextStream& cerr, QString& netname) {
     return true;
 }
 
-bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_path) {
+bool process_data(QTextStream& cerr, QString netname, QString sgf_output_path, bool upload) {
+    // Uploads all stored games if 'upload' = true.
+    // Otherwise deletes all of the stored games without uploading.
+
     // Find output SGF and txt files
     QDir dir;
     QStringList filters;
@@ -122,11 +136,28 @@ bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_p
         QString data_file = sgf_file;
         // Save first if requested
         if (!sgf_output_path.isEmpty()) {
-            QFile(sgf_file).copy(sgf_output_path + '/' + fileInfo.fileName());
+            QString filepath = sgf_output_path + '/' + fileInfo.fileName();
+            if (!QFile::exists(filepath)) {
+                QFile(sgf_file).copy(filepath);
+            }
         }
+
         // Cut .sgf, add .txt.0.gz
         data_file.chop(4);
         data_file += ".txt.0.gz";
+
+        if (!upload) {
+            cerr << "Deleting old game: " << sgf_file << endl;
+            dir.remove(sgf_file);
+            dir.remove(data_file);
+            continue;
+        }
+
+        if (i > 0) {
+            //Wait before every upload when uploading a batch
+            QThread::sleep(BATCH_UPLOAD_DELAY);
+        }
+
         // Gzip up the sgf too
 #ifdef WIN32
         QProcess::execute("gzip.exe " + sgf_file);
@@ -150,10 +181,56 @@ bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_p
         QByteArray output = curl.readAllStandardOutput();
         QString outstr(output);
         cerr << outstr;
+
+        if (outstr.contains("An error occurred")) {
+            cerr << "Game upload failed." << endl;
+            //Abort the upload and try again later
+            break;
+        }
+
         dir.remove(sgf_file);
         dir.remove(data_file);
     }
     return true;
+}
+
+bool upload_data(QTextStream& cerr, QString netname, QString sgf_output_path) {
+    return process_data(cerr, netname, sgf_output_path, true);
+}
+
+bool delete_data(QTextStream& cerr) {
+    return process_data(cerr, "", "", false);
+}
+
+bool update_network(QTextStream& cerr, QString &netname) {
+    auto retries = 0;
+    auto prev_netname = netname;
+    while (retries++ < MAX_RETRIES) {
+        if (!fetch_best_network_hash(cerr, netname)) {
+            cerr << "Failed to get the best network from server." << endl;
+
+            if (network_exists(netname)) {
+                cerr << "Using the previous network." << endl;
+            } else {
+                auto retry_delay = std::min((unsigned)(RETRY_DELAY_MIN * std::pow(1.5, retries-1)), (unsigned)RETRY_DELAY_MAX);
+                cerr << "Retrying in " <<
+                    retry_delay << " s." << endl;
+                QThread::sleep(retry_delay);
+                continue;
+            }
+
+            return true;
+        } else {
+            if (prev_netname != netname) {
+                //Delete any possible old gamedata to make sure we don't upload
+                //old games with the new network name
+                delete_data(cerr);
+            }
+            return fetch_best_network(cerr, netname);
+        }
+    }
+    cerr << "Maximum number of retries exceeded. Giving up." << endl;
+    exit(EXIT_FAILURE);
 }
 
 bool run_one_game(QTextStream& cerr, const QString& weightsname) {
@@ -240,12 +317,15 @@ int main(int argc, char *argv[])
     auto success = true;
     auto games_played = 0;
     auto start = std::chrono::high_resolution_clock::now();
+    QString netname;
+
+    //Delete any possible stored games to avoid uploading them
+    //with the new network name.
+    delete_data(cerr);
 
     do {
         auto game_start = std::chrono::high_resolution_clock::now();
-        QString netname;
-        success &= fetch_best_network_hash(cerr, netname);
-        success &= fetch_best_network(cerr, netname);
+        success &= update_network(cerr, netname);
         success &= run_one_game(cerr, netname);
         success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
         games_played++;
