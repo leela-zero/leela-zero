@@ -65,6 +65,9 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
         } else if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
+        } else {
+            // default SearchResult is invalid.
+            return SearchResult();
         }
     }
 
@@ -91,10 +94,10 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
 
     if (result.valid()) {
         node->update(result.eval());
+        TTable::get_TT()->update(hash, komi, node);
     }
-    node->virtual_loss_undo();
-    TTable::get_TT()->update(hash, komi, node);
 
+    node->virtual_loss_undo();
     return result;
 }
 
