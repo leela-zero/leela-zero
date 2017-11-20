@@ -21,12 +21,15 @@
 
 #include <QProcess>
 #include <QTextStream>
+#include <tuple>
+
+using VersionTuple = std::tuple<int, int>;
 
 class Game : QProcess {
 public:
     Game(const QString& weights, QTextStream& out);
     ~Game() = default;
-    bool gameStart();
+    bool gameStart(const VersionTuple& min_version);
     void move();
     bool waitForMove() { return waitReady(); }
     bool readMove();
@@ -40,7 +43,8 @@ private:
     enum {
         NO_LEELAZ = 1,
         PROCESS_DIED,
-        WRONG_GTP
+        WRONG_GTP,
+        LAUNCH_FAILURE
     };
 
     QTextStream& output;
@@ -54,6 +58,7 @@ private:
     int passes;
     int moveNum;
     bool sendGtpCommand(QString cmd);
+    void checkVersion(const VersionTuple &min_version);
     bool waitReady();
     bool eatNewLine();
     void error(int errnum);
