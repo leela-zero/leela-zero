@@ -24,6 +24,8 @@
 #include <QThread>
 #include <QVector>
 #include <QMutex>
+#include <QTextStream>
+#include <chrono>
 
 class ProductionWorker : public QThread
 {
@@ -37,7 +39,7 @@ public:
     void run() override;
 
 signals:
-    void resultReady(QString file);
+    void resultReady(QString file, float duration);
 private:
     QString m_network;
     QString m_option;
@@ -54,7 +56,7 @@ public:
     void startGames();
 
 public slots:
-    void getResult(QString file);
+    void getResult(QString file, float duration);
 
 private:
     QMutex *m_mainMutex;
@@ -67,9 +69,11 @@ private:
     QString m_network;
     QString m_keepPath;
     int m_version;
+    std::chrono::high_resolution_clock::time_point m_start;
     bool fetchBestNetworkHash();
     void fetchBestNetwork();
     void uploadData(const QString &file);
+    void printTimingInfo(float duration);
 };
 
 #endif

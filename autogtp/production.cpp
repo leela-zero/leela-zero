@@ -24,6 +24,7 @@
 
  void ProductionWorker::run(){
      do {
+         std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
          Game game(m_network, m_option);
          if(!game.gameStart()) {
              return;
@@ -42,7 +43,9 @@
          }
          QTextStream(stdout) << "Stopping engine." << endl;
          game.gameQuit();
-         emit resultReady(game.getFile());
+         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+         float gameDuration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+         emit resultReady(game.getFile(), gameDuration);
     } while (1);
 }
 
@@ -70,6 +73,7 @@ Production::Production(const int &gpus, const int &games, const QStringList &gpu
 Production::~Production() {}
 
 void Production::startGames() {
+    m_start = std::chrono::high_resolution_clock::now();
     m_mainMutex->lock();
     fetchBestNetworkHash();
     fetchBestNetwork();
@@ -89,10 +93,10 @@ void Production::startGames() {
     }
 }
 
-void Production::getResult(QString file) {
+void Production::getResult(QString file, float duration) {
     m_syncMutex.lock();
     m_gamesPlayed++;
-    QTextStream(stdout) << "Games played: " << m_gamesPlayed;
+    printTimingInfo(duration);
     uploadData(file);
     if(!fetchBestNetworkHash()) {
         fetchBestNetwork();
@@ -101,6 +105,18 @@ void Production::getResult(QString file) {
     }
     m_syncMutex.unlock();
 }
+
+void  Production::printTimingInfo(float duration) {
+    auto game_end = std::chrono::high_resolution_clock::now();
+    auto total_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - m_start);
+    auto total_time_min = std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
+    QTextStream(stdout) << m_gamesPlayed << " game(s) played in "
+         << total_time_min.count() << " minutes = "
+         << total_time_s.count() / m_gamesPlayed << " seconds/game"
+         << ", last game took "
+         << duration << " seconds.\n";
+}
+
 
 bool Production::fetchBestNetworkHash() {
     QString prog_cmdline("curl");

@@ -38,24 +38,6 @@ constexpr int AUTOGTP_VERSION = 4;
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version{0, 6};
 
-
-template<typename T>
-void print_timing_info(QTextStream& cerr, int games_played,
-                       T start, T game_start) {
-    auto game_end = std::chrono::high_resolution_clock::now();
-    auto game_time_s =
-        std::chrono::duration_cast<std::chrono::seconds>(game_end - game_start);
-    auto total_time_s =
-        std::chrono::duration_cast<std::chrono::seconds>(game_end - start);
-    auto total_time_min =
-        std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
-    cerr << games_played << " game(s) played in "
-         << total_time_min.count() << " minutes = "
-         << total_time_s.count() / games_played << " seconds/game"
-         << ", last game took "
-         << game_time_s.count() << " seconds.\n";
-}
-
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -75,7 +57,7 @@ int main(int argc, char *argv[])
                                      "filename");
     QCommandLineOption gamesNumOption({"g", "gamesNum"},
                                       "Play 'gamesNum' games on one GPU at the same time.",
-                                      "num");
+                                      "num", "1");
     QCommandLineOption gpusOption({"u", "gpus"},
                                   "Index of the GPU to use for multiple GPUs support",
                                   "num");
@@ -124,10 +106,6 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
     }
-
-    auto success = true;
-    auto games_played = 0;
-    auto start = std::chrono::high_resolution_clock::now();
     QMutex mutex;
     if(competition) {
 
