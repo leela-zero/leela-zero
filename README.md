@@ -251,9 +251,13 @@ If interrupted, training can be resumed with:
 (not very urgent, we need to generate the data & network first and this can be
 done with multiple processes each bound to a GPU)
 
-# Useful links
+# Related links
 
-* For network inference in browser and GUI (currently using a policy network trained from human expert games): https://github.com/BlinkDL/BlinkDL
+* Watch Leela Zero's training games live in a GUI:
+https://github.com/fsparv/LeelaWatcher
+* For network inference in browser and GUI (currently using a policy network
+trained from human expert games):
+https://github.com/BlinkDL/BlinkDL
 
 # License
 
