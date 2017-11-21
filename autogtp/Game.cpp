@@ -212,7 +212,6 @@ bool Game::readMove() {
     } else {
         m_passes = 0;
     }
-    m_blackToMove = !m_blackToMove;
     return true;
 }
 
