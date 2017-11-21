@@ -90,7 +90,6 @@ double BayesElo::scale() const
 	return 4.0 * x / ((1.0 + x) * (1.0 + x));
 }
 
-
 SprtProbability::SprtProbability(int wins, int losses, int draws)
 {
 	Q_ASSERT(wins > 0 && losses > 0 && draws > 0);
@@ -207,4 +206,9 @@ void Sprt::addGameResult(GameResult result)
 		m_draws++;
 	else if (result == Loss)
 		m_losses++;
+}
+
+std::tuple<int, int, int> Sprt::getWDL() const
+{
+       return std::make_tuple(m_wins, m_draws, m_losses);
 }
