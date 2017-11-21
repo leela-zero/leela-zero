@@ -88,14 +88,15 @@ bool Game::sendGtpCommand(QString cmd) {
     }
     char readBuffer[256];
     int readCount = readLine(readBuffer, 256);
-    Q_ASSERT(readCount > 0);
-    Q_ASSERT(readBuffer[0] == '=');
+    if (readCount <= 0 || readBuffer[0] != '=') {
+        QTextStream(stdout) << "GTP: " << readBuffer << endl;
+        error(Game::WRONG_GTP);
+        return false;
+    }
     if (!eatNewLine()) {
         error(Game::PROCESS_DIED);
         return false;
     }
-
-    Q_ASSERT(readCount > 0);
     return true;
 }
 
