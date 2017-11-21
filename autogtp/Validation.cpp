@@ -54,9 +54,6 @@ void ValidationWorker::run() {
         int result = 0;
         if (first.getScore()) {
             result = first.getWinner();
-            first.writeSgf();
-            second.writeSgf();
-            first.dumpTraining();
         }
         QTextStream(stdout) << "Stopping engine." << endl;
         first.gameQuit();
