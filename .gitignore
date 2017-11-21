@@ -3,3 +3,5 @@ leelaz
 *.d
 .vscode/settings.json
 training/tf/venv
+autogtp/*.sgf
+autogtp/*.gz
