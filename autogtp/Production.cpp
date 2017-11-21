@@ -18,8 +18,13 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QThread>
 #include "Production.h"
 #include "Game.h"
+
+constexpr int RETRY_DELAY_MIN = 30; //seconds
+constexpr int RETRY_DELAY_MAX = 3600;
+constexpr int MAX_RETRIES = 100;
 
 void ProductionWorker::run() {
      do {
@@ -74,11 +79,31 @@ Production::Production(const int gpus,
     m_version(ver) {
 }
 
+bool Production::updateNetwork() {
+    auto retries = 0;
+    do {
+        try {
+            auto new_network = fetchBestNetworkHash();
+            fetchBestNetwork();
+            return new_network;
+        } catch (NetworkException ex) {
+            QTextStream(stdout) << "Network connection to server failed." << endl;
+            QTextStream(stdout) << ex.what() << endl;
+            auto retry_delay = std::min((unsigned)(RETRY_DELAY_MIN*\
+                        std::pow(1.5, retries)), (unsigned)RETRY_DELAY_MAX);
+            QTextStream(stdout) << "Retrying in " <<
+                retry_delay << " s." << endl;
+            QThread::sleep(retry_delay);
+        }
+    } while (++retries < MAX_RETRIES);
+    QTextStream(stdout) << "Maximum number of retries exceeded. Giving up." << endl;
+    exit(EXIT_FAILURE);
+}
+
 void Production::startGames() {
     m_start = std::chrono::high_resolution_clock::now();
     m_mainMutex->lock();
-    fetchBestNetworkHash();
-    fetchBestNetwork();
+    updateNetwork();
     QString myGpu;
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
         for(int game = 0; game < m_games; ++game) {
@@ -104,8 +129,7 @@ void Production::getResult(const QString& file, float duration) {
     m_gamesPlayed++;
     printTimingInfo(duration);
     uploadData(file);
-    if (!fetchBestNetworkHash()) {
-        fetchBestNetwork();
+    if (!updateNetwork()) {
         ProductionWorker *w = qobject_cast<ProductionWorker*>(sender());
         w->newNetwork(m_network);
     }
@@ -135,13 +159,21 @@ bool Production::fetchBestNetworkHash() {
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
+
     QByteArray output = curl.readAllStandardOutput();
     QString outstr(output);
     QStringList outlst = outstr.split("\n");
+
+    if (curl.exitCode()) {
+        throw NetworkException("Curl returned non-zero exit code "\
+                + std::to_string(curl.exitCode()));
+    }
+
+
     if (outlst.size() != 2) {
         QTextStream(stdout)
             << "Unexpected output from server: " << endl << output << endl;
-        exit(EXIT_FAILURE);
+        throw NetworkException("Unexpected output from server");
     }
     QString outhash = outlst[0];
     QTextStream(stdout) << "Best network hash: " << outhash << endl;
@@ -188,6 +220,11 @@ void Production::fetchBestNetwork() {
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
+
+    if (curl.exitCode()) {
+        throw NetworkException("Curl returned non-zero exit code "\
+                + std::to_string(curl.exitCode()));
+    }
 
     QByteArray output = curl.readAllStandardOutput();
     QString outstr(output);
@@ -246,6 +283,13 @@ void Production::uploadData(const QString& file) {
         QProcess curl;
         curl.start(prog_cmdline);
         curl.waitForFinished(-1);
+
+        if (curl.exitCode()) {
+            QTextStream(stdout) << "Upload failed. Curl Exit code: "
+                << curl.exitCode() << endl;
+            QTextStream(stdout) << "Continuing..." << endl;
+        }
+
         QByteArray output = curl.readAllStandardOutput();
         QString outstr(output);
         QTextStream(stdout) << outstr;
