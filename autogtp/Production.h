@@ -32,15 +32,16 @@ public:
     ProductionWorker() = default;
     ProductionWorker(const ProductionWorker& w) : QThread(w.parent()) {}
     ~ProductionWorker() = default;
-    void init(const QString& gpuIndex, const QString& net);
+    void init(const QString& gpuIndex, const QString& net, const int index);
     void newNetwork(const QString& net) { m_network = net; }
     void run() override;
 
 signals:
-    void resultReady(const QString& file, float duration);
+    void resultReady(const QString& file, float duration, int index);
 private:
     QString m_network;
     QString m_option;
+    int m_index;
 };
 
 class Production : public QObject {
@@ -57,7 +58,7 @@ public:
     void startGames();
 
 public slots:
-    void getResult(const QString& file, float duration);
+    void getResult(const QString& file, float duration, int index);
 
 private:
     QMutex* m_mainMutex;
