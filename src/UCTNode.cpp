@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <limits>
 #include <cmath>
 
 #include <iostream>
@@ -196,6 +197,12 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 
     auto sample_sum = std::accumulate(begin(dirichlet_vector),
                                       end(dirichlet_vector), 0.0f);
+
+    // If the noise vector sums to 0 or a denormal, then don't try to
+    // normalize.
+    if (sample_sum < std::numeric_limits<float>::min()) {
+        return;
+    }
 
     for (auto& v: dirichlet_vector) {
         v /= sample_sum;
