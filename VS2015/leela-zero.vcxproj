@@ -67,27 +67,52 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="FastBoard.cpp" />
-    <ClCompile Include="FastState.cpp" />
-    <ClCompile Include="FullBoard.cpp" />
-    <ClCompile Include="GameState.cpp" />
-    <ClCompile Include="GTP.cpp" />
-    <ClCompile Include="KoState.cpp" />
-    <ClCompile Include="Leela.cpp" />
-    <ClCompile Include="Network.cpp" />
-    <ClCompile Include="OpenCL.cpp" />
-    <ClCompile Include="Random.cpp" />
-    <ClCompile Include="SGFParser.cpp" />
-    <ClCompile Include="SGFTree.cpp" />
-    <ClCompile Include="SMP.cpp" />
-    <ClCompile Include="TimeControl.cpp" />
-    <ClCompile Include="Timing.cpp" />
-    <ClCompile Include="Training.cpp" />
-    <ClCompile Include="TTable.cpp" />
-    <ClCompile Include="UCTNode.cpp" />
-    <ClCompile Include="UCTSearch.cpp" />
-    <ClCompile Include="Utils.cpp" />
-    <ClCompile Include="Zobrist.cpp" />
+    <ClCompile Include="..\src\FastBoard.cpp" />
+    <ClCompile Include="..\src\FastState.cpp" />
+    <ClCompile Include="..\src\FullBoard.cpp" />
+    <ClCompile Include="..\src\GameState.cpp" />
+    <ClCompile Include="..\src\GTP.cpp" />
+    <ClCompile Include="..\src\KoState.cpp" />
+    <ClCompile Include="..\src\Leela.cpp" />
+    <ClCompile Include="..\src\Network.cpp" />
+    <ClCompile Include="..\src\OpenCL.cpp" />
+    <ClCompile Include="..\src\Random.cpp" />
+    <ClCompile Include="..\src\SGFParser.cpp" />
+    <ClCompile Include="..\src\SGFTree.cpp" />
+    <ClCompile Include="..\src\SMP.cpp" />
+    <ClCompile Include="..\src\TimeControl.cpp" />
+    <ClCompile Include="..\src\Timing.cpp" />
+    <ClCompile Include="..\src\Training.cpp" />
+    <ClCompile Include="..\src\TTable.cpp" />
+    <ClCompile Include="..\src\UCTNode.cpp" />
+    <ClCompile Include="..\src\UCTSearch.cpp" />
+    <ClCompile Include="..\src\Utils.cpp" />
+    <ClCompile Include="..\src\Zobrist.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\config.h" />
+    <ClInclude Include="..\src\FastBoard.h" />
+    <ClInclude Include="..\src\FastState.h" />
+    <ClInclude Include="..\src\FullBoard.h" />
+    <ClInclude Include="..\src\GameState.h" />
+    <ClInclude Include="..\src\GTP.h" />
+    <ClInclude Include="..\src\Im2Col.h" />
+    <ClInclude Include="..\src\KoState.h" />
+    <ClInclude Include="..\src\Network.h" />
+    <ClInclude Include="..\src\OpenCL.h" />
+    <ClInclude Include="..\src\Random.h" />
+    <ClInclude Include="..\src\SGFParser.h" />
+    <ClInclude Include="..\src\SGFTree.h" />
+    <ClInclude Include="..\src\SMP.h" />
+    <ClInclude Include="..\src\ThreadPool.h" />
+    <ClInclude Include="..\src\TimeControl.h" />
+    <ClInclude Include="..\src\Timing.h" />
+    <ClInclude Include="..\src\Training.h" />
+    <ClInclude Include="..\src\TTable.h" />
+    <ClInclude Include="..\src\UCTNode.h" />
+    <ClInclude Include="..\src\UCTSearch.h" />
+    <ClInclude Include="..\src\Utils.h" />
+    <ClInclude Include="..\src\Zobrist.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
