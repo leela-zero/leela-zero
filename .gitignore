@@ -3,3 +3,11 @@ leelaz
 *.d
 .vscode/settings.json
 training/tf/venv
+.vs/
+packages/
+*.db
+*.opendb
+*.vcxproj.filters
+*.user
+src/x64
+x64/

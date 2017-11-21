@@ -101,6 +101,15 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     unzip https://sjeng.org/zero/best_v1.txt.zip
     src/leelaz --weights weights.txt
 
+## Example of compiling and running - Windows
+
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero
+    "%VS140COMNTOOLS%..\IDE\devenv.exe" leela-zero.sln
+    # Build from Visual Studio 2015
+    # Modify src/config.h if you want to change compile settings
+
 # Usage
 
 The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
