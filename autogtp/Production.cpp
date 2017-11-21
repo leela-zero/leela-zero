@@ -104,7 +104,7 @@ void Production::getResult(const QString& file, float duration) {
     m_gamesPlayed++;
     printTimingInfo(duration);
     uploadData(file);
-    if(!fetchBestNetworkHash()) {
+    if (!fetchBestNetworkHash()) {
         fetchBestNetwork();
         ProductionWorker *w = qobject_cast<ProductionWorker*>(sender());
         w->newNetwork(m_network);
