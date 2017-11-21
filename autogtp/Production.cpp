@@ -45,16 +45,17 @@ void ProductionWorker::run() {
          auto end = std::chrono::high_resolution_clock::now();
          auto gameDuration =
             std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-         emit resultReady(game.getFile(), gameDuration);
+         emit resultReady(game.getFile(), gameDuration, m_index);
     } while (true);
 }
 
-void ProductionWorker::init(const QString& gpuIndex, const QString& net) {
+void ProductionWorker::init(const QString& gpuIndex, const QString& net, const int &index) {
     m_option = " -g -q -n -d -m 30 -r 0 -w ";
     if(!gpuIndex.isEmpty()) {
         m_option.prepend(" -gpu=" + gpuIndex + " ");
     }
     m_network = net;
+    m_index = index;
 }
 
 Production::Production(const int gpus,
@@ -82,7 +83,7 @@ void Production::startGames() {
     QString myGpu;
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
         for(int game = 0; game < m_games; ++game) {
-            auto thread_index = gpu * m_games + game;
+            int thread_index = gpu * m_games + game;
             connect(&m_gamesThreads[thread_index],
                     &ProductionWorker::resultReady,
                     this,
@@ -93,21 +94,20 @@ void Production::startGames() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[thread_index].init(myGpu, m_network);
+            m_gamesThreads[thread_index].init(myGpu, m_network, thread_index);
             m_gamesThreads[thread_index].start();
         }
     }
 }
 
-void Production::getResult(const QString& file, float duration) {
+void Production::getResult(const QString& file, float duration, int index) {
     m_syncMutex.lock();
     m_gamesPlayed++;
     printTimingInfo(duration);
     uploadData(file);
     if (!fetchBestNetworkHash()) {
         fetchBestNetwork();
-        ProductionWorker *w = qobject_cast<ProductionWorker*>(sender());
-        w->newNetwork(m_network);
+        m_gamesThreads[index].newNetwork(m_network);
     }
     m_syncMutex.unlock();
 }
