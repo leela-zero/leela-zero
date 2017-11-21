@@ -21,12 +21,16 @@
 
 #include <QProcess>
 #include <QTextStream>
+#include <tuple>
+
+using VersionTuple = std::tuple<int, int>;
+extern const VersionTuple min_leelaz_version;
 
 class Game : QProcess {
 public:
-    Game(const QString& weights, QTextStream& out);
+    Game(const QString& weights, const QString &opt = QString(" -g -q -n -d -m 30 -r 0 -w "));
     ~Game() = default;
-    bool gameStart();
+    bool gameStart(const VersionTuple& min_version);
     void move();
     bool waitForMove() { return waitReady(); }
     bool readMove();
@@ -35,25 +39,35 @@ public:
     bool writeSgf();
     bool dumpTraining();
     void gameQuit();
+    QString getMove() { return m_moveDone; }
+    QString getFile() { return m_fileName; }
+    bool setMove(const QString &m);
+    void setCmdLine(const QString &cmd)  { m_cmdLine = cmd; }
+    int getWinner();
+    enum {
+        BLACK = 0,
+        WHITE = 1,
+    };
 
 private:
     enum {
         NO_LEELAZ = 1,
         PROCESS_DIED,
-        WRONG_GTP
+        WRONG_GTP,
+        LAUNCH_FAILURE
     };
-
-    QTextStream& output;
-    QString cmdLine;
-    QString timeSettings;
-    QString winner;
-    QString fileName;
-    bool resignation;
-    bool blackToMove;
-    bool blackResigned;
-    int passes;
-    int moveNum;
+    QString m_cmdLine;
+    QString m_timeSettings;
+    QString m_winner;
+    QString m_fileName;
+    QString m_moveDone;
+    bool m_resignation;
+    bool m_blackToMove;
+    bool m_blackResigned;
+    int m_passes;
+    int m_moveNum;
     bool sendGtpCommand(QString cmd);
+    void checkVersion(const VersionTuple &min_version);
     bool waitReady();
     bool eatNewLine();
     void error(int errnum);

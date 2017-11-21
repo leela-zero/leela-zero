@@ -19,40 +19,42 @@
 #include <QUuid>
 #include "Game.h"
 
-Game::Game(const QString& weights, QTextStream& out) :
+Game::Game(const QString& weights, const QString& opt) :
     QProcess(),
-    output(out),
-    cmdLine("./leelaz"),
-    timeSettings("time_settings 0 1 0"),
-    resignation(false),
-    blackToMove(true),
-    blackResigned(false),
-    passes(0),
-    moveNum(0)
+    m_cmdLine("./leelaz"),
+    m_timeSettings("time_settings 0 1 0"),
+    m_resignation(false),
+    m_blackToMove(true),
+    m_blackResigned(false),
+    m_passes(0),
+    m_moveNum(0)
 {
 #ifdef WIN32
     cmdLine.append(".exe");
 #endif
-    cmdLine.append(" -g -q -n -d -m 30 -r 0 -w ");
-    cmdLine.append(weights);
-    cmdLine.append(" -p 1000 --noponder");
-    fileName = QUuid::createUuid().toRfc4122().toHex();
+    m_cmdLine.append(opt);
+    m_cmdLine.append(weights);
+    m_cmdLine.append(" -p 1000 --noponder");
+    m_fileName = QUuid::createUuid().toRfc4122().toHex();
 }
 
 void Game::error(int errnum) {
-    output << "*ERROR*: ";
+    QTextStream(stdout) << "*ERROR*: ";
     switch(errnum) {
         case Game::NO_LEELAZ:
-            output << "No 'leelaz' binary found." << endl;
+            QTextStream(stdout) << "No 'leelaz' binary found." << endl;
             break;
         case Game::PROCESS_DIED:
-            output << "The 'leelaz' process died unexpected." << endl;
+            QTextStream(stdout) << "The 'leelaz' process died unexpected." << endl;
             break;
         case Game::WRONG_GTP:
-            output << "Error in GTP response." << endl;
+            QTextStream(stdout) << "Error in GTP response." << endl;
+            break;
+        case Game::LAUNCH_FAILURE:
+            QTextStream(stdout) << "Could not talk to engine after launching." << endl;
             break;
         default:
-            output << "Unexpected error." << endl;
+            QTextStream(stdout) << "Unexpected error." << endl;
             break;
     }
 }
@@ -81,32 +83,74 @@ bool Game::sendGtpCommand(QString cmd) {
     }
     char readBuffer[256];
     int readCount = readLine(readBuffer, 256);
-    if (readCount <= 0 || readBuffer[0] != '=') {
-        output << "GTP: " << readBuffer << endl;
-        error(Game::WRONG_GTP);
-    }
+    Q_ASSERT(readCount > 0);
+    Q_ASSERT(readBuffer[0] == '=');
     if (!eatNewLine()) {
+        error(Game::PROCESS_DIED);
         return false;
     }
+
+    Q_ASSERT(readCount > 0);
     return true;
 }
 
-bool Game::gameStart() {
-    start(cmdLine);
+void Game::checkVersion(const VersionTuple &min_version) {
+    write(qPrintable("version\n"));
+    waitForBytesWritten(-1);
+    if (!waitReady()) {
+        error(Game::LAUNCH_FAILURE);
+        exit(EXIT_FAILURE);
+    }
+    char readBuffer[256];
+    int readCount = readLine(readBuffer, 256);
+    // We expect to read at last "=, space, something"
+    if (readCount <= 3 || readBuffer[0] != '=') {
+        QTextStream(stdout) << "GTP: " << readBuffer << endl;
+        error(Game::WRONG_GTP);
+        exit(EXIT_FAILURE);
+    }
+    QString version_buff(&readBuffer[2]);
+    version_buff = version_buff.simplified();
+    QStringList version_list = version_buff.split(".");
+    if (version_list.size() < 2) {
+        QTextStream(stdout) << "Unexpected Leela Zero version: " << version_buff << endl;
+        exit(EXIT_FAILURE);
+    }
+    if (version_list[0].toInt() < std::get<0>(min_version)
+        || (version_list[0].toInt() == std::get<0>(min_version)
+           && version_list[1].toInt() < std::get<1>(min_version))) {
+        QTextStream(stdout) << "Leela version is too old, saw " << version_buff
+                            << " but expected "
+                            << std::get<0>(min_version) << "."
+                            << std::get<1>(min_version) << "." << endl;
+        QTextStream(stdout) << "Check https://github.com/gcp/leela-zero for updates." << endl;
+        exit(EXIT_FAILURE);
+    }
+    if (!eatNewLine()) {
+        error(Game::WRONG_GTP);
+        exit(EXIT_FAILURE);
+    }
+}
+
+bool Game::gameStart(const VersionTuple &min_version) {
+    start(m_cmdLine);
     if(!waitForStarted()) {
         error(Game::NO_LEELAZ);
         return false;
     }
-    output << "Engine has started." << endl;
-    sendGtpCommand(timeSettings);
-    output << "Infinite thinking time set." << endl;
+    // This either succeeds or we exit immediately, so no need to
+    // check any return values.
+    checkVersion(min_version);
+    QTextStream(stdout) << "Engine has started." << endl;
+    sendGtpCommand(m_timeSettings);
+    QTextStream(stdout) << "Infinite thinking time set." << endl;
     return true;
 }
 
 void Game::move() {
-    moveNum++;
+    m_moveNum++;
     QString moveCmd;
-    if (blackToMove) {
+    if (m_blackToMove) {
         moveCmd = "genmove b\n";
     } else {
         moveCmd = "genmove w\n";
@@ -131,47 +175,69 @@ bool Game::readMove() {
     int readCount = readLine(readBuffer, 256);
     if (readCount <= 3 || readBuffer[0] != '=') {
         error(Game::WRONG_GTP);
-        output << "Error read " << readCount << " '";
-        output << readBuffer << "'" << endl;
+        QTextStream(stdout) << "Error read " << readCount << " '";
+        QTextStream(stdout) << readBuffer << "'" << endl;
         terminate();
         return false;
     }
     // Skip "= "
-    QString moveDone = readBuffer;
-    moveDone.remove(0, 2);
-    moveDone = moveDone.simplified();
+    m_moveDone = readBuffer;
+    m_moveDone.remove(0, 2);
+    m_moveDone = m_moveDone.simplified();
     if (!eatNewLine()) {
+        error(Game::PROCESS_DIED);
         return false;
     }
-    output << moveNum << " (" << moveDone << ") ";
-    output.flush();
-    if (moveDone.compare(QStringLiteral("pass"),
-                          Qt::CaseInsensitive) == 0) {
-        passes++;
-    } else if (moveDone.compare(QStringLiteral("resign"),
-                                 Qt::CaseInsensitive) == 0) {
-        resignation = true;
-        blackResigned = blackToMove;
-    } else {
-        passes = 0;
+    if(readCount == 0) {
+        error(Game::WRONG_GTP);
     }
+    QTextStream(stdout) << m_moveNum << " (" << m_moveDone << ") ";
+    QTextStream(stdout).flush();
+    if (m_moveDone.compare(QStringLiteral("pass"),
+                          Qt::CaseInsensitive) == 0) {
+        m_passes++;
+    } else if (m_moveDone.compare(QStringLiteral("resign"),
+                                 Qt::CaseInsensitive) == 0) {
+        m_resignation = true;
+        m_blackResigned = m_blackToMove;
+    } else {
+        m_passes = 0;
+    }
+    m_blackToMove = !m_blackToMove;
+    return true;
+}
+
+bool Game::setMove(const QString& m) {
+    if (!sendGtpCommand(m)) {
+        return false;
+    }
+    QStringList moves = m.split(" "); 
+    if (moves.at(2).compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
+        m_passes++;
+    } else if (moves.at(2).compare(QStringLiteral("resign"), Qt::CaseInsensitive) == 0) {
+        m_resignation = true;
+        m_blackResigned = m_blackToMove;
+    } else {
+        m_passes = 0;
+    }
+    m_blackToMove = !m_blackToMove;
     return true;
 }
 
 bool Game::nextMove() {
-    if(resignation || passes > 1 || moveNum > (19 * 19 * 2)) {
+    if(m_resignation || m_passes > 1 || m_moveNum > (19 * 19 * 2)) {
         return false;
     }
-    blackToMove = !blackToMove;
+    m_blackToMove = !m_blackToMove;
     return true;
 }
 
 bool Game::getScore() {
-    if(resignation) {
-        if (blackResigned) {
-            winner = QString(QStringLiteral("white"));
+    if(m_resignation) {
+        if (m_blackResigned) {
+            m_winner = QString(QStringLiteral("white"));
         } else {
-            winner = QString(QStringLiteral("black"));
+            m_winner = QString(QStringLiteral("black"));
         }
     } else{
         write("final_score\n");
@@ -185,37 +251,44 @@ bool Game::getScore() {
         QString score = readBuffer;
         score.remove(0, 2);
         if (readBuffer[2] == 'W') {
-            winner = QString(QStringLiteral("white"));
+            m_winner = QString(QStringLiteral("white"));
         } else if (readBuffer[2] == 'B') {
-            winner = QString(QStringLiteral("black"));
+            m_winner = QString(QStringLiteral("black"));
         }
         if (!eatNewLine()) {
+            error(Game::PROCESS_DIED);
             return false;
         }
-        output << "Score: " << score;
+        QTextStream(stdout) << "Score: " << score;
     }
-    if (winner.isNull()) {
-        output << "No winner found" << endl;
+    if (m_winner.isNull()) {
+        QTextStream(stdout) << "No winner found" << endl;
         return false;
     }
-    output << "Winner: " << winner << endl;
+    QTextStream(stdout) << "Winner: " << m_winner << endl;
     return true;
 }
 
+int Game::getWinner() {
+    if(m_winner.compare(QStringLiteral("white"), Qt::CaseInsensitive) == 0)
+        return Game::WHITE;
+    else
+        return Game::BLACK;
+}
 bool Game::writeSgf() {
-    output << "Writing " << fileName + ".sgf" << endl;
+    QTextStream(stdout) << "Writing " << m_fileName + ".sgf" << endl;
 
-    if (!sendGtpCommand(qPrintable("printsgf " + fileName + ".sgf"))) {
+    if (!sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"))) {
         return false;
     }
     return true;
 }
 
 bool Game::dumpTraining() {
-    output << "Dumping " << fileName + ".txt" << endl;
+    QTextStream(stdout) << "Dumping " << m_fileName + ".txt" << endl;
 
-    if (!sendGtpCommand(qPrintable("dump_training " + winner +
-                        " " + fileName + ".txt"))) {
+    if (!sendGtpCommand(qPrintable("dump_training " + m_winner +
+                        " " + m_fileName + ".txt"))) {
         return false;
     }
     return true;

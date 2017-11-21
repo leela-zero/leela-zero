@@ -11,3 +11,5 @@ packages/
 *.user
 src/x64
 x64/
+autogtp/*.sgf
+autogtp/*.gz
