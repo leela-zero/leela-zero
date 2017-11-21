@@ -4,7 +4,7 @@
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
+    the Free SoNew AutoGTP with multigame supportftware Foundation, either version 3 of the License, or
     (at your option) any later version.
 
     Leela Zero is distributed in the hope that it will be useful,
@@ -52,6 +52,9 @@ void Game::error(int errnum) {
             break;
         case Game::LAUNCH_FAILURE:
             QTextStream(stdout) << "Could not talk to engine after launching." << endl;
+            break;
+        case Game::LAUNCH_FAILURE:
+            output << "Could not talk to engine after launching." << endl;
             break;
         default:
             QTextStream(stdout) << "Unexpected error." << endl;

@@ -34,7 +34,6 @@
 #include "production.h"
 
 constexpr int AUTOGTP_VERSION = 4;
-
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version = {0, 6};
 
