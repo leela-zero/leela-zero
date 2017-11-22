@@ -184,6 +184,12 @@ bool Production::networkExists() {
             }
         } else {
             QTextStream(stdout) << "Unable to open network file for reading." << endl;
+            QFile file(m_network);
+            if(file.remove()) {
+                return false;
+            }
+            QTextStream(stdout) << "Unable to delete the network file. " \
+                << "Check permissions." << endl;
             exit(EXIT_FAILURE);
         }
         QTextStream(stdout) << "Downloaded network hash doesn't match." << endl;
