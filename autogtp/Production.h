@@ -25,6 +25,14 @@
 #include <QMutex>
 #include <QTextStream>
 #include <chrono>
+#include <stdexcept>
+
+struct NetworkException: public std::runtime_error
+{
+    NetworkException(std::string const& message)
+        : std::runtime_error("NetworkException: " + message)
+    {}
+};
 
 class ProductionWorker : public QThread {
     Q_OBJECT
@@ -76,6 +84,7 @@ private:
     void fetchBestNetwork();
     void uploadData(const QString& file);
     void printTimingInfo(float duration);
+    bool updateNetwork();
 };
 
 #endif
