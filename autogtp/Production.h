@@ -27,13 +27,6 @@
 #include <chrono>
 #include <stdexcept>
 
-struct NetworkException: public std::runtime_error
-{
-    NetworkException(std::string const& message)
-        : std::runtime_error("NetworkException: " + message)
-    {}
-};
-
 class ProductionWorker : public QThread {
     Q_OBJECT
 public:
@@ -69,6 +62,15 @@ public slots:
     void getResult(const QString& file, float duration, int index);
 
 private:
+
+    struct NetworkException: public std::runtime_error
+    {
+        NetworkException(std::string const& message)
+            : std::runtime_error("NetworkException: " + message)
+        {}
+    };
+
+
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
     QVector<ProductionWorker> m_gamesThreads;
