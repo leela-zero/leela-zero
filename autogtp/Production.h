@@ -76,6 +76,7 @@ private:
     void fetchBestNetwork();
     void uploadData(const QString& file);
     void printTimingInfo(float duration);
+    bool networkExists();
 };
 
 #endif
