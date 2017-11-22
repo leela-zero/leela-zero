@@ -19,29 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\FastBoard.cpp" />
-    <ClCompile Include="..\src\FastState.cpp" />
-    <ClCompile Include="..\src\FullBoard.cpp" />
-    <ClCompile Include="..\src\GameState.cpp" />
-    <ClCompile Include="..\src\GTP.cpp" />
-    <ClCompile Include="..\src\KoState.cpp" />
-    <ClCompile Include="..\src\Leela.cpp" />
-    <ClCompile Include="..\src\Network.cpp" />
-    <ClCompile Include="..\src\OpenCL.cpp" />
-    <ClCompile Include="..\src\Random.cpp" />
-    <ClCompile Include="..\src\SGFParser.cpp" />
-    <ClCompile Include="..\src\SGFTree.cpp" />
-    <ClCompile Include="..\src\SMP.cpp" />
-    <ClCompile Include="..\src\TimeControl.cpp" />
-    <ClCompile Include="..\src\Timing.cpp" />
-    <ClCompile Include="..\src\Training.cpp" />
-    <ClCompile Include="..\src\TTable.cpp" />
-    <ClCompile Include="..\src\UCTNode.cpp" />
-    <ClCompile Include="..\src\UCTSearch.cpp" />
-    <ClCompile Include="..\src\Utils.cpp" />
-    <ClCompile Include="..\src\Zobrist.cpp" />
-  </ItemGroup>
-  <ItemGroup>
+    <ClInclude Include="..\src\CL\cl2.hpp" />
     <ClInclude Include="..\src\config.h" />
     <ClInclude Include="..\src\FastBoard.h" />
     <ClInclude Include="..\src\FastState.h" />
@@ -68,6 +46,27 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <ClCompile Include="..\src\FastBoard.cpp" />
+    <ClCompile Include="..\src\FastState.cpp" />
+    <ClCompile Include="..\src\FullBoard.cpp" />
+    <ClCompile Include="..\src\GameState.cpp" />
+    <ClCompile Include="..\src\GTP.cpp" />
+    <ClCompile Include="..\src\KoState.cpp" />
+    <ClCompile Include="..\src\Leela.cpp" />
+    <ClCompile Include="..\src\Network.cpp" />
+    <ClCompile Include="..\src\OpenCL.cpp" />
+    <ClCompile Include="..\src\Random.cpp" />
+    <ClCompile Include="..\src\SGFParser.cpp" />
+    <ClCompile Include="..\src\SGFTree.cpp" />
+    <ClCompile Include="..\src\SMP.cpp" />
+    <ClCompile Include="..\src\TimeControl.cpp" />
+    <ClCompile Include="..\src\Timing.cpp" />
+    <ClCompile Include="..\src\Training.cpp" />
+    <ClCompile Include="..\src\TTable.cpp" />
+    <ClCompile Include="..\src\UCTNode.cpp" />
+    <ClCompile Include="..\src\UCTSearch.cpp" />
+    <ClCompile Include="..\src\Utils.cpp" />
+    <ClCompile Include="..\src\Zobrist.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

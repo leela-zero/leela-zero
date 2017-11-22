@@ -21,9 +21,9 @@
 #include "Production.h"
 #include "Game.h"
 
-void ProductionWorker::run(){
+void ProductionWorker::run() {
      do {
-         std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+         auto start = std::chrono::high_resolution_clock::now();
          Game game(m_network, m_option);
          if(!game.gameStart(min_leelaz_version)) {
              return;
@@ -42,34 +42,39 @@ void ProductionWorker::run(){
          }
          QTextStream(stdout) << "Stopping engine." << endl;
          game.gameQuit();
-         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-         float gameDuration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-         emit resultReady(game.getFile(), gameDuration);
-    } while (1);
+         auto end = std::chrono::high_resolution_clock::now();
+         auto gameDuration =
+            std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+         emit resultReady(game.getFile(), gameDuration, m_index);
+    } while (true);
 }
 
-void ProductionWorker::init(const QString &gpuIndex, const QString &net) {
+void ProductionWorker::init(const QString& gpuIndex, const QString& net,
+                            const int index) {
     m_option = " -g -q -n -d -m 30 -r 0 -w ";
-    if(!gpuIndex.isEmpty())
+    if(!gpuIndex.isEmpty()) {
         m_option.prepend(" -gpu=" + gpuIndex + " ");
+    }
     m_network = net;
+    m_index = index;
 }
 
-
-Production::Production(const int &gpus, const int &games, const QStringList &gpuslist, const int &ver, const QString &keep, QMutex *mutex) :
-    m_mainMutex(mutex),
+Production::Production(const int gpus,
+                       const int games,
+                       const QStringList& gpuslist,
+                       const int ver,
+                       const QString& keep,
+                       QMutex* mutex)
+    : m_mainMutex(mutex),
     m_syncMutex(),
-    m_gamesThreads(gpus*games),
+    m_gamesThreads(gpus * games),
     m_games(games),
     m_gpus(gpus),
     m_gpusList(gpuslist),
     m_gamesPlayed(0),
     m_keepPath(keep),
-    m_version(ver)
-{
+    m_version(ver) {
 }
-
-Production::~Production() {}
 
 void Production::startGames() {
     m_start = std::chrono::high_resolution_clock::now();
@@ -79,36 +84,41 @@ void Production::startGames() {
     QString myGpu;
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
         for(int game = 0; game < m_games; ++game) {
-            connect(&m_gamesThreads[gpu * m_games + game], &ProductionWorker::resultReady, this, &Production::getResult, Qt::DirectConnection);
+            int thread_index = gpu * m_games + game;
+            connect(&m_gamesThreads[thread_index],
+                    &ProductionWorker::resultReady,
+                    this,
+                    &Production::getResult,
+                    Qt::DirectConnection);
             if(m_gpusList.isEmpty()) {
                 myGpu = "";
-            }
-            else {
+            } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[gpu * m_games + game].init(myGpu, m_network);
-            m_gamesThreads[gpu * m_games + game].start();
+            m_gamesThreads[thread_index].init(myGpu, m_network, thread_index);
+            m_gamesThreads[thread_index].start();
         }
     }
 }
 
-void Production::getResult(QString file, float duration) {
+void Production::getResult(const QString& file, float duration, int index) {
     m_syncMutex.lock();
     m_gamesPlayed++;
     printTimingInfo(duration);
     uploadData(file);
-    if(!fetchBestNetworkHash()) {
+    if (!fetchBestNetworkHash()) {
         fetchBestNetwork();
-        ProductionWorker *w = qobject_cast<ProductionWorker*>(sender());
-        w->newNetwork(m_network);
+        m_gamesThreads[index].newNetwork(m_network);
     }
     m_syncMutex.unlock();
 }
 
 void  Production::printTimingInfo(float duration) {
     auto game_end = std::chrono::high_resolution_clock::now();
-    auto total_time_s = std::chrono::duration_cast<std::chrono::seconds>(game_end - m_start);
-    auto total_time_min = std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
+    auto total_time_s =
+        std::chrono::duration_cast<std::chrono::seconds>(game_end - m_start);
+    auto total_time_min =
+        std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
     QTextStream(stdout) << m_gamesPlayed << " game(s) played in "
          << total_time_min.count() << " minutes = "
          << total_time_s.count() / m_gamesPlayed << " seconds/game"
@@ -130,7 +140,8 @@ bool Production::fetchBestNetworkHash() {
     QString outstr(output);
     QStringList outlst = outstr.split("\n");
     if (outlst.size() != 2) {
-        QTextStream(stdout) << "Unexpected output from server: " << endl << output << endl;
+        QTextStream(stdout)
+            << "Unexpected output from server: " << endl << output << endl;
         exit(EXIT_FAILURE);
     }
     QString outhash = outlst[0];
@@ -140,9 +151,11 @@ bool Production::fetchBestNetworkHash() {
     QTextStream(stdout) << "Required client version: " << client_version;
     if (server_expected > m_version) {
         QTextStream(stdout) << ' ' <<  endl;
-        QTextStream(stdout) << "Server requires client version " << server_expected
-                            << " but we are version " << m_version << endl;
-        QTextStream(stdout) << "Check https://github.com/gcp/leela-zero for updates." << endl;
+        QTextStream(stdout)
+            << "Server requires client version " << server_expected
+            << " but we are version " << m_version << endl;
+        QTextStream(stdout)
+            << "Check https://github.com/gcp/leela-zero for updates." << endl;
         exit(EXIT_FAILURE);
     } else {
         QTextStream(stdout) << " (OK)" << endl;
@@ -165,10 +178,8 @@ void Production::fetchBestNetwork() {
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    // Be quiet, but output the real file name we saved to
-    // Use the filename from the server
-    // Resume download if file exists (aka avoid redownloading, and don't
-    // error out if it exists)
+    // Be quiet, but output the real file name we saved.
+    // Use the filename from the server.
     prog_cmdline.append(" -s -O -J");
     prog_cmdline.append(" -w %{filename_effective}");
     prog_cmdline.append(" http://zero.sjeng.org/best-network");
@@ -196,7 +207,7 @@ void Production::fetchBestNetwork() {
     return;
 }
 
-void Production::uploadData(const QString &file) {
+void Production::uploadData(const QString& file) {
     // Find output SGF and txt files
     QDir dir;
     QStringList filters;

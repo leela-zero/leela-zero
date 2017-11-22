@@ -25,14 +25,16 @@
 #include "SPRT.h"
 #include "Game.h"
 
-class ValidationWorker : public QThread
-{
+class ValidationWorker : public QThread {
     Q_OBJECT
 public:
-    ValidationWorker() {}
-    ValidationWorker(const ValidationWorker& w) : QThread(w.parent()){}
-    ~ValidationWorker() {}
-    void init(const QString &gpuIndex, const QString &firstNet, const QString &secondNet, const int &expected);
+    ValidationWorker() = default;
+    ValidationWorker(const ValidationWorker& w) : QThread(w.parent()) {}
+    ~ValidationWorker() = default;
+    void init(const QString& gpuIndex,
+              const QString& firstNet,
+              const QString& secondNet,
+              int expected);
     void run() override;
 
 signals:
@@ -42,25 +44,25 @@ private:
     QString m_secondNet;
     int m_expected;
     QString m_option;
-
 };
 
-
-class Validation : public QObject
-{
+class Validation : public QObject {
     Q_OBJECT
 
 public:
-    Validation(const int &gpus, const int &games, const QStringList &gpusList,
-               const QString &firstNet, const QString &secondNet, QMutex *mutex);
-    ~Validation();
+    Validation(const int gpus, const int games,
+               const QStringList& gpusList,
+               const QString& firstNet,
+               const QString& secondNet,
+               QMutex* mutex);
+    ~Validation() = default;
     void startGames();
 
 public slots:
     void getResult(Sprt::GameResult result);
 
 private:
-    QMutex *m_mainMutex;
+    QMutex* m_mainMutex;
     QMutex m_syncMutex;
     Sprt m_statistic;
     QVector<ValidationWorker> m_gamesThreads;

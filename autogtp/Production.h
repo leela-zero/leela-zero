@@ -26,39 +26,42 @@
 #include <QTextStream>
 #include <chrono>
 
-class ProductionWorker : public QThread
-{
+class ProductionWorker : public QThread {
     Q_OBJECT
 public:
-    ProductionWorker() {}
-    ProductionWorker(const ProductionWorker& w) : QThread(w.parent()){}
-    ~ProductionWorker() {}
-    void init(const QString &gpuIndex, const QString &net);
-    void newNetwork(const QString &net) { m_network = net; }
+    ProductionWorker() = default;
+    ProductionWorker(const ProductionWorker& w) : QThread(w.parent()) {}
+    ~ProductionWorker() = default;
+    void init(const QString& gpuIndex, const QString& net, const int index);
+    void newNetwork(const QString& net) { m_network = net; }
     void run() override;
 
 signals:
-    void resultReady(QString file, float duration);
+    void resultReady(const QString& file, float duration, int index);
 private:
     QString m_network;
     QString m_option;
+    int m_index;
 };
 
-
-class Production : public QObject
-{
+class Production : public QObject {
     Q_OBJECT
-    
+
 public:
-    Production(const int &gpus, const int &games, const QStringList &gpusList, const int &ver, const QString &keep, QMutex *mutex);
-    ~Production();
+    Production(const int gpus,
+               const int games,
+               const QStringList& gpuslist,
+               const int ver,
+               const QString& keep,
+               QMutex* mutex);
+    ~Production() = default;
     void startGames();
 
 public slots:
-    void getResult(QString file, float duration);
+    void getResult(const QString& file, float duration, int index);
 
 private:
-    QMutex *m_mainMutex;
+    QMutex* m_mainMutex;
     QMutex m_syncMutex;
     QVector<ProductionWorker> m_gamesThreads;
     int m_games;
@@ -71,7 +74,7 @@ private:
     std::chrono::high_resolution_clock::time_point m_start;
     bool fetchBestNetworkHash();
     void fetchBestNetwork();
-    void uploadData(const QString &file);
+    void uploadData(const QString& file);
     void printTimingInfo(float duration);
 };
 

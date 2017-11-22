@@ -1,3 +1,5 @@
 /Makefile
 /.qmake.stash
 /autogtp
+/*.sgf
+/*.gz

@@ -5,16 +5,32 @@ VisualStudioVersion = 15.0.27004.2009
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "leela-zero", "VS2017\leela-zero.vcxproj", "{7B887BFE-8D2C-46CD-B139-5213434BF218}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "autogtp", "VS2017\autogtp.vcxproj", "{DA8E99D7-9AE7-46CC-A9BA-323F154D0959}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{7B887BFE-8D2C-46CD-B139-5213434BF218}.Debug|x64.ActiveCfg = Debug|x64
 		{7B887BFE-8D2C-46CD-B139-5213434BF218}.Debug|x64.Build.0 = Debug|x64
+		{7B887BFE-8D2C-46CD-B139-5213434BF218}.Debug|x86.ActiveCfg = Debug|Win32
+		{7B887BFE-8D2C-46CD-B139-5213434BF218}.Debug|x86.Build.0 = Debug|Win32
 		{7B887BFE-8D2C-46CD-B139-5213434BF218}.Release|x64.ActiveCfg = Release|x64
 		{7B887BFE-8D2C-46CD-B139-5213434BF218}.Release|x64.Build.0 = Release|x64
+		{7B887BFE-8D2C-46CD-B139-5213434BF218}.Release|x86.ActiveCfg = Release|Win32
+		{7B887BFE-8D2C-46CD-B139-5213434BF218}.Release|x86.Build.0 = Release|Win32
+		{DA8E99D7-9AE7-46CC-A9BA-323F154D0959}.Debug|x64.ActiveCfg = Debug|x64
+		{DA8E99D7-9AE7-46CC-A9BA-323F154D0959}.Debug|x64.Build.0 = Debug|x64
+		{DA8E99D7-9AE7-46CC-A9BA-323F154D0959}.Debug|x86.ActiveCfg = Debug|Win32
+		{DA8E99D7-9AE7-46CC-A9BA-323F154D0959}.Debug|x86.Build.0 = Debug|Win32
+		{DA8E99D7-9AE7-46CC-A9BA-323F154D0959}.Release|x64.ActiveCfg = Release|x64
+		{DA8E99D7-9AE7-46CC-A9BA-323F154D0959}.Release|x64.Build.0 = Release|x64
+		{DA8E99D7-9AE7-46CC-A9BA-323F154D0959}.Release|x86.ActiveCfg = Release|Win32
+		{DA8E99D7-9AE7-46CC-A9BA-323F154D0959}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -7,8 +7,8 @@ training/tf/venv
 packages/
 *.db
 *.opendb
-*.vcxproj.filters
 *.user
+*.orig
 src/x64
 x64/
 autogtp/*.sgf

@@ -28,7 +28,8 @@ extern const VersionTuple min_leelaz_version;
 
 class Game : QProcess {
 public:
-    Game(const QString& weights, const QString &opt = QString(" -g -q -n -d -m 30 -r 0 -w "));
+    Game(const QString& weights,
+         const QString& opt = QString(" -g -q -n -d -m 30 -r 0 -w "));
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version);
     void move();
@@ -39,10 +40,10 @@ public:
     bool writeSgf();
     bool dumpTraining();
     void gameQuit();
-    QString getMove() { return m_moveDone; }
-    QString getFile() { return m_fileName; }
-    bool setMove(const QString &m);
-    void setCmdLine(const QString &cmd)  { m_cmdLine = cmd; }
+    QString getMove() const { return m_moveDone; }
+    QString getFile() const { return m_fileName; }
+    bool setMove(const QString& m);
+    void setCmdLine(const QString& cmd)  { m_cmdLine = cmd; }
     int getWinner();
     enum {
         BLACK = 0,

@@ -42,19 +42,24 @@ void Game::error(int errnum) {
     QTextStream(stdout) << "*ERROR*: ";
     switch(errnum) {
         case Game::NO_LEELAZ:
-            QTextStream(stdout) << "No 'leelaz' binary found." << endl;
+            QTextStream(stdout)
+                << "No 'leelaz' binary found." << endl;
             break;
         case Game::PROCESS_DIED:
-            QTextStream(stdout) << "The 'leelaz' process died unexpected." << endl;
+            QTextStream(stdout)
+                << "The 'leelaz' process died unexpected." << endl;
             break;
         case Game::WRONG_GTP:
-            QTextStream(stdout) << "Error in GTP response." << endl;
+            QTextStream(stdout)
+                << "Error in GTP response." << endl;
             break;
         case Game::LAUNCH_FAILURE:
-            QTextStream(stdout) << "Could not talk to engine after launching." << endl;
+            QTextStream(stdout)
+                << "Could not talk to engine after launching." << endl;
             break;
         default:
-            QTextStream(stdout) << "Unexpected error." << endl;
+            QTextStream(stdout)
+                << "Unexpected error." << endl;
             break;
     }
 }
@@ -83,14 +88,15 @@ bool Game::sendGtpCommand(QString cmd) {
     }
     char readBuffer[256];
     int readCount = readLine(readBuffer, 256);
-    Q_ASSERT(readCount > 0);
-    Q_ASSERT(readBuffer[0] == '=');
+    if (readCount <= 0 || readBuffer[0] != '=') {
+        QTextStream(stdout) << "GTP: " << readBuffer << endl;
+        error(Game::WRONG_GTP);
+        return false;
+    }
     if (!eatNewLine()) {
         error(Game::PROCESS_DIED);
         return false;
     }
-
-    Q_ASSERT(readCount > 0);
     return true;
 }
 
@@ -113,17 +119,20 @@ void Game::checkVersion(const VersionTuple &min_version) {
     version_buff = version_buff.simplified();
     QStringList version_list = version_buff.split(".");
     if (version_list.size() < 2) {
-        QTextStream(stdout) << "Unexpected Leela Zero version: " << version_buff << endl;
+        QTextStream(stdout)
+            << "Unexpected Leela Zero version: " << version_buff << endl;
         exit(EXIT_FAILURE);
     }
     if (version_list[0].toInt() < std::get<0>(min_version)
         || (version_list[0].toInt() == std::get<0>(min_version)
            && version_list[1].toInt() < std::get<1>(min_version))) {
-        QTextStream(stdout) << "Leela version is too old, saw " << version_buff
-                            << " but expected "
-                            << std::get<0>(min_version) << "."
-                            << std::get<1>(min_version) << "." << endl;
-        QTextStream(stdout) << "Check https://github.com/gcp/leela-zero for updates." << endl;
+        QTextStream(stdout)
+            << "Leela version is too old, saw " << version_buff
+            << " but expected "
+            << std::get<0>(min_version) << "."
+            << std::get<1>(min_version) << "." << endl;
+        QTextStream(stdout)
+            << "Check https://github.com/gcp/leela-zero for updates." << endl;
         exit(EXIT_FAILURE);
     }
     if (!eatNewLine()) {
@@ -203,7 +212,6 @@ bool Game::readMove() {
     } else {
         m_passes = 0;
     }
-    m_blackToMove = !m_blackToMove;
     return true;
 }
 
@@ -211,10 +219,12 @@ bool Game::setMove(const QString& m) {
     if (!sendGtpCommand(m)) {
         return false;
     }
-    QStringList moves = m.split(" "); 
-    if (moves.at(2).compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
+    QStringList moves = m.split(" ");
+    if (moves.at(2)
+        .compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
         m_passes++;
-    } else if (moves.at(2).compare(QStringLiteral("resign"), Qt::CaseInsensitive) == 0) {
+    } else if (moves.at(2)
+               .compare(QStringLiteral("resign"), Qt::CaseInsensitive) == 0) {
         m_resignation = true;
         m_blackResigned = m_blackToMove;
     } else {
@@ -275,6 +285,7 @@ int Game::getWinner() {
     else
         return Game::BLACK;
 }
+
 bool Game::writeSgf() {
     QTextStream(stdout) << "Writing " << m_fileName + ".sgf" << endl;
 

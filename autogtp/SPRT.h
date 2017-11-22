@@ -32,6 +32,7 @@
  */
 
 #include <QMutex>
+#include <tuple>
 
 class Sprt
 {
@@ -81,9 +82,14 @@ class Sprt
 		 * \a beta for a type II error outside interval [elo0, elo1].
 		 */
 		void initialize(double elo0, double elo1,
-				double alpha, double beta);
+				        double alpha, double beta);
+
 		/*! Returns the current status of the test. */
 		Status status() const;
+
+		/*! Returns current win/draw/loss score. */
+		std::tuple<int, int, int> getWDL() const;
+
 		/*!
 		 * Updates the test with \a result.
 		 *
