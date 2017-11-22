@@ -18,6 +18,7 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QCryptographicHash>
 #include "Production.h"
 #include "Game.h"
 
@@ -168,8 +169,32 @@ bool Production::fetchBestNetworkHash() {
 
 }
 
-void Production::fetchBestNetwork() {
+bool Production::networkExists() {
     if (QFileInfo::exists(m_network)) {
+        QFile f(m_network);
+        if (f.open(QFile::ReadOnly)) {
+            QCryptographicHash hash(QCryptographicHash::Sha256);
+            if (!hash.addData(&f)) {
+                QTextStream(stdout) << "Reading network file failed." << endl;
+                exit(EXIT_FAILURE);
+            }
+            QString result = hash.result().toHex();
+            if (result == m_network) {
+                return true;
+            }
+        } else {
+            QTextStream(stdout) << "Unable to open network file for reading." << endl;
+            exit(EXIT_FAILURE);
+        }
+        QTextStream(stdout) << "Downloaded network hash doesn't match." << endl;
+        QFile file(m_network);
+        file.remove();
+    }
+    return false;
+}
+
+void Production::fetchBestNetwork() {
+    if (networkExists()) {
         QTextStream(stdout) << "Already downloaded network." << endl;
         return;
     }
@@ -204,6 +229,11 @@ void Production::fetchBestNetwork() {
     outfile.chop(3);
     QTextStream(stdout) << "Net filename: " << outfile << endl;
     m_network = outfile;
+
+    if (!networkExists()) {
+        exit(EXIT_FAILURE);
+    }
+
     return;
 }
 
