@@ -109,7 +109,7 @@ Validation::Validation(const int gpus,
     m_gamesPlayed(0),
     m_firstNet(firstNet),
     m_secondNet(secondNet) {
-    m_statistic.initialize(25.0, 35.0, 0.05, 0.05);
+    m_statistic.initialize(0.0, 35.0, 0.05, 0.05);
     m_statistic.addGameResult(Sprt::Draw);
 }
 
