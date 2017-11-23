@@ -19,6 +19,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QThread>
+#include <QCryptographicHash>
 #include "Production.h"
 #include "Game.h"
 
@@ -58,7 +59,7 @@ void ProductionWorker::init(const QString& gpuIndex, const QString& net,
                             const int index) {
     m_option = " -g -q -n -d -m 30 -r 0 -w ";
     if(!gpuIndex.isEmpty()) {
-        m_option.prepend(" -gpu=" + gpuIndex + " ");
+        m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_network = net;
     m_index = index;
@@ -200,8 +201,38 @@ bool Production::fetchBestNetworkHash() {
 
 }
 
-void Production::fetchBestNetwork() {
+bool Production::networkExists() {
     if (QFileInfo::exists(m_network)) {
+        QFile f(m_network);
+        if (f.open(QFile::ReadOnly)) {
+            QCryptographicHash hash(QCryptographicHash::Sha256);
+            if (!hash.addData(&f)) {
+                QTextStream(stdout) << "Reading network file failed." << endl;
+                exit(EXIT_FAILURE);
+            }
+            QString result = hash.result().toHex();
+            if (result == m_network) {
+                return true;
+            }
+        } else {
+            QTextStream(stdout) << "Unable to open network file for reading." << endl;
+            QFile file(m_network);
+            if(file.remove()) {
+                return false;
+            }
+            QTextStream(stdout) << "Unable to delete the network file. " \
+                << "Check permissions." << endl;
+            exit(EXIT_FAILURE);
+        }
+        QTextStream(stdout) << "Downloaded network hash doesn't match." << endl;
+        QFile file(m_network);
+        file.remove();
+    }
+    return false;
+}
+
+void Production::fetchBestNetwork() {
+    if (networkExists()) {
         QTextStream(stdout) << "Already downloaded network." << endl;
         return;
     }
@@ -241,6 +272,11 @@ void Production::fetchBestNetwork() {
     outfile.chop(3);
     QTextStream(stdout) << "Net filename: " << outfile << endl;
     m_network = outfile;
+
+    if (!networkExists()) {
+        exit(EXIT_FAILURE);
+    }
+
     return;
 }
 

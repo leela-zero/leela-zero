@@ -87,6 +87,7 @@ private:
     void uploadData(const QString& file);
     void printTimingInfo(float duration);
     bool updateNetwork();
+    bool networkExists();
 };
 
 #endif
