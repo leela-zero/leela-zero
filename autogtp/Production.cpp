@@ -216,8 +216,7 @@ bool Production::networkExists() {
             }
         } else {
             QTextStream(stdout) << "Unable to open network file for reading." << endl;
-            QFile file(m_network);
-            if(file.remove()) {
+            if(f.remove()) {
                 return false;
             }
             QTextStream(stdout) << "Unable to delete the network file. " \
@@ -225,9 +224,10 @@ bool Production::networkExists() {
             exit(EXIT_FAILURE);
         }
         QTextStream(stdout) << "Downloaded network hash doesn't match." << endl;
-        QFile file(m_network);
-        file.remove();
+        f.remove();
+
     }
+
     return false;
 }
 
@@ -235,6 +235,13 @@ void Production::fetchBestNetwork() {
     if (networkExists()) {
         QTextStream(stdout) << "Already downloaded network." << endl;
         return;
+    }
+
+    if (QFileInfo::exists(m_network+".gz")) {
+        QFile f_gz(m_network+".gz");
+        //Curl refuses to overwrite, so make sure to delete the gzipped network
+        //if it exists
+        f_gz.remove();
     }
 
     QString prog_cmdline("curl");
@@ -264,9 +271,9 @@ void Production::fetchBestNetwork() {
     QString outfile = outlst[0];
     QTextStream(stdout) << "Curl filename: " << outfile << endl;
 #ifdef WIN32
-    QProcess::execute("gzip.exe -d -k -q " + outfile);
+    QProcess::execute("gzip.exe -d -q " + outfile);
 #else
-    QProcess::execute("gunzip -k -q " + outfile);
+    QProcess::execute("gunzip -q " + outfile);
 #endif
     // Remove extension (.gz)
     outfile.chop(3);
