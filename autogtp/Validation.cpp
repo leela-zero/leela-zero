@@ -21,12 +21,12 @@
 
 void ValidationWorker::run() {
      do {
-        Game first(m_firstNet,  " -g -q -r 0 -w ");
+        Game first(m_firstNet,  m_option);
         if(!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
         }
-        Game second(m_secondNet, " -g -q -r 0 -w ");
+        Game second(m_secondNet, m_option);
         if(!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
@@ -84,7 +84,7 @@ void ValidationWorker::init(const QString& gpuIndex,
                             const int expected) {
     m_option = " -g -q -r 0 -w ";
     if (!gpuIndex.isEmpty()) {
-        m_option.prepend(" -gpu=" + gpuIndex + " ");
+        m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_firstNet = firstNet;
     m_secondNet = secondNet;
