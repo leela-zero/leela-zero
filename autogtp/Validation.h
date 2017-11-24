@@ -34,6 +34,7 @@ public:
     void init(const QString& gpuIndex,
               const QString& firstNet,
               const QString& secondNet,
+              const QString& keep,
               int expected);
     void run() override;
 
@@ -43,6 +44,7 @@ private:
     QString m_firstNet;
     QString m_secondNet;
     int m_expected;
+    QString m_keepPath;
     QString m_option;
 };
 
@@ -54,6 +56,7 @@ public:
                const QStringList& gpusList,
                const QString& firstNet,
                const QString& secondNet,
+               const QString& keep,
                QMutex* mutex);
     ~Validation() = default;
     void startGames();
@@ -72,6 +75,7 @@ private:
     int m_gamesPlayed;
     QString m_firstNet;
     QString m_secondNet;
+    QString m_keepPath;
     void quitThreads();
 };
 

@@ -112,7 +112,8 @@ int main(int argc, char *argv[]) {
     QMutex mutex;
     if(competition) {
         Validation validate(gpusNum, gamesNum, gpusList,
-                            netList.at(0), netList.at(1), &mutex);
+                            netList.at(0), netList.at(1),
+                            parser.value(keepSgfOption), &mutex);
         validate.startGames();
         mutex.lock();
     } else {
