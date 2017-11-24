@@ -18,6 +18,7 @@
 
 #include "Validation.h"
 #include "Game.h"
+#include <QFile>
 
 void ValidationWorker::run() {
      do {
@@ -55,6 +56,17 @@ void ValidationWorker::run() {
         if (first.getScore()) {
             result = first.getWinner();
         }
+        if(!m_keepPath.isEmpty())
+        {
+            first.writeSgf();
+            QString prefix = m_keepPath + '/';
+            if(m_expected == Game::BLACK) {
+                prefix.append("black_");
+            } else {
+                prefix.append("white_");
+            }
+            QFile(first.getFile() + ".sgf").rename(prefix + first.getFile() + ".sgf");
+        }
         QTextStream(stdout) << "Stopping engine." << endl;
         first.gameQuit();
         second.gameQuit();
@@ -81,6 +93,7 @@ void ValidationWorker::run() {
 void ValidationWorker::init(const QString& gpuIndex,
                             const QString& firstNet,
                             const QString& secondNet,
+                            const QString& keep,
                             const int expected) {
     m_option = " -g -q -r 0 -w ";
     if (!gpuIndex.isEmpty()) {
@@ -89,6 +102,7 @@ void ValidationWorker::init(const QString& gpuIndex,
     m_firstNet = firstNet;
     m_secondNet = secondNet;
     m_expected = expected;
+    m_keepPath = keep;
 }
 
 Validation::Validation(const int gpus,
@@ -96,6 +110,7 @@ Validation::Validation(const int gpus,
                        const QStringList& gpuslist,
                        const QString& firstNet,
                        const QString& secondNet,
+                       const QString& keep,
                        QMutex* mutex) :
     m_mainMutex(mutex),
     m_syncMutex(),
@@ -105,7 +120,8 @@ Validation::Validation(const int gpus,
     m_gpusList(gpuslist),
     m_gamesPlayed(0),
     m_firstNet(firstNet),
-    m_secondNet(secondNet) {
+    m_secondNet(secondNet),
+    m_keepPath(keep) {
     m_statistic.initialize(0.0, 35.0, 0.05, 0.05);
     m_statistic.addGameResult(Sprt::Draw);
 }
@@ -137,7 +153,7 @@ void Validation::startGames() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[thread_index].init(myGpu, n1, n2, expected);
+            m_gamesThreads[thread_index].init(myGpu, n1, n2, m_keepPath, expected);
             m_gamesThreads[thread_index].start();
         }
     }
