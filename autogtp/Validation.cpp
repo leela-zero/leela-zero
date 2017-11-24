@@ -84,7 +84,7 @@ void ValidationWorker::init(const QString& gpuIndex,
                             const int expected) {
     m_option = " -g -q -r 0 -w ";
     if (!gpuIndex.isEmpty()) {
-        m_option.prepend(" -gpu=" + gpuIndex + " ");
+        m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_firstNet = firstNet;
     m_secondNet = secondNet;
