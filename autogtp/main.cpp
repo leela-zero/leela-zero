@@ -37,8 +37,7 @@ constexpr int AUTOGTP_VERSION = 4;
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version{0, 6};
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
     app.setApplicationName("autogtp");
     app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
@@ -49,20 +48,24 @@ int main(int argc, char *argv[])
     parser.addHelpOption();
     parser.addVersionOption();
 
-    QCommandLineOption competitionOption({"c", "competition"},
-                                         "Play two networks  against each other.");
-    QCommandLineOption networkOption({"n", "network"},
-                                     "Networks to use as players in comprtition mode (two are needed).",
-                                     "filename");
-    QCommandLineOption gamesNumOption({"g", "gamesNum"},
-                                      "Play 'gamesNum' games on one GPU at the same time.",
-                                      "num", "1");
-    QCommandLineOption gpusOption({"u", "gpus"},
-                                  "Index of the GPU to use for multiple GPUs support",
-                                  "num");
-    QCommandLineOption keepSgfOption({"k", "keepSgf" },
-                                     "Save SGF files after each self-play game.",
-                                     "output directory");
+    QCommandLineOption competitionOption(
+        {"c", "competition"}, "Play two networks against each other.");
+    QCommandLineOption networkOption(
+        {"n", "network"},
+            "Networks to use as players in competition mode (two are needed).",
+            "filename");
+    QCommandLineOption gamesNumOption(
+        {"g", "gamesNum"},
+            "Play 'gamesNum' games on one GPU at the same time.",
+            "num", "1");
+    QCommandLineOption gpusOption(
+        {"u", "gpus"},
+            "Index of the GPU to use for multiple GPUs support.",
+            "num");
+    QCommandLineOption keepSgfOption(
+        {"k", "keepSgf" },
+            "Save SGF files after each self-play game.",
+            "output directory");
 
     parser.addOption(competitionOption);
     parser.addOption(gamesNumOption);
@@ -80,8 +83,9 @@ int main(int argc, char *argv[])
     int gamesNum = parser.value(gamesNumOption).toInt();
     QStringList gpusList = parser.values(gpusOption);
     int gpusNum = gpusList.count();
-    if(gpusNum == 0)
+    if (gpusNum == 0) {
         gpusNum = 1;
+    }
 
     // Map streams
     QTextStream cin(stdin, QIODevice::ReadOnly);
@@ -107,13 +111,14 @@ int main(int argc, char *argv[])
     }
     QMutex mutex;
     if(competition) {
-
-        Validation validate(gpusNum, gamesNum, gpusList, netList.at(0), netList.at(1), &mutex);
+        Validation validate(gpusNum, gamesNum, gpusList,
+                            netList.at(0), netList.at(1),
+                            parser.value(keepSgfOption), &mutex);
         validate.startGames();
         mutex.lock();
-    } 
-    else {
-        Production prod(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), &mutex);
+    } else {
+        Production prod(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION,
+                        parser.value(keepSgfOption), &mutex);
         prod.startGames();
         mutex.lock();
     }
