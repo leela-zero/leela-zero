@@ -14,3 +14,4 @@ x64/
 autogtp/*.sgf
 autogtp/*.gz
 Debug
+Release

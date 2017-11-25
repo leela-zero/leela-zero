@@ -103,6 +103,12 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 
 ## Example of compiling and running - Windows
 
+To compile the solution leela-zero.sln you need to install Qt (https://www.qt.io/download-qt-for-application-development)
+and Qt VS Tools (can be found on Visual Studio Marketplace). Other prerequsits can be found in Nuget.
+
+OpenBLAS and OpenCL are critical for performance; but the Nuget package for them is currently outdated. We will try to create a tutorial for 
+self hosting Nuget package server.
+
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
     cd leela-zero

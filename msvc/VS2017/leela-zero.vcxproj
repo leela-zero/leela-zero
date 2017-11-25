@@ -45,6 +45,7 @@
     <ClInclude Include="..\..\src\Zobrist.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\README.md" />
     <None Include="packages.config" />
     <ClCompile Include="..\..\src\FastBoard.cpp" />
     <ClCompile Include="..\..\src\FastState.cpp" />
