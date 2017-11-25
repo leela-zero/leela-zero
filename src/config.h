@@ -83,4 +83,7 @@ typedef  unsigned long long int uint64;
     #endif
 #endif
 
+#include "half.hpp"
+using half_float::half;
+
 #endif
