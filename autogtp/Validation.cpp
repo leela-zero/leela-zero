@@ -218,7 +218,7 @@ void Validation::printResult() {
 
         QString first_name = "leelaz-" + m_firstNet.left(8);
         QString second_name = "leelaz-" + m_secondNet.left(8);
-        QTextStream(stdout) << "" << endl << first_name << " v " << second_name
+        QTextStream(stdout) << "\n" << first_name << " v " << second_name
                             << " (" << m_gamesPlayed << " games)" << endl;
 
         auto wdl = m_statistic.getWDL();
