@@ -39,7 +39,7 @@ public:
     void run() override;
 
 signals:
-    void resultReady(Sprt::GameResult r, int net_one_side);
+    void resultReady(Sprt::GameResult r, int net_one_color);
 private:
     QString m_firstNet;
     QString m_secondNet;
@@ -62,7 +62,7 @@ public:
     void startGames();
 
 public slots:
-    void getResult(Sprt::GameResult result, int net_one_side);
+    void getResult(Sprt::GameResult result, int net_one_color);
 
 private:
     void printResult();
