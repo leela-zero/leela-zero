@@ -22,14 +22,20 @@
 
 void ValidationWorker::run() {
      do {
+        sleep(1);
+
+        Sprt::GameResult result = (rand() % 10 <= 6) ? Sprt::Win : Sprt::Loss;
+        int net_one_side = rand() % 2 ? Game::BLACK : Game::WHITE;
+        emit resultReady(result, net_one_side);
+/*
         Game first(m_firstNet,  m_option);
         if(!first.gameStart(min_leelaz_version)) {
-            emit resultReady(Sprt::NoResult);
+            emit resultReady(Sprt::NoResult, Game::Black);
             return;
         }
         Game second(m_secondNet, m_option);
         if(!second.gameStart(min_leelaz_version)) {
-            emit resultReady(Sprt::NoResult);
+            emit resultReady(Sprt::NoResult, Game::Black);
             return;
         }
         QString wmove = "play white ";
@@ -37,14 +43,14 @@ void ValidationWorker::run() {
         do {
             first.move();
             if(!first.waitForMove()) {
-                emit resultReady(Sprt::NoResult);
+                emit resultReady(Sprt::NoResult, Game::Black);
                 return;
             }
             first.readMove();
             second.setMove(bmove + first.getMove());
             second.move();
             if(!second.waitForMove()) {
-                emit resultReady(Sprt::NoResult);
+                emit resultReady(Sprt::NoResult, Game::Black);
                 return;
             }
             second.readMove();
@@ -73,9 +79,9 @@ void ValidationWorker::run() {
 
         // Game is finished, send the result
         if (result == m_expected) {
-            emit resultReady(Sprt::Win);
+            emit resultReady(Sprt::Win, m_expected);
         } else {
-            emit resultReady(Sprt::Loss);
+            emit resultReady(Sprt::Loss, m_expected);
         }
         // Change color and play again
         QString net;
@@ -87,6 +93,7 @@ void ValidationWorker::run() {
         } else {
             m_expected = Game::BLACK;
         }
+*/
     } while (1);
 }
 
@@ -159,7 +166,7 @@ void Validation::startGames() {
     }
 }
 
-void Validation::getResult(Sprt::GameResult result) {
+void Validation::getResult(Sprt::GameResult result, int net_one_side) {
     if(result == Sprt::NoResult) {
         QTextStream(stdout) << "Engine Error." << endl;
         return;
@@ -167,6 +174,12 @@ void Validation::getResult(Sprt::GameResult result) {
     m_syncMutex.lock();
     m_gamesPlayed++;
     m_statistic.addGameResult(result);
+    if (net_one_side == Game::BLACK) {
+        m_black_statistic.addGameResult(result);
+    } else {
+        m_white_statistic.addGameResult(result);
+    }
+
     Sprt::Status status = m_statistic.status();
     auto wdl = m_statistic.getWDL();
     QTextStream(stdout) << std::get<0>(wdl) << " wins, "
@@ -177,6 +190,7 @@ void Validation::getResult(Sprt::GameResult result) {
         QTextStream(stdout)
             <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ");
         QTextStream(stdout) << "than the second" << endl;
+        printResult();
         m_mainMutex->unlock();
     }
     else {
@@ -187,6 +201,58 @@ void Validation::getResult(Sprt::GameResult result) {
         QTextStream(stdout) << " Upper Bound " << status.uBound << endl;
     }
     m_syncMutex.unlock();
+}
+
+
+void Validation::printResult() {
+        /*
+        leelaz-9k v leelaz-19k (176/2000 games)
+                     wins              black         white       avg cpu
+        leelaz-9k      65 36.93%       37 42.53%     28 31.46%   2150.07
+        leelaz-19k    111 63.07%       61 68.54%     50 57.47%   2263.43
+                                       98 55.68%     78 44.32%
+        */
+
+        QString first_name = "leelaz-" + m_firstNet.left(8);
+        QString second_name = "leelaz-" + m_secondNet.left(8);
+        QTextStream(stdout) << first_name << " v " << second_name
+                            << " (" << m_gamesPlayed << ")" << endl;
+
+        auto wdl = m_statistic.getWDL();
+        auto black_wdl = m_black_statistic.getWDL();
+        auto black_games = std::get<0>(black_wdl) + std::get<2>(black_wdl);
+        auto white_wdl = m_white_statistic.getWDL();
+        auto white_games = std::get<0>(white_wdl) + std::get<2>(white_wdl);
+        auto sum_black_wins = std::get<0>(black_wdl) + std::get<1>(white_wdl);
+        auto sum_white_wins = std::get<1>(black_wdl) + std::get<0>(white_wdl);
+        QTextStream(stdout) << QString("%1 %2 %3 %4\n")
+            .arg("" /* name */, 15)
+            .arg("wins", 12)
+            .arg("black", 12)
+            .arg("white", 12);
+        QTextStream(stdout) << QString("%1 %2 %2.2f  %4d %2.2f  %4d %2.2f\n")
+            .arg(first_name, 15)
+            .arg(std::get<0>(wdl), 4)
+            .arg(std::get<0>(wdl) / m_gamesPlayed)
+            .arg(std::get<0>(black_wdl), 4)
+            .arg(std::get<0>(black_wdl) / black_games)
+            .arg(std::get<0>(white_wdl), 4)
+            .arg(std::get<0>(white_wdl) / white_games);
+        QTextStream(stdout) << QString("%1 %2 %2.2f  %4d %2.2f  %4d %2.2f\n")
+            .arg(second_name, 15)
+            .arg(std::get<1>(wdl), 4)
+            .arg(std::get<1>(wdl) / m_gamesPlayed)
+            .arg(std::get<1>(black_wdl), 4)
+            .arg(std::get<1>(black_wdl) / black_games)
+            .arg(std::get<1>(white_wdl), 4)
+            .arg(std::get<1>(white_wdl) / white_games);
+        QTextStream(stdout) << QString("%1 %2 %4d %2.2f  %4d %2.2f\n")
+            .arg("" /* name */, 15)
+            .arg("" /* wins */, 12)
+            .arg(sum_black_wins)
+            .arg(sum_black_wins / m_gamesPlayed)
+            .arg(sum_white_wins)
+            .arg( sum_white_wins / m_gamesPlayed);
 }
 
 void Validation::quitThreads() {

@@ -39,7 +39,7 @@ public:
     void run() override;
 
 signals:
-    void resultReady(Sprt::GameResult r);
+    void resultReady(Sprt::GameResult r, int net_one_side);
 private:
     QString m_firstNet;
     QString m_secondNet;
@@ -62,12 +62,16 @@ public:
     void startGames();
 
 public slots:
-    void getResult(Sprt::GameResult result);
+    void getResult(Sprt::GameResult result, int net_one_side);
 
 private:
+    void printResult();
+
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
     Sprt m_statistic;
+    Sprt m_black_statistic;
+    Sprt m_white_statistic;
     QVector<ValidationWorker> m_gamesThreads;
     int m_games;
     int m_gpus;
