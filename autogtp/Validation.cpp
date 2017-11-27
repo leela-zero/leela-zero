@@ -205,15 +205,14 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
     m_syncMutex.unlock();
 }
 
-
 void Validation::printResult() {
         /*
-        Produces reports in this format
-        leelaz-9k v leelaz-19k (176 games)
-                     wins              black         white
-        leelaz-9k      65 36.93%       37 42.53%     28 31.46%
-        leelaz-19k    111 63.07%       61 68.54%     50 57.47%
-                                       98 55.68%     78 44.32%
+        Produces reports in this format.
+        leelaz-ABCD1234 v leelaz-DEFG5678 (176 games)
+                        wins          black       white
+        leelaz-ABDC1234   65 36.93%   37 42.53%   28 31.46%
+        leelaz-DEFG5678  111 63.07%   61 68.54%   50 57.47%
+                                      98 55.68%   78 44.32%
         */
 
         QString first_name = "leelaz-" + m_firstNet.left(8);
@@ -228,29 +227,6 @@ void Validation::printResult() {
         auto white_games = std::get<0>(white_wdl) + std::get<2>(white_wdl);
         auto sum_black_wins = std::get<0>(black_wdl) + std::get<2>(white_wdl);
         auto sum_white_wins = std::get<2>(black_wdl) + std::get<0>(white_wdl);
-
-        // Using sprintf, a little more compact
-        char report[4][100];
-        sprintf(report[0], "%-21s %-14s %-14s %s\n",
-            "" /* name */, "wins", "black", "white");
-        sprintf(report[1], "%-16s %4d %5.2f%% %7d %5.2f%% %7d %5.2f%%\n",
-            first_name.toLocal8Bit().constData(),
-            std::get<0>(wdl), 100.0*std::get<0>(wdl)/m_gamesPlayed,
-            std::get<0>(black_wdl), 100.0*std::get<0>(black_wdl)/black_games,
-            std::get<0>(white_wdl), 100.0*std::get<0>(white_wdl)/white_games);
-        sprintf(report[2], "%-16s %4d %5.2f%% %7d %5.2f%% %7d %5.2f%%\n",
-            second_name.toLocal8Bit().constData(),
-            std::get<2>(wdl), 100.0*std::get<2>(wdl)/m_gamesPlayed,
-            std::get<2>(black_wdl), 100.0*std::get<2>(black_wdl)/black_games,
-            std::get<2>(white_wdl), 100.0*std::get<2>(white_wdl)/white_games);
-        sprintf(report[3], "%16s %14s %4d %5.2f%% %7d %5.2f%%",
-            "" /* name */, "" /* wins column */,
-            sum_black_wins, 100.0*sum_black_wins/m_gamesPlayed,
-            sum_white_wins, 100.0*sum_white_wins/m_gamesPlayed);
-        QTextStream(stdout)
-            << report[0] << report[1] << report[2] << report[3] << endl;
-
-        QTextStream(stdout) << "\n";
 
         // Using QString arg, more QT esque
         QTextStream(stdout) << QString("%1 %2 %3 %4\n")
