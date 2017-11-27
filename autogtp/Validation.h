@@ -70,8 +70,9 @@ private:
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
     Sprt m_statistic;
-    Sprt m_black_statistic;
-    Sprt m_white_statistic;
+    Sprt m_blackStatistic;
+    Sprt m_whiteStatistic;
+
     QVector<ValidationWorker> m_gamesThreads;
     int m_games;
     int m_gpus;

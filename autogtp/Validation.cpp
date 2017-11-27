@@ -177,9 +177,9 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
     m_gamesPlayed++;
     m_statistic.addGameResult(result);
     if (net_one_color == Game::BLACK) {
-        m_black_statistic.addGameResult(result);
+        m_blackStatistic.addGameResult(result);
     } else {
-        m_white_statistic.addGameResult(result);
+        m_whiteStatistic.addGameResult(result);
     }
 
     Sprt::Status status = m_statistic.status();
@@ -222,9 +222,9 @@ void Validation::printResult() {
                             << " (" << m_gamesPlayed << " games)" << endl;
 
         auto wdl = m_statistic.getWDL();
-        auto black_wdl = m_black_statistic.getWDL();
+        auto black_wdl = m_blackStatistic.getWDL();
         auto black_games = std::get<0>(black_wdl) + std::get<2>(black_wdl);
-        auto white_wdl = m_white_statistic.getWDL();
+        auto white_wdl = m_whiteStatistic.getWDL();
         auto white_games = std::get<0>(white_wdl) + std::get<2>(white_wdl);
         auto sum_black_wins = std::get<0>(black_wdl) + std::get<2>(white_wdl);
         auto sum_white_wins = std::get<2>(black_wdl) + std::get<0>(white_wdl);
