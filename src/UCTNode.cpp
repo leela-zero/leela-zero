@@ -422,38 +422,22 @@ public:
 
     bool operator()(const UCTNode::sortnode_t a, const UCTNode::sortnode_t b) {
         // One node has visits, the other does not
-        if (!std::get<1>(a) && std::get<1>(b)) {
-            return false;
-        }
-
-        if (!std::get<1>(b) && std::get<1>(a)) {
-            return true;
+        if (std::get<1>(a) ^ std::get<1>(b)) {
+            return std::get<1>(a) > std::get<1>(b);
         }
 
         // Neither has visits, sort on prior score
         if (!std::get<1>(a) && !std::get<1>(b)) {
-            if (std::get<2>(a) > std::get<2>(b)) {
-                return true;
-            } else {
-                return false;
-            }
+            return std::get<2>(a) > std::get<2>(b);
         }
 
         // Both have visits, but the same amount, prefer winrate
         if (std::get<1>(a) == std::get<1>(b)) {
-            if (std::get<0>(a) > std::get<0>(b)) {
-                return true;
-            } else {
-                return false;
-            }
+            return std::get<0>(a) > std::get<0>(b);
         }
 
         // Both have different visits, prefer greater visits
-        if (std::get<1>(a) > std::get<1>(b)) {
-            return true;
-        } else {
-            return false;
-        }
+        return std::get<1>(a) > std::get<1>(b);
     }
 };
 
@@ -507,6 +491,27 @@ void UCTNode::sort_root_children(int color) {
     for (auto& sortnode : tmp) {
         link_child(std::get<3>(sortnode));
     }
+}
+
+UCTNode* UCTNode::best_root_child(int color) {
+    LOCK(get_mutex(), lock);
+
+    NodeComp compare;
+    sortnode_t best_child(-0.00f, 0 /* visit */, -1 /* score */, nullptr /* parent */);
+
+    auto child = m_firstchild;
+    while (child != nullptr) {
+        auto visits = child->get_visits();
+        auto score = child->get_score();
+        auto winrate = child->get_eval(color);
+        sortnode_t test(visits ? winrate : 0.0f, visits, score, child);
+        if (compare(test, best_child)) {
+            best_child = test;
+        }
+        child = child->m_nextsibling;
+    }
+
+    return std::get<3>(best_child);
 }
 
 UCTNode* UCTNode::get_first_child() const {
