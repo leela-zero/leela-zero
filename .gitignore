@@ -1,6 +1,19 @@
+# Leelaz
 leelaz
 *.o
 *.d
-.vscode/settings.json
 training/tf/venv
+
+# Misc
 weights.txt
+
+# Various IDE files
+.vscode/settings.json
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+/Makefile
+cmake_install.cmake
+compile_commands.json
+/build/
