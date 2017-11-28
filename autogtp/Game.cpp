@@ -30,7 +30,7 @@ Game::Game(const QString& weights, const QString& opt) :
     m_moveNum(0)
 {
 #ifdef WIN32
-    m_cmdLine.append(".exe");
+    m_cmdLine = "leela-zero.exe";
 #endif
     m_cmdLine.append(opt);
     m_cmdLine.append(weights);
