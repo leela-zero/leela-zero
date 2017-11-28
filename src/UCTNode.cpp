@@ -422,8 +422,12 @@ public:
 
     bool operator()(const UCTNode::sortnode_t a, const UCTNode::sortnode_t b) {
         // One node has visits, the other does not
-        if (std::get<1>(a) ^ std::get<1>(b)) {
-            return std::get<1>(a) > std::get<1>(b);
+        if (!std::get<1>(a) && std::get<1>(b)) {
+            return false;
+        }
+
+        if (!std::get<1>(b) && std::get<1>(a)) {
+            return true;
         }
 
         // Neither has visits, sort on prior score
@@ -493,24 +497,34 @@ void UCTNode::sort_root_children(int color) {
     }
 }
 
+/**
+ * Helper function to get a sortnode_t
+ * eval is set to 0 if no visits instead of first-play-urgency
+ */
+UCTNode::sortnode_t get_sortnode(int color, UCTNode* child) {
+    auto visits = child->get_visits();
+    return UCTNode::sortnode_t(
+        visits == 0 ? 0.0f : child->get_eval(color),
+        visits,
+        child->get_score(),
+        child);
+}
+
 UCTNode* UCTNode::best_root_child(int color) {
     LOCK(get_mutex(), lock);
 
+    assert(m_firstchild != nullptr);
+
     NodeComp compare;
-    sortnode_t best_child(-0.00f, 0 /* visit */, -1 /* score */, nullptr /* parent */);
 
     auto child = m_firstchild;
+    auto best_child = get_sortnode(color, child);
     while (child != nullptr) {
-        auto visits = child->get_visits();
-        auto score = child->get_score();
-        auto winrate = child->get_eval(color);
-        sortnode_t test(visits ? winrate : 0.0f, visits, score, child);
+        auto test = get_sortnode(color, child);
         if (compare(test, best_child)) {
             best_child = test;
         }
-        child = child->m_nextsibling;
     }
-
     return std::get<3>(best_child);
 }
 
