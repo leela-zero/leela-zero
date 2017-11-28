@@ -25,7 +25,7 @@ void ValidationWorker::run() {
     while (1) {
         sleep(1);
 
-        Sprt::GameResult result = (rand() % 10 <= 8) ? Sprt::Win : Sprt::Loss;
+        Sprt::GameResult result = (rand() % 10 <= 6) ? Sprt::Win : Sprt::Loss;
         int net_one_color = rand() % 2 ? Game::BLACK : Game::WHITE;
         emit resultReady(result, net_one_color);
     }
@@ -127,7 +127,6 @@ Validation::Validation(const int gpus,
     m_games(games),
     m_gpus(gpus),
     m_gpusList(gpuslist),
-    m_gamesPlayed(0),
     m_firstNet(firstNet),
     m_secondNet(secondNet),
     m_keepPath(keep) {
@@ -174,13 +173,8 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
         return;
     }
     m_syncMutex.lock();
-    m_gamesPlayed++;
     m_statistic.addGameResult(result);
-    if (net_one_color == Game::BLACK) {
-        m_blackStatistic.addGameResult(result);
-    } else {
-        m_whiteStatistic.addGameResult(result);
-    }
+    m_results.addGameResult(result, net_one_color);
 
     Sprt::Status status = m_statistic.status();
     auto wdl = m_statistic.getWDL();
@@ -188,75 +182,22 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
                         << std::get<2>(wdl) << " losses" << endl;
     if(status.result != Sprt::Continue) {
         quitThreads();
-        QTextStream(stdout) << "The first net is ";
         QTextStream(stdout)
-            <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ");
-        QTextStream(stdout) << "than the second" << endl;
-        printResult();
+            << "The first net is "
+            <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ")
+            << "than the second" << endl;
+        m_results.printResults(m_firstNet, m_secondNet);
         m_mainMutex->unlock();
     }
     else {
-        QTextStream(stdout) << m_gamesPlayed << " games played." << endl;
         QTextStream(stdout)
-            << "Status: " << status.result << " LLR ";
-        QTextStream(stdout) << status.llr <<  " Lower Bound " << status.lBound;
-        QTextStream(stdout) << " Upper Bound " << status.uBound << endl;
+            << m_results.getGamesPlayed() << " games played." << endl;
+        QTextStream(stdout)
+            << "Status: " << status.result << " LLR "
+            << status.llr <<  " Lower Bound " << status.lBound
+            << " Upper Bound " << status.uBound << endl;
     }
     m_syncMutex.unlock();
-}
-
-void Validation::printResult() {
-        /*
-        Produces reports in this format.
-        leelaz-ABCD1234 v leelaz-DEFG5678 (176 games)
-                        wins          black       white
-        leelaz-ABDC1234   65 36.93%   37 42.53%   28 31.46%
-        leelaz-DEFG5678  111 63.07%   61 68.54%   50 57.47%
-                                      98 55.68%   78 44.32%
-        */
-
-        QString first_name = "leelaz-" + m_firstNet.left(8);
-        QString second_name = "leelaz-" + m_secondNet.left(8);
-        QTextStream(stdout) << "\n" << first_name << " v " << second_name
-                            << " (" << m_gamesPlayed << " games)" << endl;
-
-        auto wdl = m_statistic.getWDL();
-        auto black_wdl = m_blackStatistic.getWDL();
-        auto black_games = std::get<0>(black_wdl) + std::get<2>(black_wdl);
-        auto white_wdl = m_whiteStatistic.getWDL();
-        auto white_games = std::get<0>(white_wdl) + std::get<2>(white_wdl);
-        auto sum_black_wins = std::get<0>(black_wdl) + std::get<2>(white_wdl);
-        auto sum_white_wins = std::get<2>(black_wdl) + std::get<0>(white_wdl);
-
-        // Using QString arg, more QT esque
-        QTextStream(stdout) << QString("%1 %2 %3 %4\n")
-            .arg("" /* name */, 16)
-            .arg("wins", -16)
-            .arg("black", -14)
-            .arg("white");
-        QTextStream(stdout) << QString("%1 %2 %3\% %4 %5\% %6 %7\%\n")
-            .arg(first_name, -16)
-            .arg(std::get<0>(wdl), 4)
-            .arg(100.0 * std::get<0>(wdl) / m_gamesPlayed, 5, 'g', 4)
-            .arg(std::get<0>(black_wdl), 7)
-            .arg(100.0 * std::get<0>(black_wdl) / black_games, 5, 'g', 4)
-            .arg(std::get<0>(white_wdl), 7)
-            .arg(100.0 * std::get<0>(white_wdl) / white_games, 5, 'g', 4);
-        QTextStream(stdout) << QString("%1 %2 %3\% %4 %5\% %6 %7\%\n")
-            .arg(second_name, -16)
-            .arg(std::get<2>(wdl), 4)
-            .arg(100.0 * std::get<2>(wdl) / m_gamesPlayed, 5, 'g', 4)
-            .arg(std::get<2>(black_wdl), 7)
-            .arg(100.0 * std::get<2>(black_wdl) / black_games, 5, 'g', 4)
-            .arg(std::get<2>(white_wdl), 7)
-            .arg(100.0 * std::get<2>(white_wdl) / white_games, 5, 'g', 4);
-        QTextStream(stdout) << QString("%1 %2 %3 %4\% %5 %6\%\n")
-            .arg("" /* name */, 16)
-            .arg("" /* wins */, 14)
-            .arg(sum_black_wins, 4)
-            .arg(100.0 * sum_black_wins / m_gamesPlayed, 5, 'g', 4)
-            .arg(sum_white_wins, 7)
-            .arg(100.0 * sum_white_wins / m_gamesPlayed, 5, 'g', 4);
 }
 
 void Validation::quitThreads() {

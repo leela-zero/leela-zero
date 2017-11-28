@@ -24,6 +24,7 @@
 #include <QVector>
 #include "SPRT.h"
 #include "Game.h"
+#include "Results.h"
 
 class ValidationWorker : public QThread {
     Q_OBJECT
@@ -65,19 +66,14 @@ public slots:
     void getResult(Sprt::GameResult result, int net_one_color);
 
 private:
-    void printResult();
-
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
     Sprt m_statistic;
-    Sprt m_blackStatistic;
-    Sprt m_whiteStatistic;
-
+    Results m_results;
     QVector<ValidationWorker> m_gamesThreads;
     int m_games;
     int m_gpus;
     QStringList m_gpusList;
-    int m_gamesPlayed;
     QString m_firstNet;
     QString m_secondNet;
     QString m_keepPath;
