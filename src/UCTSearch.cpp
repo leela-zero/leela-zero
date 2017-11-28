@@ -99,11 +99,11 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
 }
 
 void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
-    const int color = state.get_to_move();
-
-    if (!parent.has_children()) {
+    if (cfg_quiet || !parent.has_children()) {
         return;
     }
+
+    const int color = state.get_to_move();
 
     // sort children, put best move on top
     m_root.sort_root_children(color);
@@ -282,6 +282,10 @@ std::string UCTSearch::get_pv(KoState & state, UCTNode & parent) {
 }
 
 void UCTSearch::dump_analysis(int playouts) {
+    if (cfg_quiet) {
+        return;
+    }
+
     GameState tempstate = m_rootstate;
     int color = tempstate.board.get_to_move();
 
