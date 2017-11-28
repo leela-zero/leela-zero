@@ -47,10 +47,6 @@ const std::array<int, 2> FastBoard::s_eyemask = {
     4 * (1 << (NBR_SHIFT * WHITE))
 };
 
-const std::array<FastBoard::square_t, 4> FastBoard::s_cinvert = {
-    WHITE, BLACK, EMPTY, INVAL
-};
-
 int FastBoard::get_boardsize(void) const {
     return m_boardsize;
 }
