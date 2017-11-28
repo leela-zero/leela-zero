@@ -136,7 +136,14 @@ protected:
 	 */
     std::array<unsigned short, MAXSQ+1>    m_libs;        
     std::array<unsigned short, MAXSQ+1>    m_stones;      /* stones per string parent */
-    std::array<unsigned short, MAXSQ>      m_neighbours;  /* counts of neighboring stones */
+	/*
+	    Counts 3 types of neighbours: emtpty, white, and black all within a single 4 short int.
+	    0000 0000 0000
+	    ^ empty neighbours
+	         ^ white neighbours
+	              ^ black neighbours
+	*/
+    std::array<unsigned short, MAXSQ>      m_neighbours; 
     std::array<int, 4>                     m_dirs;        /* movement directions 4 way */
     std::array<int, 8>                     m_extradirs;   /* movement directions 8 way */
     std::array<int, 2>                     m_prisoners;   /* prisoners per color */
