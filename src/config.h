@@ -69,6 +69,13 @@ typedef long long int int64 ;
 typedef  unsigned long long int uint64;
 #endif
 
+#ifdef USE_HALF
+#include "half/half.hpp"
+using net_t = half_float::half;
+#else
+using net_t = float;
+#endif
+
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */
     #pragma warning(disable : 4996)
 #endif /* VC8+ */
@@ -83,13 +90,6 @@ typedef  unsigned long long int uint64;
     #else
         typedef time_t rtime_t;
     #endif
-#endif
-
-#ifdef USE_HALF
-#include "half.hpp"
-typedef half_float::half net_t;
-#else
-typedef float net_t;
 #endif
 
 #endif
