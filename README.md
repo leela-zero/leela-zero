@@ -264,6 +264,7 @@ done with multiple processes each bound to a GPU)
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h and
-cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
+The code is released under the GPLv3 or later, except for ThreadPool.h, half.hpp
+and cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
 those files.
+
