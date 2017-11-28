@@ -101,9 +101,20 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     unzip https://sjeng.org/zero/best_v1.txt.zip
     src/leelaz --weights weights.txt
 
+## Example of compiling and running - Windows
+
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero
+    "%VS140COMNTOOLS%..\IDE\devenv.exe" leela-zero.sln
+    # Build from Visual Studio 2015
+    # Modify src/config.h if you want to change compile settings
+    # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to x64/Release
+    # x64/Release/leela-zero --weights weights.txt
+
 # Usage
 
-The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
+The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html\
 
 Leela Zero is not meant to be used directly. You need a graphical interface
 for it, which will interface with Leela Zero through the GTP protocol.
@@ -147,7 +158,7 @@ autodetect the amounts on startup. The first line contains a version number.
 
 There are 18 inputs to the first layer, instead of 17 as in the paper. The
 original AlphaGo Zero design has a slight imbalance in that it is easier
-for the black player to see the board edge (due to how padding works in
+for the white player to see the board edge (due to how padding works in
 neural networks). This has been fixed in Leela Zero. The inputs are:
 
 ```
@@ -250,14 +261,6 @@ If interrupted, training can be resumed with:
 - [ ] Faster GPU usage via supporting multiple GPU
 (not very urgent, we need to generate the data & network first and this can be
 done with multiple processes each bound to a GPU)
-
-# Related links
-
-* Watch Leela Zero's training games live in a GUI:
-https://github.com/fsparv/LeelaWatcher
-* For network inference in browser and GUI (currently using a policy network
-trained from human expert games):
-https://github.com/BlinkDL/BlinkDL
 
 # License
 
