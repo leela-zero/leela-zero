@@ -16,6 +16,7 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cmath>
 #include <QDir>
 #include <QFileInfo>
 #include <QThread>
