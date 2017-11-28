@@ -26,6 +26,7 @@
 #include <QTextStream>
 #include <chrono>
 #include <stdexcept>
+#include <cmath>
 
 class ProductionWorker : public QThread {
     Q_OBJECT
