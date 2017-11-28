@@ -129,7 +129,12 @@ protected:
     std::array<square_t, MAXSQ>            m_square;      /* board contents */
     std::array<unsigned short, MAXSQ+1>    m_next;        /* next stone in string */
     std::array<unsigned short, MAXSQ+1>    m_parent;      /* parent node of string */
-    std::array<unsigned short, MAXSQ+1>    m_libs;        /* liberties per string parent */
+	/*
+	     Liberties per string parent. Liberties for the string that contains the specified vertex.
+	     It's the number of liberties for the string of which the index is the "parent" vertex,
+	     and only guaranteed to be correct for that parent vertex.
+	 */
+    std::array<unsigned short, MAXSQ+1>    m_libs;        
     std::array<unsigned short, MAXSQ+1>    m_stones;      /* stones per string parent */
     std::array<unsigned short, MAXSQ>      m_neighbours;  /* counts of neighboring stones */
     std::array<int, 4>                     m_dirs;        /* movement directions 4 way */

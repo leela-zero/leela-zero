@@ -38,6 +38,10 @@ const int FastBoard::BIG;
 const int FastBoard::PASS;
 const int FastBoard::RESIGN;
 
+/* indicates that an empty square is never in atari. A large value that fits in a short */
+const int MAX_LIBS = 16384;  // 2^14
+
+/* bit masks to detect eyes on neighbors */
 const std::array<int, 2> FastBoard::s_eyemask = {
     4 * (1 << (NBR_SHIFT * BLACK)),
     4 * (1 << (NBR_SHIFT * WHITE))
@@ -51,6 +55,9 @@ int FastBoard::get_boardsize(void) const {
     return m_boardsize;
 }
 
+/*
+    @return index into 1D board arrays from the x, y coordinate 
+*/
 int FastBoard::get_vertex(int x, int y) const {
     assert(x >= 0 && x < MAXBOARDSIZE);
     assert(y >= 0 && y < MAXBOARDSIZE);
@@ -64,6 +71,9 @@ int FastBoard::get_vertex(int x, int y) const {
     return vertex;
 }
 
+/*
+    @return the x,y coordinate from the 1D index 
+*/
 std::pair<int, int> FastBoard::get_xy(int vertex) const {
     std::pair<int, int> xy;
 
@@ -105,6 +115,10 @@ void FastBoard::set_square(int x, int y, FastBoard::square_t content) {
     set_square(get_vertex(x, y), content);
 }
 
+/*
+    Take advantage of the 8 fold board symmetry to rotate a given position by one of the symmetries
+	@return the new rotated vertex position given the specified symmetry
+*/
 int FastBoard::rotate_vertex(int vertex, int symmetry) {
     assert(symmetry >= 0 && symmetry <= 7);
     std::pair<int, int> xy = get_xy(vertex);
@@ -200,10 +214,13 @@ void FastBoard::reset_board(int size) {
     }
 
     m_parent[MAXSQ] = MAXSQ;
-    m_libs[MAXSQ]   = 16384;    /* we will subtract from this */
+    m_libs[MAXSQ]   = MAX_LIBS;    /* we will subtract from this */
     m_next[MAXSQ]   = MAXSQ;
 }
 
+/*
+    @return true if placing the specified colored stone at the specified position would be suicide 
+*/
 bool FastBoard::is_suicide(int i, int color) {
     if (count_pliberties(i)) {
         return false;
@@ -255,17 +272,30 @@ bool FastBoard::is_suicide(int i, int color) {
     }
 }
 
+/*
+    Liberties on a single point - called pseudo liberties.
+    When placing stones adjacent to that group, add one pseudo liberty for neighbouring empty cells,
+    and remove one pseudo liberty for each neighboring group.
+    There may be duplicate pseudo liberties with certain "bent" shapes.
+    However, the test for 0 liberties remains correct, and there is also a simple "atari" check.
+    @return number of pseudo liberties
+*/
 int FastBoard::count_pliberties(const int i) {
     return count_neighbours(EMPTY, i);
 }
 
-// count neighbours of color c at vertex v
-// the border of the board has fake neighours of both colors
+/*
+    Count neighbours of color c at vertex v.
+    The border of the board has fake neighours of both colors.
+*/
 int FastBoard::count_neighbours(const int c, const int v) {
     assert(c == WHITE || c == BLACK || c == EMPTY);
     return (m_neighbours[v] >> (NBR_SHIFT * c)) & 7;
 }
 
+/* 
+    @return true if playing the specified single stone (ss) is suicidal. 
+*/
 int FastBoard::fast_ss_suicide(const int color, const int i)  {
     int eyeplay = (m_neighbours[i] & s_eyemask[!color]);
 
@@ -330,6 +360,9 @@ void FastBoard::remove_neighbour(const int i, const int color) {
     }
 }
 
+/** 
+    @return the number of stones in the string that was removed 
+*/
 int FastBoard::remove_string_fast(int i) {
     int pos = i;
     int removed = 0;
@@ -392,7 +425,10 @@ std::vector<bool> FastBoard::calc_reach_color(int col) {
     return bd;
 }
 
-// Needed for scoring passed out games not in MC playouts
+/*
+   The score is from the point of view of the black player. A negative score means white is leading.
+   @return score needed for scoring passed out games not in Monte-Carlo play-outs
+*/
 float FastBoard::area_score(float komi) {
     auto white = calc_reach_color(WHITE);
     auto black = calc_reach_color(BLACK);
@@ -418,6 +454,9 @@ int FastBoard::get_stone_count() {
     return m_totalstones[BLACK] + m_totalstones[WHITE];
 }
 
+/*
+    @return estimate of the Monte-Carlo play-out score 
+*/
 int FastBoard::estimate_mc_score(float komi) {
     int wsc, bsc;
 
@@ -427,6 +466,9 @@ int FastBoard::estimate_mc_score(float komi) {
     return bsc-wsc-((int)komi)+1;
 }
 
+/*
+    @return final Monte-Carlo play-out score 
+*/
 float FastBoard::final_mc_score(float komi) {
     int wsc, bsc;
     int maxempty = m_empty_cnt;
@@ -716,6 +758,9 @@ int FastBoard::update_board_fast(const int color, const int i, bool & capture) {
     return -1;
 }
 
+/*
+    @return true if surrounded on 4 sides by the specified color and there are enough diagonals to avoid false eye. 
+*/
 bool FastBoard::is_eye(const int color, const int i) {
     /* check for 4 neighbors of the same color */
     int ownsurrounded = (m_neighbours[i] & s_eyemask[color]);
@@ -936,8 +981,9 @@ bool FastBoard::fast_in_atari(int vertex) {
     return lib == 1;
 }
 
-// check if string is in atari, returns 0 if not,
-// single liberty if it is
+/*
+    @return vertex of liberty which will capture this string, if there is one; else return 0 if not in atari
+*/
 int FastBoard::in_atari(int vertex) {
     assert(m_square[vertex] < EMPTY);
 
@@ -1000,6 +1046,14 @@ int FastBoard::string_size(int vertex) {
     return m_stones[m_parent[vertex]];
 }
 
+/*
+   Actual (real) liberties of the string the specified vertex position belongs to.
+   Implemented using union-find.
+   The difference is speed, pseudo liberties have O(1) adding and removal,
+   and real liberties have the inverse Ackermann function for that,
+   but in practice there is a significant speed difference.
+   @return number of liberties left on the string
+*/
 int FastBoard::count_rliberties(int vertex) {
     /*std::vector<bool> marker(m_maxsq, false);
 
