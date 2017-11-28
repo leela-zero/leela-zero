@@ -39,6 +39,8 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <string.h>
+#include "Utils.h"
 
 namespace Utils {
 
@@ -64,7 +66,6 @@ private:
 
 inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
-        printf("Initilizing UDP sockets");
         int fd;
         if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) { perror("cannot create socket"); }
         udpconnections.push_back(fd);
@@ -73,12 +74,11 @@ inline void ThreadPool::initialize(size_t threads) {
         myaddr.sin_family = AF_INET; myaddr.sin_addr.s_addr = htonl(INADDR_ANY); myaddr.sin_port = htons(0); 
         if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) { perror("bind failed"); }
 
-        printf("Thread %zu\n", i);
         memset((char*)&servaddr, 0, sizeof(servaddr));
         servaddr.sin_family = AF_INET;
         servaddr.sin_port = htons(9999);
         if (inet_aton("127.0.0.1", &servaddr.sin_addr)==0) {
-            fprintf(stderr, "inet_aton() failed\n");
+            perror("ERROR: inet_aton() failed\n");
         }
 
         struct timeval tv;

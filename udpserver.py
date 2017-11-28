@@ -12,61 +12,73 @@ from theano.tensor.nnet.bn import batch_normalization_test as bn
 import numpy as np
 import trollius
 
-
-print("UDP Forward Service")
-
-f = open("best-network", "r")
-
-linecount = 0
-
-def testShape(s, si):
-    t = 1
-    for l in s:
-        t = t * l
-    if t != si:
-        print("ERRROR: ", s, t, si)
-
-FORMAT_VERSION = "1\n"
-
-print("Detecting the number of residual layers...")
-
-w = f.readlines()
-linecount = len(w)
-
-if w[0] != FORMAT_VERSION:
-    print("Wrong version")
+if len(sys.argv) != 3:
+    print("Usage: %s [weight-file] [batch-size]" % sys.argv[0])
     sys.exit(-1)
 
-count = len(w[2].split(" "))
-print("%d channels..." % count)
+filename = sys.argv[1]
+QLEN     = int(sys.argv[2])
 
-residual_blocks = linecount - (1 + 4 + 14)
+print("Leela Zero UDP Neural Net Service")
 
-if residual_blocks % 8 != 0:
-    print("Inconsistent number of layers.")
-    sys.exit(-1)
+def loadWeightFile(filename):
+    f = open(filename, "r")
 
-residual_blocks = residual_blocks // 8
-print("%d blocks..." % residual_blocks)
+    linecount = 0
 
-plain_conv_layers = 1 + (residual_blocks * 2)
-plain_conv_wts = plain_conv_layers * 4
+    def testShape(s, si):
+        t = 1
+        for l in s:
+            t = t * l
+        if t != si:
+            print("ERRROR: ", s, t, si)
+
+    FORMAT_VERSION = "1\n"
+
+    print("Detecting the number of residual layers...")
+
+    w = f.readlines()
+    linecount = len(w)
+
+    if w[0] != FORMAT_VERSION:
+        print("Wrong version")
+        sys.exit(-1)
+
+    count = len(w[2].split(" "))
+    print("%d channels..." % count)
+
+    residual_blocks = linecount - (1 + 4 + 14)
+
+    if residual_blocks % 8 != 0:
+        print("Inconsistent number of layers.")
+        sys.exit(-1)
+
+    residual_blocks = residual_blocks // 8
+    print("%d blocks..." % residual_blocks)
+
+    plain_conv_layers = 1 + (residual_blocks * 2)
+    plain_conv_wts = plain_conv_layers * 4
 
 
-weights = [ [float(t) for t in l.split(" ")] for l in w[1:] ]
+    weights = [ [float(t) for t in l.split(" ")] for l in w[1:] ]
+    return (weights, residual_blocks, count)
 
-wc = -1
+
+weights, numBlocks, numFilters = loadWeightFile(filename)
+
 
 def LZN(ws, nb, nf):
     # ws: weights
     # nb: number of blocks
     # nf: number of filters
 
+    global wc  # weight counter
+    wc = -1
+
     def loadW():
         global wc
         wc = wc + 1
         return ws[wc]
-
 
 
     def mybn(inp, nf, params, name):
@@ -162,21 +174,29 @@ def LZN(ws, nb, nf):
     return function(params, out)
 
 
+net = LZN(weights, numBlocks, numFilters)
 
-net = LZN(weights, residual_blocks, count)
-
-inp = [math.sin(i) for i in range(20*19*19*18) ]
-inpp = np.asarray(inp, dtype=np.float32).reshape( (20,18,19,19) )
+### For testing purpose
+inp1 = [math.sin(i) for i in range(1*19*19*18) ]
+inp2 = [math.cos(i) for i in range(1*19*19*18) ]
+inp = []
+inp.extend(inp1)
+inp.extend(inp2)
+inpp = np.asarray(inp, dtype=np.float32).reshape( (2,18,19,19) )
+#print(net(inpp))
 #for i in range(1000):
 #    net(inpp)
 
 
-class EchoServerProtocol:
-    def __init__(self, QLEN=4):
+class UDPServerProtocol:
+    def __init__(self, QLEN=QLEN):      # QLEN === BATCH_SIZE
         self.inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
-        self.ADDRS = list(range(QLEN))
+        self.clientAddrs = list(range(QLEN))
         self.counter = 0
         self.QLEN = QLEN
+
+        print("Setting batch-size = %d" % self.QLEN)
+
     def connection_made(self, transport):
         self.transport = transport
 
@@ -188,9 +208,9 @@ class EchoServerProtocol:
         ports = []
         for i in range(self.QLEN):
             #print(out[0,0].data.tobytes())
-            if not self.ADDRS[i][1] in  ports:
-                self.transport.sendto(out[i, :].data, self.ADDRS[i] )
-                ports.append(self.ADDRS[i][1])
+            if not self.clientAddrs[i][1] in  ports:
+                self.transport.sendto(out[i, :].data, self.clientAddrs[i] )
+                ports.append(self.clientAddrs[i][1])
             #self.transport.sendto(b"1234", self.ADDRS[i] )
 
 
@@ -199,7 +219,7 @@ class EchoServerProtocol:
             print("ERR")
         try:
             self.inp[self.counter, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18)
-            self.ADDRS[self.counter] = addr
+            self.clientAddrs[self.counter] = addr
 
             # self.transport.sendto(data, addr)
             self.counter = self.counter + 1
@@ -209,10 +229,10 @@ class EchoServerProtocol:
             int(ex)
 
 loop = trollius.get_event_loop()
-print("Starting UDP server")
+print("Starting UDP server at 127.0.0.1:9999")
 # One protocol instance will be created to serve all client requests
 listen = loop.create_datagram_endpoint(
-    EchoServerProtocol, local_addr=('127.0.0.1', 9999))
+    UDPServerProtocol, local_addr=('127.0.0.1', 9999))
 transport, protocol = loop.run_until_complete(listen)
 
 try:
@@ -222,52 +242,5 @@ except KeyboardInterrupt:
 
 transport.close()
 loop.close()
-
-
-# QLEN = 4
-# inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
-# ADDRS = list(range(QLEN))
-# counter = 0
-#
-# import asyncio
-#
-# class EchoServerClientProtocol(asyncio.Protocol):
-#     def connection_made(self, transport):
-#         peername = transport.get_extra_info('peername')
-#         print('Connection from {}'.format(peername))
-#         self.transport = transport
-#
-#     def data_received(self, data):
-#         global counter, ADDRS, QLEN, inp
-#         ADDRS[counter] = self.transport
-#         if len(data) != 19*19*18*4:
-#             print("ERR")
-#         inp[counter, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18)
-#         counter = counter + 1
-#         if counter == QLEN:
-#             counter = 0
-#             myinp = inp.reshape( (QLEN, 18, 19, 19) )
-#             out = net(myinp).astype(np.float32)
-#             for i in range(QLEN):
-#                 ADDRS[i].write(out[i, :].data)
-#                 ADDRS[i].drain()
-#
-# loop = asyncio.get_event_loop()
-# # Each client connection will create a new protocol instance
-# coro = loop.create_server(EchoServerClientProtocol, '127.0.0.1', 9999)
-# server = loop.run_until_complete(coro)
-#
-# # Serve requests until Ctrl+C is pressed
-# print('Serving on {}'.format(server.sockets[0].getsockname()))
-# try:
-#     loop.run_forever()
-# except KeyboardInterrupt:
-#     pass
-#
-# # Close the server
-# server.close()
-# loop.run_until_complete(server.wait_closed())
-# loop.close()
-
 
 

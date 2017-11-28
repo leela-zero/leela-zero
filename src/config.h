@@ -32,7 +32,7 @@
 #endif
 
 /* Features */
-#define USE_BLAS
+//#define USE_BLAS
 //#define USE_OPENBLAS
 //#define USE_MKL
 //#define USE_OPENCL
