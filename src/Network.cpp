@@ -438,14 +438,15 @@ Network::Netresult Network::get_scored_moves_internal(
         int fd= thread_pool.udpconnections[idx];
         socklen_t len = sizeof(thread_pool.servaddr);
         if (sendto(fd, &input_data[0], 4*18*19*19, 0, (struct sockaddr *)&thread_pool.servaddr, len)==-1)
-                 printf("sendto err");
+                 myprintf("ERROR: sendto err");
         // write(fd, &input_data[0], 4*18*19*19);
 
 
         int recvlen = recvfrom(fd, myout, 4*(19*19+2), 0, (struct sockaddr *)&thread_pool.servaddr, &len);
         // int recvlen = read(fd, myout, 4*(19*19+2));
         if (recvlen == (19*19 + 2) * 4) break;
-        printf("Retry ...\n");
+
+        myprintf("Missing UDP output packet, retry ...\n");
     }
 
     std::vector<float> my_policy_out(myout, myout + 19*19+1); // = softmax_data;

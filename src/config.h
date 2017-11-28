@@ -43,11 +43,13 @@
 #define PROGRAM_VERSION "0.6"
 
 // OpenBLAS limitation
-#if defined(USE_BLAS) && defined(USE_OPENBLAS)
-#define MAX_CPUS 64
-#else
-#define MAX_CPUS 128
-#endif
+// #if defined(USE_BLAS) && defined(USE_OPENBLAS)
+// #define MAX_CPUS 64
+// #else
+// #define MAX_CPUS 128
+// #endif
+
+#define MAX_CPUS 1
 
 /* Integer types */
 

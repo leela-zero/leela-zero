@@ -157,8 +157,6 @@ def LZN(ws, nb, nf):
 
     out = polfcout
 
-
-
     valconv0 = myconv(inp, nf, 1, 1, params, "valconv0")
     valbn0   = mybn(valconv0, 1, params, "valbn0")
     valrelu0 = relu(valbn0)
@@ -205,10 +203,11 @@ class UDPServerProtocol:
         myinp = self.inp.reshape( (self.QLEN, 18, 19, 19) )
         out = net(myinp).astype(np.float32)
 
-        ports = []
+
+        ports = []      # never sent to an address twice each batch
         for i in range(self.QLEN):
             #print(out[0,0].data.tobytes())
-            if not self.clientAddrs[i][1] in  ports:
+            if not self.clientAddrs[i][1] in ports:
                 self.transport.sendto(out[i, :].data, self.clientAddrs[i] )
                 ports.append(self.clientAddrs[i][1])
             #self.transport.sendto(b"1234", self.ADDRS[i] )

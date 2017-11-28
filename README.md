@@ -14,11 +14,7 @@ You need to install `theano` and `trollius` python packages
 
 Theano also supports `device=cpu` option.
 
-
-*Note:* Current version does not support auto reloading the weight file, missing many other things and actually is an extremly ugly hack.
-I simply don't have enough time :-(.
-
-
+*Note:* Current version does not support auto reloading the weight file.
 
 # What
 
