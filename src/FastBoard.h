@@ -159,6 +159,7 @@ protected:
     int update_board_eye(const int color, const int i);
     int in_atari(int vertex);
     bool fast_in_atari(int vertex);
+	void print_column_labels(int size, std::string padding = " ");
 };
 
 #endif

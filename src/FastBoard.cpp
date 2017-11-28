@@ -497,15 +497,8 @@ float FastBoard::final_mc_score(float komi) {
 void FastBoard::display_board(int lastmove) {
     int boardsize = get_boardsize();
 
-    myprintf("\n   ");
-    for (int i = 0; i < boardsize; i++) {
-        if (i < 25) {
-            myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-        } else {
-            myprintf("%c ", (('A' + (i-25) < 'I') ? 'A' + (i-25) : 'A' + (i-25) + 1));
-        }
-    }
-    myprintf("\n");
+	myprintf("\n");
+	print_column_labels(boardsize);
     for (int j = boardsize-1; j >= 0; j--) {
         myprintf("%2d", j+1);
         if (lastmove == get_vertex(0, j))
@@ -528,25 +521,14 @@ void FastBoard::display_board(int lastmove) {
         }
         myprintf("%2d\n", j+1);
     }
-    myprintf("   ");
-    for (int i = 0; i < boardsize; i++) {
-         if (i < 25) {
-            myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-        } else {
-            myprintf("%c ", (('A' + (i-25) < 'I') ? 'A' + (i-25) : 'A' + (i-25) + 1));
-        }
-    }
-    myprintf("\n\n");
+	print_column_labels(boardsize);
+    myprintf("\n");
 }
 
 void FastBoard::display_liberties(int lastmove) {
     int boardsize = get_boardsize();
 
-    myprintf("   ");
-    for (int i = 0; i < boardsize; i++) {
-        myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-    }
-    myprintf("\n");
+	print_column_labels(boardsize);
     for (int j = boardsize-1; j >= 0; j--) {
         myprintf("%2d", j+1);
         if (lastmove == get_vertex(0,j) )
@@ -575,11 +557,7 @@ void FastBoard::display_liberties(int lastmove) {
     }
     myprintf("\n\n");
 
-    myprintf("   ");
-    for (int i = 0; i < boardsize; i++) {
-        myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-    }
-    myprintf("\n");
+	print_column_labels(boardsize, "  ");
     for (int j = boardsize-1; j >= 0; j--) {
         myprintf("%2d", j+1);
         if (lastmove == get_vertex(0,j) )
@@ -606,6 +584,22 @@ void FastBoard::display_liberties(int lastmove) {
     }
     myprintf("\n\n");
 }
+
+void FastBoard::print_column_labels(int size, std::string padding) {
+	myprintf("   ");
+	for (int i = 0; i < size; i++) {
+		if (i < 25) {
+			myprintf("%c", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
+		}
+		else {
+			myprintf("%c", (('A' + (i - 25) < 'I') ? 'A' + (i - 25) : 'A' + (i - 25) + 1));
+		}
+		myprintf("%s", padding);
+	}
+	myprintf("\n");
+}
+
+
 
 void FastBoard::merge_strings(const int ip, const int aip) {
     assert(ip != MAXSQ && aip != MAXSQ);
