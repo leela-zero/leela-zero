@@ -129,35 +129,22 @@ void  Production::printTimingInfo(float duration) {
 
 
 bool Production::fetchBestNetworkHash() {
+    QString prog_cmdline("curl");
 #ifdef WIN32
-	QString prog_cmdline("powershell -command \"wget http://zero.sjeng.org/best-network-hash\" | Select \"RawContent\" | Write-Host");
-#else
-	QString prog_cmdline("curl http://zero.sjeng.org/best-network-hash");
+    prog_cmdline.append(".exe");
 #endif
+    prog_cmdline.append(" http://zero.sjeng.org/best-network-hash");
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
     QByteArray output = curl.readAllStandardOutput();
     QString outstr(output);
     QStringList outlst = outstr.split("\n");
-#ifdef WIN32
-	if (outlst.size() != 10) {
-		QTextStream(stdout)
-			<< "Unexpected output from server: " << endl << output << endl;
-		exit(EXIT_FAILURE);
-	}
-	for (auto i = 0; i < 7; ++i) {
-		outlst.removeFirst();
-	}
-	outlst.removeLast();
-	outlst.replace(1, outlst[1].left(outlst[1].size()-1));
-#else
     if (outlst.size() != 2) {
         QTextStream(stdout)
             << "Unexpected output from server: " << endl << output << endl;
         exit(EXIT_FAILURE);
     }
-#endif
     QString outhash = outlst[0];
     QTextStream(stdout) << "Best network hash: " << outhash << endl;
     QString client_version = outlst[1];
