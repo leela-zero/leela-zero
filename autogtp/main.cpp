@@ -156,9 +156,9 @@ bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_p
     return true;
 }
 
-bool run_one_game(QTextStream& cerr, const QString& weightsname) {
+bool run_one_game(QTextStream& cerr, const QString& weightsname, const QString& leela_path) {
 
-    Game game(weightsname, cerr);
+    Game game(weightsname, cerr, leela_path);
     if(!game.gameStart(min_leelaz_version)) {
         return false;
     }
@@ -206,10 +206,15 @@ int main(int argc, char *argv[])
     QCommandLineOption keep_sgf_option(
         { "k", "keep-sgf" }, "Save SGF files after each self-play game.",
                              "output directory");
+    QCommandLineOption leela_path_option(
+        { "p", "leela-path" }, "Path to version of leelaz to use",
+                               "leelaz binary",
+                               "./leelaz");
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addVersionOption();
     parser.addOption(keep_sgf_option);
+    parser.addOption(leela_path_option);
     parser.process(app);
 
     // Map streams
@@ -246,7 +251,7 @@ int main(int argc, char *argv[])
         QString netname;
         success &= fetch_best_network_hash(cerr, netname);
         success &= fetch_best_network(cerr, netname);
-        success &= run_one_game(cerr, netname);
+        success &= run_one_game(cerr, netname, parser.value(leela_path_option));
         success &= upload_data(cerr, netname, parser.value(keep_sgf_option));
         games_played++;
         print_timing_info(cerr, games_played, start, game_start);

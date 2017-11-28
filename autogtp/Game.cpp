@@ -19,10 +19,10 @@
 #include <QUuid>
 #include "Game.h"
 
-Game::Game(const QString& weights, QTextStream& out) :
+Game::Game(const QString& weights, QTextStream& out, const QString& leela_path) :
     QProcess(),
     output(out),
-    cmdLine("./leelaz"),
+    cmdLine(leela_path),
     timeSettings("time_settings 0 1 0"),
     resignation(false),
     blackToMove(true),
