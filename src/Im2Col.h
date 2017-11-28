@@ -36,7 +36,7 @@ void im2col(const int channels,
     constexpr unsigned int output_w = width + 2 * pad - filter_size + 1;
 
     const half* data_im = input.data();
-    float* data_col = output.data();
+    half* data_col = output.data();
 
     for (int channel = channels; channel--; data_im += channel_size) {
         for (unsigned int kernel_row = 0; kernel_row < filter_size; kernel_row++) {
