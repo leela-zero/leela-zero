@@ -114,7 +114,7 @@ public:
         return m_layers.size();
     }
 
-    void forward(const std::vector<half>& input, std::vector<half>& output);
+    void forward(const std::vector<float>& input, std::vector<float>& output);
 
 private:
     void push_weights(size_t layer, const std::vector<float> & weights) {
