@@ -512,11 +512,9 @@ UCTNode::sortnode_t get_sortnode(int color, UCTNode* child) {
 
 UCTNode* UCTNode::best_root_child(int color) {
     LOCK(get_mutex(), lock);
-
     assert(m_firstchild != nullptr);
 
     NodeComp compare;
-
     auto child = m_firstchild;
     auto best_child = get_sortnode(color, child);
     while (child != nullptr) {
@@ -524,6 +522,7 @@ UCTNode* UCTNode::best_root_child(int color) {
         if (compare(test, best_child)) {
             best_child = test;
         }
+        child = child->m_nextsibling;
     }
     return std::get<3>(best_child);
 }
