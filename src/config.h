@@ -48,9 +48,6 @@
 #define MAX_CPUS 128
 #endif
 
-// datatype : if you want to use half-precision float for OpenCL in-memory types define this.
-// #define USE_HALF
-
 /* Integer types */
 
 typedef int int32;
@@ -86,11 +83,7 @@ typedef  unsigned long long int uint64;
     #endif
 #endif
 
-#ifdef USE_HALF
 #include "half.hpp"
-typedef half_float::half net_t;
-#else
-typedef float net_t;
-#endif
+using half_float::half;
 
 #endif

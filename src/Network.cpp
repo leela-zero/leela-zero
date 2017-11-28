@@ -260,7 +260,7 @@ void Network::initialize(void) {
 #ifdef USE_BLAS
 template<unsigned int filter_size,
          unsigned int outputs>
-void convolve(const std::vector<net_t>& input,
+void convolve(const std::vector<half>& input,
               const std::vector<float>& weights,
               const std::vector<float>& biases,
               std::vector<float>& output) {
@@ -409,8 +409,8 @@ Network::Netresult Network::get_scored_moves_internal(
     constexpr int width = 19;
     constexpr int height = 19;
     constexpr int max_channels = MAX_CHANNELS;
-    std::vector<net_t> input_data(max_channels * width * height);
-    std::vector<net_t> output_data(max_channels * width * height);
+    std::vector<half> input_data(max_channels * width * height);
+    std::vector<half> output_data(max_channels * width * height);
     std::vector<float> policy_data_1(2 * width * height);
     std::vector<float> policy_data_2(2 * width * height);
     std::vector<float> value_data_1(1 * width * height);
@@ -424,7 +424,7 @@ Network::Netresult Network::get_scored_moves_internal(
             for (int w = 0; w < width; ++w) {
                 auto rot_idx = rotate_nn_idx(h * 19 + w, rotation);
                 input_data[(c * height + h) * width + w] =
-                    net_t(planes[c][rot_idx]);
+                    half(planes[c][rot_idx]);
             }
         }
     }
