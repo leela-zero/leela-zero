@@ -20,14 +20,15 @@ DYNAMIC_LIBS = -lboost_program_options -lpthread -lz
 LIBS =
 
 # for Linux with OpenBLAS
-CXXFLAGS += -I/usr/include/openblas
-DYNAMIC_LIBS += -lopenblas
-DYNAMIC_LIBS += -lOpenCL
+# CXXFLAGS += -I/usr/include/openblas
+# DYNAMIC_LIBS += -lopenblas
+# DYNAMIC_LIBS += -lOpenCL
 
 # for macOS (comment out the Linux part)
-# LIBS += -framework Accelerate
-# LIBS += -framework OpenCL
-# CXXFLAGS += -I/System/Library/Frameworks/Accelerate.framework/Versions/Current/Headers
+LIBS += -framework Accelerate
+LIBS += -framework OpenCL
+LIBS += -L/Users/xcode/homebrew/lib
+CXXFLAGS += -I/System/Library/Frameworks/Accelerate.framework/Versions/Current/Headers -I/Users/xcode/homebrew/include
 
 # for MKL instead of OpenBLAS
 #DYNAMIC_LIBS += -lmkl_rt

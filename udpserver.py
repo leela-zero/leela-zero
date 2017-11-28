@@ -10,7 +10,7 @@ from theano.tensor.nnet import conv2d
 from theano.tensor.nnet import relu
 from theano.tensor.nnet.bn import batch_normalization_test as bn
 import numpy as np
-import asyncio
+import trollius
 
 
 print("UDP Forward Service")
@@ -70,13 +70,15 @@ def LZN(ws, nb, nf):
 
 
     def mybn(inp, nf, params, name):
-        mean0 = T.vector(name + "_mean")
+        #mean0 = T.vector(name + "_mean")
         w = np.asarray(loadW(), dtype=np.float32).reshape( (nf) )
-        params.append(In(mean0, value=w))
+        mean0 = shared(w)
+        # params.append(In(mean0, value=w))
 
-        var0  = T.vector(name + "_var")
+        #var0  = T.vector(name + "_var")
         w = np.asarray(loadW(), dtype=np.float32).reshape( (nf) )
-        params.append(In(var0, value=w))
+        var0 = shared(w)
+        #params.append(In(var0, value=w))
 
         bn0   = bn(inp, gamma=T.ones(nf), beta=T.zeros(nf), mean=mean0,
                 var=var0, axes = 'spatial', epsilon=1.0000001e-5)
@@ -84,9 +86,11 @@ def LZN(ws, nb, nf):
         return bn0
 
     def myconv(inp, inc, outc, kernel_size, params, name):
-        f0 = T.tensor4(name + '_filter')
+        #f0 = T.tensor4(name + '_filter')
         w = np.asarray(loadW(), dtype=np.float32).reshape( (outc, inc, kernel_size, kernel_size) )
-        params.append(In(f0, value=w))
+        #params.append(In(f0, value=w))
+        f0 = shared(w)
+
         conv0 = conv2d(inp, f0, input_shape=(None, inc, 19, 19),
                 border_mode='half', filter_flip=False, filter_shape=(outc,inc,
                     kernel_size,kernel_size))
@@ -107,13 +111,15 @@ def LZN(ws, nb, nf):
         return out
 
     def myfc(inp, insize, outsize, params, name):
-        W0 = T.matrix(name + '_W')
+        # W0 = T.matrix(name + '_W')
         w = np.asarray(loadW(), dtype=np.float32).reshape( (outsize, insize) ).T
-        params.append(In(W0, value=w))
+        #params.append(In(W0, value=w))
+        W0 = shared(w)
 
-        b0 = T.vector(name + '_b')
+        # b0 = T.vector(name + '_b')
         b = np.asarray(loadW(), dtype=np.float32).reshape( (outsize) )
-        params.append(In(b0, value=b))
+        # params.append(In(b0, value=b))
+        b0 = shared(b)
 
         out = tensor.dot(inp, W0) + b0
         return out
@@ -159,11 +165,14 @@ def LZN(ws, nb, nf):
 
 net = LZN(weights, residual_blocks, count)
 
+inp = [math.sin(i) for i in range(20*19*19*18) ]
+inpp = np.asarray(inp, dtype=np.float32).reshape( (20,18,19,19) )
+#for i in range(1000):
+#    net(inpp)
 
-QLEN = 10
 
 class EchoServerProtocol:
-    def __init__(self, QLEN=10):
+    def __init__(self, QLEN=4):
         self.inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
         self.ADDRS = list(range(QLEN))
         self.counter = 0
@@ -172,32 +181,34 @@ class EchoServerProtocol:
         self.transport = transport
 
     def computeForward(self, ):
-        myinp = inp.reshape( (self.QLEN, 18, 19, 19) )
-        out = net(myinp)
-
-        for i in range(self.QLEN):
-            self.transport.sendto(np.getbuffer(out[i, :]), self.ADDRS[i] )
-
         self.counter = 0
+        myinp = self.inp.reshape( (self.QLEN, 18, 19, 19) )
+        out = net(myinp).astype(np.float32)
+
+        ports = []
+        for i in range(self.QLEN):
+            #print(out[0,0].data.tobytes())
+            if not self.ADDRS[i][1] in  ports:
+                self.transport.sendto(out[i, :].data, self.ADDRS[i] )
+                ports.append(self.ADDRS[i][1])
+            #self.transport.sendto(b"1234", self.ADDRS[i] )
+
 
     def datagram_received(self, data, addr):
         if len(data) != 19*19*18*4:
             print("ERR")
-
-
         try:
-            self.inp[counter, :] = np.frombuffer(data, count = 19*19*18)
-            ADDRS[counter] = addr
+            self.inp[self.counter, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18)
+            self.ADDRS[self.counter] = addr
 
             # self.transport.sendto(data, addr)
             self.counter = self.counter + 1
             if self.counter == self.QLEN:
                 self.computeForward()
         except Exception as ex:
-            pass
-            print(ex)
+            int(ex)
 
-loop = asyncio.get_event_loop()
+loop = trollius.get_event_loop()
 print("Starting UDP server")
 # One protocol instance will be created to serve all client requests
 listen = loop.create_datagram_endpoint(
@@ -211,3 +222,52 @@ except KeyboardInterrupt:
 
 transport.close()
 loop.close()
+
+
+# QLEN = 4
+# inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
+# ADDRS = list(range(QLEN))
+# counter = 0
+#
+# import asyncio
+#
+# class EchoServerClientProtocol(asyncio.Protocol):
+#     def connection_made(self, transport):
+#         peername = transport.get_extra_info('peername')
+#         print('Connection from {}'.format(peername))
+#         self.transport = transport
+#
+#     def data_received(self, data):
+#         global counter, ADDRS, QLEN, inp
+#         ADDRS[counter] = self.transport
+#         if len(data) != 19*19*18*4:
+#             print("ERR")
+#         inp[counter, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18)
+#         counter = counter + 1
+#         if counter == QLEN:
+#             counter = 0
+#             myinp = inp.reshape( (QLEN, 18, 19, 19) )
+#             out = net(myinp).astype(np.float32)
+#             for i in range(QLEN):
+#                 ADDRS[i].write(out[i, :].data)
+#                 ADDRS[i].drain()
+#
+# loop = asyncio.get_event_loop()
+# # Each client connection will create a new protocol instance
+# coro = loop.create_server(EchoServerClientProtocol, '127.0.0.1', 9999)
+# server = loop.run_until_complete(coro)
+#
+# # Serve requests until Ctrl+C is pressed
+# print('Serving on {}'.format(server.sockets[0].getsockname()))
+# try:
+#     loop.run_forever()
+# except KeyboardInterrupt:
+#     pass
+#
+# # Close the server
+# server.close()
+# loop.run_until_complete(server.wait_closed())
+# loop.close()
+
+
+

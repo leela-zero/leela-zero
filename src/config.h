@@ -33,10 +33,11 @@
 
 /* Features */
 #define USE_BLAS
-#define USE_OPENBLAS
+//#define USE_OPENBLAS
 //#define USE_MKL
-#define USE_OPENCL
+//#define USE_OPENCL
 //#define USE_TUNER
+#define USE_UDPSERVER
 
 #define PROGRAM_NAME "Leela Zero"
 #define PROGRAM_VERSION "0.6"

@@ -29,6 +29,10 @@
 #include <thread>
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
+#include <sys/types.h>
+#include <netdb.h>
+#include <sys/socket.h>
+
 
 #include "Im2Col.h"
 #ifdef __APPLE__
@@ -96,7 +100,7 @@ void Network::benchmark(GameState * state) {
             tg.add_task([iters_per_thread, state]() {
                 GameState mystate = *state;
                 for (int loop = 0; loop < iters_per_thread; loop++) {
-                    auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION);
+                    auto vec = get_scored_moves(0, &mystate, Ensemble::RANDOM_ROTATION);
                 }
             });
         };
@@ -379,7 +383,7 @@ void Network::softmax(const std::vector<float>& input,
 }
 
 Network::Netresult Network::get_scored_moves(
-    GameState * state, Ensemble ensemble, int rotation) {
+    int idx, GameState * state, Ensemble ensemble, int rotation) {
     Netresult result;
     if (state->board.get_boardsize() != 19) {
         return result;
@@ -390,19 +394,19 @@ Network::Netresult Network::get_scored_moves(
 
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
-        result = get_scored_moves_internal(state, planes, rotation);
+        result = get_scored_moves_internal(idx, state, planes, rotation);
     } else {
         assert(ensemble == RANDOM_ROTATION);
         assert(rotation == -1);
         int rand_rot = Random::get_Rng()->randfix<8>();
-        result = get_scored_moves_internal(state, planes, rand_rot);
+        result = get_scored_moves_internal(idx, state, planes, rand_rot);
     }
 
     return result;
 }
 
 Network::Netresult Network::get_scored_moves_internal(
-    GameState * state, NNPlanes & planes, int rotation) {
+    int idx, GameState * state, NNPlanes & planes, int rotation) {
     assert(rotation >= 0 && rotation <= 7);
     constexpr int channels = INPUT_CHANNELS;
     assert(channels == planes.size());
@@ -428,7 +432,30 @@ Network::Netresult Network::get_scored_moves_internal(
             }
         }
     }
-#ifdef USE_OPENCL
+#ifdef USE_UDPSERVER
+    float myout[19*19+2]; // = softmax_data;
+    while (1) {
+        int fd= thread_pool.udpconnections[idx];
+        socklen_t len = sizeof(thread_pool.servaddr);
+        if (sendto(fd, &input_data[0], 4*18*19*19, 0, (struct sockaddr *)&thread_pool.servaddr, len)==-1)
+                 printf("sendto err");
+        // write(fd, &input_data[0], 4*18*19*19);
+
+
+        int recvlen = recvfrom(fd, myout, 4*(19*19+2), 0, (struct sockaddr *)&thread_pool.servaddr, &len);
+        // int recvlen = read(fd, myout, 4*(19*19+2));
+        if (recvlen == (19*19 + 2) * 4) break;
+        printf("Retry ...\n");
+    }
+
+    std::vector<float> my_policy_out(myout, myout + 19*19+1); // = softmax_data;
+
+    softmax(my_policy_out, softmax_data, cfg_softmax_temp);
+
+    std::vector<float>& outputs = softmax_data;
+    float winrate_sig = (1.0f + myout[19*19+1]) / 2.0f;
+    //printf("My threadID %d with socket id %d\n", idx, thread_pool.udpconnections[idx]++);
+#elif defined(USE_OPENCL)
     opencl_net.forward(input_data, output_data);
     // Get the moves
     convolve<1, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);

@@ -72,7 +72,7 @@ SMP::Mutex & UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(std::atomic<int> & nodecount,
+bool UCTNode::create_children(int idx, std::atomic<int> & nodecount,
                               GameState & state,
                               float & eval) {
     // check whether somebody beat us to it (atomic)
@@ -98,7 +98,7 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
     lock.unlock();
 
     auto raw_netlist = Network::get_scored_moves(
-        &state, Network::Ensemble::RANDOM_ROTATION);
+        idx, &state, Network::Ensemble::RANDOM_ROTATION);
 
     // DCNN returns winrate as side to move
     auto net_eval = raw_netlist.second;
