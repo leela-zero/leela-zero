@@ -27,8 +27,7 @@ LIBS =
 # for macOS (comment out the Linux part)
 LIBS += -framework Accelerate
 LIBS += -framework OpenCL
-LIBS += -L/Users/xcode/homebrew/lib
-CXXFLAGS += -I/System/Library/Frameworks/Accelerate.framework/Versions/Current/Headers -I/Users/xcode/homebrew/include
+CXXFLAGS += -I/System/Library/Frameworks/Accelerate.framework/Versions/Current/Headers 
 
 # for MKL instead of OpenBLAS
 #DYNAMIC_LIBS += -lmkl_rt
