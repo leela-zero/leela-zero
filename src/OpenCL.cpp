@@ -384,21 +384,22 @@ void OpenCL::ensure_thread_initialized() {
 
 void OpenCL_Network::add_weights(size_t layer,
                                  size_t size,
-                                 const float * _weights) {
+                                 const float * weights) {
     if (layer >= m_layers.size()) {
         m_layers.push_back(Layer());
     }
 
-    std::vector<net_t> weights(size);
-    for(size_t i=0; i<size; i++) {
-        weights[i] = _weights[i];
+    auto converted_weights = std::vector<net_t>();
+    for(auto i = size_t{0}; i < size; i++) {
+        converted_weights.emplace_back(weights[i]);
     }
 
-    size_t weightSize = size *
-        sizeof(std::remove_pointer<decltype(weights)>::type);
+    auto weightSize = size * sizeof(decltype(converted_weights)::value_type);
 
-    cl::Buffer bufferWeights = cl::Buffer(CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
-                                          weightSize, const_cast<net_t*>(weights.data()));
+    cl::Buffer bufferWeights =
+        cl::Buffer(CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+                   weightSize,
+                   const_cast<net_t*>(converted_weights.data()));
 
     m_layers.back().weights.push_back(bufferWeights);
 }
@@ -786,7 +787,7 @@ void OpenCL::initialize(void) {
     }
     // Build program for these specific devices
     try {
-	std::string args = "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
+	    std::string args = "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
 #ifdef USE_HALF
         args += " -DUSE_HALF";
 #endif
