@@ -27,7 +27,7 @@ using VersionTuple = std::tuple<int, int>;
 
 class Game : QProcess {
 public:
-    Game(const QString& weights, QTextStream& out);
+    Game(const QString& weights, QTextStream& out, const QString& leela_path);
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version);
     void move();
