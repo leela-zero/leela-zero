@@ -3,3 +3,4 @@ leelaz
 *.d
 training/tf/venv
 weights.txt
+.idea
