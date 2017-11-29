@@ -16,6 +16,13 @@ Theano also supports `device=cpu` option.
 
 *Note:* Current version does not support auto reloading the weight file.
 
+
+## Install CuDNN
+
+For better performance, you should install CuDNN library from Nvidia. It requires you to register an account at Nvidia developer website. Visit ()[https://developer.nvidia.com/cudnn] for more information.
+
+
+
 # What
 
 A Go program with no human provided knowledge. Using MCTS (but without

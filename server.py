@@ -3,26 +3,37 @@ import glob
 import gzip
 import random
 import math
-import multiprocessing as mp
-from theano import *
-import theano.tensor as T
-from theano.tensor.nnet import conv2d
-from theano.tensor.nnet import relu
-from theano.tensor.nnet.bn import batch_normalization_test as bn
 import numpy as np
 import trollius
+import subprocess
+import urllib.request
 
-if len(sys.argv) != 3:
-    print("Usage: %s [weight-file] [batch-size]" % sys.argv[0])
+
+if len(sys.argv) != 2:
+    print("Usage: %s [batch-size]" % sys.argv[0])
     sys.exit(-1)
 
-filename = sys.argv[1]
-QLEN     = int(sys.argv[2])
+QLEN     = int(sys.argv[1]) # alias: Batch size
+# autogtp_exe = sys.argv[3]
 
 print("Leela Zero TCP Neural Net Service")
 
-def loadWeightFile(filename):
-    f = open(filename, "r")
+def getLastestNNHash():
+    global nethash
+    txt = urllib.request.urlopen("http://zero.sjeng.org/best-network-hash").read().decode()
+    net  = txt.split("\n")[0]
+    return net
+
+def downloadBestNetworkWeight(hash):
+    try:
+        return open(hash + ".txt", "r").read()
+    except Exception as ex:
+        txt = urllib.request.urlopen("http://zero.sjeng.org/networks/best-network").read().decode()
+        open(hash + ".txt", "w").write(txt).close()
+        return txt
+    
+
+def loadWeight(text):
 
     linecount = 0
 
@@ -33,11 +44,11 @@ def loadWeightFile(filename):
         if t != si:
             print("ERRROR: ", s, t, si)
 
-    FORMAT_VERSION = "1\n"
+    FORMAT_VERSION = "1"
 
-    print("Detecting the number of residual layers...")
+    # print("Detecting the number of residual layers...")
 
-    w = f.readlines()
+    w = text.split("\n")
     linecount = len(w)
 
     if w[0] != FORMAT_VERSION:
@@ -45,7 +56,7 @@ def loadWeightFile(filename):
         sys.exit(-1)
 
     count = len(w[2].split(" "))
-    print("%d channels..." % count)
+    # print("%d channels..." % count)
 
     residual_blocks = linecount - (1 + 4 + 14)
 
@@ -54,7 +65,7 @@ def loadWeightFile(filename):
         sys.exit(-1)
 
     residual_blocks = residual_blocks // 8
-    print("%d blocks..." % residual_blocks)
+    # print("%d blocks..." % residual_blocks)
 
     plain_conv_layers = 1 + (residual_blocks * 2)
     plain_conv_wts = plain_conv_layers * 4
@@ -63,9 +74,15 @@ def loadWeightFile(filename):
     weights = [ [float(t) for t in l.split(" ")] for l in w[1:] ]
     return (weights, residual_blocks, count)
 
+print("\nLoading lastest network")
+nethash = getLastestNNHash()
+print("Hash: " + nethash)
+print("Downloading weights")
+txt     = downloadBestNetworkWeight(nethash)
+print("Done!")
 
-weights, numBlocks, numFilters = loadWeightFile(filename)
-
+weights, numBlocks, numFilters = loadWeight(txt)
+print(" %d channels and %d blocks" % (numFilters, numBlocks) )
 
 def LZN(ws, nb, nf):
     # ws: weights
@@ -171,9 +188,17 @@ def LZN(ws, nb, nf):
     out = T.concatenate( [polfcout, T.tanh(valout)], axis=1 )
     return function(params, out)
 
+print("\nCompling the lastest neural network")
+
+from theano import *
+import theano.tensor as T
+from theano.tensor.nnet import conv2d
+from theano.tensor.nnet import relu
+from theano.tensor.nnet.bn import batch_normalization_test as bn
 
 net = LZN(weights, numBlocks, numFilters)
 
+print("Done!")
 ### For testing purpose
 # inp1 = [math.sin(i) for i in range(1*19*19*18) ]
 # inp2 = [math.cos(i) for i in range(1*19*19*18) ]
@@ -242,7 +267,12 @@ import sys
 inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
 ADDRS = list(range(QLEN))
 counter = 0
-print("Batch size = %d" % QLEN)
+print("\nBatch size = %d" % QLEN)
+
+import threading
+netlock = threading.Lock()
+newNetWeight = None
+
 
 class TCPServerClientProtocol(trollius.Protocol):
     def connection_made(self, transport):
@@ -251,7 +281,7 @@ class TCPServerClientProtocol(trollius.Protocol):
         self.transport = transport
 
     def data_received(self, data):
-        global counter, ADDRS, QLEN, inp
+        global counter, ADDRS, QLEN, inp, netlock, newNetWeight, net
         ADDRS[counter] = self.transport
         if len(data) != 19*19*18*4:
             print("ERR")
@@ -260,6 +290,16 @@ class TCPServerClientProtocol(trollius.Protocol):
         if counter == QLEN:
             counter = 0
             myinp = inp.reshape( (QLEN, 18, 19, 19) )
+            netlock.acquire(True)   # BLOCK HERE
+            if newNetWeight != None:
+                del net
+                gc.collect()  # hope that GPU memory is freed, not sure :-()
+                weights, numBlocks, numFilters = newNetWeight
+                print(" %d channels and %d blocks" % (numFilters, numBlocks) )
+                net = LZN(weights, numBlocks, numFilters)
+                print("...updated weight!")        
+                newNetWeight = None
+            netlock.release()
             out = net(myinp).astype(np.float32)
             for i in range(QLEN):
                 try:
@@ -273,7 +313,31 @@ coro = loop.create_server(TCPServerClientProtocol, '127.0.0.1', 9999)
 server = loop.run_until_complete(coro)
 
 # Serve requests until Ctrl+C is pressed
-print('Serving on {}'.format(server.sockets[0].getsockname()))
+print('\nServing on {}'.format(server.sockets[0].getsockname()))
+
+import time
+import gc
+
+class MyWeightUpdater(threading.Thread):
+    def run(self):
+        global nethash, net, netlock, newNetWeight
+        print("\nStarting a thread for auto updating lastest weights")             
+        while True:
+            newhash = getLastestNNHash()
+            if newhash != nethash:
+                txt = downloadBestNetworkWeight(newhash)
+                print("New net arrived")
+                nethash = newhash
+                weights, numBlocks, numFilters = loadWeight(txt)
+                netlock.acquire(True)  # BLOCK HERE
+                newNetWeight = (weights, numBlocks, numFilters)
+                netlock.release()
+            time.sleep(10)                                      
+
+worker = MyWeightUpdater(name = "Thread-1") 
+worker.start()                                   
+
+print("\nNow, you should run %d autogtp instances at different locations to start the playing process" % QLEN)
 try:
     loop.run_forever()
 except KeyboardInterrupt:

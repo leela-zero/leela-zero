@@ -446,7 +446,7 @@ Network::Netresult Network::get_scored_moves_internal(
         int recvlen = read(fd, myout, 4*(19*19+2));
         if (recvlen == (19*19 + 2) * 4) break;
 
-        myprintf("Missing TCP output packet, retry ...\n");
+        printf("ERROR: Missing TCP output packet, retry ...\n");
     }
 
     std::vector<float> my_policy_out(myout, myout + 19*19+1); // = softmax_data;
