@@ -9,7 +9,7 @@ from six.moves import urllib
 
 
 if len(sys.argv) < 2 or len(sys.argv) > 3:
-    print("Usage: %s [batch-size]" % sys.argv[0])
+    print("Usage: %s batch-size [port]" % sys.argv[0])
     sys.exit(-1)
 
 QLEN     = int(sys.argv[1]) # alias: Batch size
@@ -21,7 +21,6 @@ if len(sys.argv) == 3:
 print("Leela Zero TCP Neural Net Service")
 
 def getLatestNNHash():
-    global nethash
     txt = urllib.request.urlopen("http://zero.sjeng.org/best-network-hash").read().decode()
     net  = txt.split("\n")[0]
     return net
@@ -119,15 +118,20 @@ def LZN(ws, nb, nf):
         return bn0
 
     def myconv(inp, inc, outc, kernel_size, params, name):
+        global QLEN
         #f0 = T.tensor4(name + '_filter')
         w = np.asarray(loadW(), dtype=np.float32).reshape( (outc, inc, kernel_size, kernel_size) )
         #params.append(In(f0, value=w))
         f0 = shared(w)
 
-        conv0 = conv2d(inp, f0, input_shape=(None, inc, 19, 19),
-                border_mode='half', filter_flip=False, filter_shape=(outc,inc,
-                    kernel_size,kernel_size))
+        conv0 = conv2d(inp, f0, input_shape=(QLEN, inc, 19, 19),
+                       border_mode='half', 
+                       filter_flip=False, 
+                       filter_shape=(outc, inc, kernel_size, kernel_size))
         b = loadW()  # zero bias
+        if sum(abs(i) for i in b) != 0:
+            print("ERROR! Should be 0")
+
         return conv0
 
     def residualBlock(inp, nf, params, name):
@@ -220,63 +224,18 @@ print("Done!")
 import socket
 import sys
 
-# -- # Create a UDP socket
-# -- sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-# --
-# -- # Bind the socket to the port
-# -- server_address = ('127.0.0.1', 9999)
-# -- print('starting up on {} port {}'.format(*server_address))
-# -- sock.bind(server_address)
-# --
-# -- inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
-# -- clientAddrs = list(range(QLEN))
-# -- counter = 0
-# -- #QLEN = QLEN
-# -- print("Setting batch-size = %d" % QLEN)
-# --
-# -- def computeForward():
-# --     global counter, inp, clientAddrs
-# --     counter = 0
-# --     myinp = inp.reshape( (QLEN, 18, 19, 19) )
-# --     out = net(myinp).astype(np.float32)
-# --
-# --     ports = []      # never sent to an address twice each batch
-# --     for i in range(QLEN):
-# --         #print(out[0,0].data.tobytes())
-# --         if not clientAddrs[i][1] in ports:
-# --             sock.sendto(out[i, :].data, clientAddrs[i] )
-# --             ports.append(clientAddrs[i][1])
-# --         #self.transport.sendto(b"1234", self.ADDRS[i] )
-# --
-# -- while True:
-# --     data, address = sock.recvfrom(19*19*18*4)
-# --
-# --     # if data:
-# --     #     sent = sock.sendto(data, address)
-# --     #     print('sent {} bytes back to {}'.format(
-# --     #         sent, address))
-# --
-# --     if len(data) != 19*19*18*4:
-# --         print("ERR")
-# --
-# --     inp[counter, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18)
-# --     clientAddrs[counter] = address
-# --
-# --     # self.transport.sendto(data, addr)
-# --     counter = counter + 1
-# --     if counter == QLEN:
-# --         computeForward()
-
-
 inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
 ADDRS = list(range(QLEN))
 counter = 0
+remain = QLEN
 print("\nBatch size = %d" % QLEN)
 
 import threading
 netlock = threading.Lock()
 newNetWeight = None
 
+import time
+import gc
 
 class TCPServerClientProtocol(trollius.Protocol):
     def connection_made(self, transport):
@@ -286,28 +245,33 @@ class TCPServerClientProtocol(trollius.Protocol):
         self.data = bytearray()
 
     def data_received(self, data):
-        global counter, ADDRS, QLEN, inp, netlock, newNetWeight, net
+        global counter, ADDRS, QLEN, inp, netlock, newNetWeight, net, remain
         
+        # at the beginning of the msg
         if len(self.data) == 0: 
             ADDRS[counter] = self.transport
+            self.idx = counter # my slot is here! no other can take it
+            counter = counter + 1
         
         self.data.extend(data)
         
         if len(self.data) < 19*19*18*4:
-            print("WARN: too short message, waiting for more data")
+            print("WARN: too short message (should not be in this case), waiting for more data")
             return
         
         if len(self.data) > 19*19*18*4:
-            print("ERROR, too long message!")
+            print("ERROR: too long message!")
             while True: 
                 pass
         
         # we'ready, enough data
-        inp[counter, :] = np.frombuffer(self.data, dtype=np.float32, count = 19*19*18)
+        inp[self.idx, :] = np.frombuffer(self.data, dtype=np.float32, count = 19*19*18)
+        remain = remain - 1 # done 1 input
         self.data = bytearray()
-        counter = counter + 1
-        if counter == QLEN:
-            counter = 0
+
+        if remain == 0:
+            counter = 0 # reset counter
+            remain = QLEN # reset 
             myinp = inp.reshape( (QLEN, 18, 19, 19) )
             netlock.acquire(True)   # BLOCK HERE
             if newNetWeight != None:
@@ -334,8 +298,6 @@ server = loop.run_until_complete(coro)
 # Serve requests until Ctrl+C is pressed
 print('\nServing on {}'.format(server.sockets[0].getsockname()))
 
-import time
-import gc
 
 class MyWeightUpdater(threading.Thread):
     def run(self):
