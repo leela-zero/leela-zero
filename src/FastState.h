@@ -29,7 +29,6 @@ public:
     void reset_game();
     void reset_board();
 
-    int play_move_fast(int vertex);
     void play_pass(void);
     void play_move(int vertex);
 
@@ -45,7 +44,6 @@ public:
     void set_passes(int val);
     void increment_passes();
 
-    float calculate_mc_score();
     int estimate_mc_score();
     float final_score();
 

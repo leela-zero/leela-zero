@@ -40,25 +40,6 @@ void KoState::init_game(int size, float komi) {
     hash_history.push_back(board.calc_hash());
 }
 
-bool KoState::legal_move(int vertex) {
-    if (board.get_square(vertex) != FastBoard::EMPTY) {
-        return false;
-    }
-    if (board.is_suicide(vertex, board.get_to_move())) {
-        return false;
-    }
-
-    KoState tmp = *this;
-
-    tmp.play_move(vertex);
-
-    if (tmp.superko()) {
-        return false;
-    }
-
-    return true;
-}
-
 bool KoState::superko(void) {
     auto first = crbegin(ko_hash_history);
     auto last = crend(ko_hash_history);

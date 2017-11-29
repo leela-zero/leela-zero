@@ -31,8 +31,6 @@ public:
     bool superko(uint64 newhash);
     void reset_game();
 
-    bool legal_move(int vertex);
-
     void play_pass(void);
     void play_move(int color, int vertex);
     void play_move(int vertex);

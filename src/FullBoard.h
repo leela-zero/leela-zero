@@ -40,9 +40,6 @@ public:
 
     uint64 hash;
     uint64 ko_hash;
-
-private:
-    std::array<uint64, 8> get_rotated_hashes(void);
 };
 
 #endif

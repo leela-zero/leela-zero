@@ -84,24 +84,6 @@ std::vector<int> FastState::generate_moves(int color) {
     return result;
 }
 
-int FastState::play_move_fast(int vertex) {
-    bool capture = false;
-    if (vertex == FastBoard::PASS) {
-        increment_passes();
-    } else {
-        m_komove = board.update_board_fast(board.m_tomove, vertex, capture);
-        set_passes(0);
-    }
-
-    std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1, rend(m_lastmove));
-    m_lastmove[0] = vertex;
-    m_last_was_capture = capture;
-    board.m_tomove = !board.m_tomove;
-    m_movenum++;
-
-    return vertex;
-}
-
 void FastState::play_pass(void) {
     m_movenum++;
 
@@ -155,10 +137,6 @@ size_t FastState::get_movenum() const {
 
 int FastState::estimate_mc_score(void) {
     return board.estimate_mc_score(m_komi + m_handicap);
-}
-
-float FastState::calculate_mc_score(void) {
-    return board.final_mc_score(m_komi + m_handicap);
 }
 
 int FastState::get_last_move(void) const {

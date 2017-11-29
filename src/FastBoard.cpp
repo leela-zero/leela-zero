@@ -105,44 +105,6 @@ void FastBoard::set_square(int x, int y, FastBoard::square_t content) {
     set_square(get_vertex(x, y), content);
 }
 
-int FastBoard::rotate_vertex(int vertex, int symmetry) {
-    assert(symmetry >= 0 && symmetry <= 7);
-    std::pair<int, int> xy = get_xy(vertex);
-    int x = xy.first;
-    int y = xy.second;
-    int newx;
-    int newy;
-
-    if (symmetry == 0) {
-        newx = x;
-        newy = y;
-    } else if (symmetry == 1) {
-        newx = m_boardsize - x - 1;
-        newy = y;
-    } else if (symmetry == 2) {
-        newx = x;
-        newy = m_boardsize - y - 1;
-    } else if (symmetry == 3) {
-        newx = m_boardsize - x - 1;
-        newy = m_boardsize - y - 1;
-    } else if (symmetry == 4) {
-        newx = y;
-        newy = x;
-    } else if (symmetry == 5) {
-        newx = m_boardsize - y - 1;
-        newy = x;
-    } else if (symmetry == 6) {
-        newx = y;
-        newy = m_boardsize - x - 1;
-    } else  {
-        assert(symmetry == 7);
-        newx = m_boardsize - y - 1;
-        newy = m_boardsize - x - 1;
-    }
-
-    return get_vertex(newx, newy);
-}
-
 void FastBoard::reset_board(int size) {
     m_boardsize = size;
     m_maxsq = (size + 2) * (size + 2);

@@ -78,7 +78,6 @@ public:
     int get_vertex(int i, int j) const;
     void set_square(int x, int y, square_t content);
     void set_square(int vertex, square_t content);
-    int rotate_vertex(int vertex, int symmetry);
     std::pair<int, int> get_xy(int vertex) const;
 
     bool is_suicide(int i, int color);
