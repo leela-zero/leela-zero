@@ -42,6 +42,7 @@ using namespace Utils;
 
 // Configuration flags
 bool cfg_allow_pondering;
+int cfg_tcp_port;
 int cfg_num_threads;
 int cfg_max_playouts;
 int cfg_lagbuffer_cs;
@@ -64,6 +65,7 @@ bool cfg_quiet;
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
+    cfg_tcp_port = 9999;
     cfg_num_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
     cfg_lagbuffer_cs = 100;

@@ -435,7 +435,7 @@ Network::Netresult Network::get_scored_moves_internal(
 #ifdef USE_UDPSERVER
     float myout[19*19+2]; 
     int fd= thread_pool.udpconnections[idx];
-    socklen_t len = sizeof(thread_pool.servaddr);
+    // socklen_t len = sizeof(thread_pool.servaddr);
     int recvlen = 0;
 
     write(fd, &input_data[0], 4*18*19*19);
@@ -451,7 +451,7 @@ Network::Netresult Network::get_scored_moves_internal(
         }
     }
 
-    std::vector<float> my_policy_out(myout, myout + 19*19+1); // = softmax_data;
+    std::vector<float> my_policy_out(myout, myout + 19*19+1); 
 
     softmax(my_policy_out, softmax_data, cfg_softmax_temp);
 
@@ -460,6 +460,7 @@ Network::Netresult Network::get_scored_moves_internal(
     // printf("My threadID %d with socket id %d\n", idx, thread_pool.udpconnections[idx]++);
         
     // Uncomment bellow for testing purpose, comparing with the OpenCL results
+    // BEGIN TESTING HERE
     // opencl_net.forward(input_data, output_data);
     // // Get the moves
     // convolve<1, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
@@ -484,6 +485,7 @@ Network::Netresult Network::get_scored_moves_internal(
     // if (fabs(mywinrate_sig - winrate_sig) > 1e-4) {
     //     printf("ERR delta winrate %f\n", fabs(mywinrate_sig - winrate_sig));
     // }
+    // END TESTING HERE
 #elif defined(USE_OPENCL)
     opencl_net.forward(input_data, output_data);
     // Get the moves

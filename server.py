@@ -8,12 +8,15 @@ import trollius
 from six.moves import urllib
 
 
-if len(sys.argv) != 2:
+if len(sys.argv) < 2 or len(sys.argv) > 3:
     print("Usage: %s [batch-size]" % sys.argv[0])
     sys.exit(-1)
 
 QLEN     = int(sys.argv[1]) # alias: Batch size
-# autogtp_exe = sys.argv[3]
+PORT     = 9999
+
+if len(sys.argv) == 3:
+    PORT = int(sys.argv[2])
 
 print("Leela Zero TCP Neural Net Service")
 
@@ -325,7 +328,7 @@ class TCPServerClientProtocol(trollius.Protocol):
 
 loop = trollius.get_event_loop()
 # Each client connection will create a new protocol instance
-coro = loop.create_server(TCPServerClientProtocol, '127.0.0.1', 9999)
+coro = loop.create_server(TCPServerClientProtocol, '127.0.0.1', PORT)
 server = loop.run_until_complete(coro)
 
 # Serve requests until Ctrl+C is pressed

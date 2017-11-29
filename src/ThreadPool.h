@@ -41,6 +41,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include "Utils.h"
+#include "GTP.h"
 
 namespace Utils {
 
@@ -67,18 +68,19 @@ private:
 inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
         int fd;
-        if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { perror("cannot create socket"); }
+        if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { perror("cannot create socket"); exit(-1); }
         udpconnections.push_back(fd);
         struct sockaddr_in myaddr; 
         memset((char *)&myaddr, 0, sizeof(myaddr)); 
         myaddr.sin_family = AF_INET; myaddr.sin_addr.s_addr = htonl(INADDR_ANY); myaddr.sin_port = htons(0); 
-        if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) { perror("bind failed"); }
+        if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) { perror("bind failed"); exit(-1); }
 
         memset((char*)&servaddr, 0, sizeof(servaddr));
         servaddr.sin_family = AF_INET;
-        servaddr.sin_port = htons(9999);
+        servaddr.sin_port = htons(cfg_tcp_port);
         if (inet_aton("127.0.0.1", &servaddr.sin_addr)==0) {
             perror("ERROR: inet_aton() failed\n");
+            exit(-1);
         }
 
         // Don't want timeout with TCP
@@ -89,7 +91,10 @@ inline void ThreadPool::initialize(size_t threads) {
         //     perror("Error");
         // }
 
-	 if (connect(fd, (struct sockaddr *)(&servaddr),sizeof(servaddr)) < 0) perror("ERROR connecting");
+	    if (connect(fd, (struct sockaddr *)(&servaddr),sizeof(servaddr)) < 0) {
+            perror("ERROR connecting");
+            exit(-1);
+        }
 
         m_threads.emplace_back([this] {
             for (;;) {

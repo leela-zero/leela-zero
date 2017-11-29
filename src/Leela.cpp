@@ -54,6 +54,9 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("threads,t", po::value<int>()->default_value
                       (std::min(2, cfg_num_threads)),
                       "Number of threads to use.")
+        ("tcp-port,u", po::value<int>()->default_value
+                      (9999),
+                      "TCP listenning port of the server.")                      
         ("playouts,p", po::value<int>(),
                        "Weaken engine by limiting the number of playouts. "
                        "Requires --noponder.")
@@ -154,6 +157,10 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
 
     if (vm.count("gtp")) {
         gtp_mode = true;
+    }
+
+    if (vm.count("tcp-port")) {
+        cfg_tcp_port = vm["tcp-port"].as<int>();
     }
 
     if (vm.count("threads")) {

@@ -4,13 +4,17 @@ The idea is to run the forwarding step of neural network in a seperated process.
 
 To start games, you first need to start the TCP server, and then run multiple instances of autogtp (e.g., `./autogtp`).
 
-Run TCP server with command:  `THEANO_FLAGS='device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32' python server.py 4`   where `4` is the `batch_size`. 
+Run TCP server with command:  
+
+    THEANO_FLAGS='device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32' python server.py 4 [9999]
+    
+where `4` is the `batch_size` and the optional `9999` is the listenning port.
 
 Theano also supports `device=cpu` option for machines without GPU.
 
-Server listens at 127.0.0.1:9999 (TCP).
+Leela C++ connects to port `9999` by default. You can use a different port with argument `--tcp-port=[PORT]`. You have to modify `autogtp/Game.cpp` to add this argument to autogtp. Use `--tcp-port` argument when you want to run multiple servers (e.g., port `9999`  for `CPU`s, port `9998` for `GPU0`, port `9997` for `GPU1` )
 
-**Note:** please set `batch_size` equal to (or greater than) number of Leela instances you want to run. TCP server will pause until enough instances connected to the server.  Also, wait until the TCP server ready before running autogtp instances.
+**Note:** please set `batch_size` equal to (or less than) number of Leela instances you want to run. TCP server will pause until enough instances connected to the server.  Also, wait until the TCP server ready before running autogtp instances.
 
 **Tips:** Increasing `batch_size` to get the best performance (`seconds /  moves / games`)
 
@@ -22,7 +26,7 @@ You need to install `theano`, `trollius`, `six` python packages
 
 Basically, you need to run:
 
-   > pip install -r requirements.txt
+    pip install -r requirements.txt
 
 TCP server should work with both python 2 and python 3.
 
@@ -33,6 +37,7 @@ Visit [here](http://deeplearning.net/software/theano/install.html) for detail in
 
 For better performance, you should install Cuda toolkits and CuDNN library from Nvidia. It requires you to register an account at Nvidia developer website. Visit [here](https://developer.nvidia.com/cuda-downloads) and [here](https://developer.nvidia.com/cudnn) for more information.
 
+===================== Below are the original readme =========================
 
 # What
 
