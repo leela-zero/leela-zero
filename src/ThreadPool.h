@@ -25,6 +25,7 @@
 */
 
 #include <cstddef>
+#include <cstdlib>
 #include <vector>
 #include <thread>
 #include <queue>

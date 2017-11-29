@@ -35,9 +35,9 @@
 
 
 #include "Im2Col.h"
-#ifdef __APPLE__
-#include <Accelerate/Accelerate.h>
-#endif
+// #ifdef __APPLE__
+// #include <Accelerate/Accelerate.h>
+// #endif
 #ifdef USE_MKL
 #include <mkl.h>
 #endif
