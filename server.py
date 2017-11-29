@@ -6,7 +6,7 @@ import math
 import numpy as np
 import trollius
 import subprocess
-import urllib.request
+from six.moves import urllib
 
 
 if len(sys.argv) != 2:
@@ -29,9 +29,11 @@ def downloadBestNetworkWeight(hash):
         return open(hash + ".txt", "r").read()
     except Exception as ex:
         txt = urllib.request.urlopen("http://zero.sjeng.org/networks/best-network").read().decode()
-        open(hash + ".txt", "w").write(txt).close()
+        f = open(hash + ".txt", "w")
+        f.write(txt)
+        f.close()
         return txt
-    
+
 
 def loadWeight(text):
 
@@ -321,7 +323,7 @@ import gc
 class MyWeightUpdater(threading.Thread):
     def run(self):
         global nethash, net, netlock, newNetWeight
-        print("\nStarting a thread for auto updating lastest weights")             
+        print("\nStarting a thread for auto updating lastest weights")        
         while True:
             newhash = getLastestNNHash()
             if newhash != nethash:
@@ -335,7 +337,8 @@ class MyWeightUpdater(threading.Thread):
             time.sleep(10)                                      
 
 worker = MyWeightUpdater(name = "Thread-1") 
-worker.start()                                   
+worker.daemon = True
+worker.start()                                
 
 print("\nNow, you should run %d autogtp instances at different locations to start the playing process" % QLEN)
 try:
@@ -347,5 +350,3 @@ except KeyboardInterrupt:
 server.close()
 loop.run_until_complete(server.wait_closed())
 loop.close()
-
-
