@@ -432,28 +432,16 @@ public:
 
         // Neither has visits, sort on prior score
         if (!std::get<1>(a) && !std::get<1>(b)) {
-            if (std::get<2>(a) > std::get<2>(b)) {
-                return true;
-            } else {
-                return false;
-            }
+            return std::get<2>(a) > std::get<2>(b);
         }
 
         // Both have visits, but the same amount, prefer winrate
         if (std::get<1>(a) == std::get<1>(b)) {
-            if (std::get<0>(a) > std::get<0>(b)) {
-                return true;
-            } else {
-                return false;
-            }
+            return std::get<0>(a) > std::get<0>(b);
         }
 
         // Both have different visits, prefer greater visits
-        if (std::get<1>(a) > std::get<1>(b)) {
-            return true;
-        } else {
-            return false;
-        }
+        return std::get<1>(a) > std::get<1>(b);
     }
 };
 
@@ -507,6 +495,36 @@ void UCTNode::sort_root_children(int color) {
     for (auto& sortnode : tmp) {
         link_child(std::get<3>(sortnode));
     }
+}
+
+/**
+ * Helper function to get a sortnode_t
+ * eval is set to 0 if no visits instead of first-play-urgency
+ */
+UCTNode::sortnode_t get_sortnode(int color, UCTNode* child) {
+    auto visits = child->get_visits();
+    return UCTNode::sortnode_t(
+        visits == 0 ? 0.0f : child->get_eval(color),
+        visits,
+        child->get_score(),
+        child);
+}
+
+UCTNode* UCTNode::get_best_root_child(int color) {
+    LOCK(get_mutex(), lock);
+    assert(m_firstchild != nullptr);
+
+    NodeComp compare;
+    auto child = m_firstchild;
+    auto best_child = get_sortnode(color, child);
+    while (child != nullptr) {
+        auto test = get_sortnode(color, child);
+        if (compare(test, best_child)) {
+            best_child = test;
+        }
+        child = child->m_nextsibling;
+    }
+    return std::get<3>(best_child);
 }
 
 UCTNode* UCTNode::get_first_child() const {
