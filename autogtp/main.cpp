@@ -66,12 +66,16 @@ int main(int argc, char *argv[]) {
         {"k", "keepSgf" },
             "Save SGF files after each self-play game.",
             "output directory");
+    QCommandLineOption keepDebugOption(
+        { "d", "debug" }, "Save training and extra debug files after each self-play game.",
+                             "output directory");
 
     parser.addOption(competitionOption);
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(networkOption);
     parser.addOption(keepSgfOption);
+    parser.addOption(keepDebugOption);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
@@ -113,13 +117,17 @@ int main(int argc, char *argv[]) {
     if(competition) {
         Validation validate(gpusNum, gamesNum, gpusList,
                             netList.at(0), netList.at(1),
-                            parser.value(keepSgfOption), &mutex);
+                            parser.value(keepSgfOption),
+                            parser.value(keepDebugOption),
+                            &mutex);
         validate.startGames();
         mutex.lock();
         validate.wait();
     } else {
         Production prod(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION,
-                        parser.value(keepSgfOption), &mutex);
+                        parser.value(keepSgfOption),
+                        parser.value(keepDebugOption),
+                        &mutex);
         prod.startGames();
         mutex.lock();
     }

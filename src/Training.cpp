@@ -96,6 +96,12 @@ void Training::record(GameState& state, const UCTNode& root) {
     step.planes = Network::NNPlanes{};
     Network::gather_features(&state, step.planes);
 
+    auto result = Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
+    step.netwinrate = result.second;
+    step.root_uctwinrate = root.get_eval(step.to_move);
+    step.child_uctwinrate = root.get_first_child()->get_eval(step.to_move);
+    step.bestmovevisits = root.get_first_child()->get_visits();
+
     step.probabilities.resize((19 * 19) + 1);
 
     // Get total visit amount. We count rather
@@ -174,6 +180,25 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
             out << "-1";
         }
         out << std::endl;
+        outchunk.append(out.str());
+    }
+}
+
+void Training::dump_stats(const std::string& filename) {
+    auto chunker = OutputChunker{filename, true};
+    dump_stats(chunker);
+}
+
+void Training::dump_stats(OutputChunker& outchunk) {
+    auto out = std::stringstream{};
+    out << "1" << std::endl; // File format version 1
+    outchunk.append(out.str());
+    for (const auto& step : m_data) {
+        auto out = std::stringstream{};
+        out << "netwinrate " << step.netwinrate << std::endl;
+        out << "root_uctwinrate " << step.root_uctwinrate << std::endl;
+        out << "child_uctwinrate " << step.child_uctwinrate << std::endl;
+        out << "bestmovevisits " << step.bestmovevisits << std::endl;
         outchunk.append(out.str());
     }
 }
