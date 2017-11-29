@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017 Seth Troisi
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 #define RESULTS_H
 
 #include "SPRT.h"
-#include <QMutex>
+#include <atomic>
 
 class Results {
 public:
@@ -33,12 +33,11 @@ public:
     void printResults(QString firstNetName, QString secondNetName);
 
 private:
-    int m_gamesPlayed;
-    int m_blackWins;
-    int m_blackLosses;
-    int m_whiteWins;
-    int m_whiteLosses;
-	mutable QMutex m_mutex;
+    std::atomic<int> m_gamesPlayed;
+    std::atomic<int> m_blackWins;
+    std::atomic<int> m_blackLosses;
+    std::atomic<int> m_whiteWins;
+    std::atomic<int> m_whiteLosses;
 };
 
 #endif // RESULT_H

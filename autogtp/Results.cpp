@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017 Seth Troisi
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,10 +23,7 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 
-
-void Results::addGameResult(Sprt::GameResult result, int side)
-{
-    QMutexLocker locker(&m_mutex);
+void Results::addGameResult(Sprt::GameResult result, int side) {
     m_gamesPlayed++;
     if (result == Sprt::GameResult::Win) {
         if (side == Game::BLACK)
@@ -51,8 +48,8 @@ void Results::printResults(QString firstNetName, QString secondNetName) {
                                       98 55.68%   78 44.32%
         */
 
-        QString first_name = "leelaz-" + firstNetName.left(8);
-        QString second_name = "leelaz-" + secondNetName.left(8);
+        QString first_name = firstNetName.left(8);
+        QString second_name = secondNetName.left(8);
 
         // Results for player one
         auto p1_wins = m_blackWins + m_whiteWins;
@@ -69,10 +66,10 @@ void Results::printResults(QString firstNetName, QString secondNetName) {
              .arg(first_name, second_name).arg(m_gamesPlayed);
 
         QTextStream(stdout) <<
-            str(boost::format("%-21s %-14s %-14s %s\n")
+            str(boost::format("%-14s %-14s %-14s %s\n")
                 % "" /* name */ % "wins" % "black" % "white").c_str();
         QTextStream(stdout) <<
-            str(boost::format("%-16s %4d %5.2f%% %7d %5.2f%% %7d %5.2f%%\n")
+            str(boost::format("%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
                 % first_name.toLocal8Bit().constData()
                 % p1_wins
                 % (100.0 * p1_wins / m_gamesPlayed)
@@ -81,7 +78,7 @@ void Results::printResults(QString firstNetName, QString secondNetName) {
                 % m_whiteWins
                 % (100.0 * m_whiteWins / p1_white_games)).c_str();
         QTextStream(stdout) <<
-            str(boost::format( "%-16s %4d %5.2f%% %7d %5.2f%% %7d %5.2f%%\n")
+            str(boost::format( "%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
                 % second_name.toLocal8Bit().constData()
                 % p1_losses
                 % (100.0 * p1_losses / m_gamesPlayed)
@@ -90,7 +87,7 @@ void Results::printResults(QString firstNetName, QString secondNetName) {
                 % m_blackLosses
                 % (100.0 * m_blackLosses / p1_white_games)).c_str();
         QTextStream(stdout) <<
-            str(boost::format("%16s %14s %4d %5.2f%% %7d %5.2f%%\n")
+            str(boost::format("%-9s %11s %4d %5.2f%% %4d %5.2f%%\n")
                 % "" /* name */
                 % "" /* wins column */
                 % black_wins
