@@ -18,7 +18,7 @@ QLEN     = int(sys.argv[1]) # alias: Batch size
 
 print("Leela Zero TCP Neural Net Service")
 
-def getLastestNNHash():
+def getLatestNNHash():
     global nethash
     txt = urllib.request.urlopen("http://zero.sjeng.org/best-network-hash").read().decode()
     net  = txt.split("\n")[0]
@@ -76,8 +76,8 @@ def loadWeight(text):
     weights = [ [float(t) for t in l.split(" ")] for l in w[1:] ]
     return (weights, residual_blocks, count)
 
-print("\nLoading lastest network")
-nethash = getLastestNNHash()
+print("\nLoading latest network")
+nethash = getLatestNNHash()
 print("Hash: " + nethash)
 print("Downloading weights")
 txt     = downloadBestNetworkWeight(nethash)
@@ -190,7 +190,7 @@ def LZN(ws, nb, nf):
     out = T.concatenate( [polfcout, T.tanh(valout)], axis=1 )
     return function(params, out)
 
-print("\nCompling the lastest neural network")
+print("\nCompling the latest neural network")
 
 from theano import *
 import theano.tensor as T
@@ -323,9 +323,9 @@ import gc
 class MyWeightUpdater(threading.Thread):
     def run(self):
         global nethash, net, netlock, newNetWeight
-        print("\nStarting a thread for auto updating lastest weights")        
+        print("\nStarting a thread for auto updating latest weights")        
         while True:
-            newhash = getLastestNNHash()
+            newhash = getLatestNNHash()
             if newhash != nethash:
                 txt = downloadBestNetworkWeight(newhash)
                 print("New net arrived")
