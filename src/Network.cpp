@@ -269,8 +269,8 @@ void convolve(const std::vector<net_t>& input,
     constexpr unsigned int height = 19;
     constexpr unsigned int board_squares = width * height;
     constexpr unsigned int filter_len = filter_size * filter_size;
-    auto input_channels = int(weights.size() / (biases.size() * filter_len));
-    unsigned int filter_dim = filter_len * input_channels;
+    const auto input_channels = weights.size() / (biases.size() * filter_len);
+    const auto filter_dim = filter_len * input_channels;
     assert(outputs * board_squares == output.size());
 
     std::vector<float> col(filter_dim * width * height);
@@ -404,15 +404,12 @@ Network::Netresult Network::get_scored_moves(
 Network::Netresult Network::get_scored_moves_internal(
     GameState * state, NNPlanes & planes, int rotation) {
     assert(rotation >= 0 && rotation <= 7);
+    assert(INPUT_CHANNELS == planes.size());
     constexpr int width = 19;
     constexpr int height = 19;
-    constexpr int input_channels = INPUT_CHANNELS;
-    assert(input_channels == planes.size());
-    const auto input_size = input_channels * width * height;
-    const auto output_channels = int(conv_pol_w.size() / conv_pol_b.size());
-    const auto output_size = output_channels * width * height;
-    std::vector<net_t> input_data(input_size);
-    std::vector<net_t> output_data(output_size);;
+    const auto convolve_channels = conv_pol_w.size() / conv_pol_b.size();
+    std::vector<net_t> input_data;
+    std::vector<net_t> output_data(convolve_channels * width * height);
     std::vector<float> policy_data_1(2 * width * height);
     std::vector<float> policy_data_2(2 * width * height);
     std::vector<float> value_data_1(1 * width * height);
@@ -422,12 +419,12 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<float> winrate_data(256);
     std::vector<float> winrate_out(1);
     // Data layout is input_data[(c * height + h) * width + w]
-    net_t* input_ptr = input_data.data();
-    for (int c = 0; c < input_channels; ++c) {
+    input_data.reserve(INPUT_CHANNELS * width * height);
+    for (int c = 0; c < INPUT_CHANNELS; ++c) {
         for (int h = 0; h < height; ++h) {
             for (int w = 0; w < width; ++w) {
                 auto rot_idx = rotate_nn_idx(h * 19 + w, rotation);
-                *(input_ptr++) = net_t(planes[c][rot_idx]);
+                input_data.emplace_back(net_t(planes[c][rot_idx]));
             }
         }
     }

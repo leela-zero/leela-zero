@@ -406,23 +406,23 @@ void OpenCL_Network::add_weights(size_t layer,
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
                              std::vector<net_t>& output) {
-    constexpr int width = 19;
-    constexpr int height = 19;
-    constexpr size_t one_plane = width * height * sizeof(net_t);
+    constexpr auto width = 19;
+    constexpr auto height = 19;
+    constexpr auto one_plane = width * height * sizeof(net_t);
 
     opencl.ensure_thread_initialized();
 
     if (!opencl_thread_data.m_buffers_allocated) {
         auto maxInBufferSize = 0;
         auto maxMergeSize = 0;
-        for (auto& layer : m_layers) {
+        for (const auto& layer : m_layers) {
             auto channelGroups = layer.channels / (layer.channels % 8 ? 2 : 8);
-            maxMergeSize = std::max(
-                maxMergeSize, int(layer.outputs * channelGroups));
-            maxInBufferSize = std::max(maxInBufferSize, int(layer.channels));
+            maxMergeSize = std::max<int>(maxMergeSize,
+                                         layer.outputs * channelGroups);
+            maxInBufferSize = std::max<int>(maxInBufferSize, layer.channels);
         }
-        const size_t alloc_inSize = one_plane *  maxInBufferSize;
-        const size_t alloc_mergeSize = one_plane * maxMergeSize;
+        const auto alloc_inSize = one_plane *  maxInBufferSize;
+        const auto alloc_mergeSize = one_plane * maxMergeSize;
 
         opencl_thread_data.m_inBuffer = cl::Buffer(
             CL_MEM_READ_WRITE, alloc_inSize);
@@ -441,7 +441,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     cl::Buffer & residualBuffer = opencl_thread_data.m_residualBuffer;
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
-    const size_t inSize = sizeof(float) * input.size();
+    const auto inSize = sizeof(float) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, input.data());
 
     for (auto& layer : m_layers) {
@@ -463,7 +463,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                                                          begin(layer.weights) + 6);
             auto bn2_weights   = std::vector<cl::Buffer>(begin(layer.weights) + 6,
                                                          begin(layer.weights) + 8);
-            const int inBufferSize = layer.channels * one_plane;
+            const auto inBufferSize = layer.channels * one_plane;
             queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0, inBufferSize);
             convolve(layer.filter_size,
                      layer.channels,
@@ -508,7 +508,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         }
     }
 
-    const size_t finalSize = m_layers.back().outputs * one_plane;
+    const auto finalSize = m_layers.back().outputs * one_plane;
     queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, output.data());
 
     queue.finish();
