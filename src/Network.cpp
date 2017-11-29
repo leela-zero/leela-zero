@@ -437,16 +437,16 @@ Network::Netresult Network::get_scored_moves_internal(
     while (1) {
         int fd= thread_pool.udpconnections[idx];
         socklen_t len = sizeof(thread_pool.servaddr);
-        if (sendto(fd, &input_data[0], 4*18*19*19, 0, (struct sockaddr *)&thread_pool.servaddr, len)==-1)
-                 myprintf("ERROR: sendto err");
-        // write(fd, &input_data[0], 4*18*19*19);
+        //if (sendto(fd, &input_data[0], 4*18*19*19, 0, (struct sockaddr *)&thread_pool.servaddr, len)==-1)
+        //         myprintf("ERROR: sendto err");
+        write(fd, &input_data[0], 4*18*19*19);
 
 
-        int recvlen = recvfrom(fd, myout, 4*(19*19+2), 0, (struct sockaddr *)&thread_pool.servaddr, &len);
-        // int recvlen = read(fd, myout, 4*(19*19+2));
+        // int recvlen = recvfrom(fd, myout, 4*(19*19+2), 0, (struct sockaddr *)&thread_pool.servaddr, &len);
+        int recvlen = read(fd, myout, 4*(19*19+2));
         if (recvlen == (19*19 + 2) * 4) break;
 
-        myprintf("Missing UDP output packet, retry ...\n");
+        myprintf("Missing TCP output packet, retry ...\n");
     }
 
     std::vector<float> my_policy_out(myout, myout + 19*19+1); // = softmax_data;
@@ -455,7 +455,33 @@ Network::Netresult Network::get_scored_moves_internal(
 
     std::vector<float>& outputs = softmax_data;
     float winrate_sig = (1.0f + myout[19*19+1]) / 2.0f;
-    //printf("My threadID %d with socket id %d\n", idx, thread_pool.udpconnections[idx]++);
+    // printf("My threadID %d with socket id %d\n", idx, thread_pool.udpconnections[idx]++);
+        
+    // Uncomment bellow for testing purpose, comparing with the OpenCL results
+    // opencl_net.forward(input_data, output_data);
+    // // Get the moves
+    // convolve<1, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
+    // batchnorm<2, 361>(policy_data_1, bn_pol_w1, bn_pol_w2, policy_data_2);
+    // innerproduct<2*361, 362>(policy_data_2, ip_pol_w, ip_pol_b, policy_out);
+
+    // for (int i = 0; i < 19*19 + 1; i++) {
+    //     if (fabs(policy_out[i] - my_policy_out[i]) > 1e-4) {
+    //         printf("ERRORRRRR\n");
+    //     }
+    // }
+
+    // // Now get the score
+    // convolve<1, 1>(output_data, conv_val_w, conv_val_b, value_data_1);
+    // batchnorm<1, 361>(value_data_1, bn_val_w1, bn_val_w2, value_data_2);
+    // innerproduct<361, 256>(value_data_2, ip1_val_w, ip1_val_b, winrate_data);
+    // innerproduct<256, 1>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
+
+    // // Sigmoid
+    // float mywinrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
+
+    // if (fabs(mywinrate_sig - winrate_sig) > 1e-4) {
+    //     printf("ERR delta winrate %f\n", fabs(mywinrate_sig - winrate_sig));
+    // }
 #elif defined(USE_OPENCL)
     opencl_net.forward(input_data, output_data);
     // Get the moves

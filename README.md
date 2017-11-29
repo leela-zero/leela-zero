@@ -1,14 +1,14 @@
 # Faster Leela Zero using Theano 
 
-The idea is to run the forwarding step of neural network in a seperated process. Leela Zero then communicates with the process using UDP packets (sending input boards and receiving the results).
+The idea is to run the forwarding step of neural network in a seperated process. Leela Zero then communicates with the process using TCP packets (sending input boards and receiving the results).
 
 Current implementation uses theano for the forwarding step.
 
-Run `THEANO_FLAGS='device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32' python udpserver.py weights.txt batch_size` to start the server. 
+Run `THEANO_FLAGS='device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32' python server.py weights.txt batch_size` to start the server. 
 
-It will load file weights.txt and set batch\_size.
+It will load file weights.txt and set `batch\_size`. Please set `batch_size` equals number of Leela instances you want to run. Python server will pause until enough instances connected to the server.
 
-Current server listens at 127.0.0.1:9999 (UDP).
+Current server listens at 127.0.0.1:9999 (TCP).
 
 You need to install `theano` and `trollius` python packages
 

@@ -67,7 +67,7 @@ private:
 inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
         int fd;
-        if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) { perror("cannot create socket"); }
+        if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { perror("cannot create socket"); }
         udpconnections.push_back(fd);
         struct sockaddr_in myaddr; 
         memset((char *)&myaddr, 0, sizeof(myaddr)); 
@@ -81,14 +81,15 @@ inline void ThreadPool::initialize(size_t threads) {
             perror("ERROR: inet_aton() failed\n");
         }
 
-        struct timeval tv;
-        tv.tv_sec = 0;
-        tv.tv_usec = 100000;
-        if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
-            perror("Error");
-        }
+        // Don't want timeout with TCP
+        // struct timeval tv;
+        // tv.tv_sec = 0;
+        // tv.tv_usec = 100000;
+        // if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+        //     perror("Error");
+        // }
 
-	// if (connect(fd,&servaddr,sizeof(servaddr)) < 0) perror("ERROR connecting");
+	 if (connect(fd, (struct sockaddr *)(&servaddr),sizeof(servaddr)) < 0) perror("ERROR connecting");
 
         m_threads.emplace_back([this] {
             for (;;) {

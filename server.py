@@ -19,7 +19,7 @@ if len(sys.argv) != 3:
 filename = sys.argv[1]
 QLEN     = int(sys.argv[2])
 
-print("Leela Zero UDP Neural Net Service")
+print("Leela Zero TCP Neural Net Service")
 
 def loadWeightFile(filename):
     f = open(filename, "r")
@@ -175,71 +175,113 @@ def LZN(ws, nb, nf):
 net = LZN(weights, numBlocks, numFilters)
 
 ### For testing purpose
-inp1 = [math.sin(i) for i in range(1*19*19*18) ]
-inp2 = [math.cos(i) for i in range(1*19*19*18) ]
-inp = []
-inp.extend(inp1)
-inp.extend(inp2)
-inpp = np.asarray(inp, dtype=np.float32).reshape( (2,18,19,19) )
-#print(net(inpp))
-#for i in range(1000):
-#    net(inpp)
+# inp1 = [math.sin(i) for i in range(1*19*19*18) ]
+# inp2 = [math.cos(i) for i in range(1*19*19*18) ]
+# inp = []
+# inp.extend(inp1)
+# inp.extend(inp2)
+# inp.extend(inp1)
+# inp.extend(inp2)
+# inpp = np.asarray(inp, dtype=np.float32).reshape( (4,18,19,19) )
+# print(net(inpp))
+# for i in range(1000):
+#     net(inpp)
 
 
-class UDPServerProtocol:
-    def __init__(self, QLEN=QLEN):      # QLEN === BATCH_SIZE
-        self.inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
-        self.clientAddrs = list(range(QLEN))
-        self.counter = 0
-        self.QLEN = QLEN
+import socket
+import sys
 
-        print("Setting batch-size = %d" % self.QLEN)
+# -- # Create a UDP socket
+# -- sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+# --
+# -- # Bind the socket to the port
+# -- server_address = ('127.0.0.1', 9999)
+# -- print('starting up on {} port {}'.format(*server_address))
+# -- sock.bind(server_address)
+# --
+# -- inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
+# -- clientAddrs = list(range(QLEN))
+# -- counter = 0
+# -- #QLEN = QLEN
+# -- print("Setting batch-size = %d" % QLEN)
+# --
+# -- def computeForward():
+# --     global counter, inp, clientAddrs
+# --     counter = 0
+# --     myinp = inp.reshape( (QLEN, 18, 19, 19) )
+# --     out = net(myinp).astype(np.float32)
+# --
+# --     ports = []      # never sent to an address twice each batch
+# --     for i in range(QLEN):
+# --         #print(out[0,0].data.tobytes())
+# --         if not clientAddrs[i][1] in ports:
+# --             sock.sendto(out[i, :].data, clientAddrs[i] )
+# --             ports.append(clientAddrs[i][1])
+# --         #self.transport.sendto(b"1234", self.ADDRS[i] )
+# --
+# -- while True:
+# --     data, address = sock.recvfrom(19*19*18*4)
+# --
+# --     # if data:
+# --     #     sent = sock.sendto(data, address)
+# --     #     print('sent {} bytes back to {}'.format(
+# --     #         sent, address))
+# --
+# --     if len(data) != 19*19*18*4:
+# --         print("ERR")
+# --
+# --     inp[counter, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18)
+# --     clientAddrs[counter] = address
+# --
+# --     # self.transport.sendto(data, addr)
+# --     counter = counter + 1
+# --     if counter == QLEN:
+# --         computeForward()
 
+
+inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
+ADDRS = list(range(QLEN))
+counter = 0
+print("Batch size = %d" % QLEN)
+
+class TCPServerClientProtocol(trollius.Protocol):
     def connection_made(self, transport):
+        peername = transport.get_extra_info('peername')
+        print('Connection from {}'.format(peername))
         self.transport = transport
 
-    def computeForward(self, ):
-        self.counter = 0
-        myinp = self.inp.reshape( (self.QLEN, 18, 19, 19) )
-        out = net(myinp).astype(np.float32)
-
-
-        ports = []      # never sent to an address twice each batch
-        for i in range(self.QLEN):
-            #print(out[0,0].data.tobytes())
-            if not self.clientAddrs[i][1] in ports:
-                self.transport.sendto(out[i, :].data, self.clientAddrs[i] )
-                ports.append(self.clientAddrs[i][1])
-            #self.transport.sendto(b"1234", self.ADDRS[i] )
-
-
-    def datagram_received(self, data, addr):
+    def data_received(self, data):
+        global counter, ADDRS, QLEN, inp
+        ADDRS[counter] = self.transport
         if len(data) != 19*19*18*4:
             print("ERR")
-        try:
-            self.inp[self.counter, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18)
-            self.clientAddrs[self.counter] = addr
-
-            # self.transport.sendto(data, addr)
-            self.counter = self.counter + 1
-            if self.counter == self.QLEN:
-                self.computeForward()
-        except Exception as ex:
-            int(ex)
+        inp[counter, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18)
+        counter = counter + 1
+        if counter == QLEN:
+            counter = 0
+            myinp = inp.reshape( (QLEN, 18, 19, 19) )
+            out = net(myinp).astype(np.float32)
+            for i in range(QLEN):
+                try:
+                    ADDRS[i].write(out[i, :].data)
+                except Exception as ex:
+                    print(ex)
 
 loop = trollius.get_event_loop()
-print("Starting UDP server at 127.0.0.1:9999")
-# One protocol instance will be created to serve all client requests
-listen = loop.create_datagram_endpoint(
-    UDPServerProtocol, local_addr=('127.0.0.1', 9999))
-transport, protocol = loop.run_until_complete(listen)
+# Each client connection will create a new protocol instance
+coro = loop.create_server(TCPServerClientProtocol, '127.0.0.1', 9999)
+server = loop.run_until_complete(coro)
 
+# Serve requests until Ctrl+C is pressed
+print('Serving on {}'.format(server.sockets[0].getsockname()))
 try:
     loop.run_forever()
 except KeyboardInterrupt:
     pass
 
-transport.close()
+# Close the server
+server.close()
+loop.run_until_complete(server.wait_closed())
 loop.close()
 
 
