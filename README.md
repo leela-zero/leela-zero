@@ -14,13 +14,13 @@ You need to install `theano` and `trollius` python packages
 
 Theano also supports `device=cpu` option.
 
-*Note:* Current version does not support auto reloading the weight file.
+~~*Note:* Current version does not support auto reloading the weight file.~~
 
+## Install Theano with CUDA and CuDNN
 
-## Install CuDNN
+For better performance, you should install CuDNN library from Nvidia. It requires you to register an account at Nvidia developer website. Visit [here](https://developer.nvidia.com/cudnn) for more information.
 
-For better performance, you should install CuDNN library from Nvidia. It requires you to register an account at Nvidia developer website. Visit ()[https://developer.nvidia.com/cudnn] for more information.
-
+Visit [here](http://deeplearning.net/software/theano/install.html) for detail information about installing Theano on your OS.
 
 
 # What
