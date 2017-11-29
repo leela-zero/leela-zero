@@ -1,3 +1,8 @@
+# BUGS
+
+**Found a bug in the code, come back later please!!!**
+
+
 # Faster Leela Zero using Theano 
 
 The idea is to run the forwarding step of neural network in a seperated process. Leela Zero then communicates with the process using UDP packets (sending input boards and receiving the results).
