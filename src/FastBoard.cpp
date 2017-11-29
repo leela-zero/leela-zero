@@ -335,6 +335,7 @@ std::vector<bool> FastBoard::calc_reach_color(int col) {
     return bd;
 }
 
+// Needed for scoring passed out games not in MC playouts
 float FastBoard::area_score(float komi) {
     auto white = calc_reach_color(WHITE);
     auto black = calc_reach_color(BLACK);
@@ -723,6 +724,10 @@ int FastBoard::get_prisoners(int side) {
     return m_prisoners[side];
 }
 
+bool FastBoard::black_to_move() {
+    return m_tomove == BLACK;
+}
+
 int FastBoard::get_to_move() {
     return m_tomove;
 }
@@ -746,6 +751,14 @@ std::string FastBoard::get_string(int vertex) {
     result.resize(result.size() - 1);
 
     return result;
+}
+
+int FastBoard::get_dir(int i) {
+    return m_dirs[i];
+}
+
+int FastBoard::get_extra_dir(int i) {
+    return m_extradirs[i];
 }
 
 std::string FastBoard::get_stone_list() {

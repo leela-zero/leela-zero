@@ -81,11 +81,11 @@ public:
     std::pair<int, int> get_xy(int vertex) const;
 
     bool is_suicide(int i, int color);
-    int fast_ss_suicide(const int color, const int i);
     int update_board_fast(const int color, const int i, bool & capture);
     int count_pliberties(const int i);
     void augment_chain(std::vector<int> & chains, int vertex);
     bool is_eye(const int color, const int vtx);
+    int get_dir(int i);
     int get_extra_dir(int i);
 
     int estimate_mc_score(float komi);
@@ -101,7 +101,6 @@ public:
     std::string move_to_text(int move);
     std::string move_to_text_sgf(int move);
     std::string get_stone_list();
-    int string_size(int vertex);
     std::string get_string(int vertex);
 
     void reset_board(int size);
