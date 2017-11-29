@@ -90,6 +90,7 @@ Production::Production(const int gpus,
                        const QStringList& gpuslist,
                        const int ver,
                        const QString& keep,
+                       const QString& debug,
                        QMutex* mutex)
     : m_mainMutex(mutex),
     m_syncMutex(),
@@ -99,6 +100,7 @@ Production::Production(const int gpus,
     m_gpusList(gpuslist),
     m_gamesPlayed(0),
     m_keepPath(keep),
+    m_debugPath(debug),
     m_version(ver) {
 }
 
@@ -324,13 +326,19 @@ void Production::uploadData(const QString& file) {
         QFileInfo fileInfo = list.at(i);
         QString sgf_file = fileInfo.fileName();
         QString data_file = sgf_file;
-        // Save first if requested
-        if (!m_keepPath.isEmpty()) {
-            QFile(sgf_file).copy(m_keepPath + '/' + fileInfo.fileName());
-        }
         // Cut .sgf, add .txt.0.gz
         data_file.chop(4);
+        QString debug_data_file = data_file;
         data_file += ".txt.0.gz";
+        debug_data_file += ".txt.debug.0.gz";
+        // Save first if requested
+        if (!m_keepPath.isEmpty()) {
+            QFile(sgf_file).copy(m_keepPath + '/' + sgf_file);
+        }
+        if (!m_debugPath.isEmpty()) {
+            QFile(data_file).copy(m_debugPath + '/' + data_file);
+            QFile(debug_data_file).copy(m_debugPath + '/' + debug_data_file);
+        }
         // Gzip up the sgf too
 #ifdef WIN32
         QProcess::execute("gzip.exe " + sgf_file);

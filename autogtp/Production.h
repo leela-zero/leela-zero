@@ -64,6 +64,7 @@ public:
                const QStringList& gpuslist,
                const int ver,
                const QString& keep,
+               const QString& debug,
                QMutex* mutex);
     ~Production() = default;
     void startGames();
@@ -90,6 +91,7 @@ private:
     int m_gamesPlayed;
     QString m_network;
     QString m_keepPath;
+    QString m_debugPath;
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
     bool fetchBestNetworkHash();
