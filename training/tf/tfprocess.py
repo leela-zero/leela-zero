@@ -105,6 +105,41 @@ class TFProcess:
 
         self.session.run(self.init)
 
+    def replace_weights(self, new_weights):
+        for e, weights in enumerate(self.weights):
+            # Keyed batchnorm weights
+            if isinstance(weights, str):
+                work_weights = tf.get_default_graph().get_tensor_by_name(weights)
+                new_weight = tf.constant(new_weights[e])
+                self.session.run(tf.assign(work_weights, new_weight))
+            elif weights.shape.ndims == 4:
+                # Convolution weights need a transpose
+                #
+                # TF (kYXInputOutput)
+                # [filter_height, filter_width, in_channels, out_channels]
+                #
+                # Leela/cuDNN/Caffe (kOutputInputYX)
+                # [output, input, filter_size, filter_size]
+                s = weights.shape.as_list()
+                shape = [s[i] for i in [3, 2, 0, 1]]
+                new_weight = tf.constant(new_weights[e], shape=shape)
+                self.session.run(weights.assign(tf.transpose(new_weight, [2, 3, 1, 0])))
+            elif weights.shape.ndims == 2:
+                # Fully connected layers are [in, out] in TF
+                #
+                # [out, in] in Leela
+                #
+                s = weights.shape.as_list()
+                shape = [s[i] for i in [1, 0]]
+                new_weight = tf.constant(new_weights[e], shape=shape)
+                self.session.run(weights.assign(tf.transpose(new_weight, [1, 0])))
+            else:
+                # Biases, batchnorm etc
+                new_weight = tf.constant(new_weights[e], shape=weights.shape)
+                self.session.run(weights.assign(new_weight))
+        #This should result in identical file to the starting one
+        #self.save_leelaz_weights('restored.txt')
+
     def restore(self, file):
         print("Restoring from {0}".format(file))
         self.saver.restore(self.session, file)
