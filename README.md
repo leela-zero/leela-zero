@@ -1,26 +1,37 @@
 # Faster Leela Zero using Theano 
 
-The idea is to run the forwarding step of neural network in a seperated process. Leela Zero then communicates with the process using TCP packets (sending input boards and receiving the results).
+The idea is to run the forwarding step of neural network in a seperated process. Leela Zero then communicates with the process using TCP packets (sending input boards and receiving the results). Current implementation uses theano for the forwarding step.
 
-Current implementation uses theano for the forwarding step.
+To start games, you first need to start the TCP server, and then run multiple instances of autogtp (e.g., `./autogtp`).
 
-Run `THEANO_FLAGS='device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32' python server.py weights.txt batch_size` to start the server. 
+Run TCP server with command:  `THEANO_FLAGS='device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32' python server.py 4`   where `4` is the `batch_size`. 
 
-It will load file weights.txt and set `batch_size`. Please set `batch_size` equals number of Leela instances you want to run. Python server will pause until enough instances connected to the server.
+Theano also supports `device=cpu` option for machines without GPU.
 
-Current server listens at 127.0.0.1:9999 (TCP).
+Server listens at 127.0.0.1:9999 (TCP).
 
-You need to install `theano` and `trollius` python packages
+**Note:** please set `batch_size` equal to (or greater than) number of Leela instances you want to run. TCP server will pause until enough instances connected to the server.  Also, wait until the TCP server ready before running autogtp instances.
 
-Theano also supports `device=cpu` option.
+**Tips:** Increasing `batch_size` to get the best performance (`seconds /  moves / games`)
+
+You need to install `theano`, `trollius`, `six` python packages
 
 ~~*Note:* Current version does not support auto reloading the weight file.~~
 
-## Install Theano with CUDA and CuDNN
+## Install Theano
 
-For better performance, you should install CuDNN library from Nvidia. It requires you to register an account at Nvidia developer website. Visit [here](https://developer.nvidia.com/cudnn) for more information.
+Basically, you need to run:
+
+   > pip install -r requirements.txt
+
+TCP server should work with both python 2 and python 3.
+
 
 Visit [here](http://deeplearning.net/software/theano/install.html) for detail information about installing Theano on your OS.
+
+## Install Theano with CUDA and CuDNN
+
+For better performance, you should install Cuda toolkits and CuDNN library from Nvidia. It requires you to register an account at Nvidia developer website. Visit [here](https://developer.nvidia.com/cuda-downloads) and [here](https://developer.nvidia.com/cudnn) for more information.
 
 
 # What

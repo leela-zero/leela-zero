@@ -321,7 +321,7 @@ class TCPServerClientProtocol(trollius.Protocol):
                 try:
                     ADDRS[i].write(out[i, :].data)
                 except Exception as ex:
-                    print("Possibly, client disappeared", ex)
+                    print("client disappeared?", ex)
 
 loop = trollius.get_event_loop()
 # Each client connection will create a new protocol instance
