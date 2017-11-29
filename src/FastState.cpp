@@ -208,31 +208,6 @@ std::string FastState::move_to_text(int move) {
     return board.move_to_text(move);
 }
 
-std::vector<int> FastState::final_score_map() {
-    FastState workstate(*this);
-
-    std::vector<bool> white = workstate.board.calc_reach_color(FastBoard::WHITE);
-    std::vector<bool> black = workstate.board.calc_reach_color(FastBoard::BLACK);
-
-    std::vector<int> res;
-    res.resize(FastBoard::MAXSQ);
-    std::fill(res.begin(), res.end(), FastBoard::EMPTY);
-
-    for (int i = 0; i < workstate.board.get_boardsize(); i++) {
-        for (int j = 0; j < workstate.board.get_boardsize(); j++) {
-            int vertex = workstate.board.get_vertex(i, j);
-
-            if (white[vertex] && !black[vertex]) {
-                res[vertex] = FastBoard::WHITE;
-            } else if (black[vertex] && !white[vertex]) {
-                res[vertex] = FastBoard::BLACK;
-            }
-        }
-    }
-
-    return res;
-}
-
 float FastState::final_score() {
     FastState workstate(*this);
     return workstate.board.area_score(get_komi() + get_handicap());

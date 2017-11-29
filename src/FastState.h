@@ -48,7 +48,6 @@ public:
     float calculate_mc_score();
     int estimate_mc_score();
     float final_score();
-    std::vector<int> final_score_map();
 
     size_t get_movenum() const;
     int get_last_move() const;
