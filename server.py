@@ -5,7 +5,6 @@ import random
 import math
 import numpy as np
 import trollius
-import subprocess
 from six.moves import urllib
 
 
@@ -281,13 +280,28 @@ class TCPServerClientProtocol(trollius.Protocol):
         peername = transport.get_extra_info('peername')
         print('Connection from {}'.format(peername))
         self.transport = transport
+        self.data = bytearray()
 
     def data_received(self, data):
         global counter, ADDRS, QLEN, inp, netlock, newNetWeight, net
-        ADDRS[counter] = self.transport
-        if len(data) != 19*19*18*4:
-            print("ERR")
-        inp[counter, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18)
+        
+        if len(self.data) == 0: 
+            ADDRS[counter] = self.transport
+        
+        self.data.extend(data)
+        
+        if len(self.data) < 19*19*18*4:
+            print("WARN: too short message, waiting for more data")
+            return
+        
+        if len(self.data) > 19*19*18*4:
+            print("ERROR, too long message!")
+            while True: 
+                pass
+        
+        # we'ready, enough data
+        inp[counter, :] = np.frombuffer(self.data, dtype=np.float32, count = 19*19*18)
+        self.data = bytearray()
         counter = counter + 1
         if counter == QLEN:
             counter = 0
@@ -307,7 +321,7 @@ class TCPServerClientProtocol(trollius.Protocol):
                 try:
                     ADDRS[i].write(out[i, :].data)
                 except Exception as ex:
-                    print(ex)
+                    print("Possibly, client disappeared", ex)
 
 loop = trollius.get_event_loop()
 # Each client connection will create a new protocol instance

@@ -433,20 +433,22 @@ Network::Netresult Network::get_scored_moves_internal(
         }
     }
 #ifdef USE_UDPSERVER
-    float myout[19*19+2]; // = softmax_data;
-    while (1) {
-        int fd= thread_pool.udpconnections[idx];
-        socklen_t len = sizeof(thread_pool.servaddr);
-        //if (sendto(fd, &input_data[0], 4*18*19*19, 0, (struct sockaddr *)&thread_pool.servaddr, len)==-1)
-        //         myprintf("ERROR: sendto err");
-        write(fd, &input_data[0], 4*18*19*19);
+    float myout[19*19+2]; 
+    int fd= thread_pool.udpconnections[idx];
+    socklen_t len = sizeof(thread_pool.servaddr);
+    int recvlen = 0;
 
+    write(fd, &input_data[0], 4*18*19*19);
 
-        // int recvlen = recvfrom(fd, myout, 4*(19*19+2), 0, (struct sockaddr *)&thread_pool.servaddr, &len);
-        int recvlen = read(fd, myout, 4*(19*19+2));
-        if (recvlen == (19*19 + 2) * 4) break;
+    while (recvlen < (19*19+2)*4) {
+        recvlen += read(fd, myout + (recvlen / 4), 4*(19*19+2) - recvlen);
+    }
 
-        printf("ERROR: Missing TCP output packet, retry ...\n");
+    if (recvlen != 4*(19*19+2)) {
+        printf("ERROR:  TCP output packet too long ???\n");
+        while (1) {
+            // nothing; 
+        }
     }
 
     std::vector<float> my_policy_out(myout, myout + 19*19+1); // = softmax_data;

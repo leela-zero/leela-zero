@@ -1,2 +1,3 @@
 theano==0.9
 trollius
+six
