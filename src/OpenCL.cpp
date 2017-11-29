@@ -440,7 +440,6 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     cl::Buffer & residualBuffer = opencl_thread_data.m_residualBuffer;
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
-    // XXX: this copies a lot of zeroes
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, input.data());
 
     for (auto& layer : m_layers) {
