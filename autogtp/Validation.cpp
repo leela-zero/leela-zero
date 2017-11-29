@@ -95,7 +95,7 @@ void ValidationWorker::init(const QString& gpuIndex,
                             const QString& secondNet,
                             const QString& keep,
                             const int expected) {
-    m_option = " -g -q -r 0 -w ";
+    m_option = " -g -q -d -r 0 -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
