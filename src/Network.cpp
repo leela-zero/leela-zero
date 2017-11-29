@@ -404,18 +404,15 @@ Network::Netresult Network::get_scored_moves(
 Network::Netresult Network::get_scored_moves_internal(
     GameState * state, NNPlanes & planes, int rotation) {
     assert(rotation >= 0 && rotation <= 7);
-    constexpr int input_channels = INPUT_CHANNELS;
-    assert(input_channels == planes.size());
     constexpr int width = 19;
     constexpr int height = 19;
-
-    const auto output_channels = int(conv_pol_w.size() / conv_pol_b.size());
+    constexpr int input_channels = INPUT_CHANNELS;
+    assert(input_channels == planes.size());
     const auto input_size = input_channels * width * height;
+    const auto output_channels = int(conv_pol_w.size() / conv_pol_b.size());
     const auto output_size = output_channels * width * height;
-
     std::vector<net_t> input_data(input_size);
     std::vector<net_t> output_data(output_size);;
-
     std::vector<float> policy_data_1(2 * width * height);
     std::vector<float> policy_data_2(2 * width * height);
     std::vector<float> value_data_1(1 * width * height);
@@ -424,7 +421,6 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<float> softmax_data((width * height) + 1);
     std::vector<float> winrate_data(256);
     std::vector<float> winrate_out(1);
-
     // Data layout is input_data[(c * height + h) * width + w]
     net_t* input_ptr = input_data.data();
     for (int c = 0; c < input_channels; ++c) {
