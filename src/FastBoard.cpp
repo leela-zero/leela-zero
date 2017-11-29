@@ -22,7 +22,6 @@
 #include <algorithm>
 #include <assert.h>
 #include <array>
-#include <queue>
 
 #include "config.h"
 
@@ -267,19 +266,6 @@ int FastBoard::count_neighbours(const int c, const int v) {
     return (m_neighbours[v] >> (NBR_SHIFT * c)) & 7;
 }
 
-int FastBoard::fast_ss_suicide(const int color, const int i)  {
-    int eyeplay = (m_neighbours[i] & s_eyemask[!color]);
-
-    if (!eyeplay) return false;
-
-    if (m_libs[m_parent[i - 1              ]] <= 1) return false;
-    if (m_libs[m_parent[i + 1              ]] <= 1) return false;
-    if (m_libs[m_parent[i + m_boardsize + 2]] <= 1) return false;
-    if (m_libs[m_parent[i - m_boardsize - 2]] <= 1) return false;
-
-    return true;
-}
-
 void FastBoard::add_neighbour(const int i, const int color) {
     assert(color == WHITE || color == BLACK || color == EMPTY);
 
@@ -359,34 +345,39 @@ int FastBoard::remove_string_fast(int i) {
 }
 
 std::vector<bool> FastBoard::calc_reach_color(int col) {
-    auto bd = std::vector<bool>(m_maxsq, false);
-    auto open = std::queue<int>();
-    for (auto v = 0; v < m_boardsize; i++) {
-        for (auto j = 0; j < m_boardsize; j++) {
-            auto vertex = get_vertex(i, j);
-            if (m_square[vertex] == col) {
-                bd2[vertex] = true;
-                open.push(vertex);
-            }
-        }
-    }
-    while (!open.empty()) {
-        /* colored field, spread */
-        auto vertex = open.front();
-        open.pop();
+    auto bd = std::vector<bool>(m_maxsq);
+    auto last = std::vector<bool>(m_maxsq);
 
-        for (auto k = 0; k < 4; k++) {
-            auto neighbor = vertex + m_dirs[k];
-            if (!bd2[neighbor] && m_square[neighbor] == EMPTY) {
-                bd2[neighbor] = true;
-                open.push(neighbor);
+    std::fill(begin(bd), end(bd), false);
+    std::fill(begin(last), end(last), false);
+
+    /* needs multi pass propagation, slow */
+    do {
+        last = bd;
+        for (int i = 0; i < m_boardsize; i++) {
+            for (int j = 0; j < m_boardsize; j++) {
+                int vertex = get_vertex(i, j);
+                /* colored field, spread */
+                if (m_square[vertex] == col) {
+                    bd[vertex] = true;
+                    for (int k = 0; k < 4; k++) {
+                        if (m_square[vertex + m_dirs[k]] == EMPTY) {
+                            bd[vertex + m_dirs[k]] = true;
+                        }
+                    }
+                } else if (m_square[vertex] == EMPTY && bd[vertex]) {
+                    for (int k = 0; k < 4; k++) {
+                        if (m_square[vertex + m_dirs[k]] == EMPTY) {
+                            bd[vertex + m_dirs[k]] = true;
+                        }
+                    }
+                }
             }
         }
-    }
+    } while (last != bd);
     return bd;
 }
 
-// Needed for scoring passed out games not in MC playouts
 float FastBoard::area_score(float komi) {
     auto white = calc_reach_color(WHITE);
     auto black = calc_reach_color(BLACK);
@@ -406,10 +397,6 @@ float FastBoard::area_score(float komi) {
     }
 
     return score;
-}
-
-int FastBoard::get_stone_count() {
-    return m_totalstones[BLACK] + m_totalstones[WHITE];
 }
 
 int FastBoard::estimate_mc_score(float komi) {
@@ -487,74 +474,6 @@ void FastBoard::display_board(int lastmove) {
         } else {
             myprintf("%c ", (('A' + (i-25) < 'I') ? 'A' + (i-25) : 'A' + (i-25) + 1));
         }
-    }
-    myprintf("\n\n");
-}
-
-void FastBoard::display_liberties(int lastmove) {
-    int boardsize = get_boardsize();
-
-    myprintf("   ");
-    for (int i = 0; i < boardsize; i++) {
-        myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-    }
-    myprintf("\n");
-    for (int j = boardsize-1; j >= 0; j--) {
-        myprintf("%2d", j+1);
-        if (lastmove == get_vertex(0,j) )
-            myprintf("(");
-        else
-            myprintf(" ");
-        for (int i = 0; i < boardsize; i++) {
-            if (get_square(i,j) == WHITE) {
-                int libs = m_libs[m_parent[get_vertex(i,j)]];
-                if (libs > 9) { libs = 9; };
-                myprintf("%1d", libs);
-            } else if (get_square(i,j) == BLACK)  {
-                int libs = m_libs[m_parent[get_vertex(i,j)]];
-                if (libs > 9) { libs = 9; };
-                myprintf("%1d", libs);
-            } else if (starpoint(boardsize, i, j)) {
-                myprintf("+");
-            } else {
-                myprintf(".");
-            }
-            if (lastmove == get_vertex(i, j)) myprintf(")");
-            else if (i != boardsize-1 && lastmove == get_vertex(i, j)+1) myprintf("(");
-            else myprintf(" ");
-        }
-        myprintf("%2d\n", j+1);
-    }
-    myprintf("\n\n");
-
-    myprintf("   ");
-    for (int i = 0; i < boardsize; i++) {
-        myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-    }
-    myprintf("\n");
-    for (int j = boardsize-1; j >= 0; j--) {
-        myprintf("%2d", j+1);
-        if (lastmove == get_vertex(0,j) )
-            myprintf("(");
-        else
-            myprintf(" ");
-        for (int i = 0; i < boardsize; i++) {
-            if (get_square(i,j) == WHITE) {
-                int id = m_parent[get_vertex(i,j)];
-                myprintf("%2d", id);
-            } else if (get_square(i,j) == BLACK)  {
-                int id = m_parent[get_vertex(i,j)];
-                myprintf("%2d", id);
-            } else if (starpoint(boardsize, i, j)) {
-                myprintf("+ ");
-            } else {
-                myprintf(". ");
-            }
-            if (lastmove == get_vertex(i, j)) myprintf(")");
-            else if (i != boardsize-1 && lastmove == get_vertex(i, j)+1) myprintf("(");
-            else myprintf(" ");
-        }
-        myprintf("%2d\n", j+1);
     }
     myprintf("\n\n");
 }
@@ -810,27 +729,6 @@ std::string FastBoard::move_to_text_sgf(int move) {
     return result.str();
 }
 
-int FastBoard::text_to_move(std::string move) {
-    if (move.size() == 0 || move == "pass") {
-        return FastBoard::PASS;
-    }
-    if (move == "resign") {
-        return FastBoard::RESIGN;
-    }
-
-    char c1 = tolower(move[0]);
-    int x = c1 - 'a';
-    // There is no i in ...
-    assert(x != 8);
-    if (x > 8) x--;
-    std::string remainder = move.substr(1);
-    int y = std::stoi(remainder) - 1;
-
-    int vtx = get_vertex(x, y);
-
-    return vtx;
-}
-
 bool FastBoard::starpoint(int size, int point) {
     int stars[3];
     int points[2];
@@ -868,40 +766,12 @@ int FastBoard::get_prisoners(int side) {
     return m_prisoners[side];
 }
 
-bool FastBoard::black_to_move() {
-    return m_tomove == BLACK;
-}
-
 int FastBoard::get_to_move() {
     return m_tomove;
 }
 
 void FastBoard::set_to_move(int tomove) {
     m_tomove = tomove;
-}
-
-int FastBoard::get_groupid(int vertex) {
-    assert(m_square[vertex] == WHITE || m_square[vertex] == BLACK);
-    assert(m_parent[vertex] == m_parent[m_parent[vertex]]);
-
-    return m_parent[vertex];
-}
-
-std::vector<int> FastBoard::get_string_stones(int vertex) {
-    int start = m_parent[vertex];
-
-    std::vector<int> res;
-    res.reserve(m_stones[start]);
-
-    int newpos = start;
-
-    do {
-        assert(m_square[newpos] == m_square[vertex]);
-        res.push_back(newpos);
-        newpos = m_next[newpos];
-    } while (newpos != start);
-
-    return res;
 }
 
 std::string FastBoard::get_string(int vertex) {
@@ -921,53 +791,6 @@ std::string FastBoard::get_string(int vertex) {
     return result;
 }
 
-bool FastBoard::fast_in_atari(int vertex) {
-    assert((m_square[vertex] < EMPTY) || (m_libs[m_parent[vertex]] > MAXSQ));
-
-    int par = m_parent[vertex];
-    int lib = m_libs[par];
-
-    return lib == 1;
-}
-
-// check if string is in atari, returns 0 if not,
-// single liberty if it is
-int FastBoard::in_atari(int vertex) {
-    assert(m_square[vertex] < EMPTY);
-
-    if (m_libs[m_parent[vertex]] > 1) {
-        return false;
-    }
-
-    assert(m_libs[m_parent[vertex]] == 1);
-
-    int pos = vertex;
-
-    do {
-        if (count_pliberties(pos)) {
-            for (int k = 0; k < 4; k++) {
-                int ai = pos + m_dirs[k];
-                if (m_square[ai] == EMPTY) {
-                    return ai;
-                }
-            }
-        }
-
-        pos = m_next[pos];
-    } while (pos != vertex);
-
-    assert(false);
-
-    return false;
-}
-int FastBoard::get_dir(int i) {
-    return m_dirs[i];
-}
-
-int FastBoard::get_extra_dir(int i) {
-    return m_extradirs[i];
-}
-
 std::string FastBoard::get_stone_list() {
     std::string res;
 
@@ -985,69 +808,4 @@ std::string FastBoard::get_stone_list() {
     res.resize(res.size() - 1);
 
     return res;
-}
-
-int FastBoard::string_size(int vertex) {
-    assert(vertex > 0 && vertex < m_maxsq);
-    assert(m_square[vertex] == WHITE || m_square[vertex] == BLACK);
-
-    return m_stones[m_parent[vertex]];
-}
-
-int FastBoard::count_rliberties(int vertex) {
-    /*std::vector<bool> marker(m_maxsq, false);
-
-    int pos = vertex;
-    int liberties = 0;
-    int color = m_square[vertex];
-
-    assert(color == WHITE || color == BLACK);
-
-    do {
-        assert(m_square[pos] == color);
-
-        for (int k = 0; k < 4; k++) {
-            int ai = pos + m_dirs[k];
-            if (m_square[ai] == EMPTY) {
-                if (!marker[ai]) {
-                    liberties++;
-                    marker[ai] = true;
-                }
-            }
-        }
-        pos = m_next[pos];
-    } while (pos != vertex);
-
-    return liberties;*/
-    return m_libs[m_parent[vertex]];
-}
-
-int FastBoard::merged_string_size(int color, int vertex) {
-    int totalsize = 0;
-    std::array<int, 4> nbrpar;
-    int nbrcnt = 0;
-
-    for (int k = 0; k < 4; k++) {
-        int ai = vertex + m_dirs[k];
-
-        if (get_square(ai) == color) {
-            int par = m_parent[ai];
-
-            bool found = false;
-            for (int i = 0; i < nbrcnt; i++) {
-                if (nbrpar[i] == par) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                totalsize += string_size(ai);
-                nbrpar[nbrcnt++] = par;
-            }
-        }
-
-    }
-
-    return totalsize;
 }

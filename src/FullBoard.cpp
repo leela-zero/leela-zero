@@ -131,17 +131,8 @@ std::array<uint64, 8> FullBoard::get_rotated_hashes(void) {
     return result;
 }
 
-uint64 FullBoard::get_canonical_hash(void) {
-    auto hashes = get_rotated_hashes();
-    return *std::min_element(hashes.cbegin(), hashes.cend());
-}
-
 uint64 FullBoard::get_hash(void) {
     return hash;
-}
-
-uint64 FullBoard::get_ko_hash(void) {
-    return ko_hash;
 }
 
 int FullBoard::update_board(const int color, const int i, bool &capture) {

@@ -80,22 +80,17 @@ public:
     void set_square(int vertex, square_t content);
     int rotate_vertex(int vertex, int symmetry);
     std::pair<int, int> get_xy(int vertex) const;
-    int get_groupid(int vertex);
 
     bool is_suicide(int i, int color);
     int fast_ss_suicide(const int color, const int i);
     int update_board_fast(const int color, const int i, bool & capture);
     int count_pliberties(const int i);
-    int count_rliberties(const int i);
-    int merged_string_size(int color, int vertex);
     void augment_chain(std::vector<int> & chains, int vertex);
     bool is_eye(const int color, const int vtx);
-    int get_dir(int i);
     int get_extra_dir(int i);
 
     int estimate_mc_score(float komi);
     float final_mc_score(float komi);
-    int get_stone_count();
     float area_score(float komi);
     std::vector<bool> calc_reach_color(int col);
 
@@ -106,14 +101,11 @@ public:
 
     std::string move_to_text(int move);
     std::string move_to_text_sgf(int move);
-    int text_to_move(std::string move);
     std::string get_stone_list();
     int string_size(int vertex);
-    std::vector<int> get_string_stones(int vertex);
     std::string get_string(int vertex);
 
     void reset_board(int size);
-    void display_liberties(int lastmove = -1);
     void display_board(int lastmove = -1);
 
     static bool starpoint(int size, int point);
@@ -152,8 +144,6 @@ protected:
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
     int update_board_eye(const int color, const int i);
-    int in_atari(int vertex);
-    bool fast_in_atari(int vertex);
 };
 
 #endif
