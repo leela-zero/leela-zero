@@ -21,7 +21,6 @@
 #include "SPRT.h"
 #include <QTextStream>
 #include <boost/format.hpp>
-#include <boost/algorithm/string.hpp>
 
 void Results::addGameResult(Sprt::GameResult result, int side) {
     m_gamesPlayed++;
@@ -66,32 +65,32 @@ void Results::printResults(QString firstNetName, QString secondNetName) {
              .arg(first_name, second_name).arg(m_gamesPlayed);
 
         QTextStream(stdout) <<
-            str(boost::format("%-14s %-14s %-14s %s\n")
-                % "" /* name */ % "wins" % "black" % "white").c_str();
+            (boost::format("%-14s %-14s %-14s %s\n")
+                % "" /* name */ % "wins" % "black" % "white").str().c_str();
         QTextStream(stdout) <<
-            str(boost::format("%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
+            (boost::format("%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
                 % first_name.toLocal8Bit().constData()
                 % p1_wins
                 % (100.0 * p1_wins / m_gamesPlayed)
                 % m_blackWins
                 % (100.0 * m_blackWins / p1_black_games)
                 % m_whiteWins
-                % (100.0 * m_whiteWins / p1_white_games)).c_str();
+                % (100.0 * m_whiteWins / p1_white_games)).str().c_str();
         QTextStream(stdout) <<
-            str(boost::format( "%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
+            (boost::format( "%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
                 % second_name.toLocal8Bit().constData()
                 % p1_losses
                 % (100.0 * p1_losses / m_gamesPlayed)
                 % m_whiteLosses
                 % (100.0 * m_whiteLosses / p1_white_games)
                 % m_blackLosses
-                % (100.0 * m_blackLosses / p1_white_games)).c_str();
+                % (100.0 * m_blackLosses / p1_white_games)).str().c_str();
         QTextStream(stdout) <<
-            str(boost::format("%-9s %11s %4d %5.2f%% %4d %5.2f%%\n")
+            (boost::format("%-9s %11s %4d %5.2f%% %4d %5.2f%%\n")
                 % "" /* name */
                 % "" /* wins column */
                 % black_wins
                 % (100.0 * black_wins / m_gamesPlayed)
                 % white_wins
-                % (100.0 * white_wins / m_gamesPlayed)).c_str();
+                % (100.0 * white_wins / m_gamesPlayed)).str().c_str();
 }
