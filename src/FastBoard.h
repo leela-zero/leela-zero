@@ -59,6 +59,11 @@ public:
     */
     static constexpr int RESIGN = -2;
 
+	/*
+	    indicates that an empty square is never in atari. A large value that fits in a short
+	*/
+	static constexpr int INF_LIBS = 16384;  // 2^14
+
     /*
         possible contents of a square
     */
@@ -129,9 +134,9 @@ protected:
     std::array<unsigned short, MAXSQ+1>    m_next;        /* next stone in string */
     std::array<unsigned short, MAXSQ+1>    m_parent;      /* parent node of string */
 	/*
-	     Liberties per string parent. Liberties for the string that contains the specified vertex.
-	     It's the number of liberties for the string of which the index is the "parent" vertex,
-	     and only guaranteed to be correct for that parent vertex.
+	    Liberties per string parent. Liberties for the string that contains the specified vertex.
+	    It's the number of liberties for the string of which the index is the "parent" vertex,
+	    and only guaranteed to be correct for that parent vertex.
 	 */
     std::array<unsigned short, MAXSQ+1>    m_libs;        
     std::array<unsigned short, MAXSQ+1>    m_stones;      /* stones per string parent */
