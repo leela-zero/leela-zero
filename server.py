@@ -163,8 +163,8 @@ def LZN(ws, nb, nf):
 
 
     params = []
-    x = T.tensor4('input')
-    params.append(x)
+    x = shared(np.zeros( (QLEN, 18, 19, 19), dtype=np.float32 ) ) # T.tensor4('input'))
+    # params.append(x)
     conv0 = myconv(x, 18, nf, 3, params, "conv0")
     bn0   = mybn(conv0, nf, params, "bn0")
 
@@ -194,7 +194,7 @@ def LZN(ws, nb, nf):
     valout  = valfc1out
 
     out = T.concatenate( [polfcout, T.tanh(valout)], axis=1 )
-    return function(params, out)
+    return (x, function(params, out))
 
 print("\nCompling the latest neural network")
 
@@ -283,7 +283,9 @@ class TCPServerClientProtocol(trollius.Protocol):
                 print("...updated weight!")        
                 newNetWeight = None
             netlock.release()
-            out = net(myinp).astype(np.float32)
+            netinp, netnet = net
+            netinp.set_value(myinp)
+            out = netnet().astype(np.float32)
             for i in range(QLEN):
                 try:
                     ADDRS[i].write(out[i, :].data)

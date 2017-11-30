@@ -42,7 +42,7 @@ public:
     ~UCTNode();
     bool first_visit() const;
     bool has_children() const;
-    bool create_children(int idx, std::atomic<int> & nodecount,
+    bool create_children(std::atomic<int> & nodecount,
                          GameState & state, float & eval);
     void kill_superkos(KoState & state);
     void delete_child(UCTNode * child);

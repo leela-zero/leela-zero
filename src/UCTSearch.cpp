@@ -47,7 +47,7 @@ UCTSearch::UCTSearch(GameState & g)
     set_playout_limit(cfg_max_playouts);
 }
 
-SearchResult UCTSearch::play_simulation(int idx, GameState & currstate, UCTNode* const node) {
+SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
     const auto color = currstate.get_to_move();
     const auto hash = currstate.board.get_hash();
     const auto komi = currstate.get_komi();
@@ -59,7 +59,7 @@ SearchResult UCTSearch::play_simulation(int idx, GameState & currstate, UCTNode*
 
     if (!node->has_children() && m_nodes < MAX_TREE_SIZE) {
         float eval;
-        auto success = node->create_children(idx, m_nodes, currstate, eval);
+        auto success = node->create_children(m_nodes, currstate, eval);
         if (success) {
             result = SearchResult::from_eval(eval);
         } else if (currstate.get_passes() >= 2) {
@@ -78,13 +78,13 @@ SearchResult UCTSearch::play_simulation(int idx, GameState & currstate, UCTNode*
                 currstate.play_move(move);
 
                 if (!currstate.superko()) {
-                    result = play_simulation(idx, currstate, next);
+                    result = play_simulation(currstate, next);
                 } else {
                     next->invalidate();
                 }
             } else {
                 currstate.play_pass();
-                result = play_simulation(idx, currstate, next);
+                result = play_simulation(currstate, next);
             }
         }
     }
@@ -314,7 +314,7 @@ bool UCTSearch::playout_limit_reached() const {
 void UCTWorker::operator()() {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        auto result = m_search->play_simulation(m_idx, *currstate, m_root);
+        auto result = m_search->play_simulation(*currstate, m_root);
         if (result.valid()) {
             m_search->increment_playouts();
         }
@@ -346,7 +346,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     // create a sorted list off legal moves (make sure we
     // play something legal and decent even in time trouble)
     float root_eval;
-    m_root.create_children(0, m_nodes, m_rootstate, root_eval);
+    m_root.create_children(m_nodes, m_rootstate, root_eval);
     m_root.kill_superkos(m_rootstate);
     if (cfg_noise) {
         m_root.dirichlet_noise(0.25f, 0.03f);
@@ -359,7 +359,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     int cpus = cfg_num_threads;
     ThreadGroup tg(thread_pool);
     for (int i = 1; i < cpus; i++) {
-        tg.add_task(UCTWorker(i, m_rootstate, this, &m_root));
+        tg.add_task(UCTWorker(m_rootstate, this, &m_root));
     }
 
     bool keeprunning = true;
@@ -367,7 +367,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
 
-        auto result = play_simulation(0, *currstate, &m_root);
+        auto result = play_simulation(*currstate, &m_root);
         if (result.valid()) {
             increment_playouts();
         }
@@ -421,11 +421,11 @@ void UCTSearch::ponder() {
     int cpus = cfg_num_threads;
     ThreadGroup tg(thread_pool);
     for (int i = 1; i < cpus; i++) {
-        tg.add_task(UCTWorker(i, m_rootstate, this, &m_root));
+        tg.add_task(UCTWorker(m_rootstate, this, &m_root));
     }
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        auto result = play_simulation(0, *currstate, &m_root);
+        auto result = play_simulation(*currstate, &m_root);
         if (result.valid()) {
             increment_playouts();
         }

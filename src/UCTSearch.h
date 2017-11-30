@@ -77,7 +77,7 @@ public:
     bool is_running() const;
     bool playout_limit_reached() const;
     void increment_playouts();
-    SearchResult play_simulation(int idx, GameState & currstate, UCTNode * const node);
+    SearchResult play_simulation(GameState & currstate, UCTNode * const node);
 
 private:
     void dump_stats(KoState & state, UCTNode & parent);
@@ -95,14 +95,13 @@ private:
 
 class UCTWorker {
 public:
-    UCTWorker(int idx, GameState & state, UCTSearch * search, UCTNode * root)
-      : m_rootstate(state), m_search(search), m_root(root), m_idx(idx) {};
+    UCTWorker(GameState & state, UCTSearch * search, UCTNode * root)
+      : m_rootstate(state), m_search(search), m_root(root) {};
     void operator()();
 private:
     GameState & m_rootstate;
     UCTSearch * m_search;
     UCTNode * m_root;
-    int  m_idx;
 };
 
 #endif

@@ -55,7 +55,7 @@ public:
     auto add_task(F&& f, Args&&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
 
-    std::vector<int> udpconnections;
+    int tcpsocket;
     struct sockaddr_in servaddr;	/* server address */
 private:
     std::vector<std::thread> m_threads;
@@ -70,7 +70,7 @@ inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
         int fd;
         if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { perror("cannot create socket"); exit(-1); }
-        udpconnections.push_back(fd);
+        tcpsocket = fd;
         struct sockaddr_in myaddr; 
         memset((char *)&myaddr, 0, sizeof(myaddr)); 
         myaddr.sin_family = AF_INET; myaddr.sin_addr.s_addr = htonl(INADDR_ANY); myaddr.sin_port = htons(0); 

@@ -100,7 +100,7 @@ void Network::benchmark(GameState * state) {
             tg.add_task([iters_per_thread, state]() {
                 GameState mystate = *state;
                 for (int loop = 0; loop < iters_per_thread; loop++) {
-                    auto vec = get_scored_moves(0, &mystate, Ensemble::RANDOM_ROTATION);
+                    auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION);
                 }
             });
         };
@@ -383,7 +383,7 @@ void Network::softmax(const std::vector<float>& input,
 }
 
 Network::Netresult Network::get_scored_moves(
-    int idx, GameState * state, Ensemble ensemble, int rotation) {
+    GameState * state, Ensemble ensemble, int rotation) {
     Netresult result;
     if (state->board.get_boardsize() != 19) {
         return result;
@@ -394,19 +394,19 @@ Network::Netresult Network::get_scored_moves(
 
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
-        result = get_scored_moves_internal(idx, state, planes, rotation);
+        result = get_scored_moves_internal(state, planes, rotation);
     } else {
         assert(ensemble == RANDOM_ROTATION);
         assert(rotation == -1);
         int rand_rot = Random::get_Rng()->randfix<8>();
-        result = get_scored_moves_internal(idx, state, planes, rand_rot);
+        result = get_scored_moves_internal(state, planes, rand_rot);
     }
 
     return result;
 }
 
 Network::Netresult Network::get_scored_moves_internal(
-    int idx, GameState * state, NNPlanes & planes, int rotation) {
+    GameState * state, NNPlanes & planes, int rotation) {
     assert(rotation >= 0 && rotation <= 7);
     constexpr int channels = INPUT_CHANNELS;
     assert(channels == planes.size());
@@ -432,9 +432,9 @@ Network::Netresult Network::get_scored_moves_internal(
             }
         }
     }
-#ifdef USE_UDPSERVER
+#ifdef USE_SERVER
     float myout[19*19+2]; 
-    int fd= thread_pool.udpconnections[idx];
+    int fd= thread_pool.tcpsocket;
     // socklen_t len = sizeof(thread_pool.servaddr);
     int recvlen = 0;
 
@@ -461,30 +461,32 @@ Network::Netresult Network::get_scored_moves_internal(
         
     // Uncomment bellow for testing purpose, comparing with the OpenCL results
     // BEGIN TESTING HERE
-    // opencl_net.forward(input_data, output_data);
-    // // Get the moves
-    // convolve<1, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
-    // batchnorm<2, 361>(policy_data_1, bn_pol_w1, bn_pol_w2, policy_data_2);
-    // innerproduct<2*361, 362>(policy_data_2, ip_pol_w, ip_pol_b, policy_out);
+#ifdef USE_SERVER_TEST
+    opencl_net.forward(input_data, output_data);
+    // Get the moves
+    convolve<1, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
+    batchnorm<2, 361>(policy_data_1, bn_pol_w1, bn_pol_w2, policy_data_2);
+    innerproduct<2*361, 362>(policy_data_2, ip_pol_w, ip_pol_b, policy_out);
 
-    // for (int i = 0; i < 19*19 + 1; i++) {
-    //     if (fabs(policy_out[i] - my_policy_out[i]) > 1e-4) {
-    //         printf("ERRORRRRR\n");
-    //     }
-    // }
+    for (int i = 0; i < 19*19 + 1; i++) {
+        if (fabs(policy_out[i] - my_policy_out[i]) > 1e-5) {
+            printf("ERRORRRRR %f \n", fabs(policy_out[i] - my_policy_out[i]));
+        }
+    }
 
-    // // Now get the score
-    // convolve<1, 1>(output_data, conv_val_w, conv_val_b, value_data_1);
-    // batchnorm<1, 361>(value_data_1, bn_val_w1, bn_val_w2, value_data_2);
-    // innerproduct<361, 256>(value_data_2, ip1_val_w, ip1_val_b, winrate_data);
-    // innerproduct<256, 1>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
+    // Now get the score
+    convolve<1, 1>(output_data, conv_val_w, conv_val_b, value_data_1);
+    batchnorm<1, 361>(value_data_1, bn_val_w1, bn_val_w2, value_data_2);
+    innerproduct<361, 256>(value_data_2, ip1_val_w, ip1_val_b, winrate_data);
+    innerproduct<256, 1>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
 
-    // // Sigmoid
-    // float mywinrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
+    // Sigmoid
+    float mywinrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
 
-    // if (fabs(mywinrate_sig - winrate_sig) > 1e-4) {
-    //     printf("ERR delta winrate %f\n", fabs(mywinrate_sig - winrate_sig));
-    // }
+    if (fabs(mywinrate_sig - winrate_sig) > 1e-5) {
+        printf("ERR delta winrate %f\n", fabs(mywinrate_sig - winrate_sig));
+    }
+#endif
     // END TESTING HERE
 #elif defined(USE_OPENCL)
     opencl_net.forward(input_data, output_data);
