@@ -14,9 +14,14 @@ Theano also supports `device=cpu` option for machines without GPU.
 
 Leela C++ connects to port `9999` by default. You can use a different port with argument `--tcp-port=[PORT]`. You have to modify `autogtp/Game.cpp` to add this argument to autogtp. Use `--tcp-port` argument when you want to run multiple servers (e.g., port `9999`  for `CPU`s, port `9998` for `GPU0`, port `9997` for `GPU1` )
 
+
+
 **Note:** please set `batch_size` equal to (or less than) number of Leela instances you want to run. TCP server will pause until enough instances connected to the server.  Also, wait until the TCP server ready before running autogtp instances.
 
 **Tips:** Increasing `batch_size` to get the best performance (`seconds /  moves / games`)
+
+
+**Testing:** As this is an experimental hack, please spend a few minutes compile and run leela with `USE_SERVER_TEST` flag on (in `src/config.h` file.) In this test mode, Leela will compare the results from server with results from OpenCL and print out `ERROR` in case of any discrepancy.
 
 You need to install `theano`, `trollius`, `six` python packages
 

@@ -256,7 +256,7 @@ class TCPServerClientProtocol(trollius.Protocol):
         self.data.extend(data)
         
         if len(self.data) < 19*19*18*4:
-            print("WARN: too short message (should not be in this case), waiting for more data")
+            print("WARN: too short message (should not be in this case frequently), waiting for more data")
             return
         
         if len(self.data) > 19*19*18*4:
