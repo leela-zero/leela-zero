@@ -85,8 +85,8 @@ public:
     int count_pliberties(const int i);
     void augment_chain(std::vector<int> & chains, int vertex);
     bool is_eye(const int color, const int vtx);
-    int get_dir(int i);
-    int get_extra_dir(int i);
+    int get_dir(int i) const;
+    int get_extra_dir(int i) const;
 
     int estimate_mc_score(float komi);
     float final_mc_score(float komi);

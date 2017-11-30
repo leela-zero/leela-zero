@@ -79,7 +79,7 @@ std::vector<int> FastState::generate_moves(int color) {
         }
     }
 
-    result.push_back(+FastBoard::PASS);
+    result.push_back(FastBoard::PASS);
 
     return result;
 }
@@ -91,12 +91,12 @@ void FastState::play_pass(void) {
     m_lastmove[0] = FastBoard::PASS;
     m_last_was_capture = false;
 
-    board.hash  ^= 0xABCDABCDABCDABCDULL;
+    board.m_hash  ^= 0xABCDABCDABCDABCDULL;
     board.m_tomove = !board.m_tomove;
 
-    board.hash ^= Zobrist::zobrist_pass[get_passes()];
+    board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
     increment_passes();
-    board.hash ^= Zobrist::zobrist_pass[get_passes()];
+    board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
 }
 
 void FastState::play_move(int vertex) {
@@ -117,14 +117,14 @@ void FastState::play_move(int color, int vertex) {
         m_movenum++;
 
         if (board.m_tomove == color) {
-            board.hash  ^= 0xABCDABCDABCDABCDULL;
+            board.m_hash  ^= 0xABCDABCDABCDABCDULL;
         }
         board.m_tomove = !color;
 
         if (get_passes() > 0) {
-            board.hash ^= Zobrist::zobrist_pass[get_passes()];
+            board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
             set_passes(0);
-            board.hash ^= Zobrist::zobrist_pass[0];
+            board.m_hash ^= Zobrist::zobrist_pass[0];
         }
     } else {
         play_pass();

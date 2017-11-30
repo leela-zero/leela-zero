@@ -753,11 +753,11 @@ std::string FastBoard::get_string(int vertex) {
     return result;
 }
 
-int FastBoard::get_dir(int i) {
+int FastBoard::get_dir(int i) const {
     return m_dirs[i];
 }
 
-int FastBoard::get_extra_dir(int i) {
+int FastBoard::get_extra_dir(int i) const {
     return m_extradirs[i];
 }
 

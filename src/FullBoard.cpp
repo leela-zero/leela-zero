@@ -33,8 +33,8 @@ int FullBoard::remove_string(int i) {
     int color = m_square[i];
 
     do {
-        hash    ^= Zobrist::zobrist[m_square[pos]][pos];
-        ko_hash ^= Zobrist::zobrist[m_square[pos]][pos];
+        m_hash    ^= Zobrist::zobrist[m_square[pos]][pos];
+        m_ko_hash ^= Zobrist::zobrist[m_square[pos]][pos];
 
         m_square[pos] = EMPTY;
         m_parent[pos] = MAXSQ;
@@ -46,8 +46,8 @@ int FullBoard::remove_string(int i) {
         m_empty[m_empty_cnt]  = pos;
         m_empty_cnt++;
 
-        hash    ^= Zobrist::zobrist[m_square[pos]][pos];
-        ko_hash ^= Zobrist::zobrist[m_square[pos]][pos];
+        m_hash    ^= Zobrist::zobrist[m_square[pos]][pos];
+        m_ko_hash ^= Zobrist::zobrist[m_square[pos]][pos];
 
         removed++;
         pos = m_next[pos];
@@ -57,13 +57,7 @@ int FullBoard::remove_string(int i) {
 }
 
 uint64 FullBoard::calc_ko_hash(void) {
-    uint64 res;
-
-#ifdef _WIN32
-    res = 0x1234567887654321UI64;
-#else
-    res = 0x1234567887654321ULL;
-#endif
+    auto res = uint64{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
@@ -71,20 +65,14 @@ uint64 FullBoard::calc_ko_hash(void) {
         }
     }
 
-    ko_hash = res;
+    m_ko_hash = res;
 
     /* Tromp-Taylor has positional superko */
     return res;
 }
 
 uint64 FullBoard::calc_hash(void) {
-    uint64 res;
-
-#ifdef _WIN32
-    res = 0x1234567887654321UI64;
-#else
-    res = 0x1234567887654321ULL;
-#endif
+    auto res = uint64{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
@@ -96,27 +84,28 @@ uint64 FullBoard::calc_hash(void) {
     res ^= Zobrist::zobrist_pris[0][m_prisoners[0]];
     res ^= Zobrist::zobrist_pris[1][m_prisoners[1]];
 
-    if (m_tomove == BLACK)
-#ifdef _WIN32
-        res ^= 0xABCDABCDABCDABCDUI64;
-#else
+    if (m_tomove == BLACK) {
         res ^= 0xABCDABCDABCDABCDULL;
-#endif
+    }
 
-    hash = res;
+    m_hash = res;
 
     return res;
 }
 
-uint64 FullBoard::get_hash(void) {
-    return hash;
+uint64 FullBoard::get_hash(void) const {
+    return m_hash;
+}
+
+uint64 FullBoard::get_ko_hash(void) const {
+    return m_ko_hash;
 }
 
 int FullBoard::update_board(const int color, const int i, bool &capture) {
     assert(m_square[i] == EMPTY);
 
-    hash ^= Zobrist::zobrist[m_square[i]][i];
-    ko_hash ^= Zobrist::zobrist[m_square[i]][i];
+    m_hash ^= Zobrist::zobrist[m_square[i]][i];
+    m_ko_hash ^= Zobrist::zobrist[m_square[i]][i];
 
     m_square[i] = (square_t)color;
     m_next[i] = i;
@@ -125,8 +114,8 @@ int FullBoard::update_board(const int color, const int i, bool &capture) {
     m_stones[i] = 1;
     m_totalstones[color]++;
 
-    hash ^= Zobrist::zobrist[m_square[i]][i];
-    ko_hash ^= Zobrist::zobrist[m_square[i]][i];
+    m_hash ^= Zobrist::zobrist[m_square[i]][i];
+    m_ko_hash ^= Zobrist::zobrist[m_square[i]][i];
 
     /* update neighbor liberties (they all lose 1) */
     add_neighbour(i, color);
@@ -160,9 +149,9 @@ int FullBoard::update_board(const int color, const int i, bool &capture) {
         }
     }
 
-    hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
+    m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
     m_prisoners[color] += captured_stones;
-    hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
+    m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
 
     /* move last vertex in list to our position */
     int lastvertex = m_empty[--m_empty_cnt];
@@ -189,7 +178,7 @@ int FullBoard::update_board(const int color, const int i, bool &capture) {
 void FullBoard::display_board(int lastmove) {
     FastBoard::display_board(lastmove);
 
-    myprintf("Hash: %llX Ko-Hash: %llX\n\n", hash, ko_hash);
+    myprintf("Hash: %llX Ko-Hash: %llX\n\n", get_hash(), get_ko_hash());
 }
 
 void FullBoard::reset_board(int size) {
