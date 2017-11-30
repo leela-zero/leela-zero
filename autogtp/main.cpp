@@ -29,7 +29,10 @@
 #include <iostream>
 #include "Game.h"
 
-constexpr int AUTOGTP_VERSION = 3;
+constexpr int AUTOGTP_VERSION = 4;
+
+// Minimal Leela Zero version we expect to see
+const VersionTuple min_leelaz_version{0, 6};
 
 bool fetch_best_network_hash(QTextStream& cerr, QString& nethash) {
     QString prog_cmdline("curl");
@@ -156,7 +159,7 @@ bool upload_data(QTextStream& cerr, const QString& netname, QString sgf_output_p
 bool run_one_game(QTextStream& cerr, const QString& weightsname) {
 
     Game game(weightsname, cerr);
-    if(!game.gameStart()) {
+    if(!game.gameStart(min_leelaz_version)) {
         return false;
     }
     do {
