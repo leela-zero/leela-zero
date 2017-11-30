@@ -85,7 +85,7 @@ std::array<float, 1> ip2_val_b;
 
 void Network::benchmark(GameState * state) {
     {
-        int BENCH_AMOUNT = 20000;
+        int BENCH_AMOUNT = 1600;
         int cpus = cfg_num_threads;
         int iters_per_thread = (BENCH_AMOUNT + (cpus - 1)) / cpus;
 
