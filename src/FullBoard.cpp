@@ -108,40 +108,8 @@ uint64 FullBoard::calc_hash(void) {
     return res;
 }
 
-std::array<uint64, 8> FullBoard::get_rotated_hashes(void) {
-    std::array<uint64, 8> result;
-
-    for (int sym = 0; sym < 8; sym++) {
-        uint64 res = 0x1234567887654321ULL;
-
-        for (int i = 0; i < m_maxsq; i++) {
-            if (m_square[i] != INVAL) {
-                int newi = rotate_vertex(i, sym);
-                res ^= Zobrist::zobrist[m_square[i]][newi];
-            }
-        }
-        /* prisoner hashing is rule set dependent */
-        res ^= Zobrist::zobrist_pris[0][m_prisoners[0]];
-        res ^= Zobrist::zobrist_pris[1][m_prisoners[1]];
-        if (m_tomove == BLACK)
-           res ^= 0xABCDABCDABCDABCDULL;
-        result[sym] = res;
-    }
-
-    return result;
-}
-
-uint64 FullBoard::get_canonical_hash(void) {
-    auto hashes = get_rotated_hashes();
-    return *std::min_element(hashes.cbegin(), hashes.cend());
-}
-
 uint64 FullBoard::get_hash(void) {
     return hash;
-}
-
-uint64 FullBoard::get_ko_hash(void) {
-    return ko_hash;
 }
 
 int FullBoard::update_board(const int color, const int i, bool &capture) {
