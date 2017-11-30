@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <array>
+#include <queue>
 
 #include "config.h"
 
@@ -358,37 +359,30 @@ int FastBoard::remove_string_fast(int i) {
 }
 
 std::vector<bool> FastBoard::calc_reach_color(int col) {
-    auto bd = std::vector<bool>(m_maxsq);
-    auto last = std::vector<bool>(m_maxsq);
-
-    std::fill(begin(bd), end(bd), false);
-    std::fill(begin(last), end(last), false);
-
-    /* needs multi pass propagation, slow */
-    do {
-        last = bd;
-        for (int i = 0; i < m_boardsize; i++) {
-            for (int j = 0; j < m_boardsize; j++) {
-                int vertex = get_vertex(i, j);
-                /* colored field, spread */
-                if (m_square[vertex] == col) {
-                    bd[vertex] = true;
-                    for (int k = 0; k < 4; k++) {
-                        if (m_square[vertex + m_dirs[k]] == EMPTY) {
-                            bd[vertex + m_dirs[k]] = true;
-                        }
-                    }
-                } else if (m_square[vertex] == EMPTY && bd[vertex]) {
-                    for (int k = 0; k < 4; k++) {
-                        if (m_square[vertex + m_dirs[k]] == EMPTY) {
-                            bd[vertex + m_dirs[k]] = true;
-                        }
-                    }
-                }
+    auto bd = std::vector<bool>(m_maxsq, false);
+    auto open = std::queue<int>();
+    for (auto i = 0; i < m_boardsize; i++) {
+        for (auto j = 0; j < m_boardsize; j++) {
+            auto vertex = get_vertex(i, j);
+            if (m_square[vertex] == col) {
+                bd[vertex] = true;
+                open.push(vertex);
             }
         }
-    } while (last != bd);
+    }
+    while (!open.empty()) {
+        /* colored field, spread */
+        auto vertex = open.front();
+        open.pop();
 
+        for (auto k = 0; k < 4; k++) {
+            auto neighbor = vertex + m_dirs[k];
+            if (!bd[neighbor] && m_square[neighbor] == EMPTY) {
+                bd[neighbor] = true;
+                open.push(neighbor);
+            }
+        }
+    }
     return bd;
 }
 
