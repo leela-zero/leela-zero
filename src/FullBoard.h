@@ -30,8 +30,6 @@ public:
     uint64 calc_hash(void);
     uint64 calc_ko_hash(void);
     uint64 get_hash(void);
-    uint64 get_ko_hash(void);
-    uint64 get_canonical_hash(void);
 
     // calculates hash after move without executing it
     // good for calculating superko
@@ -42,9 +40,6 @@ public:
 
     uint64 hash;
     uint64 ko_hash;
-
-private:
-    std::array<uint64, 8> get_rotated_hashes(void);
 };
 
 #endif
