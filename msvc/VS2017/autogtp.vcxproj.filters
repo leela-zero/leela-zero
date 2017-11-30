@@ -73,5 +73,7 @@
     <CustomBuild Include="..\..\autogtp\Production.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\curl.exe" />
+    <CustomBuild Include="..\gzip.exe" />
   </ItemGroup>
 </Project>
