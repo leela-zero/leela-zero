@@ -260,7 +260,7 @@ void Network::initialize(void) {
 #ifdef USE_BLAS
 template<unsigned int filter_size,
          unsigned int outputs>
-void convolve(const std::vector<float>& input,
+void convolve(const std::vector<net_t>& input,
               const std::vector<float>& weights,
               const std::vector<float>& biases,
               std::vector<float>& output) {
@@ -404,13 +404,12 @@ Network::Netresult Network::get_scored_moves(
 Network::Netresult Network::get_scored_moves_internal(
     GameState * state, NNPlanes & planes, int rotation) {
     assert(rotation >= 0 && rotation <= 7);
-    constexpr int channels = INPUT_CHANNELS;
-    assert(channels == planes.size());
     constexpr int width = 19;
     constexpr int height = 19;
-    constexpr int max_channels = MAX_CHANNELS;
-    std::vector<float> input_data(max_channels * width * height);
-    std::vector<float> output_data(max_channels * width * height);
+    assert(INPUT_CHANNELS == planes.size());
+    std::vector<net_t> input_data;
+    auto convolve_channels = conv_pol_w.size() / conv_pol_b.size();
+    std::vector<net_t> output_data(convolve_channels * width * height);
     std::vector<float> policy_data_1(2 * width * height);
     std::vector<float> policy_data_2(2 * width * height);
     std::vector<float> value_data_1(1 * width * height);
@@ -419,12 +418,13 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<float> softmax_data((width * height) + 1);
     std::vector<float> winrate_data(256);
     std::vector<float> winrate_out(1);
-    for (int c = 0; c < channels; ++c) {
+    // Data layout is input_data[(c * height + h) * width + w]
+    input_data.reserve(INPUT_CHANNELS * width * height);
+    for (int c = 0; c < INPUT_CHANNELS; ++c) {
         for (int h = 0; h < height; ++h) {
             for (int w = 0; w < width; ++w) {
                 auto rot_idx = rotate_nn_idx(h * 19 + w, rotation);
-                input_data[(c * height + h) * width + w] =
-                    (float)planes[c][rot_idx];
+                input_data.emplace_back(net_t(planes[c][rot_idx]));
             }
         }
     }

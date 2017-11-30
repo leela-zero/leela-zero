@@ -16,11 +16,17 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cmath>
 #include <QDir>
 #include <QFileInfo>
+#include <QThread>
 #include <QCryptographicHash>
 #include "Production.h"
 #include "Game.h"
+
+constexpr int RETRY_DELAY_MIN_SEC = 30;
+constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
+constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
 
 void ProductionWorker::run() {
      do {
@@ -52,8 +58,8 @@ void ProductionWorker::run() {
 
 void ProductionWorker::init(const QString& gpuIndex, const QString& net,
                             const int index) {
-    m_option = " -g -q -n -d -m 30 -r 0 -w ";
-    if(!gpuIndex.isEmpty()) {
+    m_option = " -g -q -d -n -m 30 -r 0 -w ";
+    if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_network = net;
@@ -77,11 +83,36 @@ Production::Production(const int gpus,
     m_version(ver) {
 }
 
+bool Production::updateNetwork() {
+    auto retries = 0;
+    do {
+        try {
+            auto new_network = fetchBestNetworkHash();
+            fetchBestNetwork();
+            return new_network;
+        } catch (NetworkException ex) {
+            QTextStream(stdout) << "Network connection to server failed."
+                                << endl;
+            QTextStream(stdout) << ex.what() << endl;
+            auto retry_delay =
+                std::min<int>(
+                    RETRY_DELAY_MIN_SEC * std::pow(1.5, retries),
+                    RETRY_DELAY_MAX_SEC
+                );
+            QTextStream(stdout) << "Retrying in " << retry_delay << " s."
+                                << endl;
+            QThread::sleep(retry_delay);
+        }
+    } while (++retries < MAX_RETRIES);
+    QTextStream(stdout) << "Maximum number of retries exceeded. Giving up."
+                        << endl;
+    exit(EXIT_FAILURE);
+}
+
 void Production::startGames() {
     m_start = std::chrono::high_resolution_clock::now();
     m_mainMutex->lock();
-    fetchBestNetworkHash();
-    fetchBestNetwork();
+    updateNetwork();
     QString myGpu;
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
         for(int game = 0; game < m_games; ++game) {
@@ -107,8 +138,7 @@ void Production::getResult(const QString& file, float duration, int index) {
     m_gamesPlayed++;
     printTimingInfo(duration);
     uploadData(file);
-    if (!fetchBestNetworkHash()) {
-        fetchBestNetwork();
+    if (!updateNetwork()) {
         m_gamesThreads[index].newNetwork(m_network);
     }
     m_syncMutex.unlock();
@@ -137,13 +167,20 @@ bool Production::fetchBestNetworkHash() {
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
+
     QByteArray output = curl.readAllStandardOutput();
     QString outstr(output);
     QStringList outlst = outstr.split("\n");
+
+    if (curl.exitCode()) {
+        throw NetworkException("Curl returned non-zero exit code "
+                               + std::to_string(curl.exitCode()));
+    }
+
     if (outlst.size() != 2) {
         QTextStream(stdout)
             << "Unexpected output from server: " << endl << output << endl;
-        exit(EXIT_FAILURE);
+        throw NetworkException("Unexpected output from server");
     }
     QString outhash = outlst[0];
     QTextStream(stdout) << "Best network hash: " << outhash << endl;
@@ -161,12 +198,11 @@ bool Production::fetchBestNetworkHash() {
     } else {
         QTextStream(stdout) << " (OK)" << endl;
     }
-    if(outhash == m_network) {
+    if (outhash == m_network) {
         return true;
     }
     m_network = outhash;
     return false;
-
 }
 
 bool Production::networkExists() {
@@ -183,19 +219,19 @@ bool Production::networkExists() {
                 return true;
             }
         } else {
-            QTextStream(stdout) << "Unable to open network file for reading." << endl;
-            QFile file(m_network);
-            if(file.remove()) {
+            QTextStream(stdout)
+                << "Unable to open network file for reading." << endl;
+            if (f.remove()) {
                 return false;
             }
-            QTextStream(stdout) << "Unable to delete the network file. " \
-                << "Check permissions." << endl;
+            QTextStream(stdout) << "Unable to delete the network file. "
+                                << "Check permissions." << endl;
             exit(EXIT_FAILURE);
         }
         QTextStream(stdout) << "Downloaded network hash doesn't match." << endl;
-        QFile file(m_network);
-        file.remove();
+        f.remove();
     }
+
     return false;
 }
 
@@ -203,6 +239,13 @@ void Production::fetchBestNetwork() {
     if (networkExists()) {
         QTextStream(stdout) << "Already downloaded network." << endl;
         return;
+    }
+
+    if (QFileInfo::exists(m_network + ".gz")) {
+        QFile f_gz(m_network + ".gz");
+        // Curl refuses to overwrite, so make sure to delete the gzipped
+        // network if it exists
+        f_gz.remove();
     }
 
     QString prog_cmdline("curl");
@@ -221,15 +264,20 @@ void Production::fetchBestNetwork() {
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
 
+    if (curl.exitCode()) {
+        throw NetworkException("Curl returned non-zero exit code "
+                               + std::to_string(curl.exitCode()));
+    }
+
     QByteArray output = curl.readAllStandardOutput();
     QString outstr(output);
     QStringList outlst = outstr.split("\n");
     QString outfile = outlst[0];
     QTextStream(stdout) << "Curl filename: " << outfile << endl;
 #ifdef WIN32
-    QProcess::execute("gzip.exe -d -k -q " + outfile);
+    QProcess::execute("gzip.exe -d -q " + outfile);
 #else
-    QProcess::execute("gunzip -k -q " + outfile);
+    QProcess::execute("gunzip -q " + outfile);
 #endif
     // Remove extension (.gz)
     outfile.chop(3);
@@ -283,6 +331,13 @@ void Production::uploadData(const QString& file) {
         QProcess curl;
         curl.start(prog_cmdline);
         curl.waitForFinished(-1);
+
+        if (curl.exitCode()) {
+            QTextStream(stdout) << "Upload failed. Curl Exit code: "
+                << curl.exitCode() << endl;
+            QTextStream(stdout) << "Continuing..." << endl;
+        }
+
         QByteArray output = curl.readAllStandardOutput();
         QString outstr(output);
         QTextStream(stdout) << outstr;

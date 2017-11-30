@@ -106,11 +106,12 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
     cd leela-zero
-    "%VS140COMNTOOLS%..\IDE\devenv.exe" leela-zero.sln
-    # Build from Visual Studio 2015
-    # Modify src/config.h if you want to change compile settings
-    # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to x64/Release
-    # x64/Release/leela-zero --weights weights.txt
+    cd msvc
+    Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
+    to the Visual Studio version you have.
+    # Build from Visual Studio 2015 or 2017
+    # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to msvc/x64/Release
+    # msvc/x64/Release/leela-zero --weights weights.txt
 
 # Usage
 
@@ -264,6 +265,6 @@ done with multiple processes each bound to a GPU)
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h and
-cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
+The code is released under the GPLv3 or later, except for ThreadPool.h, half.hpp
+and cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
 those files.
