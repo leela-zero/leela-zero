@@ -58,7 +58,7 @@ void ProductionWorker::run() {
 
 void ProductionWorker::init(const QString& gpuIndex, const QString& net,
                             const int index) {
-    m_option = " -g -q -n -d -m 30 -r 0 -w ";
+    m_option = " -g -q -d -n -m 30 -r 0 -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
