@@ -43,19 +43,40 @@ void ProductionWorker::run() {
                  return;
              }
              game.readMove();
-         } while (game.nextMove());
-         QTextStream(stdout) << "Game has ended." << endl;
-         if (game.getScore()) {
-             game.writeSgf();
-             game.dumpTraining();
+         } while (game.nextMove() && m_state == RUNNING);
+         switch(m_state) {
+         case RUNNING:
+         {
+             QTextStream(stdout) << "Game has ended." << endl;
+             if (game.getScore()) {
+                 game.writeSgf();
+                 game.dumpTraining();
+             }
+             auto end = std::chrono::high_resolution_clock::now();
+             auto gameDuration =
+                std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+             emit resultReady(game.getFile(), gameDuration);
+             QTextStream(stdout) << "Stopping engine." << endl;
+             game.gameQuit();
+             break;
          }
-         QTextStream(stdout) << "Stopping engine." << endl;
-         game.gameQuit();
-         auto end = std::chrono::high_resolution_clock::now();
-         auto gameDuration =
-            std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-         emit resultReady(game.getFile(), gameDuration);
-    } while (true);
+         case NET_CHANGE:
+         {
+             QTextStream(stdout) << "Best Network has change: restarting." << endl;
+             m_state = RUNNING;
+             QTextStream(stdout) << "Stopping engine." << endl;
+             game.gameQuit();
+             break;
+         }
+         case FINISHING:
+         {
+             QTextStream(stdout) << "Program ends: exiting." << endl;
+             QTextStream(stdout) << "Stopping engine." << endl;
+             game.gameQuit();
+             break;
+         }
+        }             
+    } while (m_state != FINISHING);
 }
 
 void ProductionWorker::init(const QString& gpuIndex, const QString& net) {
@@ -64,6 +85,7 @@ void ProductionWorker::init(const QString& gpuIndex, const QString& net) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_network = net;
+    m_state = RUNNING;
 }
 
 Production::Production(const int gpus,
