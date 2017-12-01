@@ -21,7 +21,7 @@ Leela C++ connects to port `9999` by default. You can use a different port with 
 **Tips:** Increasing `batch_size` to get the best performance (`seconds /  moves / games`)
 
 
-**Testing:** As this is an experimental hack, please spend a few minutes compile and run leela with `USE_SERVER_TEST` flag on (in `src/config.h` file.) In this test mode, Leela will compare the results from server with results from OpenCL and print out `ERROR` in case of any discrepancy. **In test mode, the program will be slower than the orignal Leela, for normal running, please disable the `USE_SERVER_TEST` flag.**
+**Testing:** As this is an experimental hack, please spend a few minutes compile and run leela with `USE_SERVER_TEST` flag on (in `src/config.h` file.) In this test mode, Leela will compare the results from server with results from OpenCL and print out `ERROR` in case of any discrepancy.
 
 You need to install `theano`, `trollius`, `six` python packages
 

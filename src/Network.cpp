@@ -469,7 +469,7 @@ Network::Netresult Network::get_scored_moves_internal(
     innerproduct<2*361, 362>(policy_data_2, ip_pol_w, ip_pol_b, policy_out);
 
     for (int i = 0; i < 19*19 + 1; i++) {
-        if (fabs(policy_out[i] - my_policy_out[i]) > 1e-4) {
+        if (fabs(policy_out[i] - my_policy_out[i]) > 1e-5) {
             printf("ERRORRRRR %f \n", fabs(policy_out[i] - my_policy_out[i]));
         }
     }
@@ -483,7 +483,7 @@ Network::Netresult Network::get_scored_moves_internal(
     // Sigmoid
     float mywinrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
 
-    if (fabs(mywinrate_sig - winrate_sig) > 1e-4) {
+    if (fabs(mywinrate_sig - winrate_sig) > 1e-5) {
         printf("ERR delta winrate %f\n", fabs(mywinrate_sig - winrate_sig));
     }
 #endif
