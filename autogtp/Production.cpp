@@ -31,7 +31,9 @@ constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
 void ProductionWorker::run() {
      do {
          auto start = std::chrono::high_resolution_clock::now();
+         m_mutex.lock();
          Game game(m_network, m_option);
+         m_mutex.unlock(); 
          if(!game.gameStart(min_leelaz_version)) {
              return;
          }
@@ -52,18 +54,16 @@ void ProductionWorker::run() {
          auto end = std::chrono::high_resolution_clock::now();
          auto gameDuration =
             std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-         emit resultReady(game.getFile(), gameDuration, m_index);
+         emit resultReady(game.getFile(), gameDuration);
     } while (true);
 }
 
-void ProductionWorker::init(const QString& gpuIndex, const QString& net,
-                            const int index) {
+void ProductionWorker::init(const QString& gpuIndex, const QString& net) {
     m_option = " -g -q -d -n -m 30 -r 0 -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_network = net;
-    m_index = index;
 }
 
 Production::Production(const int gpus,
@@ -127,19 +127,20 @@ void Production::startGames() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[thread_index].init(myGpu, m_network, thread_index);
+            m_gamesThreads[thread_index].init(myGpu, m_network);
             m_gamesThreads[thread_index].start();
         }
     }
 }
 
-void Production::getResult(const QString& file, float duration, int index) {
+void Production::getResult(const QString& file, float duration) {
     m_syncMutex.lock();
     m_gamesPlayed++;
     printTimingInfo(duration);
     uploadData(file);
     if (!updateNetwork()) {
-        m_gamesThreads[index].newNetwork(m_network);
+        for(int i = 0; i < m_gpus * m_games; i++)
+            m_gamesThreads[i].newNetwork(m_network);
     }
     m_syncMutex.unlock();
 }
