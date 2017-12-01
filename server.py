@@ -226,8 +226,6 @@ import sys
 
 inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
 ADDRS = list(range(QLEN))
-counter = 0
-remain = QLEN
 print("\nBatch size = %d" % QLEN)
 
 import threading
@@ -236,69 +234,65 @@ newNetWeight = None
 
 import time
 import gc
+import queue
 
-class TCPServerClientProtocol(trollius.Protocol):
-    def connection_made(self, transport):
-        peername = transport.get_extra_info('peername')
-        print('Connection from {}'.format(peername))
-        self.transport = transport
-        self.data = bytearray()
+inp_packet_Q = queue.Queue()
+out_packet_Q = queue.Queue()
 
-    def data_received(self, data):
-        global counter, ADDRS, QLEN, inp, netlock, newNetWeight, net, remain
-        
-        # at the beginning of the msg
-        if len(self.data) == 0: 
-            ADDRS[counter] = self.transport
-            self.idx = counter # my slot is here! no other can take it
-            counter = counter + 1
-        
-        self.data.extend(data)
-        
-        if len(self.data) < 19*19*18*4:
-            print("WARN: too short message (should not be in this case frequently), waiting for more data")
-            return
-        
-        if len(self.data) > 19*19*18*4:
-            print("ERROR: too long message!")
-            while True: 
-                pass
-        
-        # we'ready, enough data
-        inp[self.idx, :] = np.frombuffer(self.data, dtype=np.float32, count = 19*19*18)
-        remain = remain - 1 # done 1 input
-        self.data = bytearray()
+def myinputworker():
+    global PORT
+    import socketserver
 
-        if remain == 0:
-            counter = 0 # reset counter
-            remain = QLEN # reset 
-            myinp = inp.reshape( (QLEN, 18, 19, 19) )
-            netlock.acquire(True)   # BLOCK HERE
-            if newNetWeight != None:
-                del net
-                gc.collect()  # hope that GPU memory is freed, not sure :-()
-                weights, numBlocks, numFilters = newNetWeight
-                print(" %d channels and %d blocks" % (numFilters, numBlocks) )
-                net = LZN(weights, numBlocks, numFilters)
-                print("...updated weight!")        
-                newNetWeight = None
-            netlock.release()
-            netinp, netnet = net
-            netinp.set_value(myinp)
-            out = netnet().astype(np.float32)
-            for i in range(QLEN):
-                try:
-                    ADDRS[i].write(out[i, :].data)
-                except Exception as ex:
-                    print("client disappeared?", ex)
+    class MyTCPHandler(socketserver.BaseRequestHandler):
 
-loop = trollius.get_event_loop()
-# Each client connection will create a new protocol instance
-coro = loop.create_server(TCPServerClientProtocol, '127.0.0.1', PORT)
-server = loop.run_until_complete(coro)
+        def __init__(self, request, clientaddr, server):
+            print("A new connection from", clientaddr)
+            self.outQ = queue.Queue()
+            super().__init__(request, clientaddr, server)
 
-# Serve requests until Ctrl+C is pressed
-print('\nServing on {}'.format(server.sockets[0].getsockname()))
+        def handle(self):
+            print("Data comming")
+            global inp_packet_Q
+            self.data = bytearray()
+            while True:
+                self.data.clear()
+                while len(self.data) < 4*18*19*19 :
+                    self.data.extend(self.request.recv(4*18*19*19))
+                
+                if len(self.data) > 19*19*18*4:
+                    print("ERROR: too long message!")
+                    while True: 
+                        pass
+
+                # print("data into Q")
+                inp_packet_Q.put( (self.data, self.outQ) )
+                out = self.outQ.get()
+                # print("Gotcha")
+                self.request.send(out)
+
+    class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        allow_reuse_address = True
+        pass
+    # Create the server, binding to localhost on port 999
+    #9
+    # ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
+
+    server = ThreadedTCPServer(("127.0.0.1", PORT), MyTCPHandler)
+
+    # Activate the server; this will keep running until you
+    # interrupt the program with Ctrl-C
+    print("\nListening at", PORT)
+    try:
+        server.serve_forever()
+    except Exception as ex:
+        server.shutdown()
+        server.server_close()
+
+t1 = threading.Thread(target=myinputworker)
+t1.daemon = True
+t1.start()
+
+
 
 
 class MyWeightUpdater(threading.Thread):
@@ -317,17 +311,50 @@ class MyWeightUpdater(threading.Thread):
                 netlock.release()
             time.sleep(10)                                      
 
-worker = MyWeightUpdater(name = "Thread-1") 
-worker.daemon = True
-worker.start()                                
+t2 = MyWeightUpdater(name = "Thread-1") 
+t2.daemon = True
+t2.start()                                
 
-print("\nNow, you should run %d autogtp instances at different locations to start the playing process" % QLEN)
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
+def myoutputworker():
+    global QLEN, out_packet_Q
+    while True:
+        TT, out = out_packet_Q.get()
+        for i in range(QLEN):
+            # print("sending ...")
+            TT[i].put(out[i,:].data)
+            #TT[i].request.send(out[i, :].data)
 
-# Close the server
-server.close()
-loop.run_until_complete(server.wait_closed())
-loop.close()
+t3 = threading.Thread(target=myoutputworker)
+t3.daemon = True
+t3.start()
+
+# our main processing loop
+while True:
+    TT = []
+    for i in range(QLEN):
+        data, outQ = inp_packet_Q.get()
+        # print("get Q", outQ)
+        TT.append(outQ)
+        inp[i, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18) 
+
+    # print("Compute")
+    # one batch ready
+    myinp = inp.reshape( (QLEN, 18, 19, 19) )
+    netlock.acquire(True)   # BLOCK HERE
+    if newNetWeight != None:
+        del net
+        gc.collect()  # hope that GPU memory is freed, not sure :-()
+        weights, numBlocks, numFilters = newNetWeight
+        print(" %d channels and %d blocks" % (numFilters, numBlocks) )
+        net = LZN(weights, numBlocks, numFilters)
+        print("...updated weight!")        
+        newNetWeight = None
+    netlock.release()
+
+
+    netinp, netnet = net
+    netinp.set_value(myinp)
+
+    out = netnet().astype(np.float32)
+    # print("Send data Q")
+    out_packet_Q.put (   (TT, out)  )
