@@ -45,7 +45,7 @@ public:
         m_network = net;
     }
     void run() override;
-
+    
 signals:
     void resultReady(const QString& file, float duration);
 private:

@@ -30,61 +30,53 @@ constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
 
 void ProductionWorker::run() {
-    std::random_device rd;
-    std::ranlux48 gen(rd());
-    std::uniform_real_distribution<> rand_dist(0.0, 1.0);
-    do {
-        auto start = std::chrono::high_resolution_clock::now();
-        auto option = m_option;
-        auto pick = rand_dist(gen);
-        // For now must manually check the resign rate
-        // for new networks with resign_analysis.py
-        QString resignpct = (pick < 0.2) ? "0" : "1";
-        // Prepend because option must have "-w " on the end
-        option = " -r " + resignpct + option;
-        m_mutex.lock();
-        Game game(m_network, option);
-        m_mutex.unlock();
-        if (!game.gameStart(min_leelaz_version)) {
-            return;
-        }
-        do {
-            game.move();
-            if (!game.waitForMove()) {
-                return;
-            }
-            game.readMove();
-            (*m_movesMade)++;
-        } while (game.nextMove() && m_state == RUNNING);
-        switch(m_state) {
-        case RUNNING:
-            QTextStream(stdout) << "Game has ended." << endl;
-            if (game.getScore()) {
-                game.writeSgf();
-                game.dumpTraining();
-            }
-            {
-                auto end = std::chrono::high_resolution_clock::now();
-                auto gameDuration =
-                    std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-                emit resultReady(game.getFile(), gameDuration);
-            }
-            QTextStream(stdout) << "Stopping engine." << endl;
-            game.gameQuit();
-            break;
-        case NET_CHANGE:
-            QTextStream(stdout) << "Best Network has changed: restarting."
-                                << endl;
-            m_state = RUNNING;
-            QTextStream(stdout) << "Stopping engine." << endl;
-            game.gameQuit();
-            break;
-        case FINISHING:
-            QTextStream(stdout) << "Program ends: exiting." << endl;
-            QTextStream(stdout) << "Stopping engine." << endl;
-            game.gameQuit();
-            break;
-        }
+     do {
+         auto start = std::chrono::high_resolution_clock::now();
+         m_mutex.lock();
+         Game game(m_network, m_option);
+         m_mutex.unlock(); 
+         if(!game.gameStart(min_leelaz_version)) {
+             return;
+         }
+         do {
+             game.move();
+             if(!game.waitForMove()) {
+                 return;
+             }
+             game.readMove();
+         } while (game.nextMove() && m_state == RUNNING);
+         switch(m_state) {
+         case RUNNING:
+         {
+             QTextStream(stdout) << "Game has ended." << endl;
+             if (game.getScore()) {
+                 game.writeSgf();
+                 game.dumpTraining();
+             }
+             auto end = std::chrono::high_resolution_clock::now();
+             auto gameDuration =
+                std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+             emit resultReady(game.getFile(), gameDuration);
+             QTextStream(stdout) << "Stopping engine." << endl;
+             game.gameQuit();
+             break;
+         }
+         case NET_CHANGE:
+         {
+             QTextStream(stdout) << "Best Network has change: restarting." << endl;
+             m_state = RUNNING;
+             QTextStream(stdout) << "Stopping engine." << endl;
+             game.gameQuit();
+             break;
+         }
+         case FINISHING:
+         {
+             QTextStream(stdout) << "Program ends: exiting." << endl;
+             QTextStream(stdout) << "Stopping engine." << endl;
+             game.gameQuit();
+             break;
+         }
+        }             
     } while (m_state != FINISHING);
 }
 
