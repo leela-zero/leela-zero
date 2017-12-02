@@ -31,6 +31,14 @@ constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
 void ProductionWorker::run() {
     do {
         auto start = std::chrono::high_resolution_clock::now();
+        auto option = m_option;
+        float pick = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        // For now must manually check the resign rate
+        // for new networks with resign_analysis.py
+        QString resignpct = (pick < 0.1) ? "0" : "10";
+        // Prepend because option must have "-w " on the end
+        option = " -r " + resignpct + option;
+        QTextStream(stdout) << "option=" << option << endl;
         m_mutex.lock();
         Game game(m_network, m_option);
         m_mutex.unlock();
@@ -77,7 +85,7 @@ void ProductionWorker::run() {
 }
 
 void ProductionWorker::init(const QString& gpuIndex, const QString& net) {
-    m_option = " -g -q -d -n -m 30 -r 0 -w ";
+    m_option = " -g -q -d -n -m 30 -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
