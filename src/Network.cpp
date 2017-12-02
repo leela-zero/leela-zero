@@ -472,7 +472,7 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<float> softmax_data((width * height) + 1);
     std::vector<float> winrate_data(256);
     std::vector<float> winrate_out(1);
-#ifndef USE_IPC
+#if !defined(USE_IPC) || defined(USE_IPC_TEST)
     for (int c = 0; c < channels; ++c) {
         for (int h = 0; h < height; ++h) {
             for (int w = 0; w < width; ++w) {

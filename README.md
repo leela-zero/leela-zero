@@ -6,24 +6,19 @@ To start games, you first need to start the TCP server, and then run multiple in
 
 Run TCP server with command:  
 
-    THEANO_FLAGS='device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32' python server.py 4 [9999]
+    cd ipc
+    export THEANO_FLAGS='cast_policy=numpy+floatX,device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32'
+    python server.py 4
     
-where `4` is the `batch_size` and the optional `9999` is the listenning port.
+where `4` is the `batch_size` and also your number of autogtp instances.
 
 Theano also supports `device=cpu` option for machines without GPU.
 
-Leela C++ connects to port `9999` by default. You can use a different port with argument `--tcp-port=[PORT]`. You have to modify `autogtp/Game.cpp` to add this argument to autogtp. Use `--tcp-port` argument when you want to run multiple servers (e.g., port `9999`  for `CPU`s, port `9998` for `GPU0`, port `9997` for `GPU1` )
+
+**Tips:** Increasing `batch_size` (e.g., 4, 8, 16, 32, 64, ...) to get the best performance (`seconds /  moves / games`)
 
 
-
-**Note:** please set `batch_size` equal to (or less than) number of Leela instances you want to run. TCP server will pause until enough instances connected to the server.  Also, wait until the TCP server ready before running autogtp instances.
-
-**Tips:** Increasing `batch_size` to get the best performance (`seconds /  moves / games`)
-
-
-**Testing:** As this is an experimental hack, please spend a few minutes compile and run leela with `USE_SERVER_TEST` flag on (in `src/config.h` file.) In this test mode, Leela will compare the results from server with results from OpenCL and print out `ERROR` in case of any discrepancy.
-
-You need to install `theano`, `trollius`, `six` python packages
+You need to install `theano`, `posix_ipc` and `six` python packages
 
 ~~*Note:* Current version does not support auto reloading the weight file.~~
 
@@ -33,7 +28,9 @@ Basically, you need to run:
 
     pip install -r requirements.txt
 
-TCP server should work with both python 2 and python 3.
+If you have anaconda, run:
+
+    conda install -c mila-udem pygpu theano six posix_ipc
 
 
 Visit [here](http://deeplearning.net/software/theano/install.html) for detail information about installing Theano on your OS.

@@ -8,15 +8,11 @@ import trollius
 from six.moves import urllib
 
 
-if len(sys.argv) < 2 or len(sys.argv) > 3:
-    print("Usage: %s batch-size [port]" % sys.argv[0])
+if len(sys.argv) != 2 :
+    print("Usage: %s batch-size" % sys.argv[0])
     sys.exit(-1)
 
 QLEN     = int(sys.argv[1]) # alias: Batch size
-PORT     = 9999
-
-if len(sys.argv) == 3:
-    PORT = int(sys.argv[2])
 
 print("Leela Zero TCP Neural Net Service")
 
@@ -87,6 +83,10 @@ print("Done!")
 weights, numBlocks, numFilters = loadWeight(txt)
 print(" %d channels and %d blocks" % (numFilters, numBlocks) )
 
+import threading
+netlock = threading.Lock()
+newNetWeight = None
+
 def LZN(ws, nb, nf):
     # ws: weights
     # nb: number of blocks
@@ -125,8 +125,8 @@ def LZN(ws, nb, nf):
         f0 = shared(w)
 
         conv0 = conv2d(inp, f0, input_shape=(QLEN, inc, 19, 19),
-                       border_mode='half', 
-                       filter_flip=False, 
+                       border_mode='half',
+                       filter_flip=False,
                        filter_shape=(outc, inc, kernel_size, kernel_size))
         b = loadW()  # zero bias
         if sum(abs(i) for i in b) != 0:
@@ -206,99 +206,18 @@ from theano.tensor.nnet.bn import batch_normalization_test as bn
 
 net = LZN(weights, numBlocks, numFilters)
 
+# inp = np.zeros( (1, 18, 19, 19), dtype=np.float32)
+# for i in range(10000):
+#     net[0].set_value(inp)
+#     out = net[1]()
 print("Done!")
-### For testing purpose
-# inp1 = [math.sin(i) for i in range(1*19*19*18) ]
-# inp2 = [math.cos(i) for i in range(1*19*19*18) ]
-# inp = []
-# inp.extend(inp1)
-# inp.extend(inp2)
-# inp.extend(inp1)
-# inp.extend(inp2)
-# inpp = np.asarray(inp, dtype=np.float32).reshape( (4,18,19,19) )
-# print(net(inpp))
-# for i in range(1000):
-#     net(inpp)
 
-
-import socket
-import sys
-
-inp = np.zeros( (QLEN, 19*19*18), dtype=np.float32)
-ADDRS = list(range(QLEN))
-print("\nBatch size = %d" % QLEN)
-
-import threading
-netlock = threading.Lock()
-newNetWeight = None
 
 import time
-import gc
-import queue
-
-inp_packet_Q = queue.Queue()
-out_packet_Q = queue.Queue()
-
-def myinputworker():
-    global PORT
-    import socketserver
-
-    class MyTCPHandler(socketserver.BaseRequestHandler):
-
-        def __init__(self, request, clientaddr, server):
-            print("A new connection from", clientaddr)
-            self.outQ = queue.Queue()
-            super().__init__(request, clientaddr, server)
-
-        def handle(self):
-            print("Data comming")
-            global inp_packet_Q
-            self.data = bytearray()
-            while True:
-                self.data.clear()
-                while len(self.data) < 4*18*19*19 :
-                    self.data.extend(self.request.recv(4*18*19*19))
-                
-                if len(self.data) > 19*19*18*4:
-                    print("ERROR: too long message!")
-                    while True: 
-                        pass
-
-                # print("data into Q")
-                inp_packet_Q.put( (self.data, self.outQ) )
-                out = self.outQ.get()
-                # print("Gotcha")
-                self.request.send(out)
-
-    class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-        allow_reuse_address = True
-        pass
-    # Create the server, binding to localhost on port 999
-    #9
-    # ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
-
-    server = ThreadedTCPServer(("127.0.0.1", PORT), MyTCPHandler)
-
-    # Activate the server; this will keep running until you
-    # interrupt the program with Ctrl-C
-    print("\nListening at", PORT)
-    try:
-        server.serve_forever()
-    except Exception as ex:
-        server.shutdown()
-        server.server_close()
-
-t1 = threading.Thread(target=myinputworker)
-t1.daemon = True
-t1.start()
-
-
-
-
 class MyWeightUpdater(threading.Thread):
     def run(self):
         global nethash, net, netlock, newNetWeight
-        print("\nStarting a thread for auto updating latest weights")        
+        print("\nStarting a thread for auto updating latest weights")
         while True:
             newhash = getLatestNNHash()
             if newhash != nethash:
@@ -309,52 +228,9 @@ class MyWeightUpdater(threading.Thread):
                 netlock.acquire(True)  # BLOCK HERE
                 newNetWeight = (weights, numBlocks, numFilters)
                 netlock.release()
-            time.sleep(10)                                      
+            time.sleep(10)
 
-t2 = MyWeightUpdater(name = "Thread-1") 
+t2 = MyWeightUpdater(name = "Thread-1")
 t2.daemon = True
-t2.start()                                
+t2.start()
 
-def myoutputworker():
-    global QLEN, out_packet_Q
-    while True:
-        TT, out = out_packet_Q.get()
-        for i in range(QLEN):
-            # print("sending ...")
-            TT[i].put(out[i,:].data)
-            #TT[i].request.send(out[i, :].data)
-
-t3 = threading.Thread(target=myoutputworker)
-t3.daemon = True
-t3.start()
-
-# our main processing loop
-while True:
-    TT = []
-    for i in range(QLEN):
-        data, outQ = inp_packet_Q.get()
-        # print("get Q", outQ)
-        TT.append(outQ)
-        inp[i, :] = np.frombuffer(data, dtype=np.float32, count = 19*19*18) 
-
-    # print("Compute")
-    # one batch ready
-    myinp = inp.reshape( (QLEN, 18, 19, 19) )
-    netlock.acquire(True)   # BLOCK HERE
-    if newNetWeight != None:
-        del net
-        gc.collect()  # hope that GPU memory is freed, not sure :-()
-        weights, numBlocks, numFilters = newNetWeight
-        print(" %d channels and %d blocks" % (numFilters, numBlocks) )
-        net = LZN(weights, numBlocks, numFilters)
-        print("...updated weight!")        
-        newNetWeight = None
-    netlock.release()
-
-
-    netinp, netnet = net
-    netinp.set_value(myinp)
-
-    out = netnet().astype(np.float32)
-    # print("Send data Q")
-    out_packet_Q.put (   (TT, out)  )

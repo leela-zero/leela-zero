@@ -1,213 +1,97 @@
+import time
+import mmap
+import os
 import sys
-import glob
-import gzip
-import random
-import math
 import numpy as np
-import trollius
-from six.moves import urllib
 
+import posix_ipc as ipc
 
-if len(sys.argv) < 2 or len(sys.argv) > 3:
-    print("Usage: %s batch-size [port]" % sys.argv[0])
+if len(sys.argv) != 2 :
+    print("Usage: %s batch-size" % sys.argv[0])
     sys.exit(-1)
 
-QLEN     = int(sys.argv[1]) # alias: Batch size
-PORT     = 9999
+bsize = int(sys.argv[1])
 
-if len(sys.argv) == 3:
-    PORT = int(sys.argv[2])
+name = "smlee"
+bs   = 4*18*19*19
+def createSMP(name):
+    smp= ipc.Semaphore(name, ipc.O_CREAT)
+    smp.unlink()
+    return ipc.Semaphore(name, ipc.O_CREAT)
 
-print("Leela Zero TCP Neural Net Service")
+sm = ipc.SharedMemory( name, flags = ipc.O_CREAT, size = 8 + bs*bsize + 8  + bsize*4*(19*19+2))
 
-def getLatestNNHash():
-    txt = urllib.request.urlopen("http://zero.sjeng.org/best-network-hash").read().decode()
-    net  = txt.split("\n")[0]
-    return net
-
-def downloadBestNetworkWeight(hash):
-    try:
-        return open(hash + ".txt", "r").read()
-    except Exception as ex:
-        txt = urllib.request.urlopen("http://zero.sjeng.org/networks/best-network").read().decode()
-        f = open(hash + ".txt", "w")
-        f.write(txt)
-        f.close()
-        return txt
+smp_counter =  createSMP("lee_counter")
 
 
-def loadWeight(text):
+smpA = []
+smpB = []
+for i in range(bsize):
+    smpA.append(createSMP("lee_A_%d" % i))
+    smpB.append(createSMP("lee_B_%d" % i))
 
-    linecount = 0
+# memory layout of sm:
+# counter |  ....... | ....... | ....... |
+#
 
-    def testShape(s, si):
-        t = 1
-        for l in s:
-            t = t * l
-        if t != si:
-            print("ERRROR: ", s, t, si)
+mem = mmap.mmap(sm.fd, sm.size)
+sm.close_fd()
 
-    FORMAT_VERSION = "1"
+mv  = memoryview(mem)
+counter = mv[0:8]
+inp     = mv[8:8+bs*bsize]
+memout =  mv[8+bs*bsize + 8:]
 
-    # print("Detecting the number of residual layers...")
+import nn
 
-    w = text.split("\n")
-    linecount = len(w)
+counter[0] = 0
+counter[1] = bsize
+memout[0] = bsize + 1
+smp_counter.release()
 
-    if w[0] != FORMAT_VERSION:
-        print("Wrong version")
-        sys.exit(-1)
+# waiting clients to connect
+print("Waiting for %d autogtp instances to run" % bsize)
+for i in range(bsize):
+    smpB[i].acquire()
 
-    count = len(w[2].split(" "))
-    # print("%d channels..." % count)
+print("OK Go!")
 
-    residual_blocks = linecount - (1 + 4 + 14)
+# now all clients connected
+dt = np.zeros( bs*bsize // 4, dtype=np.float32)
 
-    if residual_blocks % 8 != 0:
-        print("Inconsistent number of layers.")
-        sys.exit(-1)
+net = nn.net
+npout = np.zeros ( bsize*(19*19+2) )
+import gc
 
-    residual_blocks = residual_blocks // 8
-    # print("%d blocks..." % residual_blocks)
+while True:
+    # print(c)
 
-    plain_conv_layers = 1 + (residual_blocks * 2)
-    plain_conv_wts = plain_conv_layers * 4
+    # wait for data
+    for i in range(bsize):
+        smpB[i].acquire()
 
+    dt[:] = np.frombuffer(inp, dtype=np.float32, count=bs*bsize // 4)
 
-    weights = [ [float(t) for t in l.split(" ")] for l in w[1:] ]
-    return (weights, residual_blocks, count)
-
-print("\nLoading latest network")
-nethash = getLatestNNHash()
-print("Hash: " + nethash)
-print("Downloading weights")
-txt     = downloadBestNetworkWeight(nethash)
-print("Done!")
-
-weights, numBlocks, numFilters = loadWeight(txt)
-print(" %d channels and %d blocks" % (numFilters, numBlocks) )
-
-def LZN(ws, nb, nf):
-    # ws: weights
-    # nb: number of blocks
-    # nf: number of filters
-
-    global wc  # weight counter
-    wc = -1
-
-    def loadW():
-        global wc
-        wc = wc + 1
-        return ws[wc]
+    nn.netlock.acquire(True)   # BLOCK HERE
+    if nn.newNetWeight != None:
+        nn.net = None
+        gc.collect()  # hope that GPU memory is freed, not sure :-()
+        weights, numBlocks, numFilters = nn.newNetWeight
+        print(" %d channels and %d blocks" % (numFilters, numBlocks) )
+        nn.net = nn.LZN(weights, numBlocks, numFilters)
+        net = nn.net
+        print("...updated weight!")
+        nn.newNetWeight = None
+    nn.netlock.release()
 
 
-    def mybn(inp, nf, params, name):
-        #mean0 = T.vector(name + "_mean")
-        w = np.asarray(loadW(), dtype=np.float32).reshape( (nf) )
-        mean0 = shared(w)
-        # params.append(In(mean0, value=w))
+    net[0].set_value(dt.reshape( (bsize, 18, 19, 19) ) )
 
-        #var0  = T.vector(name + "_var")
-        w = np.asarray(loadW(), dtype=np.float32).reshape( (nf) )
-        var0 = shared(w)
-        #params.append(In(var0, value=w))
+    qqq = net[1]().astype(np.float32)
+    ttt = qqq.reshape(bsize * (19*19+2))
+    #print(len(ttt)*4, len(memout))
+    memout[:] = ttt.view(dtype=np.uint8)
 
-        bn0   = bn(inp, gamma=T.ones(nf), beta=T.zeros(nf), mean=mean0,
-                var=var0, axes = 'spatial', epsilon=1.0000001e-5)
+    for i in range(bsize):
+        smpA[i].release() # send result to client
 
-        return bn0
-
-    def myconv(inp, inc, outc, kernel_size, params, name):
-        global QLEN
-        #f0 = T.tensor4(name + '_filter')
-        w = np.asarray(loadW(), dtype=np.float32).reshape( (outc, inc, kernel_size, kernel_size) )
-        #params.append(In(f0, value=w))
-        f0 = shared(w)
-
-        conv0 = conv2d(inp, f0, input_shape=(QLEN, inc, 19, 19),
-                       border_mode='half',
-                       filter_flip=False,
-                       filter_shape=(outc, inc, kernel_size, kernel_size))
-        b = loadW()  # zero bias
-        if sum(abs(i) for i in b) != 0:
-            print("ERROR! Should be 0")
-
-        return conv0
-
-    def residualBlock(inp, nf, params, name):
-        conv0 = myconv(inp, nf, nf, 3, params, name + "_conv0")
-        bn0   = mybn(conv0, nf, params, name + "_bn0")
-        relu0 = relu(bn0)
-
-        conv1 = myconv(relu0, nf, nf, 3, params, name + "_conv1")
-        bn1   = mybn(conv1, nf, params, name + "_bn1")
-
-        sum0  = inp + bn1
-        out   = relu(sum0)
-
-        return out
-
-    def myfc(inp, insize, outsize, params, name):
-        # W0 = T.matrix(name + '_W')
-        w = np.asarray(loadW(), dtype=np.float32).reshape( (outsize, insize) ).T
-        #params.append(In(W0, value=w))
-        W0 = shared(w)
-
-        # b0 = T.vector(name + '_b')
-        b = np.asarray(loadW(), dtype=np.float32).reshape( (outsize) )
-        # params.append(In(b0, value=b))
-        b0 = shared(b)
-
-        out = tensor.dot(inp, W0) + b0
-        return out
-
-
-    params = []
-    x = shared(np.zeros( (QLEN, 18, 19, 19), dtype=np.float32 ) ) # T.tensor4('input'))
-    # params.append(x)
-    conv0 = myconv(x, 18, nf, 3, params, "conv0")
-    bn0   = mybn(conv0, nf, params, "bn0")
-
-    relu0 = relu(bn0)
-    inp = relu0
-
-    for i in range(nb):
-        inp = residualBlock(inp, nf, params, "res%d" % (i+1))
-
-    polconv0 = myconv(inp, nf, 2, 1, params, "polconv0")
-    polbn0   = mybn(polconv0, 2, params, "polbn0")
-    polrelu0 = relu(polbn0)
-    polfcinp = polrelu0.flatten(ndim=2)
-    polfcout = myfc(polfcinp, 19*19*2, 19*19+1, params, "polfc")
-
-    out = polfcout
-
-    valconv0 = myconv(inp, nf, 1, 1, params, "valconv0")
-    valbn0   = mybn(valconv0, 1, params, "valbn0")
-    valrelu0 = relu(valbn0)
-
-    valfc0inp = valrelu0.flatten(ndim=2)
-    valfc0out = myfc(valfc0inp, 19*19, 256, params, "valfc0")
-    valrelu0  = relu(valfc0out)
-
-    valfc1out = myfc(valrelu0, 256, 1, params, "valfc1")
-    valout  = valfc1out
-
-    out = T.concatenate( [polfcout, T.tanh(valout)], axis=1 )
-    return (x, function(params, out))
-
-print("\nCompling the latest neural network")
-
-from theano import *
-import theano.tensor as T
-from theano.tensor.nnet import conv2d
-from theano.tensor.nnet import relu
-from theano.tensor.nnet.bn import batch_normalization_test as bn
-
-net = LZN(weights, numBlocks, numFilters)
-
-# inp = np.zeros( (1, 18, 19, 19), dtype=np.float32)
-# for i in range(10000):
-#     net[0].set_value(inp)
-#     out = net[1]()
-print("Done!")
