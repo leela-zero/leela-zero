@@ -35,7 +35,7 @@ sm.close_fd()
 
 mv  = memoryview(mem)
 counter = mv[0:8]
-inp     = mv[8:]
+inp     = mv[8:8+bs*bsize]
 memout =  mv[8+bs*bsize + 8:]
 
 import server
@@ -66,7 +66,7 @@ while True:
     for i in range(bsize):
         smpB[i].acquire()
 
-    dt[:] = np.frombuffer(mem, dtype=np.float32, count=bs*bsize // 4, offset=1)
+    dt[:] = np.frombuffer(inp, dtype=np.float32, count=bs*bsize // 4)
     net[0].set_value(dt.reshape( (bsize, 18, 19, 19) ) )
     qqq = net[1]()#.astype(np.float32)
     ttt = qqq.reshape(bsize * (19*19+2))

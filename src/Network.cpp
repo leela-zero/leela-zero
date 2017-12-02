@@ -96,7 +96,7 @@ int batch_size;
 unsigned char * input_mem;
 unsigned char * output_mem;
 unsigned char myid;
-shared_memory_object shmem{open_only, "smleela", read_write};
+shared_memory_object shmem{open_only, "smlee", read_write};
 mapped_region region{shmem, read_write};
 
 void Network::benchmark(GameState * state) {
