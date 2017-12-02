@@ -79,6 +79,8 @@
     <CustomBuild Include="..\..\autogtp\Validation.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\curl.exe" />
+    <CustomBuild Include="..\gzip.exe" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\autogtp\README.md" />

@@ -55,6 +55,20 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\autogtp\README.md" />
+    <CustomBuild Include="..\curl.exe">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">copy %(Identity) $(OutputPath)</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Identity) </Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">copy %(Identity) $(OutputPath)</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Identity) </Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\gzip.exe">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">copy %(Identity) $(OutputPath)</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Identity)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">copy %(Identity) $(OutputPath)</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Identity)</Outputs>
+    </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{B12702AD-ABFB-343A-A199-8E24837244A3}</ProjectGuid>
