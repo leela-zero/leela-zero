@@ -17,6 +17,7 @@
 */
 
 #include <cmath>
+#include <random>
 #include <QDir>
 #include <QFileInfo>
 #include <QThread>
@@ -29,10 +30,21 @@ constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
 
 void ProductionWorker::run() {
+    std::random_device rd;
+    std::ranlux48 gen(rd());
+    std::uniform_real_distribution<> rand_dist(0.0, 1.0);
     do {
         auto start = std::chrono::high_resolution_clock::now();
+        auto option = m_option;
+        auto pick = rand_dist(gen);
+        // For now must manually check the resign rate
+        // for new networks with resign_analysis.py
+        QString resignpct = (pick < 0.2) ? "0" : "5";
+        // Prepend because option must have "-w " on the end
+        option = " -r " + resignpct + option;
+        QTextStream(stdout) << "option=" << option << endl;
         m_mutex.lock();
-        Game game(m_network, m_option);
+        Game game(m_network, option);
         m_mutex.unlock();
         if (!game.gameStart(min_leelaz_version)) {
             return;
@@ -77,7 +89,7 @@ void ProductionWorker::run() {
 }
 
 void ProductionWorker::init(const QString& gpuIndex, const QString& net) {
-    m_option = " -g -q -d -n -m 30 -r 0 -w ";
+    m_option = " -g -q -d -n -m 30 -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
@@ -371,6 +383,7 @@ void Production::uploadData(const QString& file) {
         QTextStream(stdout) << outstr;
         dir.remove(sgf_file);
         dir.remove(data_file);
+        dir.remove(debug_data_file);
     }
     return;
 }
