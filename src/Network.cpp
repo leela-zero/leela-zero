@@ -32,6 +32,9 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include <sys/socket.h>
+#include <boost/interprocess/shared_memory_object.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/sync/named_semaphore.hpp>
 
 
 #include "Im2Col.h"
@@ -87,6 +90,15 @@ std::array<float, 256> ip1_val_b;
 std::array<float, 256> ip2_val_w;
 std::array<float, 1> ip2_val_b;
 
+
+using namespace boost::interprocess;
+int batch_size;
+unsigned char * input_mem;
+unsigned char * output_mem;
+unsigned char myid;
+shared_memory_object shmem{open_only, "smleela", read_write};
+mapped_region region{shmem, read_write};
+
 void Network::benchmark(GameState * state) {
     {
         int BENCH_AMOUNT = 1600;
@@ -116,6 +128,43 @@ void Network::benchmark(GameState * state) {
 }
 
 void Network::initialize(void) {
+#ifdef USE_IPC
+    myprintf("Initializing shared memory and semaphores\n");
+    offset_t size;
+    unsigned char * mem = static_cast<unsigned char*>(region.get_address());
+
+
+    batch_size = mem[1];
+    myprintf("batch size: %d\n", batch_size);
+    shmem.truncate(8 + 4*batch_size*18*19*19 + 8 + batch_size*4*(19*19+2));
+
+    shmem.get_size(size);
+    myprintf("size %d\n", size);
+
+    named_semaphore sem_counter{open_only, "lee_counter"};
+    sem_counter.wait();
+    myid = mem[0];
+    mem[0] = mem[0] + 1;
+    sem_counter.post();
+
+    myprintf("My ID is %d\n", myid);
+
+    input_mem = mem + 8 + myid * 4*18*19*19;
+    output_mem = mem + 8 + 4*batch_size*18*19*19 + 8 + myid * 4*(19*19+2);
+
+    char name[100];
+
+    sprintf(name, "lee_A_%d", myid);
+    named_semaphore sem_A{open_only, name};
+
+    sprintf(name, "lee_B_%d", myid);
+    named_semaphore sem_B{open_only, name};
+    sem_B.post();
+
+
+
+#endif
+
 #ifdef USE_OPENCL
     myprintf("Initializing OpenCL\n");
     opencl.initialize();
@@ -423,6 +472,7 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<float> softmax_data((width * height) + 1);
     std::vector<float> winrate_data(256);
     std::vector<float> winrate_out(1);
+#ifndef USE_IPC
     for (int c = 0; c < channels; ++c) {
         for (int h = 0; h < height; ++h) {
             for (int w = 0; w < width; ++w) {
@@ -432,24 +482,31 @@ Network::Netresult Network::get_scored_moves_internal(
             }
         }
     }
-#ifdef USE_SERVER
-    float myout[19*19+2]; 
-    int fd= thread_pool.tcpsocket;
-    // socklen_t len = sizeof(thread_pool.servaddr);
-    int recvlen = 0;
+#endif
+#ifdef USE_IPC
 
-    write(fd, &input_data[0], 4*18*19*19);
+    char name[100];
 
-    while (recvlen < (19*19+2)*4) {
-        recvlen += read(fd, myout + (recvlen / 4), 4*(19*19+2) - recvlen);
-    }
 
-    if (recvlen != 4*(19*19+2)) {
-        printf("ERROR:  TCP output packet too long ???\n");
-        while (1) {
-            // nothing; 
+    sprintf(name, "lee_A_%d", myid);
+    named_semaphore sem_A{open_only, name};
+
+    sprintf(name, "lee_B_%d", myid);
+    named_semaphore sem_B{open_only, name};
+
+    float * my_input_data = reinterpret_cast<float *>(input_mem);
+    for (int c = 0; c < channels; ++c) {
+        for (int h = 0; h < height; ++h) {
+            for (int w = 0; w < width; ++w) {
+                auto rot_idx = rotate_nn_idx(h * 19 + w, rotation);
+                my_input_data[(c * height + h) * width + w] =
+                    (float)planes[c][rot_idx];
+            }
         }
     }
+    sem_B.post();
+    sem_A.wait();
+    float * myout = reinterpret_cast<float *>(output_mem);
 
     std::vector<float> my_policy_out(myout, myout + 19*19+1); 
 
@@ -461,7 +518,7 @@ Network::Netresult Network::get_scored_moves_internal(
         
     // Uncomment bellow for testing purpose, comparing with the OpenCL results
     // BEGIN TESTING HERE
-#ifdef USE_SERVER_TEST
+#ifdef USE_IPC_TEST
     opencl_net.forward(input_data, output_data);
     // Get the moves
     convolve<1, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
