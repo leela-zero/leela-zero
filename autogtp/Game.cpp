@@ -65,17 +65,23 @@ void Game::error(int errnum) {
 }
 
 bool Game::eatNewLine() {
-    char readBuffer[256];
+    char readBuffer[256] = {0};
+    qint64 readCount = 0;
     // Eat double newline from GTP protocol
     if (!waitReady()) {
         error(Game::PROCESS_DIED);
         return false;
     }
-    auto readCount = readLine(readBuffer, 256);
-    if(readCount < 0) {
-        error(Game::WRONG_GTP);
-        return false;
-    }
+    do {
+        waitForReadyRead(100);
+        readCount = readLine(readBuffer, 256);
+        if (readCount < 0 || readCount > 1 || (readCount == 1 && readBuffer[0] != '\n')) {
+            QTextStream(stdout) << "Game::eatNewLine: readCount=" << readCount << endl;
+            QTextStream(stdout) << "Game::eatNewLine: readBuffer=" << readBuffer << endl;
+            error(Game::WRONG_GTP);
+            return false;
+        }
+    } while (readBuffer[0] != '\n');
     return true;
 }
 
@@ -89,6 +95,7 @@ bool Game::sendGtpCommand(QString cmd) {
     char readBuffer[256];
     int readCount = readLine(readBuffer, 256);
     if (readCount <= 0 || readBuffer[0] != '=') {
+        QTextStream(stdout) << "sendGtpCommand: " << cmd << endl;
         QTextStream(stdout) << "GTP: " << readBuffer << endl;
         error(Game::WRONG_GTP);
         return false;
@@ -120,8 +127,12 @@ void Game::checkVersion(const VersionTuple &min_version) {
             QTextStream(stdout) << "Before GTP: " << readBuffer << endl;
     } while (readBuffer[0] != '=');
 
+    QTextStream(stdout) << "Enter GTP " << endl;
+    QTextStream(stdout) << "GTP: Leela Zero version " << readBuffer << endl;
+
     // We expect to read at last "=, space, something"
     if (readCount <= 3 || readBuffer[0] != '=') {
+        QTextStream(stdout) << "checkVersion: line " << __LINE__ << endl;
         QTextStream(stdout) << "GTP: " << readBuffer << endl;
         error(Game::WRONG_GTP);
         exit(EXIT_FAILURE);
