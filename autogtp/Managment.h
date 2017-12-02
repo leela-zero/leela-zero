@@ -21,12 +21,19 @@
 #include <QAtomicInt>
 #include <QMutex>
 #include <QString>
+<<<<<<< HEAD:autogtp/Production.h
 #include <QTextStream>
 #include <QThread>
 #include <QVector>
+=======
+#include <QVector>
+#include <QTextStream>
+>>>>>>> distributed validation WIP:autogtp/Managment.h
 #include <chrono>
 #include <stdexcept>
+#include "Worker.h"
 
+<<<<<<< HEAD:autogtp/Production.h
 class ProductionWorker : public QThread {
     Q_OBJECT
 public:
@@ -55,23 +62,24 @@ private:
     QMutex m_mutex;
     int m_state;
 };
+=======
+>>>>>>> distributed validation WIP:autogtp/Managment.h
 
-class Production : public QObject {
+class Management : public QObject {
     Q_OBJECT
-
 public:
-    Production(const int gpus,
+    Management(const int gpus,
                const int games,
                const QStringList& gpuslist,
                const int ver,
                const QString& keep,
                const QString& debug,
                QMutex* mutex);
-    ~Production() = default;
+    ~Management() = default;
     void startGames();
-
 public slots:
-    void getResult(const QString& file, float duration);
+    void getProduct(const QString& file, float duration, int index);
+    void getValidation(Sprt::GameResult result, int index);
 
 private:
 
@@ -85,13 +93,18 @@ private:
 
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
-    QVector<ProductionWorker> m_gamesThreads;
+    QVector<Worker*> m_gamesThreads;
     int m_games;
     int m_gpus;
     QStringList m_gpusList;
     int m_gamesPlayed;
+<<<<<<< HEAD:autogtp/Production.h
     QAtomicInt m_movesMade;
     QString m_network;
+=======
+    QString m_firstNetwork;
+    QString m_secondNetwork;
+>>>>>>> distributed validation WIP:autogtp/Managment.h
     QString m_keepPath;
     QString m_debugPath;
     int m_version;
@@ -99,9 +112,13 @@ private:
     bool fetchBestNetworkHash();
     void fetchBestNetwork();
     void uploadData(const QString& file);
+    void uploadResult(Sprt::GameResult result);
     void printTimingInfo(float duration);
     bool updateNetwork();
-    bool networkExists();
+    bool networkExists(const QString &name);
+    int getWork();
+    void fetchValidNetworks();
+    void setThreads(int index);
 };
 
 #endif

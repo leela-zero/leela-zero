@@ -28,34 +28,8 @@
 #include "Game.h"
 #include "Results.h"
 
-class ValidationWorker : public QThread {
-    Q_OBJECT
-public:
-    enum {
-        RUNNING = 0,
-        FINISHING
-    };
-    ValidationWorker() = default;
-    ValidationWorker(const ValidationWorker& w) : QThread(w.parent()) {}
-    ~ValidationWorker() = default;
-    void init(const QString& gpuIndex,
-              const QString& firstNet,
-              const QString& secondNet,
-              const QString& keep,
-              int expected);
-    void run() override;
-    void doFinish() { m_state.store(FINISHING); }
 
-signals:
-    void resultReady(Sprt::GameResult r, int net_one_color);
-private:
-    QString m_firstNet;
-    QString m_secondNet;
-    int m_expected;
-    QString m_keepPath;
-    QString m_option;
-    QAtomicInt m_state;
-};
+
 
 class Validation : public QObject {
     Q_OBJECT

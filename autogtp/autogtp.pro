@@ -12,12 +12,14 @@ SOURCES += main.cpp \
     Game.cpp \
     SPRT.cpp \
     Validation.cpp \
-    Production.cpp \
-    Results.cpp
+    Distributedval.cpp \
+    Worker.cpp \
+    Managment.cpp
 
 HEADERS += \
     Game.h \
     SPRT.h \
     Validation.h \
-    Production.h \
-    Results.h
+   Distributedval.h \
+    Worker.h \
+    Managment.h

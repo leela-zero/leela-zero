@@ -88,9 +88,9 @@ void ValidationWorker::run() {
                 m_expected = Game::BLACK;
             }
         }
-            
-        
-   } while (m_state.load() != FINISHING);
+
+    } while (m_state.load() != FINISHING);
+
 }
 
 void ValidationWorker::init(const QString& gpuIndex,

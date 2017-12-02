@@ -22,77 +22,16 @@
 #include <QFileInfo>
 #include <QThread>
 #include <QCryptographicHash>
-#include "Production.h"
+#include "Managment.h"
 #include "Game.h"
 
 constexpr int RETRY_DELAY_MIN_SEC = 30;
 constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
 
-void ProductionWorker::run() {
-     do {
-         auto start = std::chrono::high_resolution_clock::now();
-         m_mutex.lock();
-         Game game(m_network, m_option);
-         m_mutex.unlock(); 
-         if(!game.gameStart(min_leelaz_version)) {
-             return;
-         }
-         do {
-             game.move();
-             if(!game.waitForMove()) {
-                 return;
-             }
-             game.readMove();
-         } while (game.nextMove() && m_state == RUNNING);
-         switch(m_state) {
-         case RUNNING:
-         {
-             QTextStream(stdout) << "Game has ended." << endl;
-             if (game.getScore()) {
-                 game.writeSgf();
-                 game.dumpTraining();
-             }
-             auto end = std::chrono::high_resolution_clock::now();
-             auto gameDuration =
-                std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-             emit resultReady(game.getFile(), gameDuration);
-             QTextStream(stdout) << "Stopping engine." << endl;
-             game.gameQuit();
-             break;
-         }
-         case NET_CHANGE:
-         {
-             QTextStream(stdout) << "Best Network has change: restarting." << endl;
-             m_state = RUNNING;
-             QTextStream(stdout) << "Stopping engine." << endl;
-             game.gameQuit();
-             break;
-         }
-         case FINISHING:
-         {
-             QTextStream(stdout) << "Program ends: exiting." << endl;
-             QTextStream(stdout) << "Stopping engine." << endl;
-             game.gameQuit();
-             break;
-         }
-        }             
-    } while (m_state != FINISHING);
-}
 
-void ProductionWorker::init(const QString& gpuIndex,
-                            const QString& net,
-                            QAtomicInt* movesMade) {
-    m_option = " -g -t 1 -q -d -n -m 30 -w ";
-    if (!gpuIndex.isEmpty()) {
-        m_option.prepend(" --gpu=" + gpuIndex + " ");
-    }
-    m_network = net;
-    m_movesMade = movesMade;
-    m_state = RUNNING;
-}
+Management::Management(const int gpus,
 
-Production::Production(const int gpus,
                        const int games,
                        const QStringList& gpuslist,
                        const int ver,
@@ -111,8 +50,11 @@ Production::Production(const int gpus,
     m_version(ver) {
 }
 
-bool Production::updateNetwork() {
-    for (auto retries = 0; retries < MAX_RETRIES; retries++) {
+
+bool Management::updateNetwork() {
+    auto retries = 0;
+    do {
+
         try {
             auto new_network = fetchBestNetworkHash();
             fetchBestNetwork();
@@ -136,7 +78,7 @@ bool Production::updateNetwork() {
     exit(EXIT_FAILURE);
 }
 
-void Production::startGames() {
+void Management::startGames() {
     m_start = std::chrono::high_resolution_clock::now();
     m_mainMutex->lock();
     updateNetwork();
@@ -144,38 +86,110 @@ void Production::startGames() {
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
         for(int game = 0; game < m_games; ++game) {
             int thread_index = gpu * m_games + game;
-            connect(&m_gamesThreads[thread_index],
-                    &ProductionWorker::resultReady,
-                    this,
-                    &Production::getResult,
-                    Qt::DirectConnection);
-            if (m_gpusList.isEmpty()) {
+
+            if(m_gpusList.isEmpty()) {
+
                 myGpu = "";
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[thread_index].init(myGpu, m_network, &m_movesMade);
+
+            int job = getWork();
+            switch(job) {
+                case Worker::PRODUCTION:
+                    m_gamesThreads[thread_index] = new ProductionWorker(thread_index);
+                    connect(m_gamesThreads[thread_index], &ProductionWorker::resultReady,
+                            this, &Management::getProduct,
+                            Qt::DirectConnection);
+                    ((ValidationWorker*) m_gamesThreads[thread_index])->init(myGpu, m_firstNetwork);
+                    break;
+                case Worker::VALIDATION:
+                    m_gamesThreads[thread_index] = new ValidationWorker(thread_index);
+                    connect(m_gamesThreads[thread_index], &ValidationWorker::resultReady,
+                            this, &Management::getValidation,
+                            Qt::DirectConnection);
+                    ((ValidationWorker*) m_gamesThreads[thread_index])->init(myGpu, m_firstNetwork, m_secondNetwork, m_keepPath, Game::BLACK);
+                    break;
+            }
+
             m_gamesThreads[thread_index].start();
         }
     }
 }
 
-void Production::getResult(const QString& file, float duration) {
+void Management::recreateThreads(int index) {
+    QString myGpu;
+    if(m_gpusList.isEmpty()) {
+        myGpu = "";
+    } else {
+        myGpu = m_gpusList.at(index / m_games);
+    }
+    int job = getWork();
+    switch(job) {
+        case Worker::PRODUCTION:
+        {
+            if(m_gamesThreads[index]->myJob() != job) {
+                delete m_gamesThreads[index];
+                m_gamesThreads[index] = new ProductionWorker(index);
+            }
+            if (!updateNetwork()) {
+                for(int i = 0; i < m_gpus * m_games; i++) {
+                    if(m_gamesThreads[i]->myJob() == Worker::PRODUCTION) {
+                        m_gamesThreads[i]->newNetwork(m_firstNetwork);
+                    }
+                }
+            }
+            ((ProductionWorker*) m_gamesThreads[index])->init(myGpu, m_firstNetwork);
+            ((ProductionWorker*) m_gamesThreads[index])->start();
+            break;
+        }
+        case Worker::VALIDATION:
+        {
+            if(m_gamesThreads[index]->myJob() != job) {
+                delete m_gamesThreads[index];
+                m_gamesThreads[index] = new ValidationWorker(index);
+            }
+            QString myGpu;
+            if(m_gpusList.isEmpty()) {
+                myGpu = "";
+            } else {
+                myGpu = m_gpusList.at(gpu);
+            }
+            if (!updateValidationNetwork()) {
+                for(int i = 0; i < m_gpus * m_games; i++) {
+                    if(m_gamesThreads[i]->myJob() == Worker::VALIDATION) {
+                        m_gamesThreads[i]->newNetworks(m_firstNetwork, m_secondNetwork);
+                    }
+                }
+            }
+            ((ValidationWorker*) m_gamesThreads[index])->init(myGpu, m_firstNetwork, m_secondNetwork, m_keepPath, Game::BLACK);
+            ((ValidationWorker*) m_gamesThreads[index])->start();
+            break;
+        }
+    }
+}
+
+void Management::getProduct(const QString& file, float duration, int index) {
     m_syncMutex.lock();
     m_gamesPlayed++;
     printTimingInfo(duration);
     uploadData(file);
-    if (!updateNetwork()) {
-        for(int i = 0; i < m_gpus * m_games; i++)
-            m_gamesThreads[i].newNetwork(m_network);
-    }
+    recreateThreads(index);
     m_syncMutex.unlock();
 }
 
-void  Production::printTimingInfo(float duration) {
-    if (m_movesMade == 0 || m_gamesPlayed == 0) {
-        return;
-    }
+void Management::getValidation(Sprt::GameResult result, int index) {
+    m_syncMutex.lock();
+    m_gamesPlayed++;
+    printTimingInfo(duration);
+    uploadResult(result);
+    recreateThreads(index);
+    m_syncMutex.unlock();
+}
+
+
+void  Management::printTimingInfo(float duration) {
+
     auto game_end = std::chrono::high_resolution_clock::now();
     auto total_time_s =
         std::chrono::duration_cast<std::chrono::seconds>(game_end - m_start);
@@ -192,7 +206,7 @@ void  Production::printTimingInfo(float duration) {
 }
 
 
-bool Production::fetchBestNetworkHash() {
+bool Management::fetchBestNetworkHash() {
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
@@ -239,7 +253,7 @@ bool Production::fetchBestNetworkHash() {
     return false;
 }
 
-bool Production::networkExists() {
+bool Management::networkExists() {
     if (QFileInfo::exists(m_network)) {
         QFile f(m_network);
         if (f.open(QFile::ReadOnly)) {
@@ -269,7 +283,7 @@ bool Production::networkExists() {
     return false;
 }
 
-void Production::fetchBestNetwork() {
+void Management::fetchBestNetwork() {
     if (networkExists()) {
         QTextStream(stdout) << "Already downloaded network." << endl;
         return;
@@ -325,7 +339,7 @@ void Production::fetchBestNetwork() {
     return;
 }
 
-void Production::uploadData(const QString& file) {
+void Management::uploadData(const QString& file) {
     // Find output SGF and txt files
     QDir dir;
     QStringList filters;
