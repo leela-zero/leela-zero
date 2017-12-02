@@ -101,14 +101,25 @@ bool Game::sendGtpCommand(QString cmd) {
 }
 
 void Game::checkVersion(const VersionTuple &min_version) {
+    int readCount = 0;
+    char readBuffer[256] = {0};
+
+    // request version first to ensure that we have something to read
     write(qPrintable("version\n"));
     waitForBytesWritten(-1);
     if (!waitReady()) {
         error(Game::LAUNCH_FAILURE);
         exit(EXIT_FAILURE);
     }
-    char readBuffer[256];
-    int readCount = readLine(readBuffer, 256);
+
+    // skip error messages and read version
+    do {
+        waitForReadyRead(10);
+        readCount = readLine(readBuffer, 256);
+        if (readCount && readBuffer[0] != '=')
+            QTextStream(stdout) << "Before GTP: " << readBuffer << endl;
+    } while (readBuffer[0] != '=');
+
     // We expect to read at last "=, space, something"
     if (readCount <= 3 || readBuffer[0] != '=') {
         QTextStream(stdout) << "GTP: " << readBuffer << endl;
