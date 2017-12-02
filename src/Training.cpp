@@ -195,10 +195,7 @@ void Training::dump_stats(OutputChunker& outchunk) {
     outchunk.append(out.str());
     for (const auto& step : m_data) {
         auto out = std::stringstream{};
-        out << "netwinrate " << step.netwinrate << std::endl;
-        out << "root_uctwinrate " << step.root_uctwinrate << std::endl;
-        out << "child_uctwinrate " << step.child_uctwinrate << std::endl;
-        out << "bestmovevisits " << step.bestmovevisits << std::endl;
+        out << step.netwinrate << " " << step.root_uctwinrate << " " << step.child_uctwinrate << " " << step.bestmovevisits << std::endl;
         outchunk.append(out.str());
     }
 }

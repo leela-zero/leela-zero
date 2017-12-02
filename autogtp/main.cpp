@@ -113,12 +113,18 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
     }
+    if (parser.isSet(keepDebugOption)) {
+        if (!QDir().mkpath(parser.value(keepDebugOption))) {
+            cerr << "Couldn't create output directory for self-play Debug files!"
+                 << endl;
+            return EXIT_FAILURE;
+        }
+    }
     QMutex mutex;
     if(competition) {
         Validation validate(gpusNum, gamesNum, gpusList,
                             netList.at(0), netList.at(1),
                             parser.value(keepSgfOption),
-                            parser.value(keepDebugOption),
                             &mutex);
         validate.startGames();
         mutex.lock();
