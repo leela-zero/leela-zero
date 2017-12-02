@@ -267,18 +267,18 @@ void convolve(const std::vector<net_t>& input,
     // fixed for 19x19
     constexpr unsigned int width = 19;
     constexpr unsigned int height = 19;
-    constexpr unsigned int spatial_out = width * height;
+    constexpr unsigned int board_squares = width * height;
     constexpr unsigned int filter_len = filter_size * filter_size;
-
-    auto channels = int(weights.size() / (biases.size() * filter_len));
-    unsigned int filter_dim = filter_len * channels;
+    const auto input_channels = weights.size() / (biases.size() * filter_len);
+    const auto filter_dim = filter_len * input_channels;
+    assert(outputs * board_squares == output.size());
 
     std::vector<float> col(filter_dim * width * height);
-    im2col<filter_size>(channels, input, col);
+    im2col<filter_size>(input_channels, input, col);
 
     // Weight shape (output, input, filter_size, filter_size)
-    // 96 22 5 5
-    // outputs[96,19x19] = weights[96,22x9] x col[22x9,19x19]
+    // 96 22 3 3
+    // outputs[96,19x19] = weights[96,22x3x3] x col[22x3x3,19x19]
     // C←αAB + βC
     // M Number of rows in matrices A and C.
     // N Number of columns in matrices B and C.
@@ -290,15 +290,15 @@ void convolve(const std::vector<net_t>& input,
 
     cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 // M        N            K
-                outputs, spatial_out, filter_dim,
+                outputs, board_squares, filter_dim,
                 1.0f, &weights[0], filter_dim,
-                &col[0], spatial_out,
-                0.0f, &output[0], spatial_out);
+                &col[0], board_squares,
+                0.0f, &output[0], board_squares);
 
     for (unsigned int o = 0; o < outputs; o++) {
-        for (unsigned int b = 0; b < spatial_out; b++) {
-            output[(o * spatial_out) + b] =
-                biases[o] + output[(o * spatial_out) + b];
+        for (unsigned int b = 0; b < board_squares; b++) {
+            output[(o * board_squares) + b] =
+                biases[o] + output[(o * board_squares) + b];
         }
     }
 }
@@ -404,11 +404,11 @@ Network::Netresult Network::get_scored_moves(
 Network::Netresult Network::get_scored_moves_internal(
     GameState * state, NNPlanes & planes, int rotation) {
     assert(rotation >= 0 && rotation <= 7);
+    assert(INPUT_CHANNELS == planes.size());
     constexpr int width = 19;
     constexpr int height = 19;
-    assert(INPUT_CHANNELS == planes.size());
+    const auto convolve_channels = conv_pol_w.size() / conv_pol_b.size();
     std::vector<net_t> input_data;
-    auto convolve_channels = conv_pol_w.size() / conv_pol_b.size();
     std::vector<net_t> output_data(convolve_channels * width * height);
     std::vector<float> policy_data_1(2 * width * height);
     std::vector<float> policy_data_2(2 * width * height);
