@@ -24,7 +24,30 @@
 #include <QVector>
 #include <QAtomicInt>
 #include "SPRT.h"
-#include "Game.h"
+#include "../autogtp/Game.h"
+
+class ValidationWorker : public QThread {
+    Q_OBJECT
+public:
+    ValidationWorker() = default;
+    ValidationWorker(const ValidationWorker& w) : QThread(w.parent()) {}
+    ~ValidationWorker() = default;
+    void init(const QString& gpuIndex,
+              const QString& firstNet,
+              const QString& secondNet,
+              const QString& keep,
+              int expected);
+    void run() override;
+
+signals:
+    void resultReady(Sprt::GameResult r);
+private:
+    QString m_firstNet;
+    QString m_secondNet;
+    int m_expected;
+    QString m_keepPath;
+    QString m_option;
+};
 
 
 class Validation : public QObject {

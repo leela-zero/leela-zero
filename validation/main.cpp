@@ -28,17 +28,17 @@
 #include <chrono>
 #include <QCommandLineParser>
 #include <iostream>
-#include "Game.h"
-#include "Managment.h"
+#include "../autogtp/Game.h"
+#include "Validation.h"
 
-constexpr int AUTOGTP_VERSION = 6;
+constexpr int VALIDATION_VERSION = 1;
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version{0, 6};
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
-    app.setApplicationName("autogtp");
-    app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
+    app.setApplicationName("validation");
+    app.setApplicationVersion(QString("v%1").arg(VALIDATION_VERSION));
 
     QTimer::singleShot(0, &app, SLOT(quit()));
 
@@ -46,8 +46,6 @@ int main(int argc, char *argv[]) {
     parser.addHelpOption();
     parser.addVersionOption();
 
-    QCommandLineOption competitionOption(
-        {"c", "competition"}, "Play two networks against each other.");
     QCommandLineOption networkOption(
         {"n", "network"},
             "Networks to use as players in competition mode (two are needed).",
@@ -65,7 +63,6 @@ int main(int argc, char *argv[]) {
             "Save SGF files after each self-play game.",
             "output directory");
 
-    parser.addOption(competitionOption);
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(networkOption);
@@ -73,9 +70,8 @@ int main(int argc, char *argv[]) {
 
     // Process the actual command line arguments given by the user
     parser.process(app);
-    bool competition  = parser.isSet(competitionOption);
     QStringList netList = parser.values(networkOption);
-    if(competition && netList.count() != 2) {
+    if(netList.count() != 2) {
         parser.showHelp();
     }
     int gamesNum = parser.value(gamesNumOption).toInt();
@@ -86,20 +82,9 @@ int main(int argc, char *argv[]) {
     }
 
     // Map streams
-    QTextStream cin(stdin, QIODevice::ReadOnly);
     QTextStream cout(stdout, QIODevice::WriteOnly);
-#if defined(LOG_ERRORS_TO_FILE)
-    // Log stderr to file
-    QFile caFile("output.txt");
-    caFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append);
-    if(!caFile.isOpen()){
-        qDebug() << "- Error, unable to open" << "outputFilename" << "for output";
-    }
-    QTextStream cerr(&caFile);
-#else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
-#endif
-    cerr << "autogtp v" << AUTOGTP_VERSION << endl;
+    cerr << "validation v" << VALIDATION_VERSION << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"
@@ -108,8 +93,10 @@ int main(int argc, char *argv[]) {
         }
     }
     QMutex mutex;
-    Management boss(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), &mutex);
-    boss.giveAssignments();
+    Validation validate(gpusNum, gamesNum, gpusList,
+                        netList.at(0), netList.at(1),
+                        parser.value(keepSgfOption), &mutex);
+    validate.startGames();
     mutex.lock();
     cerr.flush();
     cout.flush();

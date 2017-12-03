@@ -17,9 +17,93 @@
 */
 
 #include "Validation.h"
-#include "Game.h"
+#include "../autogtp/Game.h"
 #include <QFile>
 
+void ValidationWorker::run() {
+     do {
+        Game first(m_firstNet,  m_option);
+        if(!first.gameStart(min_leelaz_version)) {
+            emit resultReady(Sprt::NoResult);
+            return;
+        }
+        Game second(m_secondNet, m_option);
+        if(!second.gameStart(min_leelaz_version)) {
+            emit resultReady(Sprt::NoResult);
+            return;
+        }
+        QString wmove = "play white ";
+        QString bmove = "play black ";
+        do {
+            first.move();
+            if(!first.waitForMove()) {
+                emit resultReady(Sprt::NoResult);
+                return;
+            }
+            first.readMove();
+            second.setMove(bmove + first.getMove());
+            second.move();
+            if(!second.waitForMove()) {
+                emit resultReady(Sprt::NoResult);
+                return;
+            }
+            second.readMove();
+            first.setMove(wmove + second.getMove());
+            second.nextMove();
+        } while (first.nextMove());
+        QTextStream(stdout) << "Game has ended." << endl;
+        int result = 0;
+        if (first.getScore()) {
+            result = first.getWinner();
+        }
+        if(!m_keepPath.isEmpty())
+        {
+            first.writeSgf();
+            QString prefix = m_keepPath + '/';
+            if(m_expected == Game::BLACK) {
+                prefix.append("black_");
+            } else {
+                prefix.append("white_");
+            }
+            QFile(first.getFile() + ".sgf").rename(prefix + first.getFile() + ".sgf");
+        }
+        QTextStream(stdout) << "Stopping engine." << endl;
+        first.gameQuit();
+        second.gameQuit();
+
+        // Game is finished, send the result
+        if (result == m_expected) {
+            emit resultReady(Sprt::Win);
+        } else {
+            emit resultReady(Sprt::Loss);
+        }
+        // Change color and play again
+        QString net;
+        net = m_secondNet;
+        m_secondNet = m_firstNet;
+        m_firstNet = net;
+        if(m_expected == Game::BLACK) {
+            m_expected = Game::WHITE;
+        } else {
+            m_expected = Game::BLACK;
+        }
+    } while (1);
+}
+
+void ValidationWorker::init(const QString& gpuIndex,
+                            const QString& firstNet,
+                            const QString& secondNet,
+                            const QString& keep,
+                            const int expected) {
+    m_option = " -g -q -d -r 0 -w ";
+    if (!gpuIndex.isEmpty()) {
+        m_option.prepend(" --gpu=" + gpuIndex + " ");
+    }
+    m_firstNet = firstNet;
+    m_secondNet = secondNet;
+    m_expected = expected;
+    m_keepPath = keep;
+}
 
 Validation::Validation(const int gpus,
                        const int games,
@@ -107,9 +191,6 @@ void Validation::getResult(Sprt::GameResult result) {
 
 void Validation::quitThreads() {
     for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
-        m_gamesThreads[gpu].doFinish();
-    }
-    for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
-        m_gamesThreads[gpu].wait();
+        m_gamesThreads[gpu].quit();
     }
 }
