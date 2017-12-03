@@ -90,7 +90,11 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
             }
         } else {
             // Evaluate position without expanding the tree.
-            result = SearchResult::from_eval(evaluate_state(&currstate));
+            float eval = node->first_visit()
+                ? evaluate_state(&currstate)
+                : node->get_eval(currstate.get_to_move());
+
+            result = SearchResult::from_eval(eval);
         }
     }
 
