@@ -62,6 +62,8 @@ std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
+extern unsigned char * mem;
+extern unsigned char myid;
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
@@ -212,6 +214,8 @@ bool GTP::execute(GameState & game, std::string xinput) {
         gtp_printf(id, PROGRAM_VERSION);
         return true;
     } else if (command == "quit") {
+        // free the slot
+        mem[1+myid] = 0;
         gtp_printf(id, "");
         exit(EXIT_SUCCESS);
     } else if (command.find("known_command") == 0) {

@@ -19,7 +19,7 @@ def createSMP(name):
     smp.unlink()
     return ipc.Semaphore(name, ipc.O_CREAT)
 
-sm = ipc.SharedMemory( name, flags = ipc.O_CREAT, size = 8 + bs*bsize + 8  + bsize*4*(19*19+2))
+sm = ipc.SharedMemory( name, flags = ipc.O_CREAT, size = 1 + bsize + bs*bsize + 8  + bsize*4*(19*19+2))
 
 smp_counter =  createSMP("lee_counter")
 
@@ -37,24 +37,25 @@ for i in range(bsize):
 mem = mmap.mmap(sm.fd, sm.size)
 sm.close_fd()
 
-mv  = np.frombuffer(mem, dtype=np.uint8, count= 8 + bs*bsize + 8  + bsize*4*(19*19+2))
-counter = mv[0:8]
-inp     = mv[8:8+bs*bsize]
-memout =  mv[8+bs*bsize + 8:]
+mv  = np.frombuffer(mem, dtype=np.uint8, count= 1 + bsize + bs*bsize + 8  + bsize*4*(19*19+2))
+counter = mv[0:1+bsize]
+inp     = mv[  1+bsize:1+bsize + bs*bsize]
+memout =  mv[          1+bsize + bs*bsize + 8:]
 
 import nn
 
-counter[0] = 0
-counter[1] = bsize
-memout[0] = bsize + 1
+counter[0] = bsize
+for i in range(bsize):
+    counter[1 + i ] = 0
+
 smp_counter.release()
 
 # waiting clients to connect
 print("Waiting for %d autogtp instances to run" % bsize)
-for i in range(bsize):
-    smpB[i].acquire()
-
-print("OK Go!")
+# for i in range(bsize):
+#     smpB[i].acquire()
+#
+# print("OK Go!")
 
 # now all clients connected
 dt = np.zeros( bs*bsize // 4, dtype=np.float32)
