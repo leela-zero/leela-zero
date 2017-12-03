@@ -1,4 +1,4 @@
-QT       -= gui
+QT  -= gui
 
 TARGET = autogtp
 CONFIG   += c++14
@@ -10,16 +10,14 @@ TEMPLATE = app
 
 SOURCES += main.cpp \
     Game.cpp \
-    SPRT.cpp \
-    Validation.cpp \
-    Distributedval.cpp \
     Worker.cpp \
-    Managment.cpp
+    Managment.cpp \
+    Job.cpp
 
 HEADERS += \
     Game.h \
-    SPRT.h \
-    Validation.h \
-   Distributedval.h \
     Worker.h \
-    Managment.h
+    Managment.h \
+    Job.h \
+    Order.h \
+    Result.h

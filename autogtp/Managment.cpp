@@ -22,6 +22,8 @@
 #include <QFileInfo>
 #include <QThread>
 #include <QCryptographicHash>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include "Managment.h"
 #include "Game.h"
 
@@ -50,38 +52,9 @@ Management::Management(const int gpus,
     m_version(ver) {
 }
 
-
-bool Management::updateNetwork() {
-    auto retries = 0;
-    do {
-
-        try {
-            auto new_network = fetchBestNetworkHash();
-            fetchBestNetwork();
-            return new_network;
-        } catch (NetworkException ex) {
-            QTextStream(stdout)
-                << "Network connection to server failed." << endl;
-            QTextStream(stdout)
-                << ex.what() << endl;
-            auto retry_delay =
-                std::min<int>(
-                    RETRY_DELAY_MIN_SEC * std::pow(1.5, retries),
-                    RETRY_DELAY_MAX_SEC);
-            QTextStream(stdout) << "Retrying in " << retry_delay << " s."
-                                << endl;
-            QThread::sleep(retry_delay);
-        }
-    }
-    QTextStream(stdout) << "Maximum number of retries exceeded. Giving up."
-                        << endl;
-    exit(EXIT_FAILURE);
-}
-
-void Management::startGames() {
+void Management::giveAssignments() {
     m_start = std::chrono::high_resolution_clock::now();
     m_mainMutex->lock();
-    updateNetwork();
     QString myGpu;
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
         for(int game = 0; game < m_games; ++game) {
@@ -93,98 +66,37 @@ void Management::startGames() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-
-            int job = getWork();
-            switch(job) {
-                case Worker::PRODUCTION:
-                    m_gamesThreads[thread_index] = new ProductionWorker(thread_index);
-                    connect(m_gamesThreads[thread_index], &ProductionWorker::resultReady,
-                            this, &Management::getProduct,
-                            Qt::DirectConnection);
-                    ((ValidationWorker*) m_gamesThreads[thread_index])->init(myGpu, m_firstNetwork);
-                    break;
-                case Worker::VALIDATION:
-                    m_gamesThreads[thread_index] = new ValidationWorker(thread_index);
-                    connect(m_gamesThreads[thread_index], &ValidationWorker::resultReady,
-                            this, &Management::getValidation,
-                            Qt::DirectConnection);
-                    ((ValidationWorker*) m_gamesThreads[thread_index])->init(myGpu, m_firstNetwork, m_secondNetwork, m_keepPath, Game::BLACK);
-                    break;
-            }
-
-            m_gamesThreads[thread_index].start();
+            m_gamesThreads[thread_index] = new Worker(thread_index, myGpu, m_keepPath);
+            connect(m_gamesThreads[thread_index],
+                    &Worker::resultReady,
+                    this,
+                    &Management::getResult,
+                    Qt::DirectConnection);
+            m_gamesThreads[thread_index]->order(getWork());
+            m_gamesThreads[thread_index]->start();
         }
     }
 }
 
-void Management::recreateThreads(int index) {
-    QString myGpu;
-    if(m_gpusList.isEmpty()) {
-        myGpu = "";
-    } else {
-        myGpu = m_gpusList.at(index / m_games);
+void Management::getResult(Order ord, Result res, int index, int duration) {
+    if(res.type() == Result::Error) {
+        exit(1);
     }
-    int job = getWork();
-    switch(job) {
-        case Worker::PRODUCTION:
-        {
-            if(m_gamesThreads[index]->myJob() != job) {
-                delete m_gamesThreads[index];
-                m_gamesThreads[index] = new ProductionWorker(index);
-            }
-            if (!updateNetwork()) {
-                for(int i = 0; i < m_gpus * m_games; i++) {
-                    if(m_gamesThreads[i]->myJob() == Worker::PRODUCTION) {
-                        m_gamesThreads[i]->newNetwork(m_firstNetwork);
-                    }
-                }
-            }
-            ((ProductionWorker*) m_gamesThreads[index])->init(myGpu, m_firstNetwork);
-            ((ProductionWorker*) m_gamesThreads[index])->start();
-            break;
-        }
-        case Worker::VALIDATION:
-        {
-            if(m_gamesThreads[index]->myJob() != job) {
-                delete m_gamesThreads[index];
-                m_gamesThreads[index] = new ValidationWorker(index);
-            }
-            QString myGpu;
-            if(m_gpusList.isEmpty()) {
-                myGpu = "";
-            } else {
-                myGpu = m_gpusList.at(gpu);
-            }
-            if (!updateValidationNetwork()) {
-                for(int i = 0; i < m_gpus * m_games; i++) {
-                    if(m_gamesThreads[i]->myJob() == Worker::VALIDATION) {
-                        m_gamesThreads[i]->newNetworks(m_firstNetwork, m_secondNetwork);
-                    }
-                }
-            }
-            ((ValidationWorker*) m_gamesThreads[index])->init(myGpu, m_firstNetwork, m_secondNetwork, m_keepPath, Game::BLACK);
-            ((ValidationWorker*) m_gamesThreads[index])->start();
-            break;
-        }
-    }
-}
-
-void Management::getProduct(const QString& file, float duration, int index) {
     m_syncMutex.lock();
     m_gamesPlayed++;
     printTimingInfo(duration);
-    uploadData(file);
-    recreateThreads(index);
+    switch(res.type()) {
+    case Result::File:
+        uploadData(res.name(), ord.parameters()[0]);
+        break;
+    case Result::Win:
+    case Result::Loss:
+        uploadResult(res.name(), ord.parameters());
+        break;
+    }
+    m_gamesThreads[index]->order(getWork());
     m_syncMutex.unlock();
-}
 
-void Management::getValidation(Sprt::GameResult result, int index) {
-    m_syncMutex.lock();
-    m_gamesPlayed++;
-    printTimingInfo(duration);
-    uploadResult(result);
-    recreateThreads(index);
-    m_syncMutex.unlock();
 }
 
 
@@ -205,57 +117,110 @@ void  Management::printTimingInfo(float duration) {
         << ", last game took " << (int) duration << " seconds." << endl;
 }
 
+QString Management::getNumOption(const QJsonObject &ob, const QString &key, const QString &opt, int defValue) {
+    QString res;
+    if(ob.contains(key)) {
+        res.append(opt + QString::number(ob.value(key).toInt()) + " ");
+    } else {
+        res.append(opt+QString::number(defValue) + " ");
+    }
+    return res;
+}
 
-bool Management::fetchBestNetworkHash() {
+
+
+Order Management::getWork() {
+    Order o;
+    o.type(Order::Error);
+
+    /*
+
+    {
+        "cmd":"match",
+        "white_hash":"223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
+        "black_hash":"92c658d7325fe38f0c8adbbb1444ed17afd891b9f208003c272547a7bcb87909",
+        "playouts":1000,
+        "resignation_percent":3,
+        "required_client_version":5,
+        "noise":false,
+        "randomcnt":0
+    }
+
+    {
+        "cmd":"selfplay",
+        "hash":"223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
+        "playouts":1000,
+        "resignation_percent":3,
+        "required_client_version":5,
+        "noise":true,
+        "randomcnt":30
+    }
+    */
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    prog_cmdline.append(" http://zero.sjeng.org/best-network-hash");
+    prog_cmdline.append(" -s -J");
+    prog_cmdline.append(" http://zero-test.sjeng.org/get-task/7");
+
+    QTextStream(stdout) << prog_cmdline << endl;
+
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
 
-    QByteArray output = curl.readAllStandardOutput();
-    QString outstr(output);
-    QStringList outlst = outstr.split("\n");
-
     if (curl.exitCode()) {
         throw NetworkException("Curl returned non-zero exit code "
                                + std::to_string(curl.exitCode()));
+        return o;
+    }
+    QJsonDocument doc;
+    doc = QJsonDocument::fromJson(curl.readAllStandardOutput());
+    QJsonObject ob = doc.object();
+    QString options;
+    if(ob.contains("required_client_version")) {
+        QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toInt();
+        if(ob.value("required_client_version").toInt() > m_version) {
+            QTextStream(stdout) << ' ' <<  endl;
+            QTextStream(stdout)
+                << "Server requires client version " << ob.value("required_client_version").toInt()
+                << " but we are version " << m_version << endl;
+            QTextStream(stdout)
+                << "Check https://github.com/gcp/leela-zero for updates." << endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+    options.append(getNumOption(ob, "playouts", " -p ", 1000));
+    options.append(getNumOption(ob, "resignation_percent", " -r ", 0));
+    options.append(getNumOption(ob, "randomcnt", " -m ", 0));
+    if(ob.contains("noise") && ob.value("noise").toBool()) {
+        options.append(" -n ");
+    }
+    if(ob.contains("noponder") && ob.value("noponder").toBool()) {
+        options.append(" --noponder ");
     }
 
-    if (outlst.size() != 2) {
-        QTextStream(stdout)
-            << "Unexpected output from server: " << endl << output << endl;
-        throw NetworkException("Unexpected output from server");
+    if(ob.value("cmd").toString() == "selfplay") {
+        QString net = ob.value("hash").toString();
+        fetchNetwork(net);
+        o.type(Order::Production);
+        o.parameters(QStringList() << net << options);
     }
-    QString outhash = outlst[0];
-    QTextStream(stdout) << "Best network hash: " << outhash << endl;
-    QString client_version = outlst[1];
-    auto server_expected = client_version.toInt();
-    QTextStream(stdout) << "Required client version: " << client_version;
-    if (server_expected > m_version) {
-        QTextStream(stdout) << ' ' <<  endl;
-        QTextStream(stdout)
-            << "Server requires client version " << server_expected
-            << " but we are version " << m_version << endl;
-        QTextStream(stdout)
-            << "Check https://github.com/gcp/leela-zero for updates." << endl;
-        exit(EXIT_FAILURE);
-    } else {
-        QTextStream(stdout) << " (OK)" << endl;
+    if(ob.value("cmd").toString() == "match") {
+        o.type(Order::Validation);
+        QString net1 = ob.value("black_hash").toString();
+        QString net2 = ob.value("white_hash").toString();
+        fetchNetwork(net1);
+        fetchNetwork(net2);
+        o.parameters(QStringList() << net1 << net2 << options);
     }
-    if (outhash == m_network) {
-        return true;
-    }
-    m_network = outhash;
-    return false;
+    return o;
 }
 
-bool Management::networkExists() {
-    if (QFileInfo::exists(m_network)) {
-        QFile f(m_network);
+
+bool Management::networkExists(const QString &name) {
+    if (QFileInfo::exists(name)) {
+        QFile f(name);
         if (f.open(QFile::ReadOnly)) {
             QCryptographicHash hash(QCryptographicHash::Sha256);
             if (!hash.addData(&f)) {
@@ -263,7 +228,7 @@ bool Management::networkExists() {
                 exit(EXIT_FAILURE);
             }
             QString result = hash.result().toHex();
-            if (result == m_network) {
+            if (result == name) {
                 return true;
             }
         } else {
@@ -279,18 +244,16 @@ bool Management::networkExists() {
         QTextStream(stdout) << "Downloaded network hash doesn't match." << endl;
         f.remove();
     }
-
     return false;
 }
 
-void Management::fetchBestNetwork() {
-    if (networkExists()) {
+void Management::fetchNetwork(const QString &name) {
+    if (networkExists(name)) {
         QTextStream(stdout) << "Already downloaded network." << endl;
         return;
     }
-
-    if (QFileInfo::exists(m_network + ".gz")) {
-        QFile f_gz(m_network + ".gz");
+    if (QFileInfo::exists(name + ".gz")) {
+        QFile f_gz(name + ".gz");
         // Curl refuses to overwrite, so make sure to delete the gzipped
         // network if it exists
         f_gz.remove();
@@ -304,7 +267,7 @@ void Management::fetchBestNetwork() {
     // Use the filename from the server.
     prog_cmdline.append(" -s -O -J");
     prog_cmdline.append(" -w %{filename_effective}");
-    prog_cmdline.append(" http://zero.sjeng.org/best-network");
+    prog_cmdline.append(" http://zero.sjeng.org/networks/" + name + ".gz");
 
     QTextStream(stdout) << prog_cmdline << endl;
 
@@ -330,17 +293,41 @@ void Management::fetchBestNetwork() {
     // Remove extension (.gz)
     outfile.chop(3);
     QTextStream(stdout) << "Net filename: " << outfile << endl;
-    m_network = outfile;
 
-    if (!networkExists()) {
+    if (!networkExists(name)) {
         exit(EXIT_FAILURE);
     }
 
     return;
 }
 
-void Management::uploadData(const QString& file) {
+void Management::uploadResult(const QString &winner, const QStringList &l) {
+    QString prog_cmdline("curl");
+#ifdef WIN32
+    prog_cmdline.append(".exe");
+#endif
+
+    prog_cmdline.append(" -F blackhash=" + l[1]);
+    prog_cmdline.append(" -F whitehash=" + l[2]);
+    prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
+    prog_cmdline.append(" -F sgf=@index.html");
+    prog_cmdline.append(" -F result="+ winner);
+    prog_cmdline.append(" http://zero.sjeng.org/submit-match");
+    QTextStream(stdout) << prog_cmdline << endl;
+    QProcess curl;
+    curl.start(prog_cmdline);
+    curl.waitForFinished(-1);
+
+    if (curl.exitCode()) {
+        QTextStream(stdout) << "Upload failed. Curl Exit code: "
+            << curl.exitCode() << endl;
+    }
+}
+
+
+void Management::uploadData(const QString& file, const QString& net) {
     // Find output SGF and txt files
+    QTextStream(stdout) << "Upload game: " << file << " network " << net << endl;
     QDir dir;
     QStringList filters;
     filters << file + ".sgf";
@@ -376,11 +363,11 @@ void Management::uploadData(const QString& file) {
 #ifdef WIN32
         prog_cmdline.append(".exe");
 #endif
-        prog_cmdline.append(" -F networkhash=" + m_network);
+        prog_cmdline.append(" -F networkhash=" + net);
         prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
         prog_cmdline.append(" -F sgf=@" + sgf_file);
         prog_cmdline.append(" -F trainingdata=@" + data_file);
-        prog_cmdline.append(" http://zero.sjeng.org/submit");
+        prog_cmdline.append(" http://zero.sjeng.org/submit_TEST");
         QTextStream(stdout) << prog_cmdline << endl;
         QProcess curl;
         curl.start(prog_cmdline);

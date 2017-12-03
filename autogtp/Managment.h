@@ -76,10 +76,9 @@ public:
                const QString& debug,
                QMutex* mutex);
     ~Management() = default;
-    void startGames();
+    void giveAssignments();
 public slots:
-    void getProduct(const QString& file, float duration, int index);
-    void getValidation(Sprt::GameResult result, int index);
+    void getResult(Order ord, Result res, int index, int duration);
 
 private:
 
@@ -109,16 +108,15 @@ private:
     QString m_debugPath;
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
-    bool fetchBestNetworkHash();
-    void fetchBestNetwork();
-    void uploadData(const QString& file);
-    void uploadResult(Sprt::GameResult result);
-    void printTimingInfo(float duration);
-    bool updateNetwork();
+
+    Order getWork();
+    QString getNumOption(const QJsonObject &ob, const QString &key, const QString &opt, int defValue);
     bool networkExists(const QString &name);
-    int getWork();
-    void fetchValidNetworks();
-    void setThreads(int index);
+    void fetchNetwork(const QString &name);
+    void printTimingInfo(float duration);
+
+    void uploadData(const QString& file, const QString& name);
+    void uploadResult(const QString &winner, const QStringList &l);
 };
 
 #endif

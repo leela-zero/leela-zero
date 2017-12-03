@@ -29,7 +29,7 @@ extern const VersionTuple min_leelaz_version;
 class Game : QProcess {
 public:
     Game(const QString& weights,
-         const QString& opt = QString(" -g -q -n -d -m 30 -r 0 -w "));
+         const QString& opt);
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version);
     void move();

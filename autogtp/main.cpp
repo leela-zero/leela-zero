@@ -29,11 +29,9 @@
 #include <QCommandLineParser>
 #include <iostream>
 #include "Game.h"
-#include "SPRT.h"
-#include "Validation.h"
-#include "Production.h"
+#include "Managment.h"
 
-constexpr int AUTOGTP_VERSION = 7;
+constexpr int AUTOGTP_VERSION = 6;
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version{0, 8};
 
@@ -122,22 +120,9 @@ int main(int argc, char *argv[]) {
         }
     }
     QMutex mutex;
-    if(competition) {
-        Validation validate(gpusNum, gamesNum, gpusList,
-                            netList.at(0), netList.at(1),
-                            parser.value(keepSgfOption),
-                            &mutex);
-        validate.startGames();
-        mutex.lock();
-        validate.wait();
-    } else {
-        Production prod(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION,
-                        parser.value(keepSgfOption),
-                        parser.value(keepDebugOption),
-                        &mutex);
-        prod.startGames();
-        mutex.lock();
-    }
+    Management boss(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), &mutex);
+    boss.giveAssignments();
+    mutex.lock();
     cerr.flush();
     cout.flush();
     mutex.unlock();
