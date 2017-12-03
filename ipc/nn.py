@@ -7,12 +7,10 @@ import numpy as np
 import trollius
 from six.moves import urllib
 
+bsize = int(sys.argv[1])
+realbs = int(sys.argv[2])
 
-if len(sys.argv) != 2 :
-    print("Usage: %s batch-size" % sys.argv[0])
-    sys.exit(-1)
-
-QLEN     = int(sys.argv[1]) # alias: Batch size
+QLEN     = realbs # int(sys.argv[1]) # alias: Batch size
 
 print("Leela Zero TCP Neural Net Service")
 
