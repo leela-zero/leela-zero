@@ -57,6 +57,8 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("playouts,p", po::value<int>(),
                        "Weaken engine by limiting the number of playouts. "
                        "Requires --noponder.")
+        ("treesize", po::value<int>()->default_value(cfg_max_tree_size),
+                     "Maximum number of nodes in the game tree.")
         ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
                         "Safety margin for time usage in centiseconds.")
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
@@ -186,6 +188,10 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
                      "Add --noponder if you want a weakened engine.\n");
             exit(EXIT_FAILURE);
         }
+    }
+
+    if (vm.count("treesize")) {
+        cfg_max_tree_size = vm["treesize"].as<int>();
     }
 
     if (vm.count("resignpct")) {

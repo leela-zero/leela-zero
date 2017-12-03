@@ -62,12 +62,6 @@ public:
     static constexpr passflag_t NOPASS   = 1 << 0;
     static constexpr passflag_t NORESIGN = 1 << 1;
 
-    /*
-        Maximum size of the tree in memory. Nodes are about
-        40 bytes, so limit to ~1.6G.
-    */
-    static constexpr auto MAX_TREE_SIZE = 40'000'000;
-
     UCTSearch(GameState & g);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);

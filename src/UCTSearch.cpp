@@ -57,7 +57,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
     TTable::get_TT()->sync(hash, komi, node);
     node->virtual_loss();
 
-    if (!node->has_children() && m_nodes < MAX_TREE_SIZE) {
+    if (!node->has_children() && m_nodes < cfg_max_tree_size) {
         float eval;
         auto success = node->create_children(m_nodes, currstate, eval);
         if (success) {
