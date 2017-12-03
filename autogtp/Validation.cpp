@@ -199,6 +199,9 @@ void Validation::quitThreads() {
     for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
         m_gamesThreads[gpu].doFinish();
     }
+}
+
+void Validation::wait() {
     for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
         m_gamesThreads[gpu].wait();
     }
