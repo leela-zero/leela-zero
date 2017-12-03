@@ -24,7 +24,7 @@ def createSMP(name):
     smp.unlink()
     return ipc.Semaphore(name, ipc.O_CREAT)
 
-sm = ipc.SharedMemory( name, flags = ipc.O_CREAT, size = 1 + num_instances + bs*num_instances + 8  + num_instances*4*(19*19+2))
+sm = ipc.SharedMemory( name, flags = ipc.O_CREAT, size = 2 + num_instances + bs*num_instances + 8  + num_instances*4*(19*19+2))
 
 smp_counter =  createSMP("lee_counter")
 
@@ -42,16 +42,18 @@ for i in range(num_instances):
 mem = mmap.mmap(sm.fd, sm.size)
 sm.close_fd()
 
-mv  = np.frombuffer(mem, dtype=np.uint8, count= 1 + num_instances + bs*num_instances + 8  + num_instances*4*(19*19+2))
-counter = mv[0:1+num_instances]
-inp     = mv[  1+num_instances:1+num_instances + bs*num_instances]
-memout =  mv[                  1+num_instances + bs*num_instances + 8:]
+mv  = np.frombuffer(mem, dtype=np.uint8, count= 2 + num_instances + bs*num_instances + 8  + num_instances*4*(19*19+2))
+counter = mv[0:2+num_instances]
+inp     = mv[  2+num_instances:2+num_instances + bs*num_instances]
+memout =  mv[                  2+num_instances + bs*num_instances + 8:]
 
 import nn
 
-counter[0] = num_instances
+counter[0] = num_instances // 256
+counter[1] = num_instances %  256
+
 for i in range(num_instances):
-    counter[1 + i ] = 0
+    counter[2 + i ] = 0
 
 smp_counter.release()
 

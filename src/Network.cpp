@@ -98,7 +98,7 @@ unsigned char * output_mem;
 shared_memory_object shmem{open_only, "smlee", read_write};
 mapped_region region{shmem, read_write};
 unsigned char * mem = static_cast<unsigned char*>(region.get_address());
-unsigned char myid;
+int myid;
 
 void Network::benchmark(GameState * state) {
     {
@@ -134,21 +134,21 @@ void Network::initialize(void) {
     offset_t size;
 
 
-    batch_size = mem[0];
+    batch_size = int(mem[0]) * 256 + int(mem[1]);
     myprintf("batch size: %d\n", batch_size);
-    shmem.truncate(1 + batch_size + 4*batch_size*18*19*19 + 8 + batch_size*4*(19*19+2));
+    shmem.truncate(2 + batch_size + 4*batch_size*18*19*19 + 8 + batch_size*4*(19*19+2));
 
     shmem.get_size(size);
     myprintf("size %d\n", size);
 
     named_semaphore sem_counter{open_only, "lee_counter"};
     sem_counter.wait();
-    unsigned char i = 0;
+    int i = 0;
     // find a empty slot
     while (1) {
-        if (mem[1+i] == 0) {
+        if (mem[2+i] == 0) {
             myid = i;
-            mem[1+i] = 1;
+            mem[2+i] = 1;
             break;
         }
         i = i + 1;
@@ -157,8 +157,8 @@ void Network::initialize(void) {
 
     myprintf("My ID is %d\n", myid);
 
-    input_mem =  mem + 1 + batch_size + myid * 4*18*19*19;
-    output_mem = mem + 1 + batch_size + 4*batch_size*18*19*19 + 8 + myid * 4*(19*19+2);
+    input_mem =  mem + 2 + batch_size + myid * 4*18*19*19;
+    output_mem = mem + 2 + batch_size + 4*batch_size*18*19*19 + 8 + myid * 4*(19*19+2);
 
     // char name[100];
 
