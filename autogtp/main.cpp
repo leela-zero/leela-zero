@@ -124,5 +124,6 @@ int main(int argc, char *argv[]) {
     }
     cerr.flush();
     cout.flush();
+    mutex.unlock();
     return app.exec();
 }
