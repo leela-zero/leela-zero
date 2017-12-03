@@ -35,6 +35,10 @@
 
 using namespace Utils;
 
+static int maintime = 3600;
+static int byotime = 0;
+static int byostones = 25;
+
 void license_blurb() {
     printf(
         "Leela Zero  Copyright (C) 2017  Gian-Carlo Pascutto\n"
@@ -69,6 +73,12 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
         ("quiet,q", "Disable all diagnostic output.")
         ("noponder", "Disable thinking on opponent's time.")
+        ("maintime", po::value<int>()->default_value(3600),
+                     "Time control for the game (seconds).")
+        ("byotime", po::value<int>()->default_value(0),
+                    "Time control for byo-yomi (seconds).")
+        ("byostones", po::value<int>()->default_value(25),
+                    "Byo-yomi stones.")
 #ifdef USE_OPENCL
         ("gpu",  po::value<std::vector<int> >(),
                 "ID of the OpenCL device(s) to use (disables autodetection).")
@@ -204,6 +214,18 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         }
     }
 
+    if (vm.count("maintime")) {
+        maintime = vm["maintime"].as<int>();
+    }
+
+    if (vm.count("byotime")) {
+        byotime = vm["byotime"].as<int>();
+    }
+
+    if (vm.count("byostones")) {
+        byostones = vm["byostones"].as<int>();
+    }
+
 #ifdef USE_OPENCL
     if (vm.count("gpu")) {
         cfg_gpus = vm["gpu"].as<std::vector<int> >();
@@ -258,6 +280,7 @@ int main (int argc, char *argv[]) {
     /* set board limits */
     float komi = 7.5;
     maingame->init_game(19, komi);
+    maingame->set_timecontrol(100 * maintime, 100 * byotime, byostones, 0);
 
     for(;;) {
         if (!gtp_mode) {
