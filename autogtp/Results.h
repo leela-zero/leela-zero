@@ -20,7 +20,9 @@
 #define RESULTS_H
 
 #include "SPRT.h"
-#include <atomic>
+#include <QString>
+#include <mutex>
+
 
 class Results {
 public:
@@ -33,11 +35,12 @@ public:
     void printResults(QString firstNetName, QString secondNetName);
 
 private:
-    std::atomic<int> m_gamesPlayed;
-    std::atomic<int> m_blackWins;
-    std::atomic<int> m_blackLosses;
-    std::atomic<int> m_whiteWins;
-    std::atomic<int> m_whiteLosses;
+    std::mutex m_statsMutex;
+    int m_gamesPlayed;
+    int m_blackWins;
+    int m_blackLosses;
+    int m_whiteWins;
+    int m_whiteLosses;
 };
 
 #endif // RESULT_H

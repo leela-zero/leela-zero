@@ -21,6 +21,15 @@
 #include <QFile>
 
 void ValidationWorker::run() {
+    // TODO delete before code is merged, useful for testing output.
+    while (1) {
+        sleep(1);
+
+        Sprt::GameResult result = (rand() % 10 <= 6) ? Sprt::Win : Sprt::Loss;
+        int net_one_color = rand() % 2 ? Game::BLACK : Game::WHITE;
+        emit resultReady(result, net_one_color);
+    }
+
     do {
         Game first(m_firstNet,  m_option);
         if(!first.gameStart(min_leelaz_version)) {

@@ -19,10 +19,12 @@
 #include "Results.h"
 #include "Game.h"
 #include "SPRT.h"
-#include <QTextStream>
+#include <QString>
 #include <boost/format.hpp>
+#include <iostream>
 
 void Results::addGameResult(Sprt::GameResult result, int side) {
+    m_statsMutex.lock();
     m_gamesPlayed++;
     if (result == Sprt::GameResult::Win) {
         if (side == Game::BLACK)
@@ -35,62 +37,66 @@ void Results::addGameResult(Sprt::GameResult result, int side) {
         else
             m_whiteLosses++;
     }
+    m_statsMutex.unlock();
 }
 
 void Results::printResults(QString firstNetName, QString secondNetName) {
-        /*
-        Produces reports in this format.
-        leelaz-ABCD1234 v leelaz-DEFG5678 (176 games)
-                        wins          black       white
-        leelaz-ABDC1234   65 36.93%   37 42.53%   28 31.46%
-        leelaz-DEFG5678  111 63.07%   61 68.54%   50 57.47%
-                                      98 55.68%   78 44.32%
-        */
+    /*
+    Produces reports in this format.
+    leelaz-ABCD1234 v leelaz-DEFG5678 (176 games)
+                    wins          black       white
+    leelaz-ABDC1234   65 36.93%   37 42.53%   28 31.46%
+    leelaz-DEFG5678  111 63.07%   61 68.54%   50 57.47%
+                                  98 55.68%   78 44.32%
+    */
 
-        QString first_name = firstNetName.left(8);
-        QString second_name = secondNetName.left(8);
+    m_statsMutex.lock();
 
-        // Results for player one
-        auto p1_wins = m_blackWins + m_whiteWins;
-        auto p1_losses = m_blackLosses + m_whiteLosses;
+    auto first_name = firstNetName.left(8).toLocal8Bit().constData();
+    auto second_name = secondNetName.left(8).toLocal8Bit().constData();
 
-        auto p1_black_games = m_blackWins + m_blackLosses;
-        auto p1_white_games = m_whiteWins + m_whiteLosses;
+    // Results for player one
+    auto p1_wins = m_blackWins + m_whiteWins;
+    auto p1_losses = m_blackLosses + m_whiteLosses;
 
-        // Results for black vs white
-        auto black_wins = m_blackWins + m_whiteLosses;
-        auto white_wins = m_whiteWins + m_blackLosses;
+    auto p1_black_games = m_blackWins + m_blackLosses;
+    auto p1_white_games = m_whiteWins + m_whiteLosses;
 
-        QTextStream(stdout) << QString("\n%1 v %2 (%3 games)\n")
-             .arg(first_name, second_name).arg(m_gamesPlayed);
+    // Results for black vs white
+    auto black_wins = m_blackWins + m_whiteLosses;
+    auto white_wins = m_whiteWins + m_blackLosses;
 
-        QTextStream(stdout) <<
-            (boost::format("%-14s %-14s %-14s %s\n")
-                % "" /* name */ % "wins" % "black" % "white").str().c_str();
-        QTextStream(stdout) <<
-            (boost::format("%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
-                % first_name.toLocal8Bit().constData()
-                % p1_wins
-                % (100.0 * p1_wins / m_gamesPlayed)
-                % m_blackWins
-                % (100.0 * m_blackWins / p1_black_games)
-                % m_whiteWins
-                % (100.0 * m_whiteWins / p1_white_games)).str().c_str();
-        QTextStream(stdout) <<
-            (boost::format( "%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
-                % second_name.toLocal8Bit().constData()
-                % p1_losses
-                % (100.0 * p1_losses / m_gamesPlayed)
-                % m_whiteLosses
-                % (100.0 * m_whiteLosses / p1_white_games)
-                % m_blackLosses
-                % (100.0 * m_blackLosses / p1_white_games)).str().c_str();
-        QTextStream(stdout) <<
-            (boost::format("%-9s %11s %4d %5.2f%% %4d %5.2f%%\n")
-                % "" /* name */
-                % "" /* wins column */
-                % black_wins
-                % (100.0 * black_wins / m_gamesPlayed)
-                % white_wins
-                % (100.0 * white_wins / m_gamesPlayed)).str().c_str();
+    std::cout << first_name << " v " << second_name
+            << " ( " << m_gamesPlayed << " games)" << std::endl;
+    std::cout <<
+        boost::format("%-14s %-14s %-14s %s\n")
+            % "" /* name */ % "wins" % "black" % "white";
+    std::cout <<
+        boost::format("%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
+            % first_name
+            % p1_wins
+            % (100.0 * p1_wins / m_gamesPlayed)
+            % m_blackWins
+            % (100.0 * m_blackWins / p1_black_games)
+            % m_whiteWins
+            % (100.0 * m_whiteWins / p1_white_games);
+    std::cout <<
+        boost::format( "%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
+            % second_name
+            % p1_losses
+            % (100.0 * p1_losses / m_gamesPlayed)
+            % m_whiteLosses
+            % (100.0 * m_whiteLosses / p1_white_games)
+            % m_blackLosses
+            % (100.0 * m_blackLosses / p1_white_games);
+    std::cout <<
+        boost::format("%-9s %11s %4d %5.2f%% %4d %5.2f%%\n")
+            % "" /* name */
+            % "" /* wins column */
+            % black_wins
+            % (100.0 * black_wins / m_gamesPlayed)
+            % white_wins
+            % (100.0 * white_wins / m_gamesPlayed);
+
+    m_statsMutex.unlock();
 }
