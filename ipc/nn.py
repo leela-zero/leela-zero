@@ -217,7 +217,7 @@ import time
 class MyWeightUpdater(threading.Thread):
     def run(self):
         global nethash, net, netlock, newNetWeight
-        print("\nStarting a thread for auto updating latest weights")
+        print("\nStarting a thread for auto updating latest weights\n")
         while True:
             newhash = getLatestNNHash()
             if newhash != nethash:

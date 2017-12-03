@@ -37,7 +37,7 @@ for i in range(bsize):
 mem = mmap.mmap(sm.fd, sm.size)
 sm.close_fd()
 
-mv  = memoryview(mem)
+mv  = np.frombuffer(mem, dtype=np.uint8, count= 8 + bs*bsize + 8  + bsize*4*(19*19+2))
 counter = mv[0:8]
 inp     = mv[8:8+bs*bsize]
 memout =  mv[8+bs*bsize + 8:]
