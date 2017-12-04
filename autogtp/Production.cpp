@@ -45,37 +45,33 @@ void ProductionWorker::run() {
             game.readMove();
         } while (game.nextMove() && m_state == RUNNING);
         switch(m_state) {
-            case RUNNING:
+        case RUNNING:
+            QTextStream(stdout) << "Game has ended." << endl;
+            if (game.getScore()) {
+                game.writeSgf();
+                game.dumpTraining();
+            }
             {
-                QTextStream(stdout) << "Game has ended." << endl;
-                if (game.getScore()) {
-                    game.writeSgf();
-                    game.dumpTraining();
-                }
                 auto end = std::chrono::high_resolution_clock::now();
                 auto gameDuration =
-                    std::chrono::duration_cast<std::chrono::seconds>
-                        (end - start).count();
+                    std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
                 emit resultReady(game.getFile(), gameDuration);
-                QTextStream(stdout) << "Stopping engine." << endl;
-                game.gameQuit();
-                break;
             }
-            case NET_CHANGE:
-            {
-                QTextStream(stdout) << "Best Network has change: restarting." << endl;
-                m_state = RUNNING;
-                QTextStream(stdout) << "Stopping engine." << endl;
-                game.gameQuit();
-                break;
-            }
-            case FINISHING:
-            {
-                QTextStream(stdout) << "Program ends: exiting." << endl;
-                QTextStream(stdout) << "Stopping engine." << endl;
-                game.gameQuit();
-                break;
-            }
+            QTextStream(stdout) << "Stopping engine." << endl;
+            game.gameQuit();
+            break;
+        case NET_CHANGE:
+            QTextStream(stdout) << "Best Network has changed: restarting."
+                                << endl;
+            m_state = RUNNING;
+            QTextStream(stdout) << "Stopping engine." << endl;
+            game.gameQuit();
+            break;
+        case FINISHING:
+            QTextStream(stdout) << "Program ends: exiting." << endl;
+            QTextStream(stdout) << "Stopping engine." << endl;
+            game.gameQuit();
+            break;
         }
     } while (m_state != FINISHING);
 }
@@ -144,7 +140,7 @@ void Production::startGames() {
                     this,
                     &Production::getResult,
                     Qt::DirectConnection);
-            if(m_gpusList.isEmpty()) {
+            if (m_gpusList.isEmpty()) {
                 myGpu = "";
             } else {
                 myGpu = m_gpusList.at(gpu);

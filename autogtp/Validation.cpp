@@ -23,12 +23,12 @@
 void ValidationWorker::run() {
     do {
         Game first(m_firstNet,  m_option);
-        if(!first.gameStart(min_leelaz_version)) {
+        if (!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
         }
         Game second(m_secondNet, m_option);
-        if(!second.gameStart(min_leelaz_version)) {
+        if (!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
         }
@@ -68,7 +68,7 @@ void ValidationWorker::run() {
                     prefix.append("white_");
                 }
                 QFile(first.getFile() + ".sgf").rename(prefix + first.getFile() + ".sgf");
-                }
+            }
             QTextStream(stdout) << "Stopping engine." << endl;
             first.gameQuit();
             second.gameQuit();
@@ -182,8 +182,7 @@ void Validation::getResult(Sprt::GameResult result) {
             <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ");
             << "than the second" << endl;
         m_mainMutex->unlock();
-    }
-    else {
+    } else {
         QTextStream(stdout) << m_gamesPlayed << " games played." << endl;
         QTextStream(stdout)
             << "Status: " << status.result << " LLR ";
