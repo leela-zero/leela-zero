@@ -123,8 +123,8 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
             nodelist.emplace_back(node);
         }
     }
-    // Pass parent's eval to child, invert move POV
-    link_nodelist(nodecount, nodelist, 1.0f - eval);
+    // Pass parent's DCNN eval to child
+    link_nodelist(nodecount, nodelist, net_eval);
 
     return true;
 }
