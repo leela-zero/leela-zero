@@ -115,7 +115,7 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 
 # Usage
 
-The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html\
+The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
 
 Leela Zero is not meant to be used directly. You need a graphical interface
 for it, which will interface with Leela Zero through the GTP protocol.
@@ -262,6 +262,11 @@ If interrupted, training can be resumed with:
 - [ ] Faster GPU usage via supporting multiple GPU
 (not very urgent, we need to generate the data & network first and this can be
 done with multiple processes each bound to a GPU)
+
+# Related links
+
+* Watch Leela Zero's training games live in a GUI:
+https://github.com/fsparv/LeelaWatcher
 
 # License
 

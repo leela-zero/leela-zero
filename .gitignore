@@ -3,15 +3,5 @@ leelaz
 *.d
 .vscode/settings.json
 training/tf/venv
-.vs/
-packages/
-*.db
-*.opendb
-*.user
 *.orig
-src/x64
-x64/
-autogtp/*.sgf
-autogtp/*.gz
-Debug
-Release
+training/tf/venv
