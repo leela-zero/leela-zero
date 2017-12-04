@@ -24,7 +24,6 @@
 #include <iostream>
 
 void Results::addGameResult(Sprt::GameResult result, int side) {
-    m_statsMutex.lock();
     m_gamesPlayed++;
     if (result == Sprt::GameResult::Win) {
         if (side == Game::BLACK)
@@ -37,7 +36,6 @@ void Results::addGameResult(Sprt::GameResult result, int side) {
         else
             m_whiteLosses++;
     }
-    m_statsMutex.unlock();
 }
 
 std::string winPercentColumn(int wins, int games) {
@@ -53,8 +51,6 @@ void Results::printResults(QString firstNetName, QString secondNetName) {
     leelaz-DEFG5678  111 63.07%   61 68.54%   50 57.47%
                                   98 55.68%   78 44.32%
     */
-    m_statsMutex.lock();
-
     auto first_name = firstNetName.left(8).toLocal8Bit().constData();
     auto second_name = secondNetName.left(8).toLocal8Bit().constData();
 
@@ -89,6 +85,4 @@ void Results::printResults(QString firstNetName, QString secondNetName) {
         << std::string(20, ' ')
         << winPercentColumn(black_wins, m_gamesPlayed)
         << winPercentColumn(white_wins, m_gamesPlayed) << std::endl;
-
-    m_statsMutex.unlock();
 }

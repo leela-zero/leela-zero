@@ -22,6 +22,7 @@
 #include <QString>
 #include <QThread>
 #include <QVector>
+#include <QAtomicInt>
 #include "SPRT.h"
 #include "Game.h"
 #include "Results.h"
@@ -29,6 +30,10 @@
 class ValidationWorker : public QThread {
     Q_OBJECT
 public:
+    enum {
+        RUNNING = 0,
+        FINISHING
+    };
     ValidationWorker() = default;
     ValidationWorker(const ValidationWorker& w) : QThread(w.parent()) {}
     ~ValidationWorker() = default;
@@ -38,6 +43,7 @@ public:
               const QString& keep,
               int expected);
     void run() override;
+    void doFinish() { m_state.store(FINISHING); }
 
 signals:
     void resultReady(Sprt::GameResult r, int net_one_color);
@@ -47,6 +53,7 @@ private:
     int m_expected;
     QString m_keepPath;
     QString m_option;
+    QAtomicInt m_state;
 };
 
 class Validation : public QObject {
@@ -61,6 +68,7 @@ public:
                QMutex* mutex);
     ~Validation() = default;
     void startGames();
+    void wait();
 
 public slots:
     void getResult(Sprt::GameResult result, int net_one_color);

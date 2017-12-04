@@ -66,12 +66,10 @@ public:
 
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
-    UCTNode* get_pass_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
     UCTNode* get_sibling() const;
 
     void sort_root_children(int color);
-    void sort_children();
     UCTNode* get_best_root_child(int color);
     SMP::Mutex & get_mutex();
 

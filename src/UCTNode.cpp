@@ -445,31 +445,6 @@ public:
     }
 };
 
-/*
-    sort children by converting linked list to vector,
-    sorting the vector, and reconstructing to linked list again
-    Requires node mutex to be held.
-*/
-void UCTNode::sort_children() {
-    assert(get_mutex().is_held());
-    std::vector<std::tuple<float, UCTNode*>> tmp;
-
-    UCTNode * child = m_firstchild;
-
-    while (child != nullptr) {
-        tmp.emplace_back(child->get_score(), child);
-        child = child->m_nextsibling;
-    }
-
-    std::sort(begin(tmp), end(tmp));
-
-    m_firstchild = nullptr;
-
-    for (auto& sortnode : tmp) {
-        link_child(std::get<1>(sortnode));
-    }
-}
-
 void UCTNode::sort_root_children(int color) {
     LOCK(get_mutex(), lock);
     auto tmp = std::vector<sortnode_t>{};
@@ -533,19 +508,6 @@ UCTNode* UCTNode::get_first_child() const {
 
 UCTNode* UCTNode::get_sibling() const {
     return m_nextsibling;
-}
-
-UCTNode* UCTNode::get_pass_child() const {
-    UCTNode * child = m_firstchild;
-
-    while (child != nullptr) {
-        if (child->m_move == FastBoard::PASS) {
-            return child;
-        }
-        child = child->m_nextsibling;
-    }
-
-    return nullptr;
 }
 
 UCTNode* UCTNode::get_nopass_child(FastState& state) const {

@@ -21,7 +21,6 @@
 
 #include "SPRT.h"
 #include <QString>
-#include <mutex>
 
 
 class Results {
@@ -35,7 +34,6 @@ public:
     void printResults(QString firstNetName, QString secondNetName);
 
 private:
-    std::mutex m_statsMutex;
     int m_gamesPlayed;
     int m_blackWins;
     int m_blackLosses;
