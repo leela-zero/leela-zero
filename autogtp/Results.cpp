@@ -40,6 +40,10 @@ void Results::addGameResult(Sprt::GameResult result, int side) {
     m_statsMutex.unlock();
 }
 
+std::string winPercentColumn(int wins, int games) {
+    return (boost::format(" %4d %5.2f%%") % wins % (100.0 * wins / games)).str();
+}
+
 void Results::printResults(QString firstNetName, QString secondNetName) {
     /*
     Produces reports in this format.
@@ -49,7 +53,6 @@ void Results::printResults(QString firstNetName, QString secondNetName) {
     leelaz-DEFG5678  111 63.07%   61 68.54%   50 57.47%
                                   98 55.68%   78 44.32%
     */
-
     m_statsMutex.lock();
 
     auto first_name = firstNetName.left(8).toLocal8Bit().constData();
@@ -66,37 +69,26 @@ void Results::printResults(QString firstNetName, QString secondNetName) {
     auto black_wins = m_blackWins + m_whiteLosses;
     auto white_wins = m_whiteWins + m_blackLosses;
 
-    std::cout << first_name << " v " << second_name
-            << " ( " << m_gamesPlayed << " games)" << std::endl;
-    std::cout <<
-        boost::format("%-14s %-14s %-14s %s\n")
+    std::cout
+        << first_name << " v " << second_name
+        << " ( " << m_gamesPlayed << " games)" << std::endl;
+    std::cout
+        << boost::format("%13s %-11s %-11s %s\n")
             % "" /* name */ % "wins" % "black" % "white";
-    std::cout <<
-        boost::format("%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
-            % first_name
-            % p1_wins
-            % (100.0 * p1_wins / m_gamesPlayed)
-            % m_blackWins
-            % (100.0 * m_blackWins / p1_black_games)
-            % m_whiteWins
-            % (100.0 * m_whiteWins / p1_white_games);
-    std::cout <<
-        boost::format( "%-9s %4d %5.2f%% %4d %5.2f%% %4d %5.2f%%\n")
-            % second_name
-            % p1_losses
-            % (100.0 * p1_losses / m_gamesPlayed)
-            % m_whiteLosses
-            % (100.0 * m_whiteLosses / p1_white_games)
-            % m_blackLosses
-            % (100.0 * m_blackLosses / p1_white_games);
-    std::cout <<
-        boost::format("%-9s %11s %4d %5.2f%% %4d %5.2f%%\n")
-            % "" /* name */
-            % "" /* wins column */
-            % black_wins
-            % (100.0 * black_wins / m_gamesPlayed)
-            % white_wins
-            % (100.0 * white_wins / m_gamesPlayed);
+    std::cout
+        << first_name
+        << winPercentColumn(p1_wins, m_gamesPlayed)
+        << winPercentColumn(m_blackWins, p1_black_games)
+        << winPercentColumn(m_whiteWins, p1_white_games) << std::endl;
+    std::cout
+        << second_name
+        << winPercentColumn(p1_losses, m_gamesPlayed)
+        << winPercentColumn(m_whiteLosses, p1_black_games)
+        << winPercentColumn(m_blackLosses, p1_white_games) << std::endl;
+    std::cout
+        << std::string(20, ' ')
+        << winPercentColumn(black_wins, m_gamesPlayed)
+        << winPercentColumn(white_wins, m_gamesPlayed) << std::endl;
 
     m_statsMutex.unlock();
 }
