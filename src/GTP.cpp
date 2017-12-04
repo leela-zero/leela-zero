@@ -652,7 +652,18 @@ bool GTP::execute(GameState & game, std::string xinput) {
         }
         return true;
     } else if (command.find("netbench") == 0) {
-        Network::benchmark(&game);
+        std::istringstream cmdstream(command);
+        std::string tmp;
+        int iterations;
+
+        cmdstream >> tmp;  // eat netbench
+        cmdstream >> iterations;
+
+        if (!cmdstream.fail()) {
+            Network::benchmark(&game, iterations);
+        } else {
+            Network::benchmark(&game);
+        }
         gtp_printf(id, "");
         return true;
 
