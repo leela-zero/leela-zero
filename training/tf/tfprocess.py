@@ -265,8 +265,7 @@ class TFProcess:
         with tf.variable_scope(weight_key):
             h_bn = \
                 tf.layers.batch_normalization(
-                    tf.nn.bias_add(conv2d(inputs, W_conv),
-                                   b_conv, data_format='NCHW'),
+                    conv2d(inputs, W_conv),
                     epsilon=1e-5, axis=1, fused=True,
                     center=False, scale=False,
                     training=self.training)
@@ -296,8 +295,7 @@ class TFProcess:
         with tf.variable_scope(weight_key_1):
             h_bn1 = \
                 tf.layers.batch_normalization(
-                    tf.nn.bias_add(conv2d(inputs, W_conv_1),
-                                   b_conv_1, data_format='NCHW'),
+                    conv2d(inputs, W_conv_1),
                     epsilon=1e-5, axis=1, fused=True,
                     center=False, scale=False,
                     training=self.training)
@@ -305,8 +303,7 @@ class TFProcess:
         with tf.variable_scope(weight_key_2):
             h_bn2 = \
                 tf.layers.batch_normalization(
-                    tf.nn.bias_add(conv2d(h_out_1, W_conv_2),
-                                   b_conv_2, data_format='NCHW'),
+                    conv2d(h_out_1, W_conv_2),
                     epsilon=1e-5, axis=1, fused=True,
                     center=False, scale=False,
                     training=self.training)
