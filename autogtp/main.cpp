@@ -29,7 +29,7 @@
 #include <QCommandLineParser>
 #include <iostream>
 #include "Game.h"
-#include "Managment.h"
+#include "Management.h"
 
 constexpr int AUTOGTP_VERSION = 6;
 // Minimal Leela Zero version we expect to see

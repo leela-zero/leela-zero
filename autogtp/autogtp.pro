@@ -11,13 +11,13 @@ TEMPLATE = app
 SOURCES += main.cpp \
     Game.cpp \
     Worker.cpp \
-    Managment.cpp \
-    Job.cpp
+    Job.cpp \
+    Management.cpp
 
 HEADERS += \
     Game.h \
     Worker.h \
-    Managment.h \
     Job.h \
     Order.h \
-    Result.h
+    Result.h \
+    Management.h

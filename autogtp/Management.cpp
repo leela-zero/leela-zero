@@ -24,7 +24,7 @@
 #include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include "Managment.h"
+#include "Management.h"
 #include "Game.h"
 
 constexpr int RETRY_DELAY_MIN_SEC = 30;
