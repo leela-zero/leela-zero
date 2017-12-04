@@ -67,6 +67,7 @@ public:
                QMutex* mutex);
     ~Validation() = default;
     void startGames();
+    void wait();
 
 public slots:
     void getResult(Sprt::GameResult result);

@@ -199,12 +199,10 @@ void Validation::quitThreads() {
     for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
         m_gamesThreads[gpu].doFinish();
     }
-    bool anyRunning;
-    do {
-        anyRunning = false;
-        QThread::msleep(200);
-        for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
-            anyRunning |= m_gamesThreads[gpu].isRunning();
-        }
-    }while(anyRunning);
+}
+
+void Validation::wait() {
+    for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
+        m_gamesThreads[gpu].wait();
+    }
 }
