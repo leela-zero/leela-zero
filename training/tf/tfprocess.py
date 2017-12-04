@@ -22,7 +22,9 @@ import time
 import tensorflow as tf
 
 def weight_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.1)
+    """Xavier initialization"""
+    stddev = np.sqrt(2.0 / (sum(shape)))
+    initial = tf.truncated_normal(shape, stddev=stddev)
     return tf.Variable(initial)
 
 # Bias weights for layers not followed by BatchNorm
