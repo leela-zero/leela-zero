@@ -21,15 +21,15 @@
 #include <QFile>
 
 void ValidationWorker::run() {
-     do {
+    do {
         Game first(m_firstNet,  m_option);
         if (!first.gameStart(min_leelaz_version)) {
-            emit resultReady(Sprt::NoResult);
+            emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
         Game second(m_secondNet, m_option);
         if (!second.gameStart(min_leelaz_version)) {
-            emit resultReady(Sprt::NoResult);
+            emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
         QString wmove = "play white ";
@@ -37,14 +37,14 @@ void ValidationWorker::run() {
         do {
             first.move();
             if(!first.waitForMove()) {
-                emit resultReady(Sprt::NoResult);
+                emit resultReady(Sprt::NoResult, Game::BLACK);
                 return;
             }
             first.readMove();
             second.setMove(bmove + first.getMove());
             second.move();
             if(!second.waitForMove()) {
-                emit resultReady(Sprt::NoResult);
+                emit resultReady(Sprt::NoResult, Game::BLACK);
                 return;
             }
             second.readMove();
@@ -74,9 +74,9 @@ void ValidationWorker::run() {
 
             // Game is finished, send the result
             if (result == m_expected) {
-                emit resultReady(Sprt::Win);
+                emit resultReady(Sprt::Win, m_expected);
             } else {
-                emit resultReady(Sprt::Loss);
+                emit resultReady(Sprt::Loss, m_expected);
             }
             // Change color and play again
             QString net;
@@ -121,7 +121,6 @@ Validation::Validation(const int gpus,
     m_games(games),
     m_gpus(gpus),
     m_gpusList(gpuslist),
-    m_gamesPlayed(0),
     m_firstNet(firstNet),
     m_secondNet(secondNet),
     m_keepPath(keep) {
@@ -162,31 +161,34 @@ void Validation::startGames() {
     }
 }
 
-void Validation::getResult(Sprt::GameResult result) {
+void Validation::getResult(Sprt::GameResult result, int net_one_color) {
     if(result == Sprt::NoResult) {
         QTextStream(stdout) << "Engine Error." << endl;
         return;
     }
     m_syncMutex.lock();
-    m_gamesPlayed++;
     m_statistic.addGameResult(result);
+    m_results.addGameResult(result, net_one_color);
+
     Sprt::Status status = m_statistic.status();
     auto wdl = m_statistic.getWDL();
     QTextStream(stdout) << std::get<0>(wdl) << " wins, "
                         << std::get<2>(wdl) << " losses" << endl;
     if(status.result != Sprt::Continue) {
         quitThreads();
-        QTextStream(stdout) << "The first net is ";
         QTextStream(stdout)
-            <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ");
-        QTextStream(stdout) << "than the second" << endl;
+            << "The first net is "
+            <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ")
+            << "than the second" << endl;
+        m_results.printResults(m_firstNet, m_secondNet);
         m_mainMutex->unlock();
     } else {
-        QTextStream(stdout) << m_gamesPlayed << " games played." << endl;
         QTextStream(stdout)
-            << "Status: " << status.result << " LLR ";
-        QTextStream(stdout) << status.llr <<  " Lower Bound " << status.lBound;
-        QTextStream(stdout) << " Upper Bound " << status.uBound << endl;
+            << m_results.getGamesPlayed() << " games played." << endl;
+        QTextStream(stdout)
+            << "Status: " << status.result << " LLR "
+            << status.llr <<  " Lower Bound " << status.lBound
+            << " Upper Bound " << status.uBound << endl;
     }
     m_syncMutex.unlock();
 }

@@ -25,6 +25,7 @@
 #include <QAtomicInt>
 #include "SPRT.h"
 #include "Game.h"
+#include "Results.h"
 
 class ValidationWorker : public QThread {
     Q_OBJECT
@@ -45,7 +46,7 @@ public:
     void doFinish() { m_state.store(FINISHING); }
 
 signals:
-    void resultReady(Sprt::GameResult r);
+    void resultReady(Sprt::GameResult r, int net_one_color);
 private:
     QString m_firstNet;
     QString m_secondNet;
@@ -70,17 +71,17 @@ public:
     void wait();
 
 public slots:
-    void getResult(Sprt::GameResult result);
+    void getResult(Sprt::GameResult result, int net_one_color);
 
 private:
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
     Sprt m_statistic;
+    Results m_results;
     QVector<ValidationWorker> m_gamesThreads;
     int m_games;
     int m_gpus;
     QStringList m_gpusList;
-    int m_gamesPlayed;
     QString m_firstNet;
     QString m_secondNet;
     QString m_keepPath;
