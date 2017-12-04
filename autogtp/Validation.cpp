@@ -23,12 +23,12 @@
 void ValidationWorker::run() {
      do {
         Game first(m_firstNet,  m_option);
-        if(!first.gameStart(min_leelaz_version)) {
+        if (!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
         }
         Game second(m_secondNet, m_option);
-        if(!second.gameStart(min_leelaz_version)) {
+        if (!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
         }
@@ -51,14 +51,14 @@ void ValidationWorker::run() {
             first.setMove(wmove + second.getMove());
             second.nextMove();
         } while (first.nextMove() && m_state.load() == RUNNING);
-        
-        if(m_state.load() == RUNNING) {        
+
+        if (m_state.load() == RUNNING) {
             QTextStream(stdout) << "Game has ended." << endl;
             int result = 0;
             if (first.getScore()) {
                 result = first.getWinner();
             }
-            if(!m_keepPath.isEmpty())
+            if (!m_keepPath.isEmpty())
             {
                 first.writeSgf();
                 QString prefix = m_keepPath + '/';
@@ -84,14 +84,12 @@ void ValidationWorker::run() {
             net = m_secondNet;
             m_secondNet = m_firstNet;
             m_firstNet = net;
-            if(m_expected == Game::BLACK) {
+            if (m_expected == Game::BLACK) {
                 m_expected = Game::WHITE;
             } else {
                 m_expected = Game::BLACK;
             }
         }
-            
-        
     } while (m_state.load() != FINISHING);
 }
 
@@ -184,8 +182,7 @@ void Validation::getResult(Sprt::GameResult result) {
             <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ");
         QTextStream(stdout) << "than the second" << endl;
         m_mainMutex->unlock();
-    }
-    else {
+    } else {
         QTextStream(stdout) << m_gamesPlayed << " games played." << endl;
         QTextStream(stdout)
             << "Status: " << status.result << " LLR ";
