@@ -25,20 +25,18 @@
 
 class Results {
 public:
-    Results() : m_gamesPlayed(0),
-                m_blackWins(0), m_blackLosses(0),
-                m_whiteWins(0), m_whiteLosses(0) {}
-
-    int getGamesPlayed() const { return m_gamesPlayed; };
+    Results() = default;
+    int getGamesPlayed() const { return m_gamesPlayed; }
     void addGameResult(Sprt::GameResult result, int side);
-    void printResults(QString firstNetName, QString secondNetName);
+    void printResults(const QString& firstNetName,
+                      const QString& secondNetName) const;
 
 private:
-    int m_gamesPlayed;
-    int m_blackWins;
-    int m_blackLosses;
-    int m_whiteWins;
-    int m_whiteLosses;
+    int m_gamesPlayed{0};
+    int m_blackWins{0};
+    int m_blackLosses{0};
+    int m_whiteWins{0};
+    int m_whiteLosses{0};
 };
 
 #endif // RESULT_H
