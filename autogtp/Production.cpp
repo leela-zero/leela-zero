@@ -35,7 +35,7 @@ void ProductionWorker::run() {
         float pick = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
         // For now must manually check the resign rate
         // for new networks with resign_analysis.py
-        QString resignpct = (pick < 0.1) ? "0" : "10";
+        QString resignpct = (pick < 0.2) ? "0" : "5";
         // Prepend because option must have "-w " on the end
         option = " -r " + resignpct + option;
         QTextStream(stdout) << "option=" << option << endl;
