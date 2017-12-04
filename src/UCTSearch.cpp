@@ -42,6 +42,25 @@
 
 using namespace Utils;
 
+namespace {
+
+    // Evaluate state without expanding the node.
+    float evaluate_state(GameState* state) {
+        auto raw_netlist = Network::get_scored_moves(
+            state, Network::Ensemble::RANDOM_ROTATION);
+        // DCNN returns winrate as side to move
+        auto net_eval = raw_netlist.second;
+
+        if (state->board.get_to_move() == FastBoard::WHITE) {
+            return 1.0f - net_eval;
+        }
+        else {
+            return net_eval;
+        }
+    }
+
+}
+
 UCTSearch::UCTSearch(GameState & g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
@@ -57,14 +76,25 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
     TTable::get_TT()->sync(hash, komi, node);
     node->virtual_loss();
 
-    if (!node->has_children() && m_nodes < MAX_TREE_SIZE) {
-        float eval;
-        auto success = node->create_children(m_nodes, currstate, eval);
-        if (success) {
-            result = SearchResult::from_eval(eval);
-        } else if (currstate.get_passes() >= 2) {
+    if (!node->has_children()) {
+        if (currstate.get_passes() >= 2) {
+            // Terminal position. Evaluation from the game score.
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
+        } else if (m_nodes < cfg_max_tree_size) {
+            // Expand the tree.
+            float eval;
+            auto success = node->create_children(m_nodes, currstate, eval);
+            if (success) {
+                result = SearchResult::from_eval(eval);
+            }
+        } else {
+            // Evaluate position without expanding the tree.
+            float eval = node->first_visit()
+                ? evaluate_state(&currstate)
+                : node->get_eval(currstate.get_to_move());
+
+            result = SearchResult::from_eval(eval);
         }
     }
 
