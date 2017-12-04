@@ -17,6 +17,7 @@
 */
 
 #include <cmath>
+#include <random>
 #include <QDir>
 #include <QFileInfo>
 #include <QThread>
@@ -29,10 +30,13 @@ constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
 
 void ProductionWorker::run() {
+    std::random_device rd;
+    std::ranlux48 gen(rd());
+    std::uniform_real_distribution<> rand_dist(0.0, 1.0);
     do {
         auto start = std::chrono::high_resolution_clock::now();
         auto option = m_option;
-        float pick = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        auto pick = rand_dist(gen);
         // For now must manually check the resign rate
         // for new networks with resign_analysis.py
         QString resignpct = (pick < 0.2) ? "0" : "5";
