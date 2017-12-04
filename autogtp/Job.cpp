@@ -59,7 +59,7 @@ Result ProdutionJob::execute(){
             game.dumpTraining();
         }
         res.type(Result::File);
-        res.name(game.getFile());
+        res.addList(game.getFile());
     } else {
         QTextStream(stdout) << "Program ends: exiting." << endl;
     }
@@ -104,17 +104,13 @@ Result ValidationJob::execute(){
 
    if(m_state.load() == RUNNING) {
        QTextStream(stdout) << "Game has ended." << endl;
-       int result = 0;
+       res.addList(QString::number(first.getMovesCount()));
        if (first.getScore()) {
-           result = first.getWinner();
+           res.addList(first.getResult());
+           res.addList(first.getWinnerName());
        }
        // Game is finished, send the result
        res.type(Result::Win);
-       if (result == Game::BLACK) {
-           res.name("Black");
-       } else {
-           res.name("White");
-       }
    }
    QTextStream(stdout) << "Stopping engine." << endl;
    first.gameQuit();

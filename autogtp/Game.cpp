@@ -261,8 +261,8 @@ bool Game::getScore() {
         }
         char readBuffer[256];
         readLine(readBuffer, 256);
-        QString score = readBuffer;
-        score.remove(0, 2);
+        m_result = readBuffer;
+        m_result.remove(0, 2);
         if (readBuffer[2] == 'W') {
             m_winner = QString(QStringLiteral("white"));
         } else if (readBuffer[2] == 'B') {
@@ -272,7 +272,7 @@ bool Game::getScore() {
             error(Game::PROCESS_DIED);
             return false;
         }
-        QTextStream(stdout) << "Score: " << score;
+        QTextStream(stdout) << "Score: " << m_result;
     }
     if (m_winner.isNull()) {
         QTextStream(stdout) << "No winner found" << endl;

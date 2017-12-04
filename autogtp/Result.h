@@ -19,7 +19,7 @@
 #ifndef RESULT_H
 #define RESULT_H
 
-#include <QString>
+#include <QStringList>
 
 class Result {
 public:
@@ -30,15 +30,16 @@ public:
         Error
     };
     Result() = default;
-    Result(int t, QString n = "") { m_type = t, m_name = n; }
+    Result(int t, QStringList n = QStringList()) { m_type = t, m_list = n; }
     ~Result() = default;
     void type(int t) { m_type = t; }
     int type() { return m_type; }
-    void name(const QString &n) { m_name = n; }
-    QString name() { return m_name; }
+    void addList(const QString &n) { m_list << n; }
+    QStringList list() { return m_list; }
+    void clearList() { m_list.clear(); }
 private:
     int m_type;
-    QString m_name;
+    QStringList m_list;
 };
 
 #endif // RESULT_H

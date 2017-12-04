@@ -45,6 +45,9 @@ public:
     bool setMove(const QString& m);
     void setCmdLine(const QString& cmd)  { m_cmdLine = cmd; }
     int getWinner();
+    QString getWinnerName() const { return m_winner; }
+    int getMovesCount() const { return m_moveNum; }
+    QString getResult() const { return m_result; } 
     enum {
         BLACK = 0,
         WHITE = 1,
@@ -62,6 +65,7 @@ private:
     QString m_winner;
     QString m_fileName;
     QString m_moveDone;
+    QString m_result;
     bool m_resignation;
     bool m_blackToMove;
     bool m_blackResigned;

@@ -87,11 +87,11 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     printTimingInfo(duration);
     switch(res.type()) {
     case Result::File:
-        uploadData(res.name(), ord.parameters()[1]);
+        uploadData(res.list()[0], ord.parameters()[1]);
         break;
     case Result::Win:
     case Result::Loss:
-        uploadResult(res.name(), ord.parameters());
+        uploadResult(res.list(), ord.parameters());
         break;
     }
     m_gamesThreads[index]->order(getWork());
@@ -161,7 +161,7 @@ Order Management::getWork() {
     prog_cmdline.append(".exe");
 #endif
     prog_cmdline.append(" -s -J");
-    prog_cmdline.append(" http://zero-test.sjeng.org/get-task/5");
+    prog_cmdline.append(" http://zero-test.sjeng.org/get-task/7");
 
     QTextStream(stdout) << prog_cmdline << endl;
 
@@ -300,17 +300,22 @@ void Management::fetchNetwork(const QString &name) {
     return;
 }
 
-void Management::uploadResult(const QString &winner, const QStringList &l) {
+void Management::uploadResult(const QStringList &r, const QStringList &l) {
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-
-    prog_cmdline.append(" -F blackhash=" + l[1]);
-    prog_cmdline.append(" -F whitehash=" + l[2]);
+    if(r[2] == "black") {
+        prog_cmdline.append(" -F winnerhash=" + l[1]);
+        prog_cmdline.append(" -F looserhash=" + l[2]);
+    } else {
+        prog_cmdline.append(" -F winnerhash=" + l[2]);
+        prog_cmdline.append(" -F looserhash=" + l[1]);
+    }
     prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
-    prog_cmdline.append(" -F sgf=@result.txt");
-    prog_cmdline.append(" -F result="+ winner);
+    prog_cmdline.append(" -F winnercolor="+ r[2]);
+    prog_cmdline.append(" -F movescount="+ r[0]);
+    prog_cmdline.append(" -F score="+ r[1]);
     prog_cmdline.append(" http://zero-test.sjeng.org/submit-match");
     QTextStream(stdout) << prog_cmdline << endl;
     QProcess curl;

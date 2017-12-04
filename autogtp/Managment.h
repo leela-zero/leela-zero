@@ -1,5 +1,5 @@
-#ifndef PRODUCTION_H
-#define PRODUCTION_H
+#ifndef MANAGEMENT_H
+#define MANAGEMENT_H
 /*
     This file is part of Leela Zero.
     Copyright (C) 2017 Marco Calignano
@@ -116,7 +116,7 @@ private:
     void printTimingInfo(float duration);
 
     void uploadData(const QString& file, const QString& name);
-    void uploadResult(const QString &winner, const QStringList &l);
+    void uploadResult(const QStringList &r, const QStringList &l);
 };
 
 #endif
