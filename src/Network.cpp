@@ -83,32 +83,27 @@ std::array<float, 256> ip1_val_b;
 std::array<float, 256> ip2_val_w;
 std::array<float, 1> ip2_val_b;
 
-void Network::benchmark(GameState * state) {
-    {
-        int BENCH_AMOUNT = 1600;
-        int cpus = cfg_num_threads;
-        int iters_per_thread = (BENCH_AMOUNT + (cpus - 1)) / cpus;
+void Network::benchmark(GameState * state, int iterations) {
+    int cpus = cfg_num_threads;
+    int iters_per_thread = (iterations + (cpus - 1)) / cpus;
 
-        Time start;
+    Time start;
 
-        ThreadGroup tg(thread_pool);
-        for (int i = 0; i < cpus; i++) {
-            tg.add_task([iters_per_thread, state]() {
-                GameState mystate = *state;
-                for (int loop = 0; loop < iters_per_thread; loop++) {
-                    auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION);
-                }
-            });
-        };
-        tg.wait_all();
+    ThreadGroup tg(thread_pool);
+    for (int i = 0; i < cpus; i++) {
+        tg.add_task([iters_per_thread, state]() {
+            GameState mystate = *state;
+            for (int loop = 0; loop < iters_per_thread; loop++) {
+                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION);
+            }
+        });
+    };
+    tg.wait_all();
 
-        Time end;
-
-        myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
-                 BENCH_AMOUNT,
-                 (float)Time::timediff(start,end)/100.0,
-                 (int)((float)BENCH_AMOUNT/((float)Time::timediff(start,end)/100.0)));
-    }
+    Time end;
+    auto centiseconds = Time::timediff(start,end) / 100.0;
+    myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
+             iterations, centiseconds, (int)(iterations / centiseconds));
 }
 
 void Network::initialize(void) {
