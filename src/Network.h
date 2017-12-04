@@ -50,10 +50,9 @@ public:
     // File format version
     static constexpr int FORMAT_VERSION = 1;
     static constexpr int INPUT_CHANNELS = 18;
-    static constexpr int MAX_CHANNELS = 256;
 
     static void initialize();
-    static void benchmark(GameState * state);
+    static void benchmark(GameState * state, int iterations = 1600);
     static void show_heatmap(FastState * state, Netresult & netres, bool topmoves);
     static void softmax(const std::vector<float>& input,
                         std::vector<float>& output,

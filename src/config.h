@@ -36,6 +36,8 @@
 #define USE_OPENBLAS
 //#define USE_MKL
 #define USE_OPENCL
+// Use 16-bit floating point storage for net calculations
+// #define USE_HALF
 //#define USE_TUNER
 
 #define PROGRAM_NAME "Leela Zero"
@@ -65,6 +67,13 @@ typedef unsigned __int64 uint64;
 #else
 typedef long long int int64 ;
 typedef  unsigned long long int uint64;
+#endif
+
+#ifdef USE_HALF
+#include "half/half.hpp"
+using net_t = half_float::half;
+#else
+using net_t = float;
 #endif
 
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */

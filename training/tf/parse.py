@@ -63,7 +63,7 @@ def apply_symmetry(plane, symmetry):
     return work_plane
 
 def convert_train_data(text_item):
-    """"
+    """
         Convert textual training data to python lists.
 
         Converts a set of 19 lines of text into a pythonic dataformat.

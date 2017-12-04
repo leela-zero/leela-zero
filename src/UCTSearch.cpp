@@ -57,14 +57,19 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
     TTable::get_TT()->sync(hash, komi, node);
     node->virtual_loss();
 
-    if (!node->has_children() && m_nodes < MAX_TREE_SIZE) {
-        float eval;
-        auto success = node->create_children(m_nodes, currstate, eval);
-        if (success) {
-            result = SearchResult::from_eval(eval);
-        } else if (currstate.get_passes() >= 2) {
+    if (!node->has_children()) {
+        if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
+        } else if (m_nodes < MAX_TREE_SIZE) {
+            float eval;
+            auto success = node->create_children(m_nodes, currstate, eval);
+            if (success) {
+                result = SearchResult::from_eval(eval);
+            }
+        } else {
+            auto eval = node->eval_state(currstate);
+            result = SearchResult::from_eval(eval);
         }
     }
 
@@ -99,11 +104,11 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
 }
 
 void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
-    const int color = state.get_to_move();
-
-    if (!parent.has_children()) {
+    if (cfg_quiet || !parent.has_children()) {
         return;
     }
+
+    const int color = state.get_to_move();
 
     // sort children, put best move on top
     m_root.sort_root_children(color);
@@ -268,32 +273,24 @@ std::string UCTSearch::get_pv(KoState & state, UCTNode & parent) {
         return std::string();
     }
 
-    // This temporarily breaks any best probability = first in tree assumptions
-    parent.sort_root_children(state.get_to_move());
+    auto best_child = parent.get_best_root_child(state.get_to_move());
+    auto best_move = best_child->get_move();
+    auto res = state.move_to_text(best_move);
 
-    LOCK(parent.get_mutex(), lock);
-    UCTNode * bestchild = parent.get_first_child();
-    int bestmove = bestchild->get_move();
-    lock.unlock();
+    state.play_move(best_move);
 
-    std::string tmp = state.move_to_text(bestmove);
-
-    std::string res(tmp);
-    res.append(" ");
-
-    state.play_move(bestmove);
-
-    std::string next = get_pv(state, *bestchild);
-    res.append(next);
-
-    // Resort according to move probability
-    lock.lock();
-    parent.sort_children();
-
+    auto next = get_pv(state, *best_child);
+    if (!next.empty()) {
+        res.append(" ").append(next);
+    }
     return res;
 }
 
 void UCTSearch::dump_analysis(int playouts) {
+    if (cfg_quiet) {
+        return;
+    }
+
     GameState tempstate = m_rootstate;
     int color = tempstate.board.get_to_move();
 

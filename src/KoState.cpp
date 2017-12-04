@@ -33,44 +33,25 @@ void KoState::init_game(int size, float komi) {
 
     FastState::init_game(size, komi);
 
-    ko_hash_history.clear();
-    hash_history.clear();
+    m_ko_hash_history.clear();
+    m_hash_history.clear();
 
-    ko_hash_history.push_back(board.calc_ko_hash());
-    hash_history.push_back(board.calc_hash());
+    m_ko_hash_history.emplace_back(board.calc_ko_hash());
+    m_hash_history.emplace_back(board.calc_hash());
 }
 
-bool KoState::legal_move(int vertex) {
-    if (board.get_square(vertex) != FastBoard::EMPTY) {
-        return false;
-    }
-    if (board.is_suicide(vertex, board.get_to_move())) {
-        return false;
-    }
+bool KoState::superko(void) const {
+    auto first = crbegin(m_ko_hash_history);
+    auto last = crend(m_ko_hash_history);
 
-    KoState tmp = *this;
-
-    tmp.play_move(vertex);
-
-    if (tmp.superko()) {
-        return false;
-    }
-
-    return true;
-}
-
-bool KoState::superko(void) {
-    auto first = crbegin(ko_hash_history);
-    auto last = crend(ko_hash_history);
-
-    auto res = std::find(++first, last, board.ko_hash);
+    auto res = std::find(++first, last, board.get_ko_hash());
 
     return (res != last);
 }
 
-bool KoState::superko(uint64 newhash) {
-    auto first = crbegin(ko_hash_history);
-    auto last = crend(ko_hash_history);
+bool KoState::superko(uint64 newhash) const {
+    auto first = crbegin(m_ko_hash_history);
+    auto last = crend(m_ko_hash_history);
 
     auto res = std::find(first, last, newhash);
 
@@ -80,18 +61,18 @@ bool KoState::superko(uint64 newhash) {
 void KoState::reset_game() {
     FastState::reset_game();
 
-    ko_hash_history.clear();
-    hash_history.clear();
+    m_ko_hash_history.clear();
+    m_hash_history.clear();
 
-    ko_hash_history.push_back(board.calc_ko_hash());
-    hash_history.push_back(board.calc_hash());
+    m_ko_hash_history.push_back(board.calc_ko_hash());
+    m_hash_history.push_back(board.calc_hash());
 }
 
 void KoState::play_pass(void) {
     FastState::play_pass();
 
-    ko_hash_history.push_back(board.ko_hash);
-    hash_history.push_back(board.hash);
+    m_ko_hash_history.push_back(board.get_ko_hash());
+    m_hash_history.push_back(board.get_hash());
 }
 
 void KoState::play_move(int vertex) {
@@ -102,8 +83,8 @@ void KoState::play_move(int color, int vertex) {
     if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
         FastState::play_move(color, vertex);
 
-        ko_hash_history.push_back(board.ko_hash);
-        hash_history.push_back(board.hash);
+        m_ko_hash_history.push_back(board.get_ko_hash());
+        m_hash_history.push_back(board.get_hash());
     } else {
         play_pass();
     }
