@@ -19,7 +19,7 @@ public:
     Job();
     ~Job() = default;
     virtual Result execute() = 0;
-    virtual void init(const QStringList &l) = 0;
+    virtual void init(const QStringList &l) { m_option = l[0] + " -g -q -d -w "; }
     void finish() { m_state.store(FINISHING); }
 
 protected:

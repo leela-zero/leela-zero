@@ -7,7 +7,7 @@
 
 Job::Job() :
   m_state(RUNNING),
-  m_option(" -g -q -d -w ")
+  m_option("")
 {
 }
 
@@ -51,8 +51,8 @@ Result ProdutionJob::execute(){
 }
 
 void ProdutionJob::init(const QStringList &l) {
-    m_network = l[0];
-    m_option.prepend(l[1]);
+    Job::init(l);
+    m_network = l[1];
 }
 
 
@@ -106,9 +106,9 @@ Result ValidationJob::execute(){
 
 
 void ValidationJob::init(const QStringList &l) {
-    m_firstNet = l[0];
-    m_secondNet = l[1];
-    m_option.prepend(l[2]);
+    Job::init(l);
+    m_firstNet = l[1];
+    m_secondNet = l[2];
 }
 
 

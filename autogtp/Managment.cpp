@@ -87,7 +87,7 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     printTimingInfo(duration);
     switch(res.type()) {
     case Result::File:
-        uploadData(res.name(), ord.parameters()[0]);
+        uploadData(res.name(), ord.parameters()[1]);
         break;
     case Result::Win:
     case Result::Loss:
@@ -161,7 +161,7 @@ Order Management::getWork() {
     prog_cmdline.append(".exe");
 #endif
     prog_cmdline.append(" -s -J");
-    prog_cmdline.append(" http://zero-test.sjeng.org/get-task/7");
+    prog_cmdline.append(" http://zero-test.sjeng.org/get-task/5");
 
     QTextStream(stdout) << prog_cmdline << endl;
 
@@ -179,7 +179,7 @@ Order Management::getWork() {
     QJsonObject ob = doc.object();
     QString options;
     if(ob.contains("required_client_version")) {
-        QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toInt();
+        QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toInt() << endl;
         if(ob.value("required_client_version").toInt() > m_version) {
             QTextStream(stdout) << ' ' <<  endl;
             QTextStream(stdout)
@@ -196,15 +196,14 @@ Order Management::getWork() {
     if(ob.contains("noise") && ob.value("noise").toBool()) {
         options.append(" -n ");
     }
-    if(ob.contains("noponder") && ob.value("noponder").toBool()) {
-        options.append(" --noponder ");
-    }
-
+    options.append(" --noponder ");
+    QStringList parameters;
+    parameters << options;
     if(ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
         o.type(Order::Production);
-        o.parameters(QStringList() << net << options);
+        o.parameters(parameters << net);
     }
     if(ob.value("cmd").toString() == "match") {
         o.type(Order::Validation);
@@ -212,7 +211,7 @@ Order Management::getWork() {
         QString net2 = ob.value("white_hash").toString();
         fetchNetwork(net1);
         fetchNetwork(net2);
-        o.parameters(QStringList() << net1 << net2 << options);
+        o.parameters(parameters << net1 << net2);
     }
     return o;
 }
@@ -310,9 +309,9 @@ void Management::uploadResult(const QString &winner, const QStringList &l) {
     prog_cmdline.append(" -F blackhash=" + l[1]);
     prog_cmdline.append(" -F whitehash=" + l[2]);
     prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
-    prog_cmdline.append(" -F sgf=@index.html");
+    prog_cmdline.append(" -F sgf=@result.txt");
     prog_cmdline.append(" -F result="+ winner);
-    prog_cmdline.append(" http://zero.sjeng.org/submit-match");
+    prog_cmdline.append(" http://zero-test.sjeng.org/submit-match");
     QTextStream(stdout) << prog_cmdline << endl;
     QProcess curl;
     curl.start(prog_cmdline);
@@ -367,7 +366,7 @@ void Management::uploadData(const QString& file, const QString& net) {
         prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
         prog_cmdline.append(" -F sgf=@" + sgf_file);
         prog_cmdline.append(" -F trainingdata=@" + data_file);
-        prog_cmdline.append(" http://zero.sjeng.org/submit_TEST");
+        prog_cmdline.append(" http://zero-test.sjeng.org/submit");
         QTextStream(stdout) << prog_cmdline << endl;
         QProcess curl;
         curl.start(prog_cmdline);
