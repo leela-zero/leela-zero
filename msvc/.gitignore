@@ -1,0 +1,9 @@
+Debug
+Release
+packages
+.orig
+x64
+.vs
+*.db
+*.opendb
+*.user

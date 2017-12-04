@@ -15,142 +15,142 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\config.h">
+    <ClInclude Include="..\..\src\config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\FastBoard.h">
+    <ClInclude Include="..\..\src\FastBoard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\FastState.h">
+    <ClInclude Include="..\..\src\FastState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\FullBoard.h">
+    <ClInclude Include="..\..\src\FullBoard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\GameState.h">
+    <ClInclude Include="..\..\src\GameState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\GTP.h">
+    <ClInclude Include="..\..\src\GTP.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Im2Col.h">
+    <ClInclude Include="..\..\src\Im2Col.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\KoState.h">
+    <ClInclude Include="..\..\src\KoState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Network.h">
+    <ClInclude Include="..\..\src\Network.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\OpenCL.h">
+    <ClInclude Include="..\..\src\OpenCL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Random.h">
+    <ClInclude Include="..\..\src\Random.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\SGFParser.h">
+    <ClInclude Include="..\..\src\SGFParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\SGFTree.h">
+    <ClInclude Include="..\..\src\SGFTree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\SMP.h">
+    <ClInclude Include="..\..\src\SMP.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\ThreadPool.h">
+    <ClInclude Include="..\..\src\ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\TimeControl.h">
+    <ClInclude Include="..\..\src\TimeControl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Timing.h">
+    <ClInclude Include="..\..\src\Timing.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Training.h">
+    <ClInclude Include="..\..\src\Training.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\TTable.h">
+    <ClInclude Include="..\..\src\TTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\UCTNode.h">
+    <ClInclude Include="..\..\src\UCTNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\UCTSearch.h">
+    <ClInclude Include="..\..\src\UCTSearch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Utils.h">
+    <ClInclude Include="..\..\src\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Zobrist.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\CL\cl2.hpp">
+    <ClInclude Include="..\..\src\Zobrist.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\FastBoard.cpp">
+    <ClCompile Include="..\..\src\FastBoard.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\FastState.cpp">
+    <ClCompile Include="..\..\src\FastState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\FullBoard.cpp">
+    <ClCompile Include="..\..\src\FullBoard.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\GameState.cpp">
+    <ClCompile Include="..\..\src\GameState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\GTP.cpp">
+    <ClCompile Include="..\..\src\GTP.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\KoState.cpp">
+    <ClCompile Include="..\..\src\KoState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Leela.cpp">
+    <ClCompile Include="..\..\src\Leela.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Network.cpp">
+    <ClCompile Include="..\..\src\Network.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\OpenCL.cpp">
+    <ClCompile Include="..\..\src\OpenCL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Random.cpp">
+    <ClCompile Include="..\..\src\Random.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\SGFParser.cpp">
+    <ClCompile Include="..\..\src\SGFParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\SGFTree.cpp">
+    <ClCompile Include="..\..\src\SGFTree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\SMP.cpp">
+    <ClCompile Include="..\..\src\SMP.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\TimeControl.cpp">
+    <ClCompile Include="..\..\src\TimeControl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Timing.cpp">
+    <ClCompile Include="..\..\src\Timing.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Training.cpp">
+    <ClCompile Include="..\..\src\Training.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\TTable.cpp">
+    <ClCompile Include="..\..\src\TTable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\UCTNode.cpp">
+    <ClCompile Include="..\..\src\UCTNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\UCTSearch.cpp">
+    <ClCompile Include="..\..\src\UCTSearch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Utils.cpp">
+    <ClCompile Include="..\..\src\Utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Zobrist.cpp">
+    <ClCompile Include="..\..\src\Zobrist.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
