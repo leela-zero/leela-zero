@@ -57,14 +57,19 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
     TTable::get_TT()->sync(hash, komi, node);
     node->virtual_loss();
 
-    if (!node->has_children() && m_nodes < MAX_TREE_SIZE) {
-        float eval;
-        auto success = node->create_children(m_nodes, currstate, eval);
-        if (success) {
-            result = SearchResult::from_eval(eval);
-        } else if (currstate.get_passes() >= 2) {
+    if (!node->has_children()) {
+        if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
+        } else if (m_nodes < MAX_TREE_SIZE) {
+            float eval;
+            auto success = node->create_children(m_nodes, currstate, eval);
+            if (success) {
+                result = SearchResult::from_eval(eval);
+            }
+        } else {
+            auto eval = node->eval_state(currstate);
+            result = SearchResult::from_eval(eval);
         }
     }
 
