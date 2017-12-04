@@ -383,6 +383,7 @@ void Production::uploadData(const QString& file) {
         QTextStream(stdout) << outstr;
         dir.remove(sgf_file);
         dir.remove(data_file);
+        dir.remove(debug_data_file);
     }
     return;
 }
