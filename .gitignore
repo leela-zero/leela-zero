@@ -3,3 +3,11 @@ leelaz
 *.d
 training/tf/venv
 weights.txt
+/msvc/packages
+/msvc/VS2015/x64/Debug
+/msvc/VS2015/x64/Release
+/msvc/VS2017/x64/Debug
+/msvc/VS2017/x64/Release
+/msvc/x64/Debug
+/msvc/x64/Release
+/msvc/.vs/leela-zero2015/v14

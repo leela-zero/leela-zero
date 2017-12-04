@@ -59,6 +59,11 @@ public:
     */
     static constexpr int RESIGN = -2;
 
+	/*
+	    indicates that an empty square is never in atari. A large value that fits in a short
+	*/
+	static constexpr int INF_LIBS = 16384;  // 2^14
+
     /*
         possible contents of a square
     */
@@ -114,14 +119,25 @@ protected:
         bit masks to detect eyes on neighbors
     */
     static const std::array<int,      2> s_eyemask;
-    static const std::array<square_t, 4> s_cinvert; /* color inversion */
 
     std::array<square_t, MAXSQ>            m_square;      /* board contents */
     std::array<unsigned short, MAXSQ+1>    m_next;        /* next stone in string */
     std::array<unsigned short, MAXSQ+1>    m_parent;      /* parent node of string */
-    std::array<unsigned short, MAXSQ+1>    m_libs;        /* liberties per string parent */
+	/*
+	    Liberties per string parent. Liberties for the string that contains the specified vertex.
+	    It's the number of liberties for the string of which the index is the "parent" vertex,
+	    and only guaranteed to be correct for that parent vertex.
+	 */
+    std::array<unsigned short, MAXSQ+1>    m_libs;        
     std::array<unsigned short, MAXSQ+1>    m_stones;      /* stones per string parent */
-    std::array<unsigned short, MAXSQ>      m_neighbours;  /* counts of neighboring stones */
+	/*
+	    Counts 3 types of neighbours: emtpty, white, and black all within a single 4 short int.
+	    0000 0000 0000
+	    ^ empty neighbours
+	         ^ white neighbours
+	              ^ black neighbours
+	*/
+    std::array<unsigned short, MAXSQ>      m_neighbours; 
     std::array<int, 4>                     m_dirs;        /* movement directions 4 way */
     std::array<int, 8>                     m_extradirs;   /* movement directions 8 way */
     std::array<int, 2>                     m_prisoners;   /* prisoners per color */
@@ -142,6 +158,7 @@ protected:
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
     int update_board_eye(const int color, const int i);
+    void print_column_labels(int size, std::string padding = " ");
 };
 
 #endif

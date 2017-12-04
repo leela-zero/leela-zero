@@ -39,19 +39,19 @@ const int FastBoard::BIG;
 const int FastBoard::PASS;
 const int FastBoard::RESIGN;
 
+/* bit masks to detect eyes on neighbors */
 const std::array<int, 2> FastBoard::s_eyemask = {
     4 * (1 << (NBR_SHIFT * BLACK)),
     4 * (1 << (NBR_SHIFT * WHITE))
-};
-
-const std::array<FastBoard::square_t, 4> FastBoard::s_cinvert = {
-    WHITE, BLACK, EMPTY, INVAL
 };
 
 int FastBoard::get_boardsize(void) const {
     return m_boardsize;
 }
 
+/*
+    @return index into 1D board arrays from the x, y coordinate 
+*/
 int FastBoard::get_vertex(int x, int y) const {
     assert(x >= 0 && x < MAXBOARDSIZE);
     assert(y >= 0 && y < MAXBOARDSIZE);
@@ -65,6 +65,9 @@ int FastBoard::get_vertex(int x, int y) const {
     return vertex;
 }
 
+/*
+    @return the x,y coordinate from the 1D index 
+*/
 std::pair<int, int> FastBoard::get_xy(int vertex) const {
     std::pair<int, int> xy;
 
@@ -163,7 +166,7 @@ void FastBoard::reset_board(int size) {
     }
 
     m_parent[MAXSQ] = MAXSQ;
-    m_libs[MAXSQ]   = 16384;    /* we will subtract from this */
+    m_libs[MAXSQ]   = INF_LIBS;    /* we will subtract from this */
     m_next[MAXSQ]   = MAXSQ;
 }
 
@@ -218,12 +221,17 @@ bool FastBoard::is_suicide(int i, int color) {
     }
 }
 
+/*
+    @return Liberties on a single point - called pseudo liberties
+*/
 int FastBoard::count_pliberties(const int i) {
     return count_neighbours(EMPTY, i);
 }
 
-// count neighbours of color c at vertex v
-// the border of the board has fake neighours of both colors
+/*
+    Count neighbours of color c at vertex v.
+    The border of the board has fake neighours of both colors.
+*/
 int FastBoard::count_neighbours(const int c, const int v) {
     assert(c == WHITE || c == BLACK || c == EMPTY);
     return (m_neighbours[v] >> (NBR_SHIFT * c)) & 7;
@@ -280,6 +288,9 @@ void FastBoard::remove_neighbour(const int i, const int color) {
     }
 }
 
+/** 
+    @return the number of stones in the string that was removed 
+*/
 int FastBoard::remove_string_fast(int i) {
     int pos = i;
     int removed = 0;
@@ -335,7 +346,11 @@ std::vector<bool> FastBoard::calc_reach_color(int col) {
     return bd;
 }
 
-// Needed for scoring passed out games not in MC playouts
+/*
+   The area score is from the point of view of the black player. 
+   A negative score means white is leading.
+   This score is needed for scoring passed out games not in Monte-Carlo play-outs
+*/
 float FastBoard::area_score(float komi) {
     auto white = calc_reach_color(WHITE);
     auto black = calc_reach_color(BLACK);
@@ -394,15 +409,8 @@ float FastBoard::final_mc_score(float komi) {
 void FastBoard::display_board(int lastmove) {
     int boardsize = get_boardsize();
 
-    myprintf("\n   ");
-    for (int i = 0; i < boardsize; i++) {
-        if (i < 25) {
-            myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-        } else {
-            myprintf("%c ", (('A' + (i-25) < 'I') ? 'A' + (i-25) : 'A' + (i-25) + 1));
-        }
-    }
     myprintf("\n");
+    print_column_labels(boardsize);
     for (int j = boardsize-1; j >= 0; j--) {
         myprintf("%2d", j+1);
         if (lastmove == get_vertex(0, j))
@@ -425,15 +433,17 @@ void FastBoard::display_board(int lastmove) {
         }
         myprintf("%2d\n", j+1);
     }
+    print_column_labels(boardsize);
+    myprintf("\n");
+}
+
+void FastBoard::print_column_labels(int size, const std::string padding) {
     myprintf("   ");
-    for (int i = 0; i < boardsize; i++) {
-         if (i < 25) {
-            myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-        } else {
-            myprintf("%c ", (('A' + (i-25) < 'I') ? 'A' + (i-25) : 'A' + (i-25) + 1));
-        }
+    for (int i = 0; i < size; i++) {
+        myprintf("%c", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
+        myprintf("%s", padding);
     }
-    myprintf("\n\n");
+    myprintf("\n");
 }
 
 void FastBoard::merge_strings(const int ip, const int aip) {
@@ -587,6 +597,10 @@ int FastBoard::update_board_fast(const int color, const int i, bool & capture) {
     return -1;
 }
 
+/*
+    @return true if surrounded on 4 sides by the specified color 
+        and there are enough diagonals to avoid false eye. 
+*/
 bool FastBoard::is_eye(const int color, const int i) {
     /* check for 4 neighbors of the same color */
     int ownsurrounded = (m_neighbours[i] & s_eyemask[color]);
@@ -679,9 +693,9 @@ std::string FastBoard::move_to_text_sgf(int move) {
     } else if (move == FastBoard::PASS) {
         result << "tt";
     } else if (move == FastBoard::RESIGN) {
-	result << "tt";
+    result << "tt";
     } else {
-	result << "error";
+    result << "error";
     }
 
     return result.str();
