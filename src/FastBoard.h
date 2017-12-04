@@ -81,7 +81,6 @@ public:
     std::pair<int, int> get_xy(int vertex) const;
 
     bool is_suicide(int i, int color);
-    int update_board_fast(const int color, const int i, bool & capture);
     int count_pliberties(const int i);
     void augment_chain(std::vector<int> & chains, int vertex);
     bool is_eye(const int color, const int vtx);
@@ -141,7 +140,6 @@ protected:
     int remove_string_fast(int i);
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
-    int update_board_eye(const int color, const int i);
 };
 
 #endif

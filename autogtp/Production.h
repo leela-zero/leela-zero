@@ -30,19 +30,25 @@
 class ProductionWorker : public QThread {
     Q_OBJECT
 public:
+    enum {
+        RUNNING = 0,
+        NET_CHANGE,
+        FINISHING        
+    };
     ProductionWorker() = default;
     ProductionWorker(const ProductionWorker& w) : QThread(w.parent()) {}
     ~ProductionWorker() = default;
-    void init(const QString& gpuIndex, const QString& net, const int index);
-    void newNetwork(const QString& net) { m_network = net; }
+    void init(const QString& gpuIndex, const QString& net);
+    void newNetwork(const QString& net) { QMutexLocker locker(&m_mutex); m_state = NET_CHANGE; m_network = net; }
     void run() override;
-
+    
 signals:
-    void resultReady(const QString& file, float duration, int index);
+    void resultReady(const QString& file, float duration);
 private:
     QString m_network;
     QString m_option;
-    int m_index;
+    QMutex m_mutex;
+    int m_state;
 };
 
 class Production : public QObject {
@@ -59,7 +65,7 @@ public:
     void startGames();
 
 public slots:
-    void getResult(const QString& file, float duration, int index);
+    void getResult(const QString& file, float duration);
 
 private:
 
