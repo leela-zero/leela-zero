@@ -44,8 +44,8 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float score)
-    : m_move(vertex), m_score(score) {
+UCTNode::UCTNode(int vertex, float score, float init_eval)
+    : m_move(vertex), m_score(score), m_init_eval(init_eval) {
 }
 
 UCTNode::~UCTNode() {
@@ -123,13 +123,15 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
             nodelist.emplace_back(node);
         }
     }
-    link_nodelist(nodecount, nodelist);
+    // Pass parent's eval to child, invert move POV
+    link_nodelist(nodecount, nodelist, 1.0f - eval);
 
     return true;
 }
 
 void UCTNode::link_nodelist(std::atomic<int> & nodecount,
-                            std::vector<Network::scored_node> & nodelist)
+                            std::vector<Network::scored_node> & nodelist,
+                            float init_eval)
 {
     size_t totalchildren = nodelist.size();
     if (!totalchildren)
@@ -147,7 +149,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
 
     for (const auto& node : nodelist) {
         if (totalchildren - childrenseen <= maxchilds) {
-            auto vtx = new UCTNode(node.second, node.first);
+            auto vtx = new UCTNode(node.second, node.first, init_eval);
             link_child(vtx);
             childrenadded++;
         }
@@ -318,9 +320,8 @@ float UCTNode::get_eval(int tomove) const {
         }
         return score;
     } else {
-        // If a node has not been visited yet,
-        // the eval is the first-play-urgency.
-        return 1.1f;
+        // If a node has not been visited yet, use the default passed in
+        return m_init_eval;
     }
 }
 

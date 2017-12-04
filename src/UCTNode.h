@@ -38,7 +38,7 @@ public:
     // search tree.
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
 
-    explicit UCTNode(int vertex, float score);
+    explicit UCTNode(int vertex, float score, float init_eval);
     ~UCTNode();
     bool first_visit() const;
     bool has_children() const;
@@ -79,7 +79,8 @@ private:
     UCTNode();
     void link_child(UCTNode * newchild);
     void link_nodelist(std::atomic<int> & nodecount,
-                       std::vector<Network::scored_node> & nodelist);
+                       std::vector<Network::scored_node> & nodelist,
+                       float init_eval);
 
     // Tree data
     std::atomic<bool> m_has_children{false};
@@ -92,6 +93,7 @@ private:
     std::atomic<int> m_virtual_loss{0};
     // UCT eval
     float m_score;
+    float m_init_eval;
     std::atomic<double> m_blackevals{0};
     // node alive (not superko)
     std::atomic<bool> m_valid{true};
