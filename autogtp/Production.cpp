@@ -140,7 +140,7 @@ void Production::startGames() {
                     this,
                     &Production::getResult,
                     Qt::DirectConnection);
-            if (m_gpusList.isEmpty()) {
+            if(m_gpusList.isEmpty()) {
                 myGpu = "";
             } else {
                 myGpu = m_gpusList.at(gpu);

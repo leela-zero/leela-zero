@@ -23,12 +23,12 @@
 void ValidationWorker::run() {
     do {
         Game first(m_firstNet,  m_option);
-        if (!first.gameStart(min_leelaz_version)) {
+        if(!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
         }
         Game second(m_secondNet, m_option);
-        if (!second.gameStart(min_leelaz_version)) {
+        if(!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
             return;
         }
