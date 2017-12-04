@@ -40,7 +40,7 @@ void ProductionWorker::run() {
         option = " -r " + resignpct + option;
         QTextStream(stdout) << "option=" << option << endl;
         m_mutex.lock();
-        Game game(m_network, m_option);
+        Game game(m_network, option);
         m_mutex.unlock();
         if (!game.gameStart(min_leelaz_version)) {
             return;
