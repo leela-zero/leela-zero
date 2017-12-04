@@ -116,6 +116,7 @@ int main(int argc, char *argv[]) {
                             parser.value(keepSgfOption), &mutex);
         validate.startGames();
         mutex.lock();
+        validate.wait();
     } else {
         Production prod(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION,
                         parser.value(keepSgfOption), &mutex);
