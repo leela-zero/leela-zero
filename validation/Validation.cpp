@@ -50,44 +50,49 @@ void ValidationWorker::run() {
             second.readMove();
             first.setMove(wmove + second.getMove());
             second.nextMove();
-        } while (first.nextMove());
-        QTextStream(stdout) << "Game has ended." << endl;
-        int result = 0;
-        if (first.getScore()) {
-            result = first.getWinner();
-        }
-        if(!m_keepPath.isEmpty())
-        {
-            first.writeSgf();
-            QString prefix = m_keepPath + '/';
-            if(m_expected == Game::BLACK) {
-                prefix.append("black_");
-            } else {
-                prefix.append("white_");
-            }
-            QFile(first.getFile() + ".sgf").rename(prefix + first.getFile() + ".sgf");
-        }
-        QTextStream(stdout) << "Stopping engine." << endl;
-        first.gameQuit();
-        second.gameQuit();
+        } while (first.nextMove() && m_state.load() == RUNNING);
 
-        // Game is finished, send the result
-        if (result == m_expected) {
-            emit resultReady(Sprt::Win);
-        } else {
-            emit resultReady(Sprt::Loss);
+        if(m_state.load() == RUNNING) {
+            QTextStream(stdout) << "Game has ended." << endl;
+            int result = 0;
+            if (first.getScore()) {
+                result = first.getWinner();
+            }
+            if(!m_keepPath.isEmpty())
+            {
+                first.writeSgf();
+                QString prefix = m_keepPath + '/';
+                if(m_expected == Game::BLACK) {
+                    prefix.append("black_");
+                } else {
+                    prefix.append("white_");
+                }
+                QFile(first.getFile() + ".sgf").rename(prefix + first.getFile() + ".sgf");
+                }
+            QTextStream(stdout) << "Stopping engine." << endl;
+            first.gameQuit();
+            second.gameQuit();
+
+            // Game is finished, send the result
+            if (result == m_expected) {
+                emit resultReady(Sprt::Win);
+            } else {
+                emit resultReady(Sprt::Loss);
+            }
+            // Change color and play again
+            QString net;
+            net = m_secondNet;
+            m_secondNet = m_firstNet;
+            m_firstNet = net;
+            if(m_expected == Game::BLACK) {
+                m_expected = Game::WHITE;
+            } else {
+                m_expected = Game::BLACK;
+            }
         }
-        // Change color and play again
-        QString net;
-        net = m_secondNet;
-        m_secondNet = m_firstNet;
-        m_firstNet = net;
-        if(m_expected == Game::BLACK) {
-            m_expected = Game::WHITE;
-        } else {
-            m_expected = Game::BLACK;
-        }
-    } while (1);
+
+
+    } while (m_state.load() != FINISHING);
 }
 
 void ValidationWorker::init(const QString& gpuIndex,
@@ -95,7 +100,7 @@ void ValidationWorker::init(const QString& gpuIndex,
                             const QString& secondNet,
                             const QString& keep,
                             const int expected) {
-    m_option = " -g -q -d -r 0 -w ";
+    m_option = " -p 1000  -r 0  -m 0  --noponder  -g -q -d -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
@@ -103,6 +108,7 @@ void ValidationWorker::init(const QString& gpuIndex,
     m_secondNet = secondNet;
     m_expected = expected;
     m_keepPath = keep;
+    m_state.store(RUNNING);
 }
 
 Validation::Validation(const int gpus,
@@ -124,6 +130,8 @@ Validation::Validation(const int gpus,
     m_keepPath(keep) {
     m_statistic.initialize(0.0, 35.0, 0.05, 0.05);
     m_statistic.addGameResult(Sprt::Draw);
+    m_statistic.addGameResult(Sprt::Win);
+    m_statistic.addGameResult(Sprt::Loss);
 }
 
 void Validation::startGames() {
@@ -191,6 +199,14 @@ void Validation::getResult(Sprt::GameResult result) {
 
 void Validation::quitThreads() {
     for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
-        m_gamesThreads[gpu].quit();
+        m_gamesThreads[gpu].doFinish();
     }
+    bool anyRunning;
+    do {
+        anyRunning = false;
+        QThread::msleep(200);
+        for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
+            anyRunning |= m_gamesThreads[gpu].isRunning();
+        }
+    }while(anyRunning);
 }
