@@ -47,7 +47,7 @@ public:
     int getWinner();
     QString getWinnerName() const { return m_winner; }
     int getMovesCount() const { return m_moveNum; }
-    QString getResult() const { return m_result; } 
+    QString getResult() const { return m_result.trimmed(); }
     enum {
         BLACK = 0,
         WHITE = 1,

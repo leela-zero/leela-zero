@@ -307,10 +307,10 @@ void Management::uploadResult(const QStringList &r, const QStringList &l) {
 #endif
     if(r[2] == "black") {
         prog_cmdline.append(" -F winnerhash=" + l[1]);
-        prog_cmdline.append(" -F looserhash=" + l[2]);
+        prog_cmdline.append(" -F loserhash=" + l[2]);
     } else {
         prog_cmdline.append(" -F winnerhash=" + l[2]);
-        prog_cmdline.append(" -F looserhash=" + l[1]);
+        prog_cmdline.append(" -F loserhash=" + l[1]);
     }
     prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
     prog_cmdline.append(" -F winnercolor="+ r[2]);
