@@ -31,7 +31,7 @@ class ValidationWorker : public QThread {
 public:
     enum {
         RUNNING = 0,
-        FINISHING        
+        FINISHING
     };
     ValidationWorker() = default;
     ValidationWorker(const ValidationWorker& w) : QThread(w.parent()) {}
