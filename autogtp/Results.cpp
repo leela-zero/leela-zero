@@ -20,7 +20,6 @@
 #include "Game.h"
 #include "SPRT.h"
 #include <QString>
-#include <boost/format.hpp>
 #include <iostream>
 
 void Results::addGameResult(Sprt::GameResult result, int side) {
@@ -39,48 +38,52 @@ void Results::addGameResult(Sprt::GameResult result, int side) {
 }
 
 std::string winPercentColumn(int wins, int games) {
-    return (boost::format(" %4d %5.2f%%") % wins % (100.0 * wins / games)).str();
+    auto line = QString::asprintf(" %4d %5.2f%%", wins,
+                                  100.0f * (wins / (float)games));
+    return line.toStdString();
 }
 
-void Results::printResults(QString firstNetName, QString secondNetName) {
+void Results::printResults(const QString& firstNetName,
+                           const QString& secondNetName) const {
     /*
-    Produces reports in this format.
-    leelaz-ABCD1234 v leelaz-DEFG5678 (176 games)
-                    wins          black       white
-    leelaz-ABDC1234   65 36.93%   37 42.53%   28 31.46%
-    leelaz-DEFG5678  111 63.07%   61 68.54%   50 57.47%
-                                  98 55.68%   78 44.32%
+        Produces reports in this format.
+            ABCD1234 v DEFG5678 (176 games)
+                     wins          black       white
+            ABDC1234   65 36.93%   37 42.53%   28 31.46%
+            DEFG5678  111 63.07%   61 68.54%   50 57.47%
+                                   98 55.68%   78 44.32%
     */
-    auto first_name = firstNetName.left(8).toLocal8Bit().constData();
-    auto second_name = secondNetName.left(8).toLocal8Bit().constData();
+    auto first_name = firstNetName.leftJustified(8, ' ', true)\
+            .toStdString();
+    auto second_name = secondNetName.leftJustified(8, ' ', true)\
+            .toStdString();
 
     // Results for player one
     auto p1_wins = m_blackWins + m_whiteWins;
     auto p1_losses = m_blackLosses + m_whiteLosses;
 
-    auto p1_black_games = m_blackWins + m_blackLosses;
-    auto p1_white_games = m_whiteWins + m_whiteLosses;
-
     // Results for black vs white
     auto black_wins = m_blackWins + m_whiteLosses;
     auto white_wins = m_whiteWins + m_blackLosses;
 
+    // Formatted title line
+    auto title_line = QString::asprintf("%13s %-11s %-11s %s\n",
+                                        "", "wins", "black", "white");
+
     std::cout
         << first_name << " v " << second_name
         << " ( " << m_gamesPlayed << " games)" << std::endl;
-    std::cout
-        << boost::format("%13s %-11s %-11s %s\n")
-            % "" /* name */ % "wins" % "black" % "white";
+    std::cout << title_line.toStdString();
     std::cout
         << first_name
         << winPercentColumn(p1_wins, m_gamesPlayed)
-        << winPercentColumn(m_blackWins, p1_black_games)
-        << winPercentColumn(m_whiteWins, p1_white_games) << std::endl;
+        << winPercentColumn(m_blackWins, black_wins)
+        << winPercentColumn(m_whiteWins, white_wins) << std::endl;
     std::cout
         << second_name
         << winPercentColumn(p1_losses, m_gamesPlayed)
-        << winPercentColumn(m_whiteLosses, p1_black_games)
-        << winPercentColumn(m_blackLosses, p1_white_games) << std::endl;
+        << winPercentColumn(m_whiteLosses, black_wins)
+        << winPercentColumn(m_blackLosses, white_wins) << std::endl;
     std::cout
         << std::string(20, ' ')
         << winPercentColumn(black_wins, m_gamesPlayed)
