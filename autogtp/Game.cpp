@@ -143,7 +143,7 @@ void Game::checkVersion(const VersionTuple &min_version) {
 
 bool Game::gameStart(const VersionTuple &min_version) {
     start(m_cmdLine);
-    if(!waitForStarted()) {
+    if (!waitForStarted()) {
         error(Game::NO_LEELAZ);
         return false;
     }
