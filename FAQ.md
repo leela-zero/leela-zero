@@ -6,7 +6,7 @@
 
 从谷歌的论文中可以发现，AZ的网络强度也是有起伏的。而且现在只是在小规模测试阶段，发现问题也是很正常的。请保持耐心。
 
-AZ's network isn't always be stronger either. Besides we're actually testing our approach right now. Just be patient.
+AZ also had this behavior, besides we're testing our approach right now. Please be patient.
 
 ## 为什么现在训练的是5/6 block网络，而AZ用的是20block ##
 ## Why the network size is only 6 blocks comparing to 20 blocks of AZ ##
@@ -24,7 +24,7 @@ Even so, the 20 block version is 13 times more computationally expensive, and ex
 
 这里使用的是概率学意义上强弱，具体来说是SPRT在95%概率下任何一方有超过55%的胜率（ELO的35分），就认为有一方胜出了。谷歌的论文中是下满400盘的。唯一的区别是我们这里的Elo可能不是那么准确，网络的强弱还是可以确定的。
 
-We use SPRT approach for best network choosing. A better network is chosen only SPRT finds it's 95% confidence to have a win rate of 55% (boils down to 35 Elo). Side effect is our Elo curve may not be that accurate, but the best network chosen is still correct.
+We use SPRT to decide if a newly trained network is better. A better network is only chosen if SPRT finds it's 95% confident that the new network has a 55% (boils down to 35 elo) win rate over the previous best network.
 
 ## 自对弈时产生的棋谱为什么下得很糟 ##
 ## Why the game generated during self-play contains quite a few bad moves ##
@@ -53,3 +53,10 @@ b) One person on computer-go, who ran a similar experiment on 7x7, reported that
 c) Obviously, the speed of acquiring data is linearly related to this setting.
 
 So, the current number is a best guess based on these observations. To be sure what the best value is, one would have to rerun this experiment several times.
+
+## 有些自对弈对局非常短 ##
+## Very short self-play games ends with White win?! ##
+
+自对弈的增加了随机性，一旦黑棋在开始阶段选择pass，由于贴目的关系，白棋有很大概率也选择pass获胜。短对局由此产生。
+
+This is expected. Due to randomness of self-play games, once Black choose to pass at the beginning, there is a big chance for White to pass too (7.5 komi advantage for White). See issue #198 for defailed explanation.
