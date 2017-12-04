@@ -57,18 +57,17 @@ void ValidationWorker::run() {
             int result = 0;
             if (first.getScore()) {
                 result = first.getWinner();
+                if (!m_keepPath.isEmpty()) {
+                    first.writeSgf();
+                    QString prefix = m_keepPath + '/';
+                    if(m_expected == Game::BLACK) {
+                        prefix.append("black_");
+                    } else {
+                        prefix.append("white_");
+                    }
+                    QFile(first.getFile() + ".sgf").rename(prefix + first.getFile() + ".sgf");
+                }
             }
-            if (!m_keepPath.isEmpty())
-            {
-                first.writeSgf();
-                QString prefix = m_keepPath + '/';
-                if(m_expected == Game::BLACK) {
-                    prefix.append("black_");
-                } else {
-                    prefix.append("white_");
-                }
-                QFile(first.getFile() + ".sgf").rename(prefix + first.getFile() + ".sgf");
-                }
             QTextStream(stdout) << "Stopping engine." << endl;
             first.gameQuit();
             second.gameQuit();
