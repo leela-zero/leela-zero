@@ -84,22 +84,6 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) {
     return result;
 }
 
-KoState * SGFTree::get_state_from_mainline(unsigned int movenum) {
-    SGFTree * link = this;
-    SGFTree * last = this;
-
-    for (unsigned int i = 0; i <= movenum && link != nullptr; i++) {
-        link = link->get_child(0);
-        if (link == nullptr) {
-            return last->get_state();
-        } else {
-            last = link;
-        }
-    }
-
-    return link->get_state();
-}
-
 // the number of states is one more than the number of moves
 int SGFTree::count_mainline_moves(void) {
     SGFTree * link = this;
