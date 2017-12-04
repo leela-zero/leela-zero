@@ -83,11 +83,10 @@ std::array<float, 256> ip1_val_b;
 std::array<float, 256> ip2_val_w;
 std::array<float, 1> ip2_val_b;
 
-void Network::benchmark(GameState * state) {
+void Network::benchmark(GameState * state, int iterations) {
     {
-        int BENCH_AMOUNT = 1600;
         int cpus = cfg_num_threads;
-        int iters_per_thread = (BENCH_AMOUNT + (cpus - 1)) / cpus;
+        int iters_per_thread = (iterations + (cpus - 1)) / cpus;
 
         Time start;
 
@@ -103,11 +102,9 @@ void Network::benchmark(GameState * state) {
         tg.wait_all();
 
         Time end;
-
+        auto centiseconds = Time::timediff(start,end) / 100.0;
         myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
-                 BENCH_AMOUNT,
-                 (float)Time::timediff(start,end)/100.0,
-                 (int)((float)BENCH_AMOUNT/((float)Time::timediff(start,end)/100.0)));
+                 iterations, centiseconds, (int)(iterations / centiseconds));
     }
 }
 
