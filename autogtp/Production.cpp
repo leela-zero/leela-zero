@@ -29,53 +29,54 @@ constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
 
 void ProductionWorker::run() {
-     do {
-         auto start = std::chrono::high_resolution_clock::now();
-         m_mutex.lock();
-         Game game(m_network, m_option);
-         m_mutex.unlock(); 
-         if(!game.gameStart(min_leelaz_version)) {
-             return;
-         }
-         do {
-             game.move();
-             if(!game.waitForMove()) {
-                 return;
-             }
-             game.readMove();
-         } while (game.nextMove() && m_state == RUNNING);
-         switch(m_state) {
-         case RUNNING:
-         {
-             QTextStream(stdout) << "Game has ended." << endl;
-             if (game.getScore()) {
-                 game.writeSgf();
-                 game.dumpTraining();
-             }
-             auto end = std::chrono::high_resolution_clock::now();
-             auto gameDuration =
-                std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-             emit resultReady(game.getFile(), gameDuration);
-             QTextStream(stdout) << "Stopping engine." << endl;
-             game.gameQuit();
-             break;
-         }
-         case NET_CHANGE:
-         {
-             QTextStream(stdout) << "Best Network has change: restarting." << endl;
-             m_state = RUNNING;
-             QTextStream(stdout) << "Stopping engine." << endl;
-             game.gameQuit();
-             break;
-         }
-         case FINISHING:
-         {
-             QTextStream(stdout) << "Program ends: exiting." << endl;
-             QTextStream(stdout) << "Stopping engine." << endl;
-             game.gameQuit();
-             break;
-         }
-        }             
+    do {
+        auto start = std::chrono::high_resolution_clock::now();
+        m_mutex.lock();
+        Game game(m_network, m_option);
+        m_mutex.unlock();
+        if(!game.gameStart(min_leelaz_version)) {
+            return;
+        }
+        do {
+            game.move();
+            if(!game.waitForMove()) {
+                return;
+            }
+            game.readMove();
+        } while (game.nextMove() && m_state == RUNNING);
+        switch(m_state) {
+            case RUNNING:
+            {
+                QTextStream(stdout) << "Game has ended." << endl;
+                if (game.getScore()) {
+                    game.writeSgf();
+                    game.dumpTraining();
+                }
+                auto end = std::chrono::high_resolution_clock::now();
+                auto gameDuration =
+                    std::chrono::duration_cast<std::chrono::seconds>
+                        (end - start).count();
+                emit resultReady(game.getFile(), gameDuration);
+                QTextStream(stdout) << "Stopping engine." << endl;
+                game.gameQuit();
+                break;
+            }
+            case NET_CHANGE:
+            {
+                QTextStream(stdout) << "Best Network has change: restarting." << endl;
+                m_state = RUNNING;
+                QTextStream(stdout) << "Stopping engine." << endl;
+                game.gameQuit();
+                break;
+            }
+            case FINISHING:
+            {
+                QTextStream(stdout) << "Program ends: exiting." << endl;
+                QTextStream(stdout) << "Stopping engine." << endl;
+                game.gameQuit();
+                break;
+            }
+        }
     } while (m_state != FINISHING);
 }
 
@@ -106,16 +107,15 @@ Production::Production(const int gpus,
 }
 
 bool Production::updateNetwork() {
-    auto retries = 0;
-    do {
+    for (auto retries = 0; retries < MAX_RETRIES; retries++) {
         try {
             auto new_network = fetchBestNetworkHash();
             fetchBestNetwork();
             return new_network;
         } catch (NetworkException ex) {
-            QTextStream(stdout) << "Network connection to server failed."
-                                << endl;
-            QTextStream(stdout) << ex.what() << endl;
+            QTextStream(stdout)
+                << "Network connection to server failed." << endl;
+                << ex.what() << endl;
             auto retry_delay =
                 std::min<int>(
                     RETRY_DELAY_MIN_SEC * std::pow(1.5, retries),
@@ -124,8 +124,8 @@ bool Production::updateNetwork() {
             QTextStream(stdout) << "Retrying in " << retry_delay << " s."
                                 << endl;
             QThread::sleep(retry_delay);
-        }
-    } while (++retries < MAX_RETRIES);
+       }
+    }
     QTextStream(stdout) << "Maximum number of retries exceeded. Giving up."
                         << endl;
     exit(EXIT_FAILURE);

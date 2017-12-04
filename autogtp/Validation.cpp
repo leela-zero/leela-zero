@@ -21,7 +21,7 @@
 #include <QFile>
 
 void ValidationWorker::run() {
-     do {
+    do {
         Game first(m_firstNet,  m_option);
         if(!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult);
@@ -51,8 +51,8 @@ void ValidationWorker::run() {
             first.setMove(wmove + second.getMove());
             second.nextMove();
         } while (first.nextMove() && m_state.load() == RUNNING);
-        
-        if(m_state.load() == RUNNING) {        
+
+        if(m_state.load() == RUNNING) {
             QTextStream(stdout) << "Game has ended." << endl;
             int result = 0;
             if (first.getScore()) {
@@ -90,8 +90,6 @@ void ValidationWorker::run() {
                 m_expected = Game::BLACK;
             }
         }
-            
-        
     } while (m_state.load() != FINISHING);
 }
 
@@ -179,18 +177,18 @@ void Validation::getResult(Sprt::GameResult result) {
                         << std::get<2>(wdl) << " losses" << endl;
     if(status.result != Sprt::Continue) {
         quitThreads();
-        QTextStream(stdout) << "The first net is ";
         QTextStream(stdout)
+            << "The first net is ";
             <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ");
-        QTextStream(stdout) << "than the second" << endl;
+            << "than the second" << endl;
         m_mainMutex->unlock();
     }
     else {
         QTextStream(stdout) << m_gamesPlayed << " games played." << endl;
         QTextStream(stdout)
             << "Status: " << status.result << " LLR ";
-        QTextStream(stdout) << status.llr <<  " Lower Bound " << status.lBound;
-        QTextStream(stdout) << " Upper Bound " << status.uBound << endl;
+            << status.llr <<  " Lower Bound " << status.lBound;
+            << " Upper Bound " << status.uBound << endl;
     }
     m_syncMutex.unlock();
 }
