@@ -17,7 +17,6 @@
 */
 
 #include "Validation.h"
-#include "Game.h"
 #include <QFile>
 
 void ValidationWorker::run() {
@@ -79,10 +78,7 @@ void ValidationWorker::run() {
                 emit resultReady(Sprt::Loss, m_expected);
             }
             // Change color and play again
-            QString net;
-            net = m_secondNet;
-            m_secondNet = m_firstNet;
-            m_firstNet = net;
+            m_firstNet.swap(m_secondNet);
             if (m_expected == Game::BLACK) {
                 m_expected = Game::WHITE;
             } else {
@@ -186,8 +182,9 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
         QTextStream(stdout)
             << m_results.getGamesPlayed() << " games played." << endl;
         QTextStream(stdout)
-            << "Status: " << status.result << " LLR "
-            << status.llr <<  " Lower Bound " << status.lBound
+            << "Status: " << status.result
+            << " LLR " << status.llr
+            << " Lower Bound " << status.lBound
             << " Upper Bound " << status.uBound << endl;
     }
     m_syncMutex.unlock();

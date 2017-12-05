@@ -117,26 +117,25 @@ Production::Production(const int gpus,
 }
 
 bool Production::updateNetwork() {
-    auto retries = 0;
-    do {
+    for (auto retries = 0; retries < MAX_RETRIES; retries++) {
         try {
             auto new_network = fetchBestNetworkHash();
             fetchBestNetwork();
             return new_network;
         } catch (NetworkException ex) {
-            QTextStream(stdout) << "Network connection to server failed."
-                                << endl;
-            QTextStream(stdout) << ex.what() << endl;
+            QTextStream(stdout)
+                << "Network connection to server failed." << endl;
+            QTextStream(stdout)
+                << ex.what() << endl;
             auto retry_delay =
                 std::min<int>(
                     RETRY_DELAY_MIN_SEC * std::pow(1.5, retries),
-                    RETRY_DELAY_MAX_SEC
-                );
+                    RETRY_DELAY_MAX_SEC);
             QTextStream(stdout) << "Retrying in " << retry_delay << " s."
                                 << endl;
             QThread::sleep(retry_delay);
         }
-    } while (++retries < MAX_RETRIES);
+    }
     QTextStream(stdout) << "Maximum number of retries exceeded. Giving up."
                         << endl;
     exit(EXIT_FAILURE);
@@ -184,11 +183,11 @@ void  Production::printTimingInfo(float duration) {
         std::chrono::duration_cast<std::chrono::seconds>(game_end - m_start);
     auto total_time_min =
         std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
-    QTextStream(stdout) << m_gamesPlayed << " game(s) played in "
-         << total_time_min.count() << " minutes = "
-         << total_time_s.count() / m_gamesPlayed << " seconds/game"
-         << ", last game took "
-         << duration << " seconds.\n";
+    QTextStream(stdout)
+        << m_gamesPlayed << " game(s) played in "
+        << total_time_min.count() << " minutes = "
+        << total_time_s.count() / m_gamesPlayed << " seconds/game"
+        << ", last game took " << duration << " seconds." << endl;
 }
 
 
