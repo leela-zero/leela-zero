@@ -70,7 +70,7 @@ Result ProdutionJob::execute(){
 
 void ProdutionJob::init(const QStringList &l) {
     Job::init(l);
-    m_network = l[1];
+    m_network = l[2];
 }
 
 
@@ -104,10 +104,12 @@ Result ValidationJob::execute(){
 
    if(m_state.load() == RUNNING) {
        QTextStream(stdout) << "Game has ended." << endl;
-       res.addList(QString::number(first.getMovesCount()));
+       res.addList(QString::number(first.getMovesCount()));  //[0]
        if (first.getScore()) {
-           res.addList(first.getResult());
-           res.addList(first.getWinnerName());
+           res.addList(first.getResult());                   //[1]
+           res.addList(first.getWinnerName());               //[2]
+           first.writeSgf();
+           res.addList(first.getFile());                     //[3]
        }
        // Game is finished, send the result
        res.type(Result::Win);
@@ -121,8 +123,8 @@ Result ValidationJob::execute(){
 
 void ValidationJob::init(const QStringList &l) {
     Job::init(l);
-    m_firstNet = l[1];
-    m_secondNet = l[2];
+    m_firstNet = l[2];
+    m_secondNet = l[3];
 }
 
 

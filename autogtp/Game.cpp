@@ -142,6 +142,7 @@ void Game::checkVersion(const VersionTuple &min_version) {
 }
 
 bool Game::gameStart(const VersionTuple &min_version) {
+    QTextStream(stdout) << m_cmdLine << endl;
     start(m_cmdLine);
     if (!waitForStarted()) {
         error(Game::NO_LEELAZ);
@@ -246,10 +247,12 @@ bool Game::getScore() {
     if(m_resignation) {
         if (m_blackResigned) {
             m_winner = QString(QStringLiteral("white"));
-            QTextStream(stdout) << "Score: W+Resign" << endl;
+            m_result = "W+Resign ";
+            QTextStream(stdout) << "Score: " << m_result << endl;
         } else {
             m_winner = QString(QStringLiteral("black"));
-            QTextStream(stdout) << "Score: B+Resign" << endl;
+            m_result = "B+Resign ";
+            QTextStream(stdout) << "Score: " << m_result << endl;
         }
     } else{
         write("final_score\n");

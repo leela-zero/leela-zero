@@ -87,7 +87,7 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     printTimingInfo(duration);
     switch(res.type()) {
     case Result::File:
-        uploadData(res.list()[0], ord.parameters()[1]);
+        uploadData(res.list()[0], ord.parameters()[2], ord.parameters()[1]);
         break;
     case Result::Win:
     case Result::Loss:
@@ -135,26 +135,32 @@ Order Management::getWork() {
 
     /*
 
-    {
-        "cmd":"match",
-        "white_hash":"223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
-        "black_hash":"92c658d7325fe38f0c8adbbb1444ed17afd891b9f208003c272547a7bcb87909",
-        "playouts":1000,
-        "resignation_percent":3,
-        "required_client_version":5,
-        "noise":false,
-        "randomcnt":0
+{
+   "cmd" : "match",
+   "white_hash" : "223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
+   "black_hash" : "92c658d7325fe38f0c8adbbb1444ed17afd891b9f208003c272547a7bcb87909",
+   "options_hash" : "c2e3"
+   "required_client_version" : 5,
+   "options" : {
+       "playouts" : 1000,
+       "resignation_percent" : 3,
+       "noise" : "false",
+       "randomcnt" : 0
     }
+}
 
-    {
-        "cmd":"selfplay",
-        "hash":"223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
-        "playouts":1000,
-        "resignation_percent":3,
-        "required_client_version":5,
-        "noise":true,
-        "randomcnt":30
+{
+   "cmd" : "selfplay",
+   "hash" : "223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
+   "options_hash" : "ee21",
+   "required_client_version" : 5,
+   "options" : {
+       "playouts" : 1000,
+       "resignation_percent" : 3,
+       "noise" : "true",
+       "randomcnt" : 30
     }
+}
     */
     QString prog_cmdline("curl");
 #ifdef WIN32
@@ -176,8 +182,11 @@ Order Management::getWork() {
     }
     QJsonDocument doc;
     doc = QJsonDocument::fromJson(curl.readAllStandardOutput());
+    QTextStream(stdout) << doc.toJson() << endl;
     QJsonObject ob = doc.object();
+    QJsonObject opt = ob.value("options").toObject();
     QString options;
+    QString optionsHash =  ob.value("options_hash").toString();
     if(ob.contains("required_client_version")) {
         QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toInt() << endl;
         if(ob.value("required_client_version").toInt() > m_version) {
@@ -190,15 +199,17 @@ Order Management::getWork() {
             exit(EXIT_FAILURE);
         }
     }
-    options.append(getNumOption(ob, "playouts", " -p ", 1000));
-    options.append(getNumOption(ob, "resignation_percent", " -r ", 0));
-    options.append(getNumOption(ob, "randomcnt", " -m ", 0));
-    if(ob.contains("noise") && ob.value("noise").toBool()) {
+    options.append(getNumOption(opt, "playouts", " -p ", 1000));
+    options.append(getNumOption(opt, "resignation_percent", " -r ", 0));
+    options.append(getNumOption(opt, "randomcnt", " -m ", 0));
+    if(opt.contains("noise") && opt.value("noise").toBool()) {
         options.append(" -n ");
     }
     options.append(" --noponder ");
     QStringList parameters;
+    QTextStream(stdout) << options << endl;
     parameters << options;
+    parameters << optionsHash;
     if(ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
@@ -300,23 +311,55 @@ void Management::fetchNetwork(const QString &name) {
     return;
 }
 
+/*
+-F winnerhash=223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6
+-F loserhash=92c658d7325fe38f0c8adbbb1444ed17afd891b9f208003c272547a7bcb87909
+-F clientversion=6
+-F winnercolor=black
+-F movescount=321
+-F score=B+45
+-F options_hash=c2e3
+-F sgf=@file
+http://zero-test.sjeng.org/submit-match
+
+
+-F networkhash=223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6
+-F clientversion=6
+-F options_hash=ee21
+-F sgf=@file
+-F trainingdata=@data_file
+http://zero-test.sjeng.org/submit
+*/
+
 void Management::uploadResult(const QStringList &r, const QStringList &l) {
+
+#ifdef WIN32
+        QProcess::execute("gzip.exe " + r[3]);
+#else
+        QProcess::execute("gzip " + r[3] + ".sgf");
+#endif
+    QString sgf_file = r[3] + ".sgf.gz";
+
+
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
     if(r[2] == "black") {
-        prog_cmdline.append(" -F winnerhash=" + l[1]);
-        prog_cmdline.append(" -F loserhash=" + l[2]);
-    } else {
         prog_cmdline.append(" -F winnerhash=" + l[2]);
-        prog_cmdline.append(" -F loserhash=" + l[1]);
+        prog_cmdline.append(" -F loserhash=" + l[3]);
+    } else {
+        prog_cmdline.append(" -F winnerhash=" + l[3]);
+        prog_cmdline.append(" -F loserhash=" + l[2]);
     }
     prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
     prog_cmdline.append(" -F winnercolor="+ r[2]);
     prog_cmdline.append(" -F movescount="+ r[0]);
     prog_cmdline.append(" -F score="+ r[1]);
+    prog_cmdline.append(" -F options_hash="+ l[1]);
+    prog_cmdline.append(" -F sgf=@"+ sgf_file);
     prog_cmdline.append(" http://zero-test.sjeng.org/submit-match");
+
     QTextStream(stdout) << prog_cmdline << endl;
     QProcess curl;
     curl.start(prog_cmdline);
@@ -326,10 +369,15 @@ void Management::uploadResult(const QStringList &r, const QStringList &l) {
         QTextStream(stdout) << "Upload failed. Curl Exit code: "
             << curl.exitCode() << endl;
     }
+    QByteArray output = curl.readAllStandardOutput();
+    QString outstr(output);
+    QTextStream(stdout) << outstr;
+    QDir dir;
+    dir.remove(sgf_file);
 }
 
 
-void Management::uploadData(const QString& file, const QString& net) {
+void Management::uploadData(const QString& file, const QString& net , const QString &hash) {
     // Find output SGF and txt files
     QTextStream(stdout) << "Upload game: " << file << " network " << net << endl;
     QDir dir;
@@ -369,6 +417,7 @@ void Management::uploadData(const QString& file, const QString& net) {
 #endif
         prog_cmdline.append(" -F networkhash=" + net);
         prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
+        prog_cmdline.append(" -F options_hash="+ hash);
         prog_cmdline.append(" -F sgf=@" + sgf_file);
         prog_cmdline.append(" -F trainingdata=@" + data_file);
         prog_cmdline.append(" http://zero-test.sjeng.org/submit");
