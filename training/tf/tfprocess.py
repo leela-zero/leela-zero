@@ -207,7 +207,7 @@ class TFProcess:
             path = os.path.join(os.getcwd(), "leelaz-model")
             save_path = self.saver.save(self.session, path, global_step=steps)
             print("Model saved in file: {}".format(save_path))
-            leela_path = path + ".txt"
+            leela_path = path + "-" + str(steps) + ".txt"
             self.save_leelaz_weights(leela_path)
             print("Leela weights saved to {}".format(leela_path))
 
