@@ -131,12 +131,11 @@ bool Production::updateNetwork() {
             auto retry_delay =
                 std::min<int>(
                     RETRY_DELAY_MIN_SEC * std::pow(1.5, retries),
-                    RETRY_DELAY_MAX_SEC
-                );
+                    RETRY_DELAY_MAX_SEC);
             QTextStream(stdout) << "Retrying in " << retry_delay << " s."
                                 << endl;
             QThread::sleep(retry_delay);
-       }
+        }
     }
     QTextStream(stdout) << "Maximum number of retries exceeded. Giving up."
                         << endl;
