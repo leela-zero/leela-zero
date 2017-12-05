@@ -23,6 +23,7 @@
 #include <QThread>
 #include <QVector>
 #include <QAtomicInt>
+#include <QMutex>
 #include "SPRT.h"
 #include "Game.h"
 #include "Results.h"
