@@ -55,12 +55,11 @@ memout =  mv[                  2+num_instances + input_size*num_instances + 8:]
 
 import nn # import our neural network
 
+# reset everything
+mv[:] = 0
+
 counter[0] = num_instances // 256   # num_instances = counter0 * 256 + counter1
 counter[1] = num_instances %  256
-
-# reset counters
-for i in range(num_instances):
-    counter[2 + i] = 0
 
 smp_counter.release() # now clients can take this semaphore
 
