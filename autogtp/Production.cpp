@@ -42,7 +42,6 @@ void ProductionWorker::run() {
         QString resignpct = (pick < 0.2) ? "0" : "5";
         // Prepend because option must have "-w " on the end
         option = " -r " + resignpct + option;
-        QTextStream(stdout) << "option=" << option << endl;
         m_mutex.lock();
         Game game(m_network, option);
         m_mutex.unlock();
