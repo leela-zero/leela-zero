@@ -704,6 +704,8 @@ bool GTP::execute(GameState & game, std::string xinput) {
         }
 
         Training::dump_training(who_won, filename);
+        filename += ".debug";
+        Training::dump_stats(filename);
 
         if (!cmdstream.fail()) {
             gtp_printf(id, "");

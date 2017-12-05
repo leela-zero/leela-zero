@@ -247,7 +247,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
         }
     }
 
-    int visits = m_root.get_first_child()->get_visits();
+    int visits = m_root.get_visits();
 
     // if we aren't passing, should we consider resigning?
     if (bestmove != FastBoard::PASS) {
@@ -257,7 +257,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                                 * m_rootstate.board.get_boardsize()) / 4;
             // bad score and visited enough
             if (bestscore < ((float)cfg_resignpct / 100.0f)
-                && visits > 100
+                && visits > 500
                 && m_rootstate.m_movenum > movetresh) {
                 myprintf("Score looks bad. Resigning.\n");
                 bestmove = FastBoard::RESIGN;

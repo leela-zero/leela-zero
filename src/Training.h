@@ -30,6 +30,10 @@ public:
     Network::NNPlanes planes;
     std::vector<float> probabilities;
     int to_move;
+    float netwinrate;
+    float root_uctwinrate;
+    float child_uctwinrate;
+    int bestmovevisits;
 };
 
 class OutputChunker {
@@ -55,6 +59,7 @@ public:
     static void clear_training();
     static void dump_training(int winner_color,
                               const std::string& out_filename);
+    static void dump_stats(const std::string& out_filename);
     static void record(GameState& state, const UCTNode& node);
 
     static void dump_supervised(const std::string& sgf_file,
@@ -69,6 +74,7 @@ private:
                              OutputChunker& outchunker);
     static void dump_training(int winner_color,
                               OutputChunker& outchunker);
+    static void dump_stats(OutputChunker& outchunker);
     static std::vector<TimeStep> m_data;
 };
 
