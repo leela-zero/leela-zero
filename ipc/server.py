@@ -77,7 +77,7 @@ net = nn.net
 import gc
 import time
 
-t2 = time.perf_counter()
+# t2 = time.perf_counter()
 numiter = num_instances // realbs
 
 
