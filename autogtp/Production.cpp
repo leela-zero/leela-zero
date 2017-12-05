@@ -21,7 +21,6 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QThread>
-#include <QMutex>
 #include <QCryptographicHash>
 #include "Production.h"
 #include "Game.h"

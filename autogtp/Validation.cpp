@@ -17,9 +17,7 @@
 */
 
 #include "Validation.h"
-#include "Game.h"
 #include <QFile>
-#include <QMutex>
 
 void ValidationWorker::run() {
     do {
