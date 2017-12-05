@@ -1,10 +1,10 @@
 # Fast Leela Zero with Theano
 
-The idea is to run the forwarding step of neural network in a seperated process. Leela Zero then communicates with the process using TCP packets (sending input boards and receiving the results). Current implementation uses theano for the forwarding step.
+The idea is to run the forwarding step of neural network in a seperated process. Leela Zero then communicates with the process using posix ipc. Current implementation uses theano for the forwarding step.
 
-To start games, you first need to start the TCP server, and then run multiple instances of autogtp (e.g., `./autogtp`).
+To start games, you first need to start the server, and then run multiple instances of autogtp (e.g., `./autogtp`).
 
-Run TCP server with command:  
+Run server with command:  
 
     cd ipc
     export THEANO_FLAGS='cast_policy=numpy+floatX,device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32'
