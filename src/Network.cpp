@@ -35,6 +35,7 @@
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/sync/named_semaphore.hpp>
+#include <cstdlib>
 
 
 #include "Im2Col.h"
@@ -95,9 +96,10 @@ using namespace boost::interprocess;
 int batch_size;
 unsigned char * input_mem;
 unsigned char * output_mem;
-shared_memory_object shmem{open_only, "smlee", read_write};
-mapped_region region{shmem, read_write};
-unsigned char * mem = static_cast<unsigned char*>(region.get_address());
+
+shared_memory_object shmem; // {open_only, "smlee", read_write};
+mapped_region region; // {shmem, read_write};
+unsigned char * mem;// = static_cast<unsigned char*>(region.get_address());
 int myid;
 
 void Network::benchmark(GameState * state) {
@@ -133,6 +135,15 @@ void Network::initialize(void) {
     myprintf("Initializing shared memory and semaphores\n");
     offset_t size;
 
+    char* pname = getenv ("LEELAZ");
+    if (pname == NULL) pname = "lee";
+    char name[100];
+
+    sprintf(name, "sm%s", pname);
+
+    shmem= shared_memory_object(open_only, name, read_write);
+    region = mapped_region(shmem, read_write);
+    mem = static_cast<unsigned char*>(region.get_address());
 
     batch_size = int(mem[0]) * 256 + int(mem[1]);
     myprintf("batch size: %d\n", batch_size);
@@ -141,7 +152,8 @@ void Network::initialize(void) {
     shmem.get_size(size);
     myprintf("size %d\n", size);
 
-    named_semaphore sem_counter{open_only, "lee_counter"};
+    sprintf(name, "%s_counter", pname);
+    named_semaphore sem_counter{open_only, name};
     sem_counter.wait();
     int i = 0;
     // find a empty slot
@@ -496,10 +508,13 @@ Network::Netresult Network::get_scored_moves_internal(
     char name[100];
 
 
-    sprintf(name, "lee_A_%d", myid);
+    char* pname = getenv ("LEELAZ");
+    if (pname == NULL) pname = "lee";
+
+    sprintf(name, "%s_A_%d", pname, myid);
     named_semaphore sem_A{open_only, name};
 
-    sprintf(name, "lee_B_%d", myid);
+    sprintf(name, "%s_B_%d", pname, myid);
     named_semaphore sem_B{open_only, name};
 
     float * my_input_data = reinterpret_cast<float *>(input_mem);

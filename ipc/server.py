@@ -10,52 +10,59 @@ if len(sys.argv) != 3 :
     print("Usage: %s num-instances batch-size" % sys.argv[0])
     sys.exit(-1)
 
+if "LEELAZ" in os.environ:
+    leename= os.environ["LEELAZ"]
+else:
+    leename = "lee"
+
+print("Using batch name: ", leename)
+
 num_instances = int(sys.argv[1])
-realbs = int(sys.argv[2])
+realbs = int(sys.argv[2])               # real batch size
 
 if num_instances % realbs != 0:
-    print("ERRRRRR")
+    print("Error: number of instances isn't divisible by batch size")
     sys.exit(-1)
 
-name = "smlee"
-bs   = 4*18*19*19
+name = "sm%s" % leename  # shared memory name
+input_size   = 4*18*19*19
+output_size = 4 * (19*19 + 2)
+
 def createSMP(name):
     smp= ipc.Semaphore(name, ipc.O_CREAT)
     smp.unlink()
     return ipc.Semaphore(name, ipc.O_CREAT)
 
-sm = ipc.SharedMemory( name, flags = ipc.O_CREAT, size = 2 + num_instances + bs*num_instances + 8  + num_instances*4*(19*19+2))
+sm = ipc.SharedMemory( name, flags = ipc.O_CREAT, size = 2 + num_instances + input_size*num_instances + 8  + num_instances*output_size)
+# memory layout of the shared memory:
+# | counter counter | input 1 | input 2 | .... |  8 bytes | output 1 | output 2| ..... |
 
-smp_counter =  createSMP("lee_counter")
-
+smp_counter =  createSMP("%s_counter" % leename) # counter semaphore
 
 smpA = []
 smpB = []
 for i in range(num_instances):
-    smpA.append(createSMP("lee_A_%d" % i))
-    smpB.append(createSMP("lee_B_%d" % i))
-
-# memory layout of sm:
-# counter |  ....... | ....... | ....... |
-#
+    smpA.append(createSMP("%s_A_%d" % (leename,i)))    # two semaphores for each instance
+    smpB.append(createSMP("%s_B_%d" % (leename,i)))
 
 mem = mmap.mmap(sm.fd, sm.size)
 sm.close_fd()
 
-mv  = np.frombuffer(mem, dtype=np.uint8, count= 2 + num_instances + bs*num_instances + 8  + num_instances*4*(19*19+2))
+mv  = np.frombuffer(mem, dtype=np.uint8, count= 2 + num_instances + input_size*num_instances + 8  + num_instances*output_size)
 counter = mv[0:2+num_instances]
-inp     = mv[  2+num_instances:2+num_instances + bs*num_instances]
-memout =  mv[                  2+num_instances + bs*num_instances + 8:]
+inp     = mv[  2+num_instances:2+num_instances + input_size*num_instances]
+memout =  mv[                  2+num_instances + input_size*num_instances + 8:]
 
-import nn
+import nn # import our neural network
 
-counter[0] = num_instances // 256
+counter[0] = num_instances // 256   # num_instances = counter0 * 256 + counter1
 counter[1] = num_instances %  256
 
+# reset counters
 for i in range(num_instances):
-    counter[2 + i ] = 0
+    counter[2 + i] = 0
 
-smp_counter.release()
+smp_counter.release() # now clients can take this semaphore
 
 # waiting clients to connect
 print("Waiting for %d autogtp instances to run" % num_instances)
@@ -73,7 +80,7 @@ import time
 
 t2 = time.perf_counter()
 numiter = num_instances // realbs
-outsize = 4 * (19*19+2)
+
 
 while True:
     for ii in range(numiter):
@@ -88,8 +95,7 @@ while True:
         # print("delta t1 = ", t1 - t2)
         # t1 = time.perf_counter()
 
-
-        dt = np.frombuffer(inp[(start+ 0)*bs: (start+ realbs)*bs], dtype=np.float32, count=bs*realbs // 4)
+        dt = np.frombuffer(inp[(start+ 0)*input_size: (start+ realbs)*input_size], dtype=np.float32, count=input_size*realbs // 4)
 
         nn.netlock.acquire(True)   # BLOCK HERE
         if nn.newNetWeight != None:
@@ -109,7 +115,7 @@ while True:
         qqq = net[1]().astype(np.float32)
         ttt = qqq.reshape(realbs * (19*19+2))
         #print(len(ttt)*4, len(memout))
-        memout[ii*outsize:(ii+realbs)*outsize] = ttt.view(dtype=np.uint8)
+        memout[(start+0)*output_size:(start+realbs)*output_size] = ttt.view(dtype=np.uint8)
 
         for i in range(realbs):
             smpA[start+i].release() # send result to client

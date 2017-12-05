@@ -8,14 +8,22 @@ Run TCP server with command:
 
     cd ipc
     export THEANO_FLAGS='cast_policy=numpy+floatX,device=cuda0,dnn.conv.algo_fwd=time_once,floatX=float32'
-    python server.py 4
+    python server.py 4 2
     
-where `4` is the `batch_size` and also your number of autogtp instances.
+where `4` is the number of Leelaz instances and `2` is the batch size. The number of instances must be divisible by batch size. The idea is to let GPU computes the current batch while CPUs prepare the input for the next batch.
 
 Theano also supports `device=cpu` option for machines without GPU.
 
+This version also supports running multiple batches in parallel. It is useful when 1 batch cannot use 100% of your GPU. It is useful when 1 batch cannot use 100% of your GPU.
+We use `LEELAZ` environment variable to specify the name of shared memory and semaphores are used to communicate between process in each batch.
+E.g. for the first batch, you may run:
 
-**Tips:** Increasing `batch_size` (e.g., 4, 8, 16, 32, 64, ...) to get the best performance (`seconds /  moves / games`)
+    LEELAZ=lee1 python 4 2
+
+   for i in {1..4}; do  LEELAZ=lee1 ./autogtp & sleep 1; done
+
+
+**Tips:** Increasing `batch_size` (e.g., 4, 8, 16, 32, 64, 128, 256, ...) to get the best performance (`seconds /  moves / games`)
 
 
 You need to install `theano`, `posix_ipc` and `six` python packages
