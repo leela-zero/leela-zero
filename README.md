@@ -14,14 +14,19 @@ where `4` is the number of Leelaz instances and `2` is the batch size. The numbe
 
 Theano also supports `device=cpu` option for machines without GPU.
 
-This version also supports running multiple batches in parallel. It is useful when 1 batch cannot use 100% of your GPU. It is useful when 1 batch cannot use 100% of your GPU.
+This version also supports running multiple batches in parallel. It is useful when 1 batch cannot use 100% of your GPU. 
 We use `LEELAZ` environment variable to specify the name of shared memory and semaphores are used to communicate between process in each batch.
-E.g. for the first batch, you may run:
+For example, if you want to run two batches in parallel, for the first batch, you may run:
 
     LEELAZ=lee1 python 4 2
+    for i in {1..4}; do  LEELAZ=lee1 ./autogtp & sleep 0.1; done
 
-   for i in {1..4}; do  LEELAZ=lee1 ./autogtp & sleep 1; done
+and for the second patch:
 
+    LEELAZ=lee2 python 4 2
+    for i in {1..4}; do  LEELAZ=lee2 ./autogtp & sleep 0.1; done
+
+You are running 8 instances with 2 batches in parallel. Each batch has 4 instances with 2 instances running on GPU while the other two instances run on CPU to prepare the input for the next batch.
 
 **Tips:** Increasing `batch_size` (e.g., 4, 8, 16, 32, 64, 128, 256, ...) to get the best performance (`seconds /  moves / games`)
 
