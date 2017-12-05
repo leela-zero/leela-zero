@@ -246,8 +246,10 @@ bool Game::getScore() {
     if(m_resignation) {
         if (m_blackResigned) {
             m_winner = QString(QStringLiteral("white"));
+            QTextStream(stdout) << "Score: Black resigns ";
         } else {
             m_winner = QString(QStringLiteral("black"));
+            QTextStream(stdout) << "Score: White resigns ";
         }
     } else{
         write("final_score\n");
