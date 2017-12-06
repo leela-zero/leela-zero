@@ -46,6 +46,8 @@ Management::Management(const int gpus,
     m_games(games),
     m_gpus(gpus),
     m_gpusList(gpuslist),
+    m_selfGames(0),
+    m_matchGames(0),
     m_gamesPlayed(0),
     m_keepPath(keep),
     m_debugPath(debug),
@@ -87,10 +89,12 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     printTimingInfo(duration);
     switch(res.type()) {
     case Result::File:
+        m_selfGames++,
         uploadData(res.list()[0], ord.parameters()[2], ord.parameters()[1]);
         break;
     case Result::Win:
     case Result::Loss:
+        m_matchGames++,
         uploadResult(res.list(), ord.parameters());
         break;
     }

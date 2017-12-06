@@ -96,6 +96,8 @@ private:
     int m_games;
     int m_gpus;
     QStringList m_gpusList;
+    int m_selfGames;
+    int m_matchGames;
     int m_gamesPlayed;
 <<<<<<< HEAD:autogtp/Production.h
     QAtomicInt m_movesMade;
