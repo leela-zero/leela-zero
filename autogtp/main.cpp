@@ -52,23 +52,23 @@ int main(int argc, char *argv[]) {
         {"c", "competition"}, "Play two networks against each other.");
     QCommandLineOption networkOption(
         {"n", "network"},
-            "Networks to use as players in competition mode (two are needed).",
-            "filename");
+              "Networks to use as players in competition mode (two are needed).",
+              "filename");
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
-            "Play 'gamesNum' games on one GPU at the same time.",
-            "num", "1");
+              "Play 'gamesNum' games on one GPU at the same time.",
+              "num", QString::number((QThread::idealThreadCount() + 1) / 2));
     QCommandLineOption gpusOption(
         {"u", "gpus"},
-            "Index of the GPU to use for multiple GPUs support.",
-            "num");
+              "Index of the GPU to use for multiple GPUs support.",
+              "num");
     QCommandLineOption keepSgfOption(
         {"k", "keepSgf" },
-            "Save SGF files after each self-play game.",
-            "output directory");
+              "Save SGF files after each self-play game.",
+              "output directory");
     QCommandLineOption keepDebugOption(
         { "d", "debug" }, "Save training and extra debug files after each self-play game.",
-                             "output directory");
+                          "output directory");
 
     parser.addOption(competitionOption);
     parser.addOption(gamesNumOption);
@@ -105,7 +105,8 @@ int main(int argc, char *argv[]) {
 #else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
 #endif
-    cerr << "autogtp v" << AUTOGTP_VERSION << endl;
+    cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
+    cerr << "Using " << gamesNum << " threads." << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"
