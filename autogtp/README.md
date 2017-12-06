@@ -20,10 +20,9 @@ the SGF and training data at the end of the game.
 ## Compiling under Visual Studio - Windows
 
 You have to download and install Qt and Qt VS Tools. You only need QtCore to run.
-Loading leela-zero2015.sln will then load this project and should compiling.
-However, to run from the binary folder, you have to manually copy Qt5Core.dll
-(for Release build) or Qt5Cored.dll (for Debug build) from your Qt installation
-folder to the output folder.
+Loading leela-zero2015.sln/leela-zero2017.sln will then load this project and 
+should compiling. Two exes (curl.exe and gzip.exe) will also be copied to the output
+folder after build, making it able to run autogtp.exe directally.
 
 # Running
 
