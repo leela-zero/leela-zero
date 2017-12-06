@@ -46,6 +46,7 @@ int cfg_num_threads;
 int cfg_max_playouts;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
+int cfg_nopassbefore;
 int cfg_noise;
 int cfg_random_cnt;
 bool cfg_dumbpass;
@@ -76,6 +77,7 @@ void GTP::setup_default_parameters() {
     cfg_cutoff_offset = 25.0f;
     cfg_cutoff_ratio = 5.0f;
     cfg_resignpct = 10;
+    cfg_nopassbefore = 0;
     cfg_noise = false;
     cfg_random_cnt = 0;
     cfg_dumbpass = false;
@@ -327,7 +329,12 @@ bool GTP::execute(GameState & game, std::string xinput) {
             {
                 auto search = std::make_unique<UCTSearch>(game);
 
-                int move = search->think(who);
+                int move;
+                if (game.get_movenum() < cfg_nopassbefore) {
+                    move = search->think(who, UCTSearch::NOPASS);
+                } else {
+                    move = search->think(who);
+                }
                 game.play_move(who, move);
 
                 std::string vertex = game.move_to_text(move);
