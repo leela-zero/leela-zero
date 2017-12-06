@@ -17,7 +17,6 @@
 */
 
 #include "Validation.h"
-#include "Game.h"
 #include <QFile>
 
 void ValidationWorker::run() {
@@ -79,10 +78,7 @@ void ValidationWorker::run() {
                 emit resultReady(Sprt::Loss, m_expected);
             }
             // Change color and play again
-            QString net;
-            net = m_secondNet;
-            m_secondNet = m_firstNet;
-            m_firstNet = net;
+            m_firstNet.swap(m_secondNet);
             if (m_expected == Game::BLACK) {
                 m_expected = Game::WHITE;
             } else {
@@ -97,7 +93,7 @@ void ValidationWorker::init(const QString& gpuIndex,
                             const QString& secondNet,
                             const QString& keep,
                             const int expected) {
-    m_option = " -g -q -d -r 0 -w ";
+    m_option = " -g -t 1 -q -d -r 0 -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
@@ -186,8 +182,9 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
         QTextStream(stdout)
             << m_results.getGamesPlayed() << " games played." << endl;
         QTextStream(stdout)
-            << "Status: " << status.result << " LLR "
-            << status.llr <<  " Lower Bound " << status.lBound
+            << "Status: " << status.result
+            << " LLR " << status.llr
+            << " Lower Bound " << status.lBound
             << " Upper Bound " << status.uBound << endl;
     }
     m_syncMutex.unlock();

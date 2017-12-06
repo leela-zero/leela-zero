@@ -42,7 +42,6 @@ void ProductionWorker::run() {
         QString resignpct = (pick < 0.2) ? "0" : "5";
         // Prepend because option must have "-w " on the end
         option = " -r " + resignpct + option;
-        QTextStream(stdout) << "option=" << option << endl;
         m_mutex.lock();
         Game game(m_network, option);
         m_mutex.unlock();
@@ -55,6 +54,7 @@ void ProductionWorker::run() {
                 return;
             }
             game.readMove();
+            (*m_movesMade)++;
         } while (game.nextMove() && m_state == RUNNING);
         switch(m_state) {
         case RUNNING:
@@ -88,12 +88,15 @@ void ProductionWorker::run() {
     } while (m_state != FINISHING);
 }
 
-void ProductionWorker::init(const QString& gpuIndex, const QString& net) {
-    m_option = " -g -q -d -n -m 30 -w ";
+void ProductionWorker::init(const QString& gpuIndex,
+                            const QString& net,
+                            QAtomicInt* movesMade) {
+    m_option = " -g -t 1 -q -d -n -m 30 -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_network = net;
+    m_movesMade = movesMade;
     m_state = RUNNING;
 }
 
@@ -117,26 +120,25 @@ Production::Production(const int gpus,
 }
 
 bool Production::updateNetwork() {
-    auto retries = 0;
-    do {
+    for (auto retries = 0; retries < MAX_RETRIES; retries++) {
         try {
             auto new_network = fetchBestNetworkHash();
             fetchBestNetwork();
             return new_network;
         } catch (NetworkException ex) {
-            QTextStream(stdout) << "Network connection to server failed."
-                                << endl;
-            QTextStream(stdout) << ex.what() << endl;
+            QTextStream(stdout)
+                << "Network connection to server failed." << endl;
+            QTextStream(stdout)
+                << ex.what() << endl;
             auto retry_delay =
                 std::min<int>(
                     RETRY_DELAY_MIN_SEC * std::pow(1.5, retries),
-                    RETRY_DELAY_MAX_SEC
-                );
+                    RETRY_DELAY_MAX_SEC);
             QTextStream(stdout) << "Retrying in " << retry_delay << " s."
                                 << endl;
             QThread::sleep(retry_delay);
         }
-    } while (++retries < MAX_RETRIES);
+    }
     QTextStream(stdout) << "Maximum number of retries exceeded. Giving up."
                         << endl;
     exit(EXIT_FAILURE);
@@ -160,7 +162,7 @@ void Production::startGames() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[thread_index].init(myGpu, m_network);
+            m_gamesThreads[thread_index].init(myGpu, m_network, &m_movesMade);
             m_gamesThreads[thread_index].start();
         }
     }
@@ -179,16 +181,22 @@ void Production::getResult(const QString& file, float duration) {
 }
 
 void  Production::printTimingInfo(float duration) {
+    if (m_movesMade == 0 || m_gamesPlayed == 0) {
+        return;
+    }
     auto game_end = std::chrono::high_resolution_clock::now();
     auto total_time_s =
         std::chrono::duration_cast<std::chrono::seconds>(game_end - m_start);
     auto total_time_min =
         std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
-    QTextStream(stdout) << m_gamesPlayed << " game(s) played in "
-         << total_time_min.count() << " minutes = "
-         << total_time_s.count() / m_gamesPlayed << " seconds/game"
-         << ", last game took "
-         << duration << " seconds.\n";
+    auto total_time_millis =
+        std::chrono::duration_cast<std::chrono::milliseconds>(total_time_s);
+    QTextStream(stdout)
+        << m_gamesPlayed << " game(s) played in "
+        << total_time_min.count() << " minutes = "
+        << total_time_s.count() / m_gamesPlayed << " seconds/game, "
+        << total_time_millis.count() / m_movesMade  << " ms/move"
+        << ", last game took " << (int) duration << " seconds." << endl;
 }
 
 
