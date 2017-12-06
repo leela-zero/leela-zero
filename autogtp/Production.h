@@ -18,12 +18,12 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <QTextStream>
+#include <QAtomicInt>
+#include <QMutex>
 #include <QString>
+#include <QTextStream>
 #include <QThread>
 #include <QVector>
-#include <QMutex>
-#include <QTextStream>
 #include <chrono>
 #include <stdexcept>
 
@@ -38,7 +38,7 @@ public:
     ProductionWorker() = default;
     ProductionWorker(const ProductionWorker& w) : QThread(w.parent()) {}
     ~ProductionWorker() = default;
-    void init(const QString& gpuIndex, const QString& net);
+    void init(const QString& gpuIndex, const QString& net, QAtomicInt* movesMade);
     void newNetwork(const QString& net) {
         QMutexLocker locker(&m_mutex);
         m_state = NET_CHANGE;
@@ -49,6 +49,7 @@ public:
 signals:
     void resultReady(const QString& file, float duration);
 private:
+    QAtomicInt* m_movesMade;
     QString m_network;
     QString m_option;
     QMutex m_mutex;
@@ -89,6 +90,7 @@ private:
     int m_gpus;
     QStringList m_gpusList;
     int m_gamesPlayed;
+    QAtomicInt m_movesMade;
     QString m_network;
     QString m_keepPath;
     QString m_debugPath;

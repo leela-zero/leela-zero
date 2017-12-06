@@ -55,6 +55,7 @@ void ProductionWorker::run() {
                 return;
             }
             game.readMove();
+            (*m_movesMade)++;
         } while (game.nextMove() && m_state == RUNNING);
         switch(m_state) {
         case RUNNING:
@@ -88,12 +89,15 @@ void ProductionWorker::run() {
     } while (m_state != FINISHING);
 }
 
-void ProductionWorker::init(const QString& gpuIndex, const QString& net) {
+void ProductionWorker::init(const QString& gpuIndex,
+                            const QString& net,
+                            QAtomicInt* movesMade) {
     m_option = " -g -q -d -n -m 30 -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_network = net;
+    m_movesMade = movesMade;
     m_state = RUNNING;
 }
 
@@ -159,7 +163,7 @@ void Production::startGames() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[thread_index].init(myGpu, m_network);
+            m_gamesThreads[thread_index].init(myGpu, m_network, &m_movesMade);
             m_gamesThreads[thread_index].start();
         }
     }
@@ -178,16 +182,22 @@ void Production::getResult(const QString& file, float duration) {
 }
 
 void  Production::printTimingInfo(float duration) {
+    if (m_movesMade == 0 || m_gamesPlayed == 0) {
+        return;
+    }
     auto game_end = std::chrono::high_resolution_clock::now();
     auto total_time_s =
         std::chrono::duration_cast<std::chrono::seconds>(game_end - m_start);
     auto total_time_min =
         std::chrono::duration_cast<std::chrono::minutes>(total_time_s);
+    auto total_time_millis =
+        std::chrono::duration_cast<std::chrono::milliseconds>(total_time_s);
     QTextStream(stdout)
         << m_gamesPlayed << " game(s) played in "
         << total_time_min.count() << " minutes = "
-        << total_time_s.count() / m_gamesPlayed << " seconds/game"
-        << ", last game took " << duration << " seconds." << endl;
+        << total_time_s.count() / m_gamesPlayed << " seconds/game, "
+        << total_time_millis.count() / m_movesMade  << " ms/move"
+        << ", last game took " << (int) duration << " seconds." << endl;
 }
 
 
