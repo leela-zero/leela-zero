@@ -26,11 +26,11 @@ Worker::Worker(int index,const QString& gpuIndex,const QString& keep) :
     m_index(index),
     m_state(),
     m_keepPath(keep),
-    m_option(""),
+    m_gpu(""),
     m_job(nullptr)
 {
     if (!gpuIndex.isEmpty()) {
-        m_option = " --gpu=" + gpuIndex + " ";
+        m_gpu = " --gpu=" + gpuIndex + " ";
     }
 }
 
@@ -50,10 +50,10 @@ void Worker::createJob(int type) {
     }
     switch(type) {
     case Order::Production:
-        m_job = new ProdutionJob();
+        m_job = new ProdutionJob(m_gpu);
         break;
     case Order::Validation:
-        m_job = new ValidationJob();
+        m_job = new ValidationJob(m_gpu);
         break;
     default:
         m_job = nullptr;

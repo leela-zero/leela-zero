@@ -23,19 +23,20 @@
 
 #include <QThread>
 
-Job::Job() :
+Job::Job(QString gpu) :
   m_state(RUNNING),
-  m_option("")
+  m_option(""),
+  m_gpu(gpu)
 {
 }
 
-ProdutionJob::ProdutionJob() :
-Job()
+ProdutionJob::ProdutionJob(QString gpu) :
+Job(gpu)
 {
 }
 
-ValidationJob::ValidationJob() :
-Job()
+ValidationJob::ValidationJob(QString gpu) :
+Job(gpu)
 {
 }
 

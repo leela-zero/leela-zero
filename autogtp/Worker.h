@@ -42,7 +42,7 @@ private:
     int m_index;
     QAtomicInt m_state;
     QString m_keepPath;
-    QString m_option;
+    QString m_gpu;
     Order m_todo;
     Job *m_job;
     void createJob(int type);

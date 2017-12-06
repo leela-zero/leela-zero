@@ -34,22 +34,23 @@ public:
         Production = 0,
         Validation
     };
-    Job();
+    Job(QString gpu);
     ~Job() = default;
     virtual Result execute() = 0;
-    virtual void init(const QStringList &l) { m_option = l[0] + " -g -q -d -w "; }
+    virtual void init(const QStringList &l) { m_option = l[0] + m_gpu + " -g -q -d -w "; }
     void finish() { m_state.store(FINISHING); }
 
 protected:
     QAtomicInt m_state;
     QString m_option;
+    QString m_gpu;
 };
 
 
 class ProdutionJob : public Job {
     Q_OBJECT
 public:
-    ProdutionJob();
+    ProdutionJob(QString gpu);
     ~ProdutionJob() = default;
     void init(const QStringList &l);
     Result execute();
@@ -60,7 +61,7 @@ private:
 class ValidationJob : public Job {
     Q_OBJECT
 public:
-    ValidationJob();
+    ValidationJob(QString gpu);
     ~ValidationJob() = default;
     void init(const QStringList &l);
     Result execute();
