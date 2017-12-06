@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
               "Play 'gamesNum' games on one GPU at the same time.",
-              "num", QString::number((QThread::idealThreadCount() + 1) / 2));
+              "num", "1");
     QCommandLineOption gpusOption(
         {"u", "gpus"},
               "Index of the GPU to use for multiple GPUs support.",
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
     QTextStream cerr(stderr, QIODevice::WriteOnly);
 #endif
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
-    cerr << "Using " << gamesNum << " threads." << endl;
+    cerr << "Using " << gamesNum << " thread(s)." << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"
