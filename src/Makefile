@@ -1,8 +1,4 @@
-ifeq ($(OS),Windows_NT)
-	THE_OS := Windows
-else
-	THE_OS := $(shell uname -s)
-endif
+THE_OS := $(shell uname -s)
 
 default:
 	@echo "Detected OS: ${THE_OS}"
