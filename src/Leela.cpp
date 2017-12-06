@@ -61,6 +61,8 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
                         "Safety margin for time usage in centiseconds.")
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
                         "Resign when winrate is less than x%.")
+        ("nopassbefore", po::value<int>()->default_value(cfg_nopassbefore),
+                        "Do not pass before move N.")
         ("randomcnt,m", po::value<int>()->default_value(cfg_random_cnt),
                         "Play more randomly the first x moves.")
         ("noise,n", "Enable policy network randomization.")
@@ -190,6 +192,10 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
 
     if (vm.count("resignpct")) {
         cfg_resignpct = vm["resignpct"].as<int>();
+    }
+
+    if (vm.count("nopassbefore")) {
+        cfg_nopassbefore = vm["nopassbefore"].as<int>();
     }
 
     if (vm.count("randomcnt")) {
