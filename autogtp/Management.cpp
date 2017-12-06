@@ -337,14 +337,13 @@ http://zero-test.sjeng.org/submit
 
 void Management::uploadResult(const QStringList &r, const QStringList &l) {
 
+    QString gzipCmd ="gzip";
 #ifdef WIN32
-        QProcess::execute("gzip.exe " + r[3]);
-#else
-        QProcess::execute("gzip " + r[3] + ".sgf");
+    gzipCmd.append(".exe");
 #endif
+    gzipCmd.append(" " + r[3] + ".sgf");
+    QProcess::execute(gzipCmd);
     QString sgf_file = r[3] + ".sgf.gz";
-
-
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
