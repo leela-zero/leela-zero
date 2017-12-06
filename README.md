@@ -93,8 +93,6 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
     brew install boost
-    edit config.h, remove the USE_OPENBLAS line
-    edit Makefile, uncomment the "for macOS" lines
     make
     cd ..
     curl -O https://sjeng.org/zero/best_v1.txt.zip
