@@ -86,7 +86,7 @@ private:
     int get_best_move(passflag_t passflag);
 
     GameState & m_rootstate;
-    UCTNode m_root{FastBoard::PASS, 0.0f};
+    UCTNode m_root{FastBoard::PASS, 0.0f, 0.5f};
     std::atomic<int> m_nodes{0};
     std::atomic<int> m_playouts{0};
     std::atomic<bool> m_run{false};
