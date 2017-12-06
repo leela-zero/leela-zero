@@ -86,7 +86,6 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     }
     m_syncMutex.lock();
     m_gamesPlayed++;
-    printTimingInfo(duration);
     switch(res.type()) {
     case Result::File:
         m_selfGames++,
@@ -98,6 +97,7 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
         uploadResult(res.list(), ord.parameters());
         break;
     }
+    printTimingInfo(duration);
     m_gamesThreads[index]->order(getWork());
     m_syncMutex.unlock();
 
