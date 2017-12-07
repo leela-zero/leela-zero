@@ -361,10 +361,6 @@ UCTNode* UCTNode::uct_select_child(int color) {
     float best_value = -1000.0f;
 
     LOCK(get_mutex(), lock);
-    // Progressive widening
-    // int childbound = std::max(2, (int)(((log((double)get_visits()) - 3.0) * 3.0) + 2.0));
-    int childbound = 362;
-    int childcount = 0;
     UCTNode * child = m_firstchild;
 
     // Count parentvisits.
@@ -374,18 +370,16 @@ UCTNode* UCTNode::uct_select_child(int color) {
     while (child != nullptr && !child->valid()) {
         child = child->m_nextsibling;
     }
-    while (child != nullptr  && childcount < childbound) {
+    while (child != nullptr) {
         parentvisits      += child->get_visits();
         child = child->m_nextsibling;
         // Make sure we are at a valid successor.
         while (child != nullptr && !child->valid()) {
             child = child->m_nextsibling;
         }
-        childcount++;
     }
     float numerator = std::sqrt((double)parentvisits);
 
-    childcount = 0;
     child = m_firstchild;
     // Make sure we are at a valid successor.
     while (child != nullptr && !child->valid()) {
@@ -395,18 +389,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
         return nullptr;
     }
 
-    // Prune bad probabilities
-    // auto parent_log = std::log((float)parentvisits);
-    // auto cutoff_ratio = cfg_cutoff_offset + cfg_cutoff_ratio * parent_log;
-    // auto best_probability = child->get_score();
-    // assert(best_probability > 0.001f);
-
-    while (child != nullptr && childcount < childbound) {
-        // Prune bad probabilities
-        // if (child->get_score() * cutoff_ratio < best_probability) {
-        //     break;
-        // }
-
+    while (child != nullptr) {
         // get_eval() will automatically set first-play-urgency
         float winrate = child->get_eval(color);
         float psa = child->get_score();
@@ -425,7 +408,6 @@ UCTNode* UCTNode::uct_select_child(int color) {
         while (child != nullptr && !child->valid()) {
             child = child->m_nextsibling;
         }
-        childcount++;
     }
 
     assert(best != nullptr);

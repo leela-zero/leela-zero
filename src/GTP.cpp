@@ -53,8 +53,6 @@ bool cfg_dumbpass;
 std::vector<int> cfg_gpus;
 int cfg_rowtiles;
 #endif
-float cfg_cutoff_offset;
-float cfg_cutoff_ratio;
 float cfg_puct;
 float cfg_softmax_temp;
 std::string cfg_weightsfile;
@@ -73,8 +71,6 @@ void GTP::setup_default_parameters() {
 #endif
     cfg_puct = 0.85f;
     cfg_softmax_temp = 1.0f;
-    cfg_cutoff_offset = 25.0f;
-    cfg_cutoff_ratio = 5.0f;
     cfg_resignpct = 10;
     cfg_noise = false;
     cfg_random_cnt = 0;
