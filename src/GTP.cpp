@@ -71,7 +71,7 @@ void GTP::setup_default_parameters() {
     cfg_gpus = { };
     cfg_rowtiles = 5;
 #endif
-    cfg_puct = 2.8f;
+    cfg_puct = 0.85f;
     cfg_softmax_temp = 1.0f;
     cfg_cutoff_offset = 25.0f;
     cfg_cutoff_ratio = 5.0f;
