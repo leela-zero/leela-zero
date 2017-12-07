@@ -34,7 +34,6 @@ public:
     void init_state();
 
     KoState * get_state();
-    KoState * get_state_from_mainline(unsigned int movenum = 999);
     GameState follow_mainline_state(unsigned int movenum = 999);
     std::vector<int> get_mainline();
     void load_from_file(std::string filename, int index = 0);

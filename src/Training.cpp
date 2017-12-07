@@ -90,11 +90,23 @@ void Training::clear_training() {
     Training::m_data.clear();
 }
 
-void Training::record(GameState& state, const UCTNode& root) {
+void Training::record(GameState& state, UCTNode& root) {
     auto step = TimeStep{};
     step.to_move = state.board.get_to_move();
     step.planes = Network::NNPlanes{};
     Network::gather_features(&state, step.planes);
+
+    auto result =
+        Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
+    step.net_winrate = result.second;
+
+    const auto best_node = root.get_best_root_child(step.to_move);
+    if (!best_node) {
+        return;
+    }
+    step.root_uct_winrate = root.get_eval(step.to_move);
+    step.child_uct_winrate = best_node->get_eval(step.to_move);
+    step.bestmove_visits = best_node->get_visits();
 
     step.probabilities.resize((19 * 19) + 1);
 
@@ -174,6 +186,25 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
             out << "-1";
         }
         out << std::endl;
+        outchunk.append(out.str());
+    }
+}
+
+void Training::dump_stats(const std::string& filename) {
+    auto chunker = OutputChunker{filename, true};
+    dump_stats(chunker);
+}
+
+void Training::dump_stats(OutputChunker& outchunk) {
+    auto out = std::stringstream{};
+    out << "1" << std::endl; // File format version 1
+    outchunk.append(out.str());
+    for (const auto& step : m_data) {
+        auto out = std::stringstream{};
+        out << step.net_winrate
+            << " " << step.root_uct_winrate
+            << " " << step.child_uct_winrate
+            << " " << step.bestmove_visits << std::endl;
         outchunk.append(out.str());
     }
 }

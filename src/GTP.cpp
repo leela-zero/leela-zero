@@ -54,8 +54,6 @@ bool cfg_dumbpass;
 std::vector<int> cfg_gpus;
 int cfg_rowtiles;
 #endif
-float cfg_cutoff_offset;
-float cfg_cutoff_ratio;
 float cfg_puct;
 float cfg_softmax_temp;
 std::string cfg_weightsfile;
@@ -75,10 +73,8 @@ void GTP::setup_default_parameters() {
     cfg_gpus = { };
     cfg_rowtiles = 5;
 #endif
-    cfg_puct = 2.8f;
+    cfg_puct = 0.85f;
     cfg_softmax_temp = 1.0f;
-    cfg_cutoff_offset = 25.0f;
-    cfg_cutoff_ratio = 5.0f;
     cfg_resignpct = 10;
     cfg_noise = false;
     cfg_random_cnt = 0;
@@ -658,7 +654,18 @@ bool GTP::execute(GameState & game, std::string xinput) {
         }
         return true;
     } else if (command.find("netbench") == 0) {
-        Network::benchmark(&game);
+        std::istringstream cmdstream(command);
+        std::string tmp;
+        int iterations;
+
+        cmdstream >> tmp;  // eat netbench
+        cmdstream >> iterations;
+
+        if (!cmdstream.fail()) {
+            Network::benchmark(&game, iterations);
+        } else {
+            Network::benchmark(&game);
+        }
         gtp_printf(id, "");
         return true;
 
@@ -699,6 +706,8 @@ bool GTP::execute(GameState & game, std::string xinput) {
         }
 
         Training::dump_training(who_won, filename);
+        filename += ".debug";
+        Training::dump_stats(filename);
 
         if (!cmdstream.fail()) {
             gtp_printf(id, "");

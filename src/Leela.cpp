@@ -80,8 +80,6 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
 #endif
 #ifdef USE_TUNER
         ("puct", po::value<float>())
-        ("cutoff_offset", po::value<float>())
-        ("cutoff_ratio", po::value<float>())
         ("softmax_temp", po::value<float>())
 #endif
         ;
@@ -133,12 +131,6 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
     }
     if (vm.count("softmax_temp")) {
         cfg_softmax_temp = vm["softmax_temp"].as<float>();
-    }
-    if (vm.count("cutoff_offset")) {
-        cfg_cutoff_offset = vm["cutoff_offset"].as<float>();
-    }
-    if (vm.count("cutoff_ratio")) {
-        cfg_cutoff_ratio = vm["cutoff_ratio"].as<float>();
     }
 #endif
 

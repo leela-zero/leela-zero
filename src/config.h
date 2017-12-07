@@ -42,7 +42,7 @@
 //#define USE_IPC_TEST
 
 #define PROGRAM_NAME "Leela Zero"
-#define PROGRAM_VERSION "0.6"
+#define PROGRAM_VERSION "0.7"
 
 // OpenBLAS limitation
 // #if defined(USE_BLAS) && defined(USE_OPENBLAS)
@@ -70,6 +70,13 @@ typedef unsigned __int64 uint64;
 #else
 typedef long long int int64 ;
 typedef  unsigned long long int uint64;
+#endif
+
+#ifdef USE_HALF
+#include "half/half.hpp"
+using net_t = half_float::half;
+#else
+using net_t = float;
 #endif
 
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */

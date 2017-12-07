@@ -38,12 +38,13 @@ public:
     // search tree.
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
 
-    explicit UCTNode(int vertex, float score);
+    explicit UCTNode(int vertex, float score, float init_eval);
     ~UCTNode();
     bool first_visit() const;
     bool has_children() const;
     bool create_children(std::atomic<int> & nodecount,
                          GameState & state, float & eval);
+    float eval_state(GameState& state);
     void kill_superkos(KoState & state);
     void delete_child(UCTNode * child);
     void invalidate();
@@ -66,19 +67,19 @@ public:
 
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
-    UCTNode* get_pass_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
     UCTNode* get_sibling() const;
 
     void sort_root_children(int color);
-    void sort_children();
+    UCTNode* get_best_root_child(int color);
     SMP::Mutex & get_mutex();
 
 private:
     UCTNode();
     void link_child(UCTNode * newchild);
     void link_nodelist(std::atomic<int> & nodecount,
-                       std::vector<Network::scored_node> & nodelist);
+                       std::vector<Network::scored_node> & nodelist,
+                       float init_eval);
 
     // Tree data
     std::atomic<bool> m_has_children{false};
@@ -91,6 +92,7 @@ private:
     std::atomic<int> m_virtual_loss{0};
     // UCT eval
     float m_score;
+    float m_init_eval;
     std::atomic<double> m_blackevals{0};
     // node alive (not superko)
     std::atomic<bool> m_valid{true};

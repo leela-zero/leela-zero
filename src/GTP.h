@@ -36,8 +36,6 @@ extern bool cfg_dumbpass;
 extern std::vector<int> cfg_gpus;
 extern int cfg_rowtiles;
 #endif
-extern float cfg_cutoff_offset;
-extern float cfg_cutoff_ratio;
 extern float cfg_puct;
 extern float cfg_softmax_temp;
 extern std::string cfg_logfile;

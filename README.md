@@ -149,13 +149,23 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
     brew install boost
-    edit config.h, remove the USE_OPENBLAS line
-    edit Makefile, uncomment the "for macOS" lines
     make
     cd ..
     curl -O https://sjeng.org/zero/best_v1.txt.zip
     unzip https://sjeng.org/zero/best_v1.txt.zip
     src/leelaz --weights weights.txt
+
+## Example of compiling and running - Windows
+
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero
+    cd msvc
+    Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
+    to the Visual Studio version you have.
+    # Build from Visual Studio 2015 or 2017
+    # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to msvc/x64/Release
+    # msvc/x64/Release/leela-zero --weights weights.txt
 
 # Usage
 
@@ -203,7 +213,7 @@ autodetect the amounts on startup. The first line contains a version number.
 
 There are 18 inputs to the first layer, instead of 17 as in the paper. The
 original AlphaGo Zero design has a slight imbalance in that it is easier
-for the black player to see the board edge (due to how padding works in
+for the white player to see the board edge (due to how padding works in
 neural networks). This has been fixed in Leela Zero. The inputs are:
 
 ```
@@ -311,12 +321,9 @@ done with multiple processes each bound to a GPU)
 
 * Watch Leela Zero's training games live in a GUI:
 https://github.com/fsparv/LeelaWatcher
-* For network inference in browser and GUI (currently using a policy network
-trained from human expert games):
-https://github.com/BlinkDL/BlinkDL
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h and
-cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
+The code is released under the GPLv3 or later, except for ThreadPool.h, half.hpp
+and cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
 those files.

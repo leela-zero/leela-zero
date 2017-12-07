@@ -22,7 +22,9 @@ import time
 import tensorflow as tf
 
 def weight_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.1)
+    """Xavier initialization"""
+    stddev = np.sqrt(2.0 / (sum(shape)))
+    initial = tf.truncated_normal(shape, stddev=stddev)
     return tf.Variable(initial)
 
 # Bias weights for layers not followed by BatchNorm
@@ -72,10 +74,10 @@ class TFProcess:
         # Regularizer
         regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
         reg_variables = tf.trainable_variables()
-        reg_term = \
+        self.reg_term = \
             tf.contrib.layers.apply_regularization(regularizer, reg_variables)
 
-        loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss + reg_term
+        loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss + self.reg_term
 
         opt_op = tf.train.MomentumOptimizer(
             learning_rate=0.05, momentum=0.9, use_nesterov=True)
@@ -92,6 +94,7 @@ class TFProcess:
 
         self.avg_policy_loss = None
         self.avg_mse_loss = None
+        self.avg_reg_term = None
         self.time_start = None
 
         # Summary part
@@ -105,14 +108,50 @@ class TFProcess:
 
         self.session.run(self.init)
 
+    def replace_weights(self, new_weights):
+        for e, weights in enumerate(self.weights):
+            # Keyed batchnorm weights
+            if isinstance(weights, str):
+                work_weights = tf.get_default_graph().get_tensor_by_name(weights)
+                new_weight = tf.constant(new_weights[e])
+                self.session.run(tf.assign(work_weights, new_weight))
+            elif weights.shape.ndims == 4:
+                # Convolution weights need a transpose
+                #
+                # TF (kYXInputOutput)
+                # [filter_height, filter_width, in_channels, out_channels]
+                #
+                # Leela/cuDNN/Caffe (kOutputInputYX)
+                # [output, input, filter_size, filter_size]
+                s = weights.shape.as_list()
+                shape = [s[i] for i in [3, 2, 0, 1]]
+                new_weight = tf.constant(new_weights[e], shape=shape)
+                self.session.run(weights.assign(tf.transpose(new_weight, [2, 3, 1, 0])))
+            elif weights.shape.ndims == 2:
+                # Fully connected layers are [in, out] in TF
+                #
+                # [out, in] in Leela
+                #
+                s = weights.shape.as_list()
+                shape = [s[i] for i in [1, 0]]
+                new_weight = tf.constant(new_weights[e], shape=shape)
+                self.session.run(weights.assign(tf.transpose(new_weight, [1, 0])))
+            else:
+                # Biases, batchnorm etc
+                new_weight = tf.constant(new_weights[e], shape=weights.shape)
+                self.session.run(weights.assign(new_weight))
+        #This should result in identical file to the starting one
+        #self.save_leelaz_weights('restored.txt')
+
     def restore(self, file):
         print("Restoring from {0}".format(file))
         self.saver.restore(self.session, file)
 
     def process(self, batch_size):
         # Run training for this batch
-        policy_loss, mse_loss, _, _ = self.session.run(
-            [self.policy_loss, self.mse_loss, self.train_op, self.next_batch],
+        policy_loss, mse_loss, reg_term, _, _ = self.session.run(
+            [self.policy_loss, self.mse_loss, self.reg_term, self.train_op,
+                self.next_batch],
             feed_dict={self.training: True})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
@@ -120,22 +159,27 @@ class TFProcess:
         # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
         # get comparable values.
         mse_loss = mse_loss / 4.0
+        decay = 0.999
         if self.avg_policy_loss:
-            self.avg_policy_loss = 0.99 * self.avg_policy_loss + 0.01 * policy_loss
+            self.avg_policy_loss = decay * self.avg_policy_loss + (1 - decay) * policy_loss
         else:
             self.avg_policy_loss = policy_loss
         if self.avg_mse_loss:
-            self.avg_mse_loss = 0.99 * self.avg_mse_loss + 0.01 * mse_loss
+            self.avg_mse_loss = decay * self.avg_mse_loss + (1 - decay) * mse_loss
         else:
             self.avg_mse_loss = mse_loss
+        if self.avg_reg_term:
+            self.avg_reg_term = decay * self.avg_reg_term + (1 - decay) * reg_term
+        else:
+            self.avg_reg_term = reg_term
         if steps % 100 == 0:
             time_end = time.time()
             speed = 0
             if self.time_start:
                 elapsed = time_end - self.time_start
                 speed = batch_size * (100.0 / elapsed)
-            print("step {}, policy loss={:g} mse={:g} ({:g} pos/s)".format(
-                steps, self.avg_policy_loss, self.avg_mse_loss, speed))
+            print("step {}, policy loss={:g} mse={:g} reg={:g} ({:g} pos/s)".format(
+                steps, self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term, speed))
             train_summaries = tf.Summary(value=[
                 tf.Summary.Value(tag="Policy Loss", simple_value=self.avg_policy_loss),
                 tf.Summary.Value(tag="MSE Loss", simple_value=self.avg_mse_loss)])
@@ -146,11 +190,8 @@ class TFProcess:
             sum_accuracy = 0
             sum_mse = 0
             for _ in range(0, 10):
-                train_accuracy, _ = self.session.run(
-                    [self.accuracy, self.next_batch],
-                    feed_dict={self.training: False})
-                train_mse, _ = self.session.run(
-                    [self.mse_loss, self.next_batch],
+                train_accuracy, train_mse, _ = self.session.run(
+                    [self.accuracy, self.mse_loss, self.next_batch],
                     feed_dict={self.training: False})
                 sum_accuracy += train_accuracy
                 sum_mse += train_mse
@@ -166,7 +207,7 @@ class TFProcess:
             path = os.path.join(os.getcwd(), "leelaz-model")
             save_path = self.saver.save(self.session, path, global_step=steps)
             print("Model saved in file: {}".format(save_path))
-            leela_path = path + ".txt"
+            leela_path = path + "-" + str(steps) + ".txt"
             self.save_leelaz_weights(leela_path)
             print("Leela weights saved to {}".format(leela_path))
 
@@ -224,8 +265,7 @@ class TFProcess:
         with tf.variable_scope(weight_key):
             h_bn = \
                 tf.layers.batch_normalization(
-                    tf.nn.bias_add(conv2d(inputs, W_conv),
-                                   b_conv, data_format='NCHW'),
+                    conv2d(inputs, W_conv),
                     epsilon=1e-5, axis=1, fused=True,
                     center=False, scale=False,
                     training=self.training)
@@ -255,8 +295,7 @@ class TFProcess:
         with tf.variable_scope(weight_key_1):
             h_bn1 = \
                 tf.layers.batch_normalization(
-                    tf.nn.bias_add(conv2d(inputs, W_conv_1),
-                                   b_conv_1, data_format='NCHW'),
+                    conv2d(inputs, W_conv_1),
                     epsilon=1e-5, axis=1, fused=True,
                     center=False, scale=False,
                     training=self.training)
@@ -264,8 +303,7 @@ class TFProcess:
         with tf.variable_scope(weight_key_2):
             h_bn2 = \
                 tf.layers.batch_normalization(
-                    tf.nn.bias_add(conv2d(h_out_1, W_conv_2),
-                                   b_conv_2, data_format='NCHW'),
+                    conv2d(h_out_1, W_conv_2),
                     epsilon=1e-5, axis=1, fused=True,
                     center=False, scale=False,
                     training=self.training)
