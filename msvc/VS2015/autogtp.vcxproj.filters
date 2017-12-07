@@ -63,12 +63,18 @@
     <ClCompile Include="GeneratedFiles\Release\moc_Validation.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\autogtp\Results.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\autogtp\Game.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\autogtp\SPRT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\autogtp\Results.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

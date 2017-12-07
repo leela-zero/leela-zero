@@ -14,6 +14,7 @@
     <ClCompile Include="..\..\autogtp\Game.cpp" />
     <ClCompile Include="..\..\autogtp\main.cpp" />
     <ClCompile Include="..\..\autogtp\Production.cpp" />
+    <ClCompile Include="..\..\autogtp\Results.cpp" />
     <ClCompile Include="..\..\autogtp\SPRT.cpp" />
     <ClCompile Include="..\..\autogtp\Validation.cpp" />
     <ClCompile Include="GeneratedFiles\Debug\moc_Production.cpp">
@@ -31,6 +32,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\autogtp\Game.h" />
+    <ClInclude Include="..\..\autogtp\Results.h" />
     <ClInclude Include="..\..\autogtp\SPRT.h" />
     <CustomBuild Include="..\..\autogtp\Validation.h">
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
@@ -58,16 +60,16 @@
     <CustomBuild Include="..\curl.exe">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">copy %(Identity) $(OutputPath)</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Identity) </Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutputPath)curl.exe</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">copy %(Identity) $(OutputPath)</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Identity) </Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutputPath)curl.exe</Outputs>
     </CustomBuild>
     <CustomBuild Include="..\gzip.exe">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">copy %(Identity) $(OutputPath)</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Identity)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutputPath)gzip.exe</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">copy %(Identity) $(OutputPath)</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Identity)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutputPath)gzip.exe</Outputs>
     </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -135,4 +137,10 @@
       <UserProperties MocDir=".\GeneratedFiles\$(ConfigurationName)" UicDir=".\GeneratedFiles" RccDir=".\GeneratedFiles" lupdateOptions="" lupdateOnBuild="0" lreleaseOptions="" Qt5Version_x0020_x64="msvc2017_64 - 5.10.0" MocOptions="" />
     </VisualStudio>
   </ProjectExtensions>
+  <Target Name="CopyQtDll" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Copy SourceFiles="$(QTDIR)\bin\QtCored.dll" DestinationFolder="$(OutDir)" />
+  </Target>
+  <Target Name="CopyQtDll" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Copy SourceFiles="$(QTDIR)\bin\QtCore.dll" DestinationFolder="$(OutDir)" />
+  </Target>
 </Project>
