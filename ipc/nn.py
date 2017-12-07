@@ -12,7 +12,7 @@ realbs = int(sys.argv[2])
 
 QLEN     = realbs # int(sys.argv[1]) # alias: Batch size
 
-print("Leela Zero TCP Neural Net Service")
+print("Leela Zero Neural Net Service")
 
 def getLatestNNHash():
     txt = urllib.request.urlopen("http://zero.sjeng.org/best-network-hash").read().decode()
@@ -217,15 +217,18 @@ class MyWeightUpdater(threading.Thread):
         global nethash, net, netlock, newNetWeight
         print("\nStarting a thread for auto updating latest weights\n")
         while True:
-            newhash = getLatestNNHash()
-            if newhash != nethash:
-                txt = downloadBestNetworkWeight(newhash)
-                print("New net arrived")
-                nethash = newhash
-                weights, numBlocks, numFilters = loadWeight(txt)
-                netlock.acquire(True)  # BLOCK HERE
-                newNetWeight = (weights, numBlocks, numFilters)
-                netlock.release()
+            try:
+                newhash = getLatestNNHash()
+                if newhash != nethash:
+                    txt = downloadBestNetworkWeight(newhash)
+                    print("New net arrived")
+                    nethash = newhash
+                    weights, numBlocks, numFilters = loadWeight(txt)
+                    netlock.acquire(True)  # BLOCK HERE
+                    newNetWeight = (weights, numBlocks, numFilters)
+                    netlock.release()
+            except Exception as ex:
+                print("Error", ex)
             time.sleep(10)
 
 t2 = MyWeightUpdater(name = "Thread-1")

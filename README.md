@@ -19,14 +19,16 @@ We use `LEELAZ` environment variable to specify the name of shared memory and se
 For example, if you want to run two batches in parallel, for the first batch, you may run:
 
     LEELAZ=lee1 python 4 2
-    for i in {1..4}; do  LEELAZ=lee1 ./autogtp & sleep 0.1; done
+    LEELAZ=lee1 ./autogtp -g 4
 
 and for the second patch:
 
     LEELAZ=lee2 python 4 2
-    for i in {1..4}; do  LEELAZ=lee2 ./autogtp & sleep 0.1; done
+    LEELAZ=lee2 ./autogtp -g 4
 
 You are running 8 instances with 2 batches in parallel. Each batch has 4 instances with 2 instances running on GPU while the other two instances run on CPU to prepare the input for the next batch.
+
+**Note:** Leelaz autogtp v0.7 supports `-g num_game` which sets number of games you want to run in parallel.
 
 **Tips:** Increasing `batch_size` (e.g., 4, 8, 16, 32, 64, 128, 256, ...) to get the best performance (`seconds /  moves / games`)
 
