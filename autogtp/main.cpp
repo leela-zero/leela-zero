@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
               "Play 'gamesNum' games on one GPU at the same time.",
-              "num", QString::number((QThread::idealThreadCount() + 1) / 2));
+              "num", "1");
     QCommandLineOption gpusOption(
         {"u", "gpus"},
               "Index of the GPU to use for multiple GPUs support.",
