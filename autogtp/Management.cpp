@@ -144,12 +144,12 @@ Order Management::getWork() {
    "white_hash" : "223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
    "black_hash" : "92c658d7325fe38f0c8adbbb1444ed17afd891b9f208003c272547a7bcb87909",
    "options_hash" : "c2e3"
-   "required_client_version" : 5,
+   "required_client_version" : "5",
    "options" : {
-       "playouts" : 1000,
-       "resignation_percent" : 3,
+       "playouts" : "1000",
+       "resignation_percent" : "3",
        "noise" : "false",
-       "randomcnt" : 0
+       "randomcnt" : "0"
     }
 }
 
@@ -157,12 +157,12 @@ Order Management::getWork() {
    "cmd" : "selfplay",
    "hash" : "223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
    "options_hash" : "ee21",
-   "required_client_version" : 5,
+   "required_client_version" : "5",
    "options" : {
        "playouts" : 1000,
-       "resignation_percent" : 3,
+       "resignation_percent" : "3",
        "noise" : "true",
-       "randomcnt" : 30
+       "randomcnt" : "30"
     }
 }
     */
@@ -192,11 +192,11 @@ Order Management::getWork() {
     QString options;
     QString optionsHash =  ob.value("options_hash").toString();
     if(ob.contains("required_client_version")) {
-        QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toInt() << endl;
-        if(ob.value("required_client_version").toInt() > m_version) {
+        QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
+        if(ob.value("required_client_version").toString().toInt() > m_version) {
             QTextStream(stdout) << ' ' <<  endl;
             QTextStream(stdout)
-                << "Server requires client version " << ob.value("required_client_version").toInt()
+                << "Server requires client version " << ob.value("required_client_version").toString()
                 << " but we are version " << m_version << endl;
             QTextStream(stdout)
                 << "Check https://github.com/gcp/leela-zero for updates." << endl;
