@@ -128,7 +128,7 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
         std::string tmp = state.move_to_text(node->get_move());
         std::string pvstring(tmp);
 
-        myprintf("%4s -> %7d (V: %5.2f%%) (N: %4.1f%%) PV: ",
+        myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: ",
             tmp.c_str(),
             node->get_visits(),
             node->get_visits() > 0 ? node->get_eval(color)*100.0f : 0.0f,

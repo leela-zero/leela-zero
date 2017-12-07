@@ -44,8 +44,8 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float score)
-    : m_move(vertex), m_score(score) {
+UCTNode::UCTNode(int vertex, float score, float init_eval)
+    : m_move(vertex), m_score(score), m_init_eval(init_eval) {
 }
 
 UCTNode::~UCTNode() {
@@ -123,13 +123,14 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
             nodelist.emplace_back(node);
         }
     }
-    link_nodelist(nodecount, nodelist);
+    link_nodelist(nodecount, nodelist, net_eval);
 
     return true;
 }
 
 void UCTNode::link_nodelist(std::atomic<int> & nodecount,
-                            std::vector<Network::scored_node> & nodelist)
+                            std::vector<Network::scored_node> & nodelist,
+                            float init_eval)
 {
     size_t totalchildren = nodelist.size();
     if (!totalchildren)
@@ -147,7 +148,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
 
     for (const auto& node : nodelist) {
         if (totalchildren - childrenseen <= maxchilds) {
-            auto vtx = new UCTNode(node.second, node.first);
+            auto vtx = new UCTNode(node.second, node.first, init_eval);
             link_child(vtx);
             childrenadded++;
         }
@@ -334,8 +335,12 @@ float UCTNode::get_eval(int tomove) const {
         return score;
     } else {
         // If a node has not been visited yet,
-        // the eval is the first-play-urgency.
-        return 1.1f;
+        // the eval is that of the parent.
+        auto eval = m_init_eval;
+        if (tomove == FastBoard::WHITE) {
+            eval = 1.0f - eval;
+        }
+        return eval;
     }
 }
 
@@ -356,10 +361,6 @@ UCTNode* UCTNode::uct_select_child(int color) {
     float best_value = -1000.0f;
 
     LOCK(get_mutex(), lock);
-    // Progressive widening
-    // int childbound = std::max(2, (int)(((log((double)get_visits()) - 3.0) * 3.0) + 2.0));
-    int childbound = 362;
-    int childcount = 0;
     UCTNode * child = m_firstchild;
 
     // Count parentvisits.
@@ -369,18 +370,16 @@ UCTNode* UCTNode::uct_select_child(int color) {
     while (child != nullptr && !child->valid()) {
         child = child->m_nextsibling;
     }
-    while (child != nullptr  && childcount < childbound) {
+    while (child != nullptr) {
         parentvisits      += child->get_visits();
         child = child->m_nextsibling;
         // Make sure we are at a valid successor.
         while (child != nullptr && !child->valid()) {
             child = child->m_nextsibling;
         }
-        childcount++;
     }
     float numerator = std::sqrt((double)parentvisits);
 
-    childcount = 0;
     child = m_firstchild;
     // Make sure we are at a valid successor.
     while (child != nullptr && !child->valid()) {
@@ -390,18 +389,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
         return nullptr;
     }
 
-    // Prune bad probabilities
-    // auto parent_log = std::log((float)parentvisits);
-    // auto cutoff_ratio = cfg_cutoff_offset + cfg_cutoff_ratio * parent_log;
-    // auto best_probability = child->get_score();
-    // assert(best_probability > 0.001f);
-
-    while (child != nullptr && childcount < childbound) {
-        // Prune bad probabilities
-        // if (child->get_score() * cutoff_ratio < best_probability) {
-        //     break;
-        // }
-
+    while (child != nullptr) {
         // get_eval() will automatically set first-play-urgency
         float winrate = child->get_eval(color);
         float psa = child->get_score();
@@ -420,7 +408,6 @@ UCTNode* UCTNode::uct_select_child(int color) {
         while (child != nullptr && !child->valid()) {
             child = child->m_nextsibling;
         }
-        childcount++;
     }
 
     assert(best != nullptr);
