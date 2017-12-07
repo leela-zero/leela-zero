@@ -46,12 +46,6 @@ int main(int argc, char *argv[]) {
     parser.addHelpOption();
     parser.addVersionOption();
 
-    QCommandLineOption competitionOption(
-        {"c", "competition"}, "Play two networks against each other.");
-    QCommandLineOption networkOption(
-        {"n", "network"},
-              "Networks to use as players in competition mode (two are needed).",
-              "filename");
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
               "Play 'gamesNum' games on one GPU at the same time.",
@@ -68,20 +62,13 @@ int main(int argc, char *argv[]) {
         { "d", "debug" }, "Save training and extra debug files after each self-play game.",
                           "output directory");
 
-    parser.addOption(competitionOption);
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
-    parser.addOption(networkOption);
     parser.addOption(keepSgfOption);
     parser.addOption(keepDebugOption);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
-    bool competition  = parser.isSet(competitionOption);
-    QStringList netList = parser.values(networkOption);
-    if(competition && netList.count() != 2) {
-        parser.showHelp();
-    }
     int gamesNum = parser.value(gamesNumOption).toInt();
     QStringList gpusList = parser.values(gpusOption);
     int gpusNum = gpusList.count();
@@ -120,7 +107,7 @@ int main(int argc, char *argv[]) {
         }
     }
     QMutex mutex;
-    Management boss(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), &mutex);
+    Management boss(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), parser.value(keepDebugOption), &mutex);
     boss.giveAssignments();
     mutex.lock();
     cerr.flush();

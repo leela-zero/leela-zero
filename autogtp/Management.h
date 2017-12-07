@@ -21,49 +21,12 @@
 #include <QAtomicInt>
 #include <QMutex>
 #include <QString>
-<<<<<<< HEAD:autogtp/Production.h
 #include <QTextStream>
 #include <QThread>
 #include <QVector>
-=======
-#include <QVector>
-#include <QTextStream>
->>>>>>> distributed validation WIP:autogtp/Managment.h
 #include <chrono>
 #include <stdexcept>
 #include "Worker.h"
-
-<<<<<<< HEAD:autogtp/Production.h
-class ProductionWorker : public QThread {
-    Q_OBJECT
-public:
-    enum {
-        RUNNING = 0,
-        NET_CHANGE,
-        FINISHING
-    };
-    ProductionWorker() = default;
-    ProductionWorker(const ProductionWorker& w) : QThread(w.parent()) {}
-    ~ProductionWorker() = default;
-    void init(const QString& gpuIndex, const QString& net, QAtomicInt* movesMade);
-    void newNetwork(const QString& net) {
-        QMutexLocker locker(&m_mutex);
-        m_state = NET_CHANGE;
-        m_network = net;
-    }
-    void run() override;
-    
-signals:
-    void resultReady(const QString& file, float duration);
-private:
-    QAtomicInt* m_movesMade;
-    QString m_network;
-    QString m_option;
-    QMutex m_mutex;
-    int m_state;
-};
-=======
->>>>>>> distributed validation WIP:autogtp/Managment.h
 
 class Management : public QObject {
     Q_OBJECT
@@ -88,8 +51,6 @@ private:
             : std::runtime_error("NetworkException: " + message)
         {}
     };
-
-
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
     QVector<Worker*> m_gamesThreads;
@@ -99,13 +60,7 @@ private:
     int m_selfGames;
     int m_matchGames;
     int m_gamesPlayed;
-<<<<<<< HEAD:autogtp/Production.h
     QAtomicInt m_movesMade;
-    QString m_network;
-=======
-    QString m_firstNetwork;
-    QString m_secondNetwork;
->>>>>>> distributed validation WIP:autogtp/Managment.h
     QString m_keepPath;
     QString m_debugPath;
     int m_version;

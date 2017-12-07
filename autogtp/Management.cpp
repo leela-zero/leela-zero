@@ -31,9 +31,7 @@ constexpr int RETRY_DELAY_MIN_SEC = 30;
 constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
 
-
 Management::Management(const int gpus,
-
                        const int games,
                        const QStringList& gpuslist,
                        const int ver,
@@ -61,9 +59,7 @@ void Management::giveAssignments() {
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
         for(int game = 0; game < m_games; ++game) {
             int thread_index = gpu * m_games + game;
-
             if(m_gpusList.isEmpty()) {
-
                 myGpu = "";
             } else {
                 myGpu = m_gpusList.at(gpu);
