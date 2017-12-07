@@ -11,9 +11,11 @@ TEMPLATE = app
 SOURCES += main.cpp \
     ../autogtp/Game.cpp \
     SPRT.cpp \
-    Validation.cpp
+    Validation.cpp \
+    Results.cpp
 
 HEADERS += \
     ../autogtp/Game.h \
     SPRT.h \
-    Validation.h
+    Validation.h \
+    Results.h

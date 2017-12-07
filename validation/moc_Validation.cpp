@@ -19,8 +19,8 @@
 
 QT_BEGIN_MOC_NAMESPACE
 struct qt_meta_stringdata_ValidationWorker_t {
-    QByteArrayData data[5];
-    char stringdata0[49];
+    QByteArrayData data[6];
+    char stringdata0[63];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -33,11 +33,12 @@ QT_MOC_LITERAL(0, 0, 16), // "ValidationWorker"
 QT_MOC_LITERAL(1, 17, 11), // "resultReady"
 QT_MOC_LITERAL(2, 29, 0), // ""
 QT_MOC_LITERAL(3, 30, 16), // "Sprt::GameResult"
-QT_MOC_LITERAL(4, 47, 1) // "r"
+QT_MOC_LITERAL(4, 47, 1), // "r"
+QT_MOC_LITERAL(5, 49, 13) // "net_one_color"
 
     },
     "ValidationWorker\0resultReady\0\0"
-    "Sprt::GameResult\0r"
+    "Sprt::GameResult\0r\0net_one_color"
 };
 #undef QT_MOC_LITERAL
 
@@ -55,10 +56,10 @@ static const uint qt_meta_data_ValidationWorker[] = {
        1,       // signalCount
 
  // signals: name, argc, parameters, tag, flags
-       1,    1,   19,    2, 0x06 /* Public */,
+       1,    2,   19,    2, 0x06 /* Public */,
 
  // signals: parameters
-    QMetaType::Void, 0x80000000 | 3,    4,
+    QMetaType::Void, 0x80000000 | 3, QMetaType::Int,    4,    5,
 
        0        // eod
 };
@@ -69,14 +70,14 @@ void ValidationWorker::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int
         ValidationWorker *_t = static_cast<ValidationWorker *>(_o);
         Q_UNUSED(_t)
         switch (_id) {
-        case 0: _t->resultReady((*reinterpret_cast< Sprt::GameResult(*)>(_a[1]))); break;
+        case 0: _t->resultReady((*reinterpret_cast< Sprt::GameResult(*)>(_a[1])),(*reinterpret_cast< int(*)>(_a[2]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
         int *result = reinterpret_cast<int *>(_a[0]);
         void **func = reinterpret_cast<void **>(_a[1]);
         {
-            typedef void (ValidationWorker::*_t)(Sprt::GameResult );
+            typedef void (ValidationWorker::*_t)(Sprt::GameResult , int );
             if (*reinterpret_cast<_t *>(func) == static_cast<_t>(&ValidationWorker::resultReady)) {
                 *result = 0;
                 return;
@@ -122,14 +123,14 @@ int ValidationWorker::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 }
 
 // SIGNAL 0
-void ValidationWorker::resultReady(Sprt::GameResult _t1)
+void ValidationWorker::resultReady(Sprt::GameResult _t1, int _t2)
 {
-    void *_a[] = { Q_NULLPTR, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
+    void *_a[] = { Q_NULLPTR, const_cast<void*>(reinterpret_cast<const void*>(&_t1)), const_cast<void*>(reinterpret_cast<const void*>(&_t2)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 struct qt_meta_stringdata_Validation_t {
-    QByteArrayData data[5];
-    char stringdata0[46];
+    QByteArrayData data[6];
+    char stringdata0[60];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -142,11 +143,12 @@ QT_MOC_LITERAL(0, 0, 10), // "Validation"
 QT_MOC_LITERAL(1, 11, 9), // "getResult"
 QT_MOC_LITERAL(2, 21, 0), // ""
 QT_MOC_LITERAL(3, 22, 16), // "Sprt::GameResult"
-QT_MOC_LITERAL(4, 39, 6) // "result"
+QT_MOC_LITERAL(4, 39, 6), // "result"
+QT_MOC_LITERAL(5, 46, 13) // "net_one_color"
 
     },
     "Validation\0getResult\0\0Sprt::GameResult\0"
-    "result"
+    "result\0net_one_color"
 };
 #undef QT_MOC_LITERAL
 
@@ -164,10 +166,10 @@ static const uint qt_meta_data_Validation[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    1,   19,    2, 0x0a /* Public */,
+       1,    2,   19,    2, 0x0a /* Public */,
 
  // slots: parameters
-    QMetaType::Void, 0x80000000 | 3,    4,
+    QMetaType::Void, 0x80000000 | 3, QMetaType::Int,    4,    5,
 
        0        // eod
 };
@@ -178,7 +180,7 @@ void Validation::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         Validation *_t = static_cast<Validation *>(_o);
         Q_UNUSED(_t)
         switch (_id) {
-        case 0: _t->getResult((*reinterpret_cast< Sprt::GameResult(*)>(_a[1]))); break;
+        case 0: _t->getResult((*reinterpret_cast< Sprt::GameResult(*)>(_a[1])),(*reinterpret_cast< int(*)>(_a[2]))); break;
         default: ;
         }
     }
