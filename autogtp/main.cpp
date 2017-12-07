@@ -31,7 +31,7 @@
 #include "Game.h"
 #include "Management.h"
 
-constexpr int AUTOGTP_VERSION = 6;
+constexpr int AUTOGTP_VERSION = 8;
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version{0, 8};
 
