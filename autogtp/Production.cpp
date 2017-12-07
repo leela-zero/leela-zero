@@ -39,7 +39,7 @@ void ProductionWorker::run() {
         auto pick = rand_dist(gen);
         // For now must manually check the resign rate
         // for new networks with resign_analysis.py
-        QString resignpct = (pick < 0.2) ? "0" : "5";
+        QString resignpct = (pick < 0.2) ? "0" : "1";
         // Prepend because option must have "-w " on the end
         option = " -r " + resignpct + option;
         m_mutex.lock();
