@@ -121,12 +121,12 @@ void  Management::printTimingInfo(float duration) {
         << ", last game took " << (int) duration << " seconds." << endl;
 }
 
-QString Management::getNumOption(const QJsonObject &ob, const QString &key, const QString &opt, int defValue) {
+QString Management::getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue) {
     QString res;
     if(ob.contains(key)) {
-        res.append(opt + QString::number(ob.value(key).toInt()) + " ");
+        res.append(opt + ob.value(key).toString() + " ");
     } else {
-        res.append(opt+QString::number(defValue) + " ");
+        res.append(opt + defValue + " ");
     }
     return res;
 }
@@ -203,10 +203,10 @@ Order Management::getWork() {
             exit(EXIT_FAILURE);
         }
     }
-    options.append(getNumOption(opt, "playouts", " -p ", 1000));
-    options.append(getNumOption(opt, "resignation_percent", " -r ", 0));
-    options.append(getNumOption(opt, "randomcnt", " -m ", 0));
-    if(opt.contains("noise") && opt.value("noise").toBool()) {
+    options.append(getOption(opt, "playouts", " -p ", "1000"));
+    options.append(getOption(opt, "resignation_percent", " -r ", "0"));
+    options.append(getOption(opt, "randomcnt", " -m ", "0"));
+    if(opt.contains("noise") && opt.value("noise").toString().compare("true" , Qt::CaseInsensitive) ==  0) {
         options.append(" -n ");
     }
     options.append(" --noponder ");

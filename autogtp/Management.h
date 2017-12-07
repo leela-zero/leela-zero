@@ -112,7 +112,7 @@ private:
     std::chrono::high_resolution_clock::time_point m_start;
 
     Order getWork();
-    QString getNumOption(const QJsonObject &ob, const QString &key, const QString &opt, int defValue);
+    QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     bool networkExists(const QString &name);
     void fetchNetwork(const QString &name);
     void printTimingInfo(float duration);
