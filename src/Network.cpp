@@ -474,7 +474,11 @@ Network::Netresult Network::get_scored_moves_internal(
     assert(INPUT_CHANNELS == planes.size());
     constexpr int width = 19;
     constexpr int height = 19;
+#ifdef USE_IPC_TEST
     const auto convolve_channels = conv_pol_w.size() / conv_pol_b.size();
+#else
+    const auto convolve_channels = 128; // conv_pol_w.size() / conv_pol_b.size();
+#endif
     std::vector<net_t> input_data;
     std::vector<net_t> output_data(convolve_channels * width * height);
     std::vector<float> policy_data_1(2 * width * height);
