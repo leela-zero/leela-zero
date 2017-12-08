@@ -244,7 +244,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         }
 
         // Pick every 1/SKIP_SIZE th position.
-        auto skip = Random::get_Rng()->randfix<SKIP_SIZE>();
+        auto skip = Random::get_Rng().randfix<SKIP_SIZE>();
         if (skip == 0) {
             auto step = TimeStep{};
             step.to_move = state.board.get_to_move();
@@ -274,7 +274,7 @@ void Training::dump_supervised(const std::string& sgf_name,
     std::cout << "Total games in file: " << gametotal << std::endl;
     // Shuffle games around
     std::cout << "Shuffling...";
-    std::shuffle(begin(games), end(games), *Random::get_Rng());
+    std::shuffle(begin(games), end(games), Random::get_Rng());
     std::cout << "done." << std::endl;
 
     // Loop over the database multiple times. We will select different

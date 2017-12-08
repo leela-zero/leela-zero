@@ -27,8 +27,9 @@
 */
 class Random {
 public:
-    Random(int seed = -1);
-    void seedrandom(uint32 s);
+    Random() = delete;
+    Random(uint64 seed = 0);
+    void seedrandom(uint64 s);
 
     // random numbers from 0 to max
     template<int MAX>
@@ -38,7 +39,7 @@ public:
         // Last bit isn't random, so don't use it in isolation. We specialize
         // this case.
         static_assert(MAX != 2, "don't isolate the LSB with xoroshiro128+");
-        return random() % MAX;
+        return gen() % MAX;
     }
 
     uint16 randuint16(const uint16 max);
@@ -49,7 +50,7 @@ public:
     float randflt(void);
 
     // return the thread local RNG
-    static Random* get_Rng(void);
+    static Random& get_Rng(void);
 
     // UniformRandomBitGenerator interface
     using result_type = uint64;
@@ -60,18 +61,18 @@ public:
         return std::numeric_limits<result_type>::max();
     }
     result_type operator()() {
-        return random();
+        return gen();
     }
 
 private:
-    uint64 random(void);
+    uint64 gen(void);
     uint64 m_s[2];
 };
 
 // Specialization for last bit: use sign test
 template<>
 inline uint32 Random::randfix<2>() {
-    return (random() > (std::numeric_limits<uint64>::max() / 2));
+    return (gen() > (std::numeric_limits<uint64>::max() / 2));
 }
 
 #endif

@@ -389,7 +389,7 @@ Network::Netresult Network::get_scored_moves(
     } else {
         assert(ensemble == RANDOM_ROTATION);
         assert(rotation == -1);
-        int rand_rot = Random::get_Rng()->randfix<8>();
+        auto rand_rot = Random::get_Rng().randfix<8>();
         result = get_scored_moves_internal(state, planes, rand_rot);
     }
 

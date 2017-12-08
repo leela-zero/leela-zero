@@ -216,7 +216,7 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 
     std::gamma_distribution<float> gamma(alpha, 1.0f);
     for (size_t i = 0; i < child_cnt; i++) {
-        dirichlet_vector.emplace_back(gamma(*Random::get_Rng()));
+        dirichlet_vector.emplace_back(gamma(Random::get_Rng()));
     }
 
     auto sample_sum = std::accumulate(begin(dirichlet_vector),
@@ -254,7 +254,7 @@ void UCTNode::randomize_first_proportionally() {
         child = child->m_nextsibling;
     }
 
-    auto pick = Random::get_Rng()->randuint32(accum);
+    auto pick = Random::get_Rng().randuint32(accum);
     auto index = size_t{0};
     for (size_t i = 0; i < accum_vector.size(); i++) {
         if (pick < accum_vector[i]) {
