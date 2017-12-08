@@ -120,7 +120,7 @@ Result ValidationJob::execute(){
        QTextStream(stdout) << "Game has ended." << endl;
        res.add("moves", QString::number(first.getMovesCount()));     
        if (first.getScore()) {
-           res.add("result", first.getResult());                     
+           res.add("score", first.getResult());                     
            res.add("winner", first.getWinnerName());                 
            first.writeSgf();
            res.add("file", first.getFile());                         
