@@ -113,16 +113,14 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
     // sort children, put best move on top
     m_root.sort_root_children(color);
 
-    UCTNode * bestnode = parent.get_first_child();
 
-    if (bestnode->first_visit()) {
+    auto children = parent.get_children();
+    if (children[0]->first_visit()) {
         return;
     }
 
     int movecount = 0;
-    UCTNode * node = bestnode;
-
-    while (node != nullptr) {
+    for (const auto& node : children) {
         if (++movecount > 2 && !node->get_visits()) break;
 
         std::string tmp = state.move_to_text(node->get_move());
@@ -140,8 +138,6 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
         pvstring += " " + get_pv(tmpstate, *node);
 
         myprintf("%s\n", pvstring.c_str());
-
-        node = node->get_sibling();
     }
 }
 

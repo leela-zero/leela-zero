@@ -21,9 +21,10 @@
 
 #include "config.h"
 
-#include <tuple>
 #include <atomic>
 #include <limits>
+#include <tuple>
+#include <vector>
 
 #include "SMP.h"
 #include "GameState.h"
@@ -39,7 +40,7 @@ public:
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
 
     explicit UCTNode(int vertex, float score, float init_eval);
-    ~UCTNode();
+    ~UCTNode() = default;
     bool first_visit() const;
     bool has_children() const;
     bool create_children(std::atomic<int> & nodecount,
@@ -68,7 +69,7 @@ public:
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    UCTNode* get_sibling() const;
+    const std::vector<UCTNode*> get_children() const;
 
     void sort_root_children(int color);
     UCTNode* get_best_root_child(int color);
@@ -83,8 +84,8 @@ private:
 
     // Tree data
     std::atomic<bool> m_has_children{false};
-    UCTNode* m_firstchild{nullptr};
-    UCTNode* m_nextsibling{nullptr};
+    std::vector<UCTNode*> children;
+
     // Move
     int m_move;
     // UCT
