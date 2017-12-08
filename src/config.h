@@ -42,7 +42,7 @@
 //#define USE_IPC_TEST
 
 #define PROGRAM_NAME "Leela Zero"
-#define PROGRAM_VERSION "0.7"
+#define PROGRAM_VERSION "0.8"
 
 // OpenBLAS limitation
 // #if defined(USE_BLAS) && defined(USE_OPENBLAS)
