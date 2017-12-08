@@ -127,9 +127,12 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
         }
     }
 
-    // re-normalize after removing illegal moves.
-    for (auto& node : nodelist) {
-        node.first /= legal_sum;
+    // If the sum is 0 or a denormal, then don't try to normalize.
+    if (legal_sum > std::numeric_limits<float>::min()) {
+        // re-normalize after removing illegal moves.
+        for (auto& node : nodelist) {
+            node.first /= legal_sum;
+        }
     }
 
     link_nodelist(nodecount, nodelist, net_eval);
