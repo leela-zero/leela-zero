@@ -19,30 +19,33 @@
 import sys
 import argparse
 
-class Best:
-    def __init__(self):
-        self.value = None
-        self.movenum = None
-        self.bestmovevisits = None
-    def update(self, value, movenum, bestmovevisits):
-        if self.value == None or value < self.value:
-            self.value = value
-            self.movenum = movenum
-            self.bestmovevisits = bestmovevisits
-    def tostr(self):
-        s = "%f %d %d" % (self.value, self.movenum, self.bestmovevisits)
-        return s
-
 class GameStats:
     def __init__(self, filename):
         self.filename = filename
-        self.w_best_netwinrate = Best()
-        self.w_best_uctwinrate = Best()
-        self.w_best_bestmovevisits = Best()
         self.total_moves = None
         self.resign_movenum = None
         self.resign_type = None     # "Correct", "Incorrect"
         self.winner = None
+
+class TotalStats:
+    def __init__(self):
+        self.num_games = 0
+        self.no_resign_count = 0
+        self.correct_resign_count = 0
+        self.incorrect_resign_count = 0
+        self.game_len_sum = 0
+        self.resigned_game_len_sum = 0
+    def calcOverall(self, b, w):
+        self.num_games = b.num_games + w.num_games
+        self.no_resign_count = b.no_resign_count + w.no_resign_count
+        self.correct_resign_count = b.correct_resign_count + w.correct_resign_count
+        self.incorrect_resign_count = b.incorrect_resign_count + w.incorrect_resign_count
+        self.game_len_sum = b.game_len_sum + w.game_len_sum
+        self.resigned_game_len_sum = b.resigned_game_len_sum + w.resigned_game_len_sum
+
+def to_move_str(to_move):
+    if (to_move): return "W"
+    else: return "B"
 
 def parseGames(filenames, resignrate, verbose):
     gsd = {}
@@ -71,53 +74,71 @@ def parseGames(filenames, resignrate, verbose):
                 child_uctwinrate = float(child_uctwinrate)
                 bestmovevisits = int(bestmovevisits)
                 if side_to_move_won == 1:
-                    if verbose: print("+", to_move, movenum, netwinrate, child_uctwinrate, bestmovevisits)
-                    gs.w_best_netwinrate.update(netwinrate, movenum, bestmovevisits)
-                    gs.w_best_uctwinrate.update(child_uctwinrate, movenum, bestmovevisits)
-                    gs.w_best_bestmovevisits.update(bestmovevisits, movenum, bestmovevisits)
+                    if verbose >= 2: print("+", to_move, movenum, netwinrate, child_uctwinrate, bestmovevisits)
                     if not gs.resign_type and child_uctwinrate < resignrate:
-                        if verbose: print("Incorrect resign")
+                        if verbose >= 1:
+                            print("Incorrect resign -- %s rr=%0.3f wr=%0.3f winner=%s movenum=%d" %
+                                (filename, resignrate, child_uctwinrate, to_move_str(to_move), movenum))
+                            if verbose >= 2:
+                                print("policy_weights", policy_weights)
                         gs.resign_type = "Incorrect"
                         gs.resign_movenum = movenum
                 else:
-                    if verbose: print("-", to_move, movenum, netwinrate, child_uctwinrate, bestmovevisits)
+                    if verbose >= 2: print("-", to_move, movenum, netwinrate, child_uctwinrate, bestmovevisits)
                     if not gs.resign_type and child_uctwinrate < resignrate:
-                        if verbose: print("Correct resign")
+                        if verbose >= 2: print("Correct resign -- %s" % (filename))
                         gs.resign_type = "Correct"
                         gs.resign_movenum = movenum
             gs.total_moves = movenum
-        if verbose: print(filename, gs.w_best_netwinrate.tostr(), gs.w_best_uctwinrate.tostr(), gs.total_moves)
     return gsd
 
 def resignStats(gsd, resignrate):
-    print("Resign rate: %0.2f" % (resignrate))
-    num_games = len(gsd)
-    no_resign_count = 0
-    correct_resign_count = 0
-    incorrect_resign_count = 0
-    game_len_sum = 0
-    resigned_game_len_sum = 0
-    black_wins = 0
+    stats = [ TotalStats(), TotalStats(), TotalStats() ]   # B wins, W wins, Overall
     for gs in gsd.values():
+        stats[gs.winner].num_games += 1
         if not gs.resign_type:
-            no_resign_count += 1
-            resigned_game_len_sum += gs.total_moves
+            stats[gs.winner].no_resign_count += 1
+            stats[gs.winner].resigned_game_len_sum += gs.total_moves
         elif gs.resign_type == "Correct":
-            correct_resign_count += 1
-            resigned_game_len_sum += gs.resign_movenum
+            stats[gs.winner].correct_resign_count += 1
+            stats[gs.winner].resigned_game_len_sum += gs.resign_movenum
         else:
             assert gs.resign_type == "Incorrect"
-            incorrect_resign_count += 1
-            resigned_game_len_sum += gs.resign_movenum
-        game_len_sum += gs.total_moves
-        if gs.winner == 0:
-            black_wins += 1
-    avg_len = 1.0*game_len_sum/num_games
-    resigned_avg_len = 1.0*resigned_game_len_sum/num_games
-    avg_reduction = 1.0*(avg_len-resigned_avg_len)/avg_len
-    print("Black won %d/%d (%0.2f%%)" % (black_wins, num_games, 100.0 * black_wins / num_games))
-    print("Incorrect uct resigns = %d/%d (%0.2f%%)" % (incorrect_resign_count, num_games, 100.0 * incorrect_resign_count / num_games))
-    print("Average game length = %d. Average game length with resigns = %d (%0.2f%% reduction)" % (avg_len, resigned_avg_len, avg_reduction*100))
+            stats[gs.winner].incorrect_resign_count += 1
+            stats[gs.winner].resigned_game_len_sum += gs.resign_movenum
+        stats[gs.winner].game_len_sum += gs.total_moves
+    stats[2].calcOverall(stats[0], stats[1])
+    print("Black won %d/%d (%0.2f%%)" % (
+        stats[0].num_games,
+        stats[0].num_games+stats[1].num_games,
+        100.0 * stats[0].num_games / (stats[0].num_games+stats[1].num_games)))
+    for winner in (0,1,2):
+        if winner==0:
+            print("Of games Black won:")
+        elif winner==1:
+            print("Of games White won:")
+        else:
+            print("Of all games:")
+        if stats[winner].num_games == 0:
+            print("    No games to report")
+            continue
+        avg_len = 1.0*stats[winner].game_len_sum/stats[winner].num_games
+        resigned_avg_len = 1.0*stats[winner].resigned_game_len_sum/stats[winner].num_games
+        avg_reduction = 1.0*(avg_len-resigned_avg_len)/avg_len
+        print("    Incorrect uct resigns = %d/%d (%0.2f%%)" % (
+            stats[winner].incorrect_resign_count,
+            stats[winner].num_games,
+            100.0 * stats[winner].incorrect_resign_count / stats[winner].num_games))
+        print("    Correct uct resigns = %d/%d (%0.2f%%)" % (
+            stats[winner].correct_resign_count,
+            stats[winner].num_games,
+            100.0 * stats[winner].correct_resign_count / stats[winner].num_games))
+        print("    No Resign = %d/%d (%0.2f%%)" % (
+            stats[winner].no_resign_count,
+            stats[winner].num_games,
+            100.0 * stats[winner].no_resign_count / stats[winner].num_games))
+        print("    Average game length = %d. Average game length with resigns = %d (%0.2f%% reduction)" % (
+            avg_len, resigned_avg_len, avg_reduction*100))
     print()
 
 if __name__ == "__main__":
@@ -139,12 +160,13 @@ Note the script takes the debug files hash.txt.debug.0
 as the input arguments, but it also expects the training
 files hash.txt.0 to be in the same directory."""
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=usage_str)
-    default_resignrates="0.5,0.2,0.15,0.1,0.05"
-    parser.add_argument("--r", metavar="Resign rates", dest="resignrates", type=str, default=default_resignrates, help="comma separated resign thresholds (default %s)" % (default_resignrates))
-    parser.add_argument("--v", metavar="Verbose", dest="verbose", type=bool, default=False)
+    default_resignrates="0.5,0.2,0.15,0.1,0.05,0.02,0.01"
+    parser.add_argument("--r", metavar="Resign_rates", dest="resignrates", type=str, default=default_resignrates, help="comma separated resign thresholds (default %s)" % (default_resignrates))
+    parser.add_argument("--v", metavar="Verbose", dest="verbose", type=int, default=0, help="Verbosity level (default 0)")
     parser.add_argument("data", metavar="files", type=str, nargs="+", help="Debug data files (*.txt.debug.0)")
     args = parser.parse_args()
     resignrates = [float(i) for i in args.resignrates.split(",")]
     for resignrate in (resignrates):
-        gs = parseGames(args.data, resignrate, args.verbose)
-        resignStats(gs, resignrate)
+        print("Resign rate: %0.2f" % (resignrate))
+        gsd = parseGames(args.data, resignrate, args.verbose)
+        resignStats(gsd, resignrate)
