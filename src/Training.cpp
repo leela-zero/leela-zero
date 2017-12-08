@@ -129,7 +129,7 @@ void Training::record(GameState& state, UCTNode& root) {
 
     child = root.get_first_child();
     while (child != nullptr) {
-        auto prob = child->get_visits() / sum_visits;
+        auto prob = static_cast<float>(child->get_visits() / sum_visits);
         auto move = child->get_move();
         if (move != FastBoard::PASS) {
             auto xy = state.board.get_xy(move);
@@ -196,9 +196,11 @@ void Training::dump_stats(const std::string& filename) {
 }
 
 void Training::dump_stats(OutputChunker& outchunk) {
-    auto out = std::stringstream{};
-    out << "1" << std::endl; // File format version 1
-    outchunk.append(out.str());
+    {
+        auto out = std::stringstream{};
+        out << "1" << std::endl; // File format version 1
+        outchunk.append(out.str());
+    }
     for (const auto& step : m_data) {
         auto out = std::stringstream{};
         out << step.net_winrate
@@ -219,7 +221,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
     do {
         auto to_move = state.get_to_move();
         auto move = tree_moves[counter];
-        auto this_move = -1;
+        auto this_move = size_t{0};
 
         // Detect if this SGF seems to be corrupted
         auto moves = state.generate_moves(to_move);

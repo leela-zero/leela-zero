@@ -35,7 +35,7 @@
 
 using namespace Utils;
 
-void license_blurb() {
+static void license_blurb() {
     printf(
         "Leela Zero  Copyright (C) 2017  Gian-Carlo Pascutto\n"
         "This program comes with ABSOLUTELY NO WARRANTY.\n"
@@ -44,7 +44,7 @@ void license_blurb() {
     );
 }
 
-void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
+static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
     namespace po = boost::program_options;
     // Declare the supported options.
     po::options_description v_desc("Allowed options");
@@ -237,10 +237,10 @@ int main (int argc, char *argv[]) {
     std::cerr.setf(std::ios::unitbuf);
     std::cin.setf(std::ios::unitbuf);
 
-    setbuf(stdout, NULL);
-    setbuf(stderr, NULL);
+    setbuf(stdout, nullptr);
+    setbuf(stderr, nullptr);
 #ifndef WIN32
-    setbuf(stdin, NULL);
+    setbuf(stdin, nullptr);
 #endif
 
     if (!gtp_mode) {

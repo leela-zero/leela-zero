@@ -196,7 +196,6 @@ bool GTP::execute(GameState & game, std::string xinput) {
         return true;
     } else if (input == "exit") {
         exit(EXIT_SUCCESS);
-        return true;
     } else if (input == "#") {
         return true;
     } else if (std::isdigit(input[0])) {

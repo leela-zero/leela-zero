@@ -216,16 +216,16 @@ void SGFTree::populate_states(void) {
         }
     }
     // Loop through the stone list and apply
-    for (auto it = prop_pair_ab.first; it != prop_pair_ab.second; ++it) {
-        auto move = it->second;
+    for (auto pit = prop_pair_ab.first; pit != prop_pair_ab.second; ++pit) {
+        auto move = pit->second;
         int vtx = string_to_vertex(move);
         apply_move(FastBoard::BLACK, vtx);
     }
 
     // XXX: count handicap stones
     const auto& prop_pair_aw = m_properties.equal_range("AW");
-    for (auto it = prop_pair_aw.first; it != prop_pair_aw.second; ++it) {
-        auto move = it->second;
+    for (auto pit = prop_pair_aw.first; pit != prop_pair_aw.second; ++pit) {
+        auto move = pit->second;
         int vtx = string_to_vertex(move);
         apply_move(FastBoard::WHITE, vtx);
     }
@@ -340,16 +340,16 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
 }
 
 int SGFTree::get_move(int tomove) {
-    std::string movestring;
+    std::string colorstring;
 
     if (tomove == FastBoard::BLACK) {
-        movestring = "B";
+        colorstring = "B";
     } else {
-        movestring = "W";
+        colorstring = "W";
     }
 
     PropertyMap::iterator it;
-    it = m_properties.find(movestring);
+    it = m_properties.find(colorstring);
 
     if (it != m_properties.end()) {
         std::string movestring = it->second;

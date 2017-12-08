@@ -57,31 +57,31 @@
 using namespace Utils;
 
 // Input + residual block tower
-std::vector<std::vector<float>> conv_weights;
-std::vector<std::vector<float>> conv_biases;
-std::vector<std::vector<float>> batchnorm_means;
-std::vector<std::vector<float>> batchnorm_variances;
+static std::vector<std::vector<float>> conv_weights;
+static std::vector<std::vector<float>> conv_biases;
+static std::vector<std::vector<float>> batchnorm_means;
+static std::vector<std::vector<float>> batchnorm_variances;
 
 // Policy head
-std::vector<float> conv_pol_w;
-std::vector<float> conv_pol_b;
-std::array<float, 2> bn_pol_w1;
-std::array<float, 2> bn_pol_w2;
+static std::vector<float> conv_pol_w;
+static std::vector<float> conv_pol_b;
+static std::array<float, 2> bn_pol_w1;
+static std::array<float, 2> bn_pol_w2;
 
-std::array<float, 261364> ip_pol_w;
-std::array<float, 362> ip_pol_b;
+static std::array<float, 261364> ip_pol_w;
+static std::array<float, 362> ip_pol_b;
 
 // Value head
-std::vector<float> conv_val_w;
-std::vector<float> conv_val_b;
-std::array<float, 1> bn_val_w1;
-std::array<float, 1> bn_val_w2;
+static std::vector<float> conv_val_w;
+static std::vector<float> conv_val_b;
+static std::array<float, 1> bn_val_w1;
+static std::array<float, 1> bn_val_w2;
 
-std::array<float, 92416> ip1_val_w;
-std::array<float, 256> ip1_val_b;
+static std::array<float, 92416> ip1_val_w;
+static std::array<float, 256> ip1_val_b;
 
-std::array<float, 256> ip2_val_w;
-std::array<float, 1> ip2_val_b;
+static std::array<float, 256> ip2_val_w;
+static std::array<float, 1> ip2_val_b;
 
 void Network::benchmark(GameState * state, int iterations) {
     int cpus = cfg_num_threads;
