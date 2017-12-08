@@ -690,7 +690,7 @@ void OpenCL::initialize(void) {
 
     myprintf("Detected %d OpenCL platforms\n", platforms.size());
 
-    for (auto &p : platforms) {
+    for (const auto &p : platforms) {
         std::string platvers = p.getInfo<CL_PLATFORM_VERSION>();
         std::string platprof = p.getInfo<CL_PLATFORM_PROFILE>();
         std::string platname = p.getInfo<CL_PLATFORM_NAME>();
