@@ -61,6 +61,7 @@ Result ProdutionJob::execute(){
         }
         res.type(Result::File);
         res.addList(game.getFile());
+        res.addList(QString::number(game.getMovesCount()));
     } else {
         QTextStream(stdout) << "Program ends: exiting." << endl;
     }
@@ -105,12 +106,13 @@ Result ValidationJob::execute(){
 
    if (m_state.load() == RUNNING) {
        QTextStream(stdout) << "Game has ended." << endl;
-       res.addList(QString::number(first.getMovesCount()));  //[0]
+       res.addList(QString::number(first.getMovesCount()));      //[0]
        if (first.getScore()) {
-           res.addList(first.getResult());                   //[1]
-           res.addList(first.getWinnerName());               //[2]
+           res.addList(first.getResult());                       //[1]
+           res.addList(first.getWinnerName());                   //[2]
            first.writeSgf();
-           res.addList(first.getFile());                     //[3]
+           res.addList(first.getFile());                         //[3]
+           res.addList(QString::number(first.getMovesCount()));  //[4]
        }
        // Game is finished, send the result
        res.type(Result::Win);

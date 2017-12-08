@@ -85,11 +85,13 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     switch(res.type()) {
     case Result::File:
         m_selfGames++,
+        m_movesMade += res.list()[1].toInt();
         uploadData(res.list()[0], ord.parameters()[2], ord.parameters()[1]);
         break;
     case Result::Win:
     case Result::Loss:
         m_matchGames++,
+        m_movesMade += res.list()[4].toInt();
         uploadResult(res.list(), ord.parameters());
         break;
     }
@@ -110,10 +112,11 @@ void  Management::printTimingInfo(float duration) {
     auto total_time_millis =
         std::chrono::duration_cast<std::chrono::milliseconds>(total_time_s);
     QTextStream(stdout)
-        << m_gamesPlayed << " game(s) played in "
+        << m_gamesPlayed << " game(s) (" << m_selfGames << " self played and "
+        << m_matchGames << " matches) played in "
         << total_time_min.count() << " minutes = "
         << total_time_s.count() / m_gamesPlayed << " seconds/game, "
-      //  << total_time_millis.count() / m_movesMade  << " ms/move"
+        << total_time_millis.count() / m_movesMade  << " ms/move"
         << ", last game took " << (int) duration << " seconds." << endl;
 }
 
