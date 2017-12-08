@@ -87,7 +87,7 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     case Result::File:
         m_selfGames++,
         m_movesMade += res.parameters()["moves"].toInt();
-        uploadData(res.parameters()["file"], ord.parameters()["network"], ord.parameters()["optHash"]);
+        uploadData(res.parameters(), ord.parameters());
         break;
     case Result::Win:
     case Result::Loss:
@@ -160,6 +160,8 @@ Order Management::getWork() {
    "black_hash" : "92c658d7325fe38f0c8adbbb1444ed17afd891b9f208003c272547a7bcb87909",
    "options_hash" : "c2e3"
    "required_client_version" : "5",
+   "leelaz_version" : "0.9",
+   "random_seed" : "1",
    "options" : {
        "playouts" : "1000",
        "resignation_percent" : "3",
@@ -173,6 +175,8 @@ Order Management::getWork() {
    "hash" : "223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
    "options_hash" : "ee21",
    "required_client_version" : "5",
+   "leelaz_version" : "0.9",
+   "random_seed" : "1",
    "options" : {
        "playouts" : 1000,
        "resignation_percent" : "3",
@@ -206,6 +210,7 @@ Order Management::getWork() {
     QJsonObject opt = ob.value("options").toObject();
     QString options;
     QString optionsHash =  ob.value("options_hash").toString();
+    
     if (ob.contains("required_client_version")) {
         QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
         if (ob.value("required_client_version").toString().toInt() > m_version) {
@@ -226,15 +231,20 @@ Order Management::getWork() {
     options.append(getOption(opt, "resignation_percent", " -r ", "1"));
     options.append(getOption(opt, "randomcnt", " -m ", "30"));
     options.append(getOption(opt, "threads", " -t ", "1"));
-    options.append(getOption(ob, "random_seed", " -s ", ""));
     options.append(getBoolOption(opt, "dumbpass", " -d ", true));
     options.append(getBoolOption(opt, "noise", " -n ", true));
     options.append(" --noponder ");
+    options.append(getOption(ob, "random_seed", " -s ", ""));
+    QString rndSeed = "0";
+    if (ob.contains("random_seed"))
+         rndSeed = ob.value("random_seed").toString();
     QMap<QString,QString> parameters;
     QTextStream(stdout) << options << endl;
     parameters["leelazVer"] = leelazVersion;   
     parameters["options"] = options;         
-    parameters["optHash"] = optionsHash;     
+    parameters["optHash"] = optionsHash;   
+    parameters["rndSeed"] = rndSeed;   
+      
     if (ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
@@ -347,6 +357,7 @@ void Management::fetchNetwork(const QString &name) {
 -F movescount=321
 -F score=B+45
 -F options_hash=c2e3
+-F random_seed=0
 -F sgf=@file
 http://zero-test.sjeng.org/submit-match
 */
@@ -376,6 +387,7 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
     prog_cmdline.append(" -F movescount="+ r["moves"]);
     prog_cmdline.append(" -F score="+ r["score"]);
     prog_cmdline.append(" -F options_hash="+ l["optHash"]);
+    prog_cmdline.append(" -F random_seed="+ l["rndSeed"]);
     prog_cmdline.append(" -F sgf=@"+ sgf_file);
     prog_cmdline.append(" http://zero-test.sjeng.org/submit-match");
 
@@ -400,17 +412,18 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
 -F networkhash=223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6
 -F clientversion=6
 -F options_hash=ee21
+-F random_seed=1
 -F sgf=@file
 -F trainingdata=@data_file
 http://zero-test.sjeng.org/submit
 */
 
-void Management::uploadData(const QString& file, const QString& net , const QString &hash) {
+void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l) { 
     // Find output SGF and txt files
-    QTextStream(stdout) << "Upload game: " << file << " network " << net << endl;
+    QTextStream(stdout) << "Upload game: " << r["file"] << " network " << r["net"] << endl;
     QDir dir;
     QStringList filters;
-    filters << file + ".sgf";
+    filters << r["file"] + ".sgf";
     dir.setNameFilters(filters);
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
 
@@ -443,9 +456,10 @@ void Management::uploadData(const QString& file, const QString& net , const QStr
 #ifdef WIN32
         prog_cmdline.append(".exe");
 #endif
-        prog_cmdline.append(" -F networkhash=" + net);
+        prog_cmdline.append(" -F networkhash=" + l["network"]);
         prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
-        prog_cmdline.append(" -F options_hash="+ hash);
+        prog_cmdline.append(" -F options_hash="+ l["optHash"]);
+        prog_cmdline.append(" -F random_seed="+ l["rndSeed"]);
         prog_cmdline.append(" -F sgf=@" + sgf_file);
         prog_cmdline.append(" -F trainingdata=@" + data_file);
         prog_cmdline.append(" http://zero-test.sjeng.org/submit");
