@@ -19,6 +19,11 @@
 #include "Validation.h"
 #include <QFile>
 
+using VersionTuple = std::tuple<int, int>;
+// Minimal Leela Zero version we expect to see
+const VersionTuple min_leelaz_version{0, 9};
+
+
 void ValidationWorker::run() {
     do {
         Game first(m_firstNet,  m_option);

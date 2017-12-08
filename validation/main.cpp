@@ -33,8 +33,6 @@
 #include "Validation.h"
 
 constexpr int VALIDATION_VERSION = 1;
-// Minimal Leela Zero version we expect to see
-const VersionTuple min_leelaz_version{0, 6};
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
