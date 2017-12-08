@@ -482,18 +482,3 @@ void UCTNode::invalidate() {
 bool UCTNode::valid() const {
     return m_valid;
 }
-
-// unsafe in SMP, we don't know if people hold pointers to the
-// child which they might dereference
-void UCTNode::delete_child(UCTNode * del_child) {
-    LOCK(get_mutex(), lock);
-    assert(del_child != nullptr);
-
-    auto found = std::find(begin(m_children), end(m_children), del_child);
-    if (found == end(m_children)) {
-        assert(false && "Child to delete not found");
-    }
-
-    m_children.erase(found);
-    delete *found;
-}

@@ -47,7 +47,6 @@ public:
                          GameState & state, float & eval);
     float eval_state(GameState& state);
     void kill_superkos(KoState & state);
-    void delete_child(UCTNode * child);
     void invalidate();
     bool valid() const;
     int get_move() const;
