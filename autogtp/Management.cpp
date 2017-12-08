@@ -86,7 +86,7 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     case Result::File:
         m_selfGames++,
         m_movesMade += res.list()[1].toInt();
-        uploadData(res.list()[0], ord.parameters()[2], ord.parameters()[1]);
+        uploadData(res.list()[0], ord.parameters()[3], ord.parameters()[2]);
         break;
     case Result::Win:
     case Result::Loss:
@@ -226,9 +226,9 @@ Order Management::getWork() {
     options.append(" --noponder ");
     QStringList parameters;
     QTextStream(stdout) << options << endl;
-    parameters << leelazVersion;
-    parameters << options;
-    parameters << optionsHash;
+    parameters << leelazVersion;   //[0]
+    parameters << options;         //[1]
+    parameters << optionsHash;     //[2]
     if (ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
@@ -340,14 +340,6 @@ void Management::fetchNetwork(const QString &name) {
 -F options_hash=c2e3
 -F sgf=@file
 http://zero-test.sjeng.org/submit-match
-
-
--F networkhash=223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6
--F clientversion=6
--F options_hash=ee21
--F sgf=@file
--F trainingdata=@data_file
-http://zero-test.sjeng.org/submit
 */
 
 void Management::uploadResult(const QStringList &r, const QStringList &l) {
@@ -364,17 +356,17 @@ void Management::uploadResult(const QStringList &r, const QStringList &l) {
     prog_cmdline.append(".exe");
 #endif
     if (r[2] == "black") {
-        prog_cmdline.append(" -F winnerhash=" + l[2]);
-        prog_cmdline.append(" -F loserhash=" + l[3]);
-    } else {
         prog_cmdline.append(" -F winnerhash=" + l[3]);
-        prog_cmdline.append(" -F loserhash=" + l[2]);
+        prog_cmdline.append(" -F loserhash=" + l[4]);
+    } else {
+        prog_cmdline.append(" -F winnerhash=" + l[4]);
+        prog_cmdline.append(" -F loserhash=" + l[3]);
     }
     prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
     prog_cmdline.append(" -F winnercolor="+ r[2]);
     prog_cmdline.append(" -F movescount="+ r[0]);
     prog_cmdline.append(" -F score="+ r[1]);
-    prog_cmdline.append(" -F options_hash="+ l[1]);
+    prog_cmdline.append(" -F options_hash="+ l[2]);
     prog_cmdline.append(" -F sgf=@"+ sgf_file);
     prog_cmdline.append(" http://zero-test.sjeng.org/submit-match");
 
@@ -394,6 +386,15 @@ void Management::uploadResult(const QStringList &r, const QStringList &l) {
     dir.remove(sgf_file);
 }
 
+
+/*
+-F networkhash=223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6
+-F clientversion=6
+-F options_hash=ee21
+-F sgf=@file
+-F trainingdata=@data_file
+http://zero-test.sjeng.org/submit
+*/
 
 void Management::uploadData(const QString& file, const QString& net , const QString &hash) {
     // Find output SGF and txt files
