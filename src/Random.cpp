@@ -33,7 +33,7 @@ Random::Random(int seed) {
     if (seed == -1) {
         size_t thread_id =
             std::hash<std::thread::id>()(std::this_thread::get_id());
-        seedrandom((uint32)time(0) ^ (uint32)thread_id);
+        seedrandom((uint32)clock() ^ (uint32)thread_id);
     } else {
         seedrandom(seed);
     }
