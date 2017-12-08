@@ -30,6 +30,7 @@
 constexpr int RETRY_DELAY_MIN_SEC = 30;
 constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
+const QString Leelaz_min_version = "0.9";
 
 Management::Management(const int gpus,
                        const int games,
@@ -213,7 +214,7 @@ Order Management::getWork() {
             exit(EXIT_FAILURE);
         }
     }
-    QString leelazVersion = "0.8";
+    QString leelazVersion = Leelaz_min_version;
     if (ob.contains("leelaz_version")) {
         leelazVersion = ob.value("leelaz_version").toString();
     }
