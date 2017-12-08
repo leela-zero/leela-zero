@@ -26,6 +26,8 @@
 #include <cmath>
 #include <climits>
 #include <algorithm>
+#include <random>
+#include <chrono>
 
 #include "config.h"
 #include "Utils.h"
@@ -49,6 +51,7 @@ int cfg_lagbuffer_cs;
 int cfg_resignpct;
 int cfg_noise;
 int cfg_random_cnt;
+uint64 cfg_rng_seed;
 bool cfg_dumbpass;
 #ifdef USE_OPENCL
 std::vector<int> cfg_gpus;
@@ -81,6 +84,17 @@ void GTP::setup_default_parameters() {
     cfg_dumbpass = false;
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
+
+    // C++11 doesn't guarantee *anything* about how random this is,
+    // and in MinGW it isn't random at all. But we can mix it in, which
+    // helps when it *is* high quality (Linux, MSVC).
+    std::random_device rd;
+    std::ranlux48 gen(rd());
+    uint64 seed1 = (gen() << 16) ^ gen();
+    // If the above fails, this is one of our best, portable, bets.
+    uint64 seed2 = std::chrono::high_resolution_clock::
+        now().time_since_epoch().count();
+    cfg_rng_seed = seed1 ^ seed2;
 }
 
 const std::string GTP::s_commands[] = {
@@ -186,7 +200,6 @@ bool GTP::execute(GameState & game, std::string xinput) {
         return true;
     } else if (input == "exit") {
         exit(EXIT_SUCCESS);
-        return true;
     } else if (input == "#") {
         return true;
     } else if (std::isdigit(input[0])) {

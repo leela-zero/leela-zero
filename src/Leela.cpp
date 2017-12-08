@@ -35,7 +35,7 @@
 
 using namespace Utils;
 
-void license_blurb() {
+static void license_blurb() {
     printf(
         "Leela Zero  Copyright (C) 2017  Gian-Carlo Pascutto\n"
         "This program comes with ABSOLUTELY NO WARRANTY.\n"
@@ -44,7 +44,7 @@ void license_blurb() {
     );
 }
 
-void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
+static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
     namespace po = boost::program_options;
     // Declare the supported options.
     po::options_description v_desc("Allowed options");
@@ -67,6 +67,8 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("randomcnt,m", po::value<int>()->default_value(cfg_random_cnt),
                         "Play more randomly the first x moves.")
         ("noise,n", "Enable policy network randomization.")
+        ("seed,s", po::value<uint64>(),
+                   "Random number generation seed.")
         ("dumbpass,d", "Don't use heuristics for smarter passing.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
@@ -165,6 +167,15 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         }
     }
 
+    if (vm.count("seed")) {
+        cfg_rng_seed = vm["seed"].as<uint64>();
+        if (cfg_num_threads > 1) {
+            myprintf("Seed specified but multiple threads enabled.\n");
+            myprintf("Games will likely not be reproducible.\n");
+        }
+    }
+    myprintf("RNG seed: %llu\n", cfg_rng_seed);
+
     if (vm.count("noponder")) {
         cfg_allow_pondering = false;
     }
@@ -233,10 +244,10 @@ int main (int argc, char *argv[]) {
     std::cerr.setf(std::ios::unitbuf);
     std::cin.setf(std::ios::unitbuf);
 
-    setbuf(stdout, NULL);
-    setbuf(stderr, NULL);
+    setbuf(stdout, nullptr);
+    setbuf(stderr, nullptr);
 #ifndef WIN32
-    setbuf(stdin, NULL);
+    setbuf(stdin, nullptr);
 #endif
 
     if (!gtp_mode) {
@@ -248,6 +259,11 @@ int main (int argc, char *argv[]) {
     // Use deterministic random numbers for hashing
     auto rng = std::make_unique<Random>(5489);
     Zobrist::init_zobrist(*rng);
+
+    // Initialize the main thread RNG.
+    // Doing this here avoids mixing in the thread_id, which
+    // improves reproducibility across platforms.
+    Random::get_Rng().seedrandom(cfg_rng_seed);
 
     // Initialize network
     Network::initialize();

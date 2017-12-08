@@ -31,6 +31,7 @@ extern int cfg_lagbuffer_cs;
 extern int cfg_resignpct;
 extern int cfg_noise;
 extern int cfg_random_cnt;
+extern uint64 cfg_rng_seed;
 extern bool cfg_dumbpass;
 #ifdef USE_OPENCL
 extern std::vector<int> cfg_gpus;

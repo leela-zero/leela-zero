@@ -87,11 +87,11 @@ bool Utils::input_pending(void) {
             return true;
         }
     }
-#endif
     return false;
+#endif
 }
 
-std::mutex IOmutex;
+static std::mutex IOmutex;
 
 void Utils::myprintf(const char *fmt, ...) {
     if (cfg_quiet) return;

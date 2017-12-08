@@ -146,18 +146,18 @@ inline ThreadPool::~ThreadPool() {
 
 class ThreadGroup {
 public:
-    ThreadGroup(ThreadPool & pool) : m_pool(pool) {};
+    ThreadGroup(ThreadPool & pool) : m_pool(pool) {}
     template<class F, class... Args>
     void add_task(F&& f, Args&&... args) {
         m_taskresults.emplace_back(
             m_pool.add_task(std::forward<F>(f), std::forward<Args>(args)...)
         );
-    };
+    }
     void wait_all() {
         for (auto && result: m_taskresults) {
             result.get();
         }
-    };
+    }
 private:
     ThreadPool & m_pool;
     std::vector<std::future<void>> m_taskresults;
