@@ -19,7 +19,8 @@
 #ifndef ORDER_H
 #define ORDER_H
 
-#include <QStringList>
+#include <QString>
+#include <QMap>
 
 class Order {
 public:
@@ -29,15 +30,15 @@ public:
         Validation
     };
     Order() = default;
-    Order(int t, QStringList p = QStringList()) { m_type = t; m_parameters = p; }
+    Order(int t, QMap<QString,QString> p = QMap<QString,QString>()) { m_type = t; m_parameters = p; }
     ~Order() = default;
     void type(int t) { m_type = t; }
     int type() { return m_type; }
-    QStringList parameters() { return m_parameters; }
-    void parameters(const QStringList &l) { m_parameters = l; }
+    QMap<QString,QString> parameters() { return m_parameters; }
+    void parameters(const QMap<QString,QString> &l) { m_parameters = l; }
 private:
     int m_type;
-    QStringList m_parameters;
+    QMap<QString,QString> m_parameters;
 };
 
 #endif // ORDER_H

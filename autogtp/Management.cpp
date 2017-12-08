@@ -86,14 +86,14 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     switch(res.type()) {
     case Result::File:
         m_selfGames++,
-        m_movesMade += res.list()[1].toInt();
-        uploadData(res.list()[0], ord.parameters()[3], ord.parameters()[2]);
+        m_movesMade += res.parameters()["moves"].toInt();
+        uploadData(res.parameters()["file"], ord.parameters()["network"], ord.parameters()["optHash"]);
         break;
     case Result::Win:
     case Result::Loss:
         m_matchGames++,
-        m_movesMade += res.list()[4].toInt();
-        uploadResult(res.list(), ord.parameters());
+        m_movesMade += res.parameters()["moves"].toInt();
+        uploadResult(res.parameters(), ord.parameters());
         break;
     }
     printTimingInfo(duration);
@@ -225,16 +225,17 @@ Order Management::getWork() {
     options.append(getBoolOption(opt, "dumbpass", " -d ", true));
     options.append(getBoolOption(opt, "noise", " -n ", true));
     options.append(" --noponder ");
-    QStringList parameters;
+    QMap<QString,QString> parameters;
     QTextStream(stdout) << options << endl;
-    parameters << leelazVersion;   //[0]
-    parameters << options;         //[1]
-    parameters << optionsHash;     //[2]
+    parameters["leelazVer"] = leelazVersion;   
+    parameters["options"] = options;         
+    parameters["optHash"] = optionsHash;     
     if (ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
         o.type(Order::Production);
-        o.parameters(parameters << net);
+        parameters["network"] = net;
+        o.parameters(parameters);
     }
     if (ob.value("cmd").toString() == "match") {
         o.type(Order::Validation);
@@ -242,7 +243,9 @@ Order Management::getWork() {
         QString net2 = ob.value("white_hash").toString();
         fetchNetwork(net1);
         fetchNetwork(net2);
-        o.parameters(parameters << net1 << net2);
+        parameters["firstNet"] = net1;
+        parameters["secondNet"] = net2;
+        o.parameters(parameters);
     }
     return o;
 }
@@ -343,31 +346,31 @@ void Management::fetchNetwork(const QString &name) {
 http://zero-test.sjeng.org/submit-match
 */
 
-void Management::uploadResult(const QStringList &r, const QStringList &l) {
+void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString,QString> &l) {
 
     QString gzipCmd ="gzip";
 #ifdef WIN32
     gzipCmd.append(".exe");
 #endif
-    gzipCmd.append(" " + r[3] + ".sgf");
+    gzipCmd.append(" " + r["file"] + ".sgf");
     QProcess::execute(gzipCmd);
-    QString sgf_file = r[3] + ".sgf.gz";
+    QString sgf_file = r["file"] + ".sgf.gz";
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    if (r[2] == "black") {
-        prog_cmdline.append(" -F winnerhash=" + l[3]);
-        prog_cmdline.append(" -F loserhash=" + l[4]);
+    if (r["winner"] == "black") {
+        prog_cmdline.append(" -F winnerhash=" + l["firstNet"]);
+        prog_cmdline.append(" -F loserhash=" + l["secondNet"]);
     } else {
-        prog_cmdline.append(" -F winnerhash=" + l[4]);
-        prog_cmdline.append(" -F loserhash=" + l[3]);
+        prog_cmdline.append(" -F winnerhash=" + l["secondNet"]);
+        prog_cmdline.append(" -F loserhash=" + l["firstNet"]);
     }
     prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
-    prog_cmdline.append(" -F winnercolor="+ r[2]);
-    prog_cmdline.append(" -F movescount="+ r[0]);
-    prog_cmdline.append(" -F score="+ r[1]);
-    prog_cmdline.append(" -F options_hash="+ l[2]);
+    prog_cmdline.append(" -F winnercolor="+ r["winner"]);
+    prog_cmdline.append(" -F movescount="+ r["moves"]);
+    prog_cmdline.append(" -F score="+ r["score"]);
+    prog_cmdline.append(" -F options_hash="+ l["optHash"]);
     prog_cmdline.append(" -F sgf=@"+ sgf_file);
     prog_cmdline.append(" http://zero-test.sjeng.org/submit-match");
 
