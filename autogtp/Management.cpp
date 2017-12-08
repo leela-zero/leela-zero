@@ -222,6 +222,7 @@ Order Management::getWork() {
     options.append(getOption(opt, "resignation_percent", " -r ", "1"));
     options.append(getOption(opt, "randomcnt", " -m ", "30"));
     options.append(getOption(opt, "threads", " -t ", "1"));
+    options.append(getOption(ob, "random_seed", " -s ", "1"));
     options.append(getBoolOption(opt, "dumbpass", " -d ", true));
     options.append(getBoolOption(opt, "noise", " -n ", true));
     options.append(" --noponder ");
