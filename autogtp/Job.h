@@ -37,7 +37,7 @@ public:
     Job(QString gpu);
     ~Job() = default;
     virtual Result execute() = 0;
-    virtual void init(const QStringList &l) { m_option = l[0] + m_gpu + " -g -q -d -w "; }
+    virtual void init(const QStringList &l) { m_option = l[0] + m_gpu + " -g -q -w "; }
     void finish() { m_state.store(FINISHING); }
 
 protected:

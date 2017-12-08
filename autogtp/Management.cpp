@@ -113,7 +113,7 @@ void  Management::printTimingInfo(float duration) {
         << m_gamesPlayed << " game(s) played in "
         << total_time_min.count() << " minutes = "
         << total_time_s.count() / m_gamesPlayed << " seconds/game, "
-        << total_time_millis.count() / m_movesMade  << " ms/move"
+      //  << total_time_millis.count() / m_movesMade  << " ms/move"
         << ", last game took " << (int) duration << " seconds." << endl;
 }
 
@@ -211,11 +211,11 @@ Order Management::getWork() {
         }
     }
     options.append(getOption(opt, "playouts", " -p ", "1600"));
-    options.append(getOption(opt, "resignation_percent", " -r ", "0"));
-    options.append(getOption(opt, "randomcnt", " -m ", "0"));
-    options.append(getOption(opt, "threads", " -t ", "2"));
-    options.append(getBoolOption(opt, "dumbpass", " -d ", false));
-    options.append(getBoolOption(opt, "noise", " -n ", false));
+    options.append(getOption(opt, "resignation_percent", " -r ", "1"));
+    options.append(getOption(opt, "randomcnt", " -m ", "30"));
+    options.append(getOption(opt, "threads", " -t ", "1"));
+    options.append(getBoolOption(opt, "dumbpass", " -d ", true));
+    options.append(getBoolOption(opt, "noise", " -n ", true));
     options.append(" --noponder ");
     QStringList parameters;
     QTextStream(stdout) << options << endl;
