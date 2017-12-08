@@ -36,7 +36,7 @@ Worker::Worker(int index,const QString& gpuIndex,const QString& keep) :
 
 void Worker::order(Order o)
 {
-    if(m_todo.type() != o.type() || m_job == nullptr) {
+    if (m_todo.type() != o.type() || m_job == nullptr) {
         createJob(o.type());
     }
      m_todo = o;
@@ -45,7 +45,7 @@ void Worker::order(Order o)
 
 
 void Worker::createJob(int type) {
-    if(m_job != nullptr) {
+    if (m_job != nullptr) {
         delete m_job;
     }
     switch(type) {

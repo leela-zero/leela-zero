@@ -56,10 +56,10 @@ void Management::giveAssignments() {
     m_start = std::chrono::high_resolution_clock::now();
     m_mainMutex->lock();
     QString myGpu;
-    for(int gpu = 0; gpu < m_gpus; ++gpu) {
-        for(int game = 0; game < m_games; ++game) {
+    for (int gpu = 0; gpu < m_gpus; ++gpu) {
+        for (int game = 0; game < m_games; ++game) {
             int thread_index = gpu * m_games + game;
-            if(m_gpusList.isEmpty()) {
+            if (m_gpusList.isEmpty()) {
                 myGpu = "";
             } else {
                 myGpu = m_gpusList.at(gpu);
@@ -77,7 +77,7 @@ void Management::giveAssignments() {
 }
 
 void Management::getResult(Order ord, Result res, int index, int duration) {
-    if(res.type() == Result::Error) {
+    if (res.type() == Result::Error) {
         exit(1);
     }
     m_syncMutex.lock();
@@ -119,7 +119,7 @@ void  Management::printTimingInfo(float duration) {
 
 QString Management::getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue) {
     QString res;
-    if(ob.contains(key)) {
+    if (ob.contains(key)) {
         res.append(opt + ob.value(key).toString() + " ");
     } else {
         res.append(opt + defValue + " ");
@@ -127,6 +127,17 @@ QString Management::getOption(const QJsonObject &ob, const QString &key, const Q
     return res;
 }
 
+QString Management::getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue) {
+    QString res;
+    if (ob.contains(key) && ob.value(key).toString().compare("true", Qt::CaseInsensitive)) {
+        res.append(opt + " ");
+    } else {
+        if(defValue) {
+            res.append(opt + " ");
+        }
+    }
+    return res;
+}
 
 
 Order Management::getWork() {
@@ -187,9 +198,9 @@ Order Management::getWork() {
     QJsonObject opt = ob.value("options").toObject();
     QString options;
     QString optionsHash =  ob.value("options_hash").toString();
-    if(ob.contains("required_client_version")) {
+    if (ob.contains("required_client_version")) {
         QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
-        if(ob.value("required_client_version").toString().toInt() > m_version) {
+        if (ob.value("required_client_version").toString().toInt() > m_version) {
             QTextStream(stdout) << ' ' <<  endl;
             QTextStream(stdout)
                 << "Server requires client version " << ob.value("required_client_version").toString()
@@ -202,21 +213,21 @@ Order Management::getWork() {
     options.append(getOption(opt, "playouts", " -p ", "1000"));
     options.append(getOption(opt, "resignation_percent", " -r ", "0"));
     options.append(getOption(opt, "randomcnt", " -m ", "0"));
-    if(opt.contains("noise") && opt.value("noise").toString().compare("true" , Qt::CaseInsensitive) ==  0) {
-        options.append(" -n ");
-    }
+    options.append(getOption(opt, "threads", " -t ", "2"));
+    options.append(getBoolOption(opt, "dumbpass", " -d ", false));
+    options.append(getBoolOption(opt, "noise", " -n ", false));
     options.append(" --noponder ");
     QStringList parameters;
     QTextStream(stdout) << options << endl;
     parameters << options;
     parameters << optionsHash;
-    if(ob.value("cmd").toString() == "selfplay") {
+    if (ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
         o.type(Order::Production);
         o.parameters(parameters << net);
     }
-    if(ob.value("cmd").toString() == "match") {
+    if (ob.value("cmd").toString() == "match") {
         o.type(Order::Validation);
         QString net1 = ob.value("black_hash").toString();
         QString net2 = ob.value("white_hash").toString();
@@ -344,7 +355,7 @@ void Management::uploadResult(const QStringList &r, const QStringList &l) {
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    if(r[2] == "black") {
+    if (r[2] == "black") {
         prog_cmdline.append(" -F winnerhash=" + l[2]);
         prog_cmdline.append(" -F loserhash=" + l[3]);
     } else {

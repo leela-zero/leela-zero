@@ -43,7 +43,7 @@ Job(gpu)
 Result ProdutionJob::execute(){
     Result res(Result::Error);
     Game game(m_network, m_option);
-    if(!game.gameStart(min_leelaz_version)) {
+    if (!game.gameStart(min_leelaz_version)) {
         return res;
     }
     do {
@@ -53,7 +53,7 @@ Result ProdutionJob::execute(){
         }
         game.readMove();
     } while (game.nextMove() && m_state.load() == RUNNING);
-    if(m_state.load() == RUNNING) {
+    if (m_state.load() == RUNNING) {
         QTextStream(stdout) << "Game has ended." << endl;
         if (game.getScore()) {
             game.writeSgf();
@@ -78,11 +78,11 @@ void ProdutionJob::init(const QStringList &l) {
 Result ValidationJob::execute(){
    Result res(Result::Error);
    Game first(m_firstNet,  m_option);
-   if(!first.gameStart(min_leelaz_version)) {
+   if (!first.gameStart(min_leelaz_version)) {
        return res;
    }
    Game second(m_secondNet, m_option);
-   if(!second.gameStart(min_leelaz_version)) {
+   if (!second.gameStart(min_leelaz_version)) {
        return res;
    }
    QString wmove = "play white ";
@@ -103,7 +103,7 @@ Result ValidationJob::execute(){
        second.nextMove();
    } while (first.nextMove() && m_state.load() == RUNNING);
 
-   if(m_state.load() == RUNNING) {
+   if (m_state.load() == RUNNING) {
        QTextStream(stdout) << "Game has ended." << endl;
        res.addList(QString::number(first.getMovesCount()));  //[0]
        if (first.getScore()) {

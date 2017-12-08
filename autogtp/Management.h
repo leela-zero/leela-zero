@@ -1,5 +1,3 @@
-#ifndef MANAGEMENT_H
-#define MANAGEMENT_H
 /*
     This file is part of Leela Zero.
     Copyright (C) 2017 Marco Calignano
@@ -17,6 +15,8 @@
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef MANAGEMENT_H
+#define MANAGEMENT_H
 
 #include <QAtomicInt>
 #include <QMutex>
@@ -65,13 +65,12 @@ private:
     QString m_debugPath;
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
-
     Order getWork();
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
+    QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
     bool networkExists(const QString &name);
     void fetchNetwork(const QString &name);
     void printTimingInfo(float duration);
-
     void uploadData(const QString& file, const QString& name, const QString& hash);
     void uploadResult(const QStringList &r, const QStringList &l);
 };
