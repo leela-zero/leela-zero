@@ -144,27 +144,23 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
                             std::vector<Network::scored_node> & nodelist,
                             float init_eval)
 {
-    size_t totalchildren = nodelist.size();
-    if (!totalchildren)
+    auto totalchildren = nodelist.size();
+    if (!totalchildren) {
         return;
+    }
 
     // sort (this will reverse scores, but linking is backwards too)
     std::sort(begin(nodelist), end(nodelist));
 
-    // link the nodes together, we only really link the last few
-    size_t maxchilds = 362;
-    int childrenadded = 0;
-    size_t childrenseen = 0;
+    // link the nodes together
+    auto childrenadded = 0;
 
     LOCK(get_mutex(), lock);
 
     for (const auto& node : nodelist) {
-        if (totalchildren - childrenseen <= maxchilds) {
-            auto vtx = new UCTNode(node.second, node.first, init_eval);
-            link_child(vtx);
-            childrenadded++;
-        }
-        childrenseen++;
+        auto vtx = new UCTNode(node.second, node.first, init_eval);
+        link_child(vtx);
+        childrenadded++;
     }
 
     nodecount += childrenadded;
