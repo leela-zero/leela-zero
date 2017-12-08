@@ -395,13 +395,11 @@ void OpenCL_Network::add_weights(size_t layer,
     }
 
     auto weightSize = size * sizeof(decltype(converted_weights)::value_type);
-
-    cl::Buffer bufferWeights =
-        cl::Buffer(CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
-                   weightSize,
-                   const_cast<net_t*>(converted_weights.data()));
-
-    m_layers.back().weights.push_back(bufferWeights);
+    
+    m_layers.back().weights.emplace_back(
+        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+        weightSize,
+        const_cast<net_t*>(converted_weights.data()));
 }
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
@@ -444,25 +442,21 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, input.data());
 
-    for (auto& layer : m_layers) {
+    for (const auto& layer : m_layers) {
         if (layer.is_batchnorm) {
             batchnorm(layer.outputs,
                       layer.filter_size,
                       inBuffer,
                       tmpBuffer,
                       nullptr,
-                      layer.weights);
+                      begin(layer.weights));
             std::swap(inBuffer, tmpBuffer);
         } else if (layer.is_residual_block) {
             assert(layer.channels == layer.outputs);
-            auto conv1_weights = std::vector<cl::Buffer>(begin(layer.weights),
-                                                         begin(layer.weights) + 2);
-            auto bn1_weights   = std::vector<cl::Buffer>(begin(layer.weights) + 2,
-                                                         begin(layer.weights) + 4);
-            auto conv2_weights = std::vector<cl::Buffer>(begin(layer.weights) + 4,
-                                                         begin(layer.weights) + 6);
-            auto bn2_weights   = std::vector<cl::Buffer>(begin(layer.weights) + 6,
-                                                         begin(layer.weights) + 8);
+            auto conv1_weights = begin(layer.weights);
+            auto bn1_weights   = begin(layer.weights) + 2;
+            auto conv2_weights = begin(layer.weights) + 4;
+            auto bn2_weights   = begin(layer.weights) + 6;
             const auto inBufferSize = layer.channels * one_plane;
             queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0, inBufferSize);
             convolve(layer.filter_size,
@@ -503,7 +497,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                      inBuffer,
                      tmpBuffer,
                      mergeBuffer,
-                     layer.weights);
+                     begin(layer.weights));
             std::swap(inBuffer, tmpBuffer);
         }
     }
@@ -518,7 +512,7 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
                               cl::Buffer& bufferInput,
                               cl::Buffer& bufferOutput,
                               cl::Buffer& bufferMerge,
-                              std::vector<cl::Buffer>& weights) {
+                              std::vector<cl::Buffer>::const_iterator weights) {
     // fixed for 19x19
     constexpr int width = 19;
     constexpr int height = 19;
@@ -579,7 +573,7 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
     try {
         m_convolve_kernel->setArg(0, bufferInput);
         m_convolve_kernel->setArg(1, bufferMerge);
-        m_convolve_kernel->setArg(2, weights[0]);
+        m_convolve_kernel->setArg(2, *weights);
         m_convolve_kernel->setArg(3, cl::Local(stripSize * channelGroup * rowGroup));
         m_convolve_kernel->setArg(4, cl::Local(rowSize));
         if (filter_size == 3) {
@@ -604,7 +598,7 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
     try {
         merge_kernel.setArg(0, bufferMerge);
         merge_kernel.setArg(1, bufferOutput);
-        merge_kernel.setArg(2, weights[1]);
+        merge_kernel.setArg(2, *(++weights));
         merge_kernel.setArg(3, channels >> channelShift);
 
         queue.enqueueNDRangeKernel(merge_kernel, cl::NullRange,
@@ -622,7 +616,7 @@ void OpenCL_Network::batchnorm(int outputs,
                                cl::Buffer& bufferInput,
                                cl::Buffer& bufferOutput,
                                cl::Buffer* bufferResidual,
-                               std::vector<cl::Buffer>& weights) {
+                               std::vector<cl::Buffer>::const_iterator weights) {
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
     cl::Kernel & batchnorm_kernel = opencl_thread_data.m_batchnorm_kernel;
@@ -640,8 +634,8 @@ void OpenCL_Network::batchnorm(int outputs,
         } else {
             batchnorm_kernel.setArg(2, nullptr);
         }
-        batchnorm_kernel.setArg(3, weights[0]);
-        batchnorm_kernel.setArg(4, weights[1]);
+        batchnorm_kernel.setArg(3, *weights);
+        batchnorm_kernel.setArg(4, *(++weights));
 
         queue.enqueueNDRangeKernel(batchnorm_kernel, cl::NullRange,
                                    cl::NDRange(outputs, channel_size),
