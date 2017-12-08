@@ -210,7 +210,7 @@ Order Management::getWork() {
             exit(EXIT_FAILURE);
         }
     }
-    options.append(getOption(opt, "playouts", " -p ", "1000"));
+    options.append(getOption(opt, "playouts", " -p ", "1600"));
     options.append(getOption(opt, "resignation_percent", " -r ", "0"));
     options.append(getOption(opt, "randomcnt", " -m ", "0"));
     options.append(getOption(opt, "threads", " -t ", "2"));
