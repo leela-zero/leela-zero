@@ -229,14 +229,14 @@ int FastBoard::count_neighbours(const int c, const int v) {
     return (m_neighbours[v] >> (NBR_SHIFT * c)) & 7;
 }
 
-void FastBoard::add_neighbour(const int i, const int color) {
+void FastBoard::add_neighbour(const int vtx, const int color) {
     assert(color == WHITE || color == BLACK || color == EMPTY);
 
     std::array<int, 4> nbr_pars;
     int nbr_par_cnt = 0;
 
     for (int k = 0; k < 4; k++) {
-        int ai = i + m_dirs[k];
+        int ai = vtx + m_dirs[k];
 
         m_neighbours[ai] += (1 << (NBR_SHIFT * color)) - (1 << (NBR_SHIFT * EMPTY));
 
@@ -254,14 +254,14 @@ void FastBoard::add_neighbour(const int i, const int color) {
     }
 }
 
-void FastBoard::remove_neighbour(const int i, const int color) {
+void FastBoard::remove_neighbour(const int vtx, const int color) {
     assert(color == WHITE || color == BLACK || color == EMPTY);
 
     std::array<int, 4> nbr_pars;
     int nbr_par_cnt = 0;
 
     for (int k = 0; k < 4; k++) {
-        int ai = i + m_dirs[k];
+        int ai = vtx + m_dirs[k];
 
         m_neighbours[ai] += (1 << (NBR_SHIFT * EMPTY))
                           - (1 << (NBR_SHIFT * color));

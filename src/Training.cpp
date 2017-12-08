@@ -126,7 +126,7 @@ void Training::record(GameState& state, UCTNode& root) {
     }
 
     for (const auto& child : root.get_children()) {
-        auto prob = child->get_visits() / sum_visits;
+        auto prob = static_cast<float>(child->get_visits() / sum_visits);
         auto move = child->get_move();
         if (move != FastBoard::PASS) {
             auto xy = state.board.get_xy(move);
@@ -192,9 +192,11 @@ void Training::dump_stats(const std::string& filename) {
 }
 
 void Training::dump_stats(OutputChunker& outchunk) {
-    auto out = std::stringstream{};
-    out << "1" << std::endl; // File format version 1
-    outchunk.append(out.str());
+    {
+        auto out = std::stringstream{};
+        out << "1" << std::endl; // File format version 1
+        outchunk.append(out.str());
+    }
     for (const auto& step : m_data) {
         auto out = std::stringstream{};
         out << step.net_winrate
@@ -215,7 +217,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
     do {
         auto to_move = state.get_to_move();
         auto move = tree_moves[counter];
-        auto this_move = -1;
+        auto this_move = size_t{0};
 
         // Detect if this SGF seems to be corrupted
         auto moves = state.generate_moves(to_move);
@@ -240,7 +242,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         }
 
         // Pick every 1/SKIP_SIZE th position.
-        auto skip = Random::get_Rng()->randfix<SKIP_SIZE>();
+        auto skip = Random::get_Rng().randfix<SKIP_SIZE>();
         if (skip == 0) {
             auto step = TimeStep{};
             step.to_move = state.board.get_to_move();
@@ -270,7 +272,7 @@ void Training::dump_supervised(const std::string& sgf_name,
     std::cout << "Total games in file: " << gametotal << std::endl;
     // Shuffle games around
     std::cout << "Shuffling...";
-    std::shuffle(begin(games), end(games), *Random::get_Rng());
+    std::shuffle(begin(games), end(games), Random::get_Rng());
     std::cout << "done." << std::endl;
 
     // Loop over the database multiple times. We will select different
