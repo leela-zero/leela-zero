@@ -23,6 +23,8 @@
 #include <QObject>
 #include <QAtomicInt>
 
+using VersionTuple = std::tuple<int, int>;
+
 class Job : public QObject {
     Q_OBJECT
 public:
@@ -37,13 +39,14 @@ public:
     Job(QString gpu);
     ~Job() = default;
     virtual Result execute() = 0;
-    virtual void init(const QStringList &l) { m_option = l[0] + m_gpu + " -g -q -w "; }
+    virtual void init(const QStringList &l);
     void finish() { m_state.store(FINISHING); }
 
 protected:
     QAtomicInt m_state;
     QString m_option;
     QString m_gpu;
+    VersionTuple m_leelazMinVersion;
 };
 
 

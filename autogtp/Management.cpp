@@ -213,6 +213,10 @@ Order Management::getWork() {
             exit(EXIT_FAILURE);
         }
     }
+    QString leelazVersion = "0.8";
+    if (ob.contains("leelaz_version")) {
+        leelazVersion = ob.value("leelaz_version").toString();
+    }
     options.append(getOption(opt, "playouts", " -p ", "1600"));
     options.append(getOption(opt, "resignation_percent", " -r ", "1"));
     options.append(getOption(opt, "randomcnt", " -m ", "30"));
@@ -222,6 +226,7 @@ Order Management::getWork() {
     options.append(" --noponder ");
     QStringList parameters;
     QTextStream(stdout) << options << endl;
+    parameters << leelazVersion;
     parameters << options;
     parameters << optionsHash;
     if (ob.value("cmd").toString() == "selfplay") {

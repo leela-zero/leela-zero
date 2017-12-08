@@ -30,6 +30,18 @@ Job::Job(QString gpu) :
 {
 }
 
+void Job::init(const QStringList &l) {
+   m_option = l[1] + m_gpu + " -g -q -w "; 
+   QStringList version_list = l[0].split(".");
+   if (version_list.size() < 2) {
+        QTextStream(stdout) 
+             << "Unexpected Leela Zero version: " << l[0] << endl;
+        exit(EXIT_FAILURE);
+    }
+    std::get<0>(m_leelazMinVersion) = version_list[0].toInt();
+    std::get<1>(m_leelazMinVersion) = version_list[1].toInt();
+}
+
 ProdutionJob::ProdutionJob(QString gpu) :
 Job(gpu)
 {
@@ -43,7 +55,7 @@ Job(gpu)
 Result ProdutionJob::execute(){
     Result res(Result::Error);
     Game game(m_network, m_option);
-    if (!game.gameStart(min_leelaz_version)) {
+    if (!game.gameStart(m_leelazMinVersion)) {
         return res;
     }
     do {
@@ -72,18 +84,18 @@ Result ProdutionJob::execute(){
 
 void ProdutionJob::init(const QStringList &l) {
     Job::init(l);
-    m_network = l[2];
+    m_network = l[3];
 }
 
 
 Result ValidationJob::execute(){
    Result res(Result::Error);
    Game first(m_firstNet,  m_option);
-   if (!first.gameStart(min_leelaz_version)) {
+   if (!first.gameStart(m_leelazMinVersion)) {
        return res;
    }
    Game second(m_secondNet, m_option);
-   if (!second.gameStart(min_leelaz_version)) {
+   if (!second.gameStart(m_leelazMinVersion)) {
        return res;
    }
    QString wmove = "play white ";
@@ -126,8 +138,8 @@ Result ValidationJob::execute(){
 
 void ValidationJob::init(const QStringList &l) {
     Job::init(l);
-    m_firstNet = l[2];
-    m_secondNet = l[3];
+    m_firstNet = l[3];
+    m_secondNet = l[4];
 }
 
 
