@@ -126,7 +126,9 @@ QString Management::getOption(const QJsonObject &ob, const QString &key, const Q
     if (ob.contains(key)) {
         res.append(opt + ob.value(key).toString() + " ");
     } else {
-        res.append(opt + defValue + " ");
+        if (defValue != "") {
+            res.append(opt + defValue + " ");
+        }
     }
     return res;
 }
@@ -224,7 +226,7 @@ Order Management::getWork() {
     options.append(getOption(opt, "resignation_percent", " -r ", "1"));
     options.append(getOption(opt, "randomcnt", " -m ", "30"));
     options.append(getOption(opt, "threads", " -t ", "1"));
-    options.append(getOption(ob, "random_seed", " -s ", "1"));
+    options.append(getOption(ob, "random_seed", " -s ", ""));
     options.append(getBoolOption(opt, "dumbpass", " -d ", true));
     options.append(getBoolOption(opt, "noise", " -n ", true));
     options.append(" --noponder ");
