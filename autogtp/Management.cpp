@@ -133,8 +133,10 @@ QString Management::getOption(const QJsonObject &ob, const QString &key, const Q
 
 QString Management::getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue) {
     QString res;
-    if (ob.contains(key) && ob.value(key).toString().compare("true", Qt::CaseInsensitive)) {
-        res.append(opt + " ");
+    if (ob.contains(key)) {
+        if (ob.value(key).toString().compare("true", Qt::CaseInsensitive) == 0) {
+            res.append(opt + " ");
+        }
     } else {
         if(defValue) {
             res.append(opt + " ");
