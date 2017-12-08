@@ -72,7 +72,7 @@ private:
     void fetchNetwork(const QString &name);
     void printTimingInfo(float duration);
     void uploadData(const QString& file, const QString& name, const QString& hash);
-    void uploadResult(const QStringList &r, const QStringList &l);
+    void uploadResult(const QMap<QString, QString> &r, const QMap<QString, QString> &l);
 };
 
 #endif

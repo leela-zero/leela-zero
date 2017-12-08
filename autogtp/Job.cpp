@@ -30,9 +30,9 @@ Job::Job(QString gpu) :
 {
 }
 
-void Job::init(const QStringList &l) {
-   m_option = l[1] + m_gpu + " -g -q -w "; 
-   QStringList version_list = l[0].split(".");
+void Job::init(const QMap<QString,QString> &l) {
+   m_option = l["options"] + m_gpu + " -g -q -w "; 
+   QStringList version_list = l["leelazVer"].split(".");
    if (version_list.size() < 2) {
         QTextStream(stdout) 
              << "Unexpected Leela Zero version: " << l[0] << endl;
@@ -72,8 +72,8 @@ Result ProdutionJob::execute(){
             game.dumpTraining();
         }
         res.type(Result::File);
-        res.addList(game.getFile());
-        res.addList(QString::number(game.getMovesCount()));
+        res.add("file", game.getFile());
+        res.add("moves", QString::number(game.getMovesCount()));
     } else {
         QTextStream(stdout) << "Program ends: exiting." << endl;
     }
@@ -82,9 +82,9 @@ Result ProdutionJob::execute(){
     return res;
 }
 
-void ProdutionJob::init(const QStringList &l) {
+void ProdutionJob::init(const QMap<QString,QString> &l) {
     Job::init(l);
-    m_network = l[3];
+    m_network = l["network"];
 }
 
 
@@ -118,13 +118,12 @@ Result ValidationJob::execute(){
 
    if (m_state.load() == RUNNING) {
        QTextStream(stdout) << "Game has ended." << endl;
-       res.addList(QString::number(first.getMovesCount()));      //[0]
+       res.add("moves", QString::number(first.getMovesCount()));     
        if (first.getScore()) {
-           res.addList(first.getResult());                       //[1]
-           res.addList(first.getWinnerName());                   //[2]
+           res.add("result", first.getResult());                     
+           res.add("winner", first.getWinnerName());                 
            first.writeSgf();
-           res.addList(first.getFile());                         //[3]
-           res.addList(QString::number(first.getMovesCount()));  //[4]
+           res.add("file", first.getFile());                         
        }
        // Game is finished, send the result
        res.type(Result::Win);
@@ -136,10 +135,10 @@ Result ValidationJob::execute(){
 }
 
 
-void ValidationJob::init(const QStringList &l) {
+void ValidationJob::init(const QMap<QString,QString> &l) {
     Job::init(l);
-    m_firstNet = l[3];
-    m_secondNet = l[4];
+    m_firstNet = l["firstNet"];
+    m_secondNet = l["secondNet"];
 }
 
 

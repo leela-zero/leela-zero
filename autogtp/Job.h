@@ -39,7 +39,7 @@ public:
     Job(QString gpu);
     ~Job() = default;
     virtual Result execute() = 0;
-    virtual void init(const QStringList &l);
+    virtual void init(const QMap<QString,QString> &l);
     void finish() { m_state.store(FINISHING); }
 
 protected:
@@ -55,7 +55,7 @@ class ProdutionJob : public Job {
 public:
     ProdutionJob(QString gpu);
     ~ProdutionJob() = default;
-    void init(const QStringList &l);
+    void init(const QMap<QString,QString> &l);
     Result execute();
 private:
     QString m_network;
@@ -66,7 +66,7 @@ class ValidationJob : public Job {
 public:
     ValidationJob(QString gpu);
     ~ValidationJob() = default;
-    void init(const QStringList &l);
+    void init(const QMap<QString,QString> &l);
     Result execute();
 private:
     QString m_firstNet;
