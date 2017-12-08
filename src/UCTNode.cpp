@@ -112,17 +112,26 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
     FastBoard & board = state.board;
     std::vector<Network::scored_node> nodelist;
 
+    auto legal_sum = 0.0f;
     for (auto& node : raw_netlist.first) {
         auto vertex = node.second;
         if (vertex != FastBoard::PASS) {
             if (vertex != state.m_komove
                 && !board.is_suicide(vertex, board.get_to_move())) {
                 nodelist.emplace_back(node);
+                legal_sum += node.first;
             }
         } else {
             nodelist.emplace_back(node);
+            legal_sum += node.first;
         }
     }
+
+    // re-normalize after removing illegal moves.
+    for (auto& node : nodelist) {
+        node.first /= legal_sum;
+    }
+
     link_nodelist(nodecount, nodelist, net_eval);
 
     return true;
@@ -228,7 +237,7 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
     child_cnt = 0;
     while (child != nullptr) {
         auto score = child->get_score();
-        auto eta_a = dirichlet_vector[child_cnt];
+        auto eta_a = dirichlet_vector[child_cnt++];
         score = score * (1 - epsilon) + epsilon * eta_a;
         child->set_score(score);
         child = child->m_nextsibling;
