@@ -40,7 +40,7 @@ public:
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
 
     explicit UCTNode(int vertex, float score, float init_eval);
-    ~UCTNode() = default;
+    ~UCTNode();
     bool first_visit() const;
     bool has_children() const;
     bool create_children(std::atomic<int> & nodecount,
