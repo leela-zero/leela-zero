@@ -50,7 +50,7 @@ UCTNode::UCTNode(int vertex, float score, float init_eval)
 
 UCTNode::~UCTNode() {
     LOCK(get_mutex(), lock);
-    for (auto& child : children) {
+    for (auto& child : m_children) {
         delete child;
     }
 }
@@ -147,17 +147,17 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
 
     for (const auto& node : nodelist) {
         auto child = new UCTNode(node.second, node.first, init_eval);
-        children.push_back(child);
+        m_children.push_back(child);
     }
 
-    nodecount += children.size();
+    nodecount += m_children.size();
     m_has_children = true;
 }
 
 void UCTNode::kill_superkos(KoState & state) {
 
-    auto childIter = begin(children);
-    while (childIter != end(children)) {
+    auto childIter = begin(m_children);
+    while (childIter != end(m_children)) {
         int move = (*childIter)->get_move();
 
         if (move != FastBoard::PASS) {
@@ -165,7 +165,7 @@ void UCTNode::kill_superkos(KoState & state) {
             mystate.play_move(move);
 
             if (mystate.superko()) {
-                childIter = children.erase(childIter);
+                childIter = m_children.erase(childIter);
                 continue;
             }
         }
@@ -189,7 +189,7 @@ float UCTNode::eval_state(GameState& state) {
 }
 
 void UCTNode::dirichlet_noise(float epsilon, float alpha) {
-    auto child_cnt = children.size();
+    auto child_cnt = m_children.size();
 
     auto dirichlet_vector = std::vector<float>{};
     std::gamma_distribution<float> gamma(alpha, 1.0f);
@@ -211,7 +211,7 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
     }
 
     child_cnt = 0;
-    for (auto& child : children) {
+    for (auto& child : m_children) {
         auto score = child->get_score();
         auto eta_a = dirichlet_vector[child_cnt++];
         score = score * (1 - epsilon) + epsilon * eta_a;
@@ -222,7 +222,7 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 void UCTNode::randomize_first_proportionally() {
     auto accum = uint32{0};
     auto accum_vector = std::vector<uint32>{};
-    for (const auto& child : children) {
+    for (const auto& child : m_children) {
         accum += child->get_visits();
         accum_vector.emplace_back(accum);
     }
@@ -241,10 +241,10 @@ void UCTNode::randomize_first_proportionally() {
         return;
     }
 
-    assert(children.size() >= index);
+    assert(m_children.size() >= index);
 
     // Now swap the child at index with the first child
-    std::iter_swap(begin(children), begin(children) + index);
+    std::iter_swap(begin(m_children), begin(m_children) + index);
 }
 
 int UCTNode::get_move() const {
@@ -332,14 +332,14 @@ UCTNode* UCTNode::uct_select_child(int color) {
     // Count parentvisits.
     // We do this manually to avoid issues with transpositions.
     int parentvisits = 0;
-    for (const auto& child : children) {
+    for (const auto& child : m_children) {
         if (child->valid()) {
             parentvisits += child->get_visits();
         }
     }
     float numerator = std::sqrt((double)parentvisits);
 
-    for (const auto& child : children) {
+    for (const auto& child : m_children) {
         if (!child->valid()) {
             continue;
         }
@@ -398,7 +398,7 @@ void UCTNode::sort_root_children(int color) {
     LOCK(get_mutex(), lock);
     auto tmp = std::vector<sortnode_t>{};
 
-    for (const auto& child : children) {
+    for (const auto& child : m_children) {
         auto visits = child->get_visits();
         auto score = child->get_score();
         if (visits) {
@@ -416,9 +416,9 @@ void UCTNode::sort_root_children(int color) {
     // std::stable_sort(begin(tmp), end(tmp), NodeComp());
     // maybe because of stable?
 
-    children.clear();
+    m_children.clear();
     for (const auto& sortnode : tmp) {
-        children.push_back(std::get<3>(sortnode));
+        m_children.push_back(std::get<3>(sortnode));
     }
 }
 
@@ -437,11 +437,11 @@ UCTNode::sortnode_t get_sortnode(int color, UCTNode* child) {
 
 UCTNode* UCTNode::get_best_root_child(int color) {
     LOCK(get_mutex(), lock);
-    assert(!children.empty());
+    assert(!m_children.empty());
 
     NodeComp compare;
-    auto best_child = get_sortnode(color, children[0]);
-    for (const auto& child : children) {
+    auto best_child = get_sortnode(color, m_children[0]);
+    for (const auto& child : m_children) {
         auto test = get_sortnode(color, child);
         if (compare(test, best_child)) {
             best_child = test;
@@ -451,18 +451,18 @@ UCTNode* UCTNode::get_best_root_child(int color) {
 }
 
 UCTNode* UCTNode::get_first_child() const {
-    if (children.empty()) {
+    if (m_children.empty()) {
         return nullptr;
     }
-    return children.front();
+    return m_children.front();
 }
 
 const std::vector<UCTNode*> UCTNode::get_children() const {
-    return children;
+    return m_children;
 }
 
 UCTNode* UCTNode::get_nopass_child(FastState& state) const {
-    for (const auto& child : children) {
+    for (const auto& child : m_children) {
         /* If we prevent the engine from passing, we must bail out when
            we only have unreasonable moves to pick, like filling eyes.
            Note that this isn't knowledge isn't required by the engine,
@@ -489,11 +489,11 @@ void UCTNode::delete_child(UCTNode * del_child) {
     LOCK(get_mutex(), lock);
     assert(del_child != nullptr);
 
-    auto found = std::find(begin(children), end(children), del_child);
-    if (found == end(children)) {
+    auto found = std::find(begin(m_children), end(m_children), del_child);
+    if (found == end(m_children)) {
         assert(false && "Child to delete not found");
     }
 
-    children.erase(found);
+    m_children.erase(found);
     delete *found;
 }

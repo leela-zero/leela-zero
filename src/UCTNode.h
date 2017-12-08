@@ -84,7 +84,7 @@ private:
 
     // Tree data
     std::atomic<bool> m_has_children{false};
-    std::vector<UCTNode*> children;
+    std::vector<UCTNode*> m_children;
 
     // Move
     int m_move;
