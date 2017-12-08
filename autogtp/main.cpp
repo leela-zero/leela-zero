@@ -32,7 +32,7 @@
 #include "Game.h"
 #include "Management.h"
 
-constexpr int AUTOGTP_VERSION = 8;
+constexpr int AUTOGTP_VERSION = 9;
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
