@@ -31,10 +31,10 @@ Job::Job(QString gpu) :
 }
 
 void Job::init(const QMap<QString,QString> &l) {
-   m_option = l["options"] + m_gpu + " -g -q -w "; 
+   m_option = l["options"] + m_gpu + " -g -q -w ";
    QStringList version_list = l["leelazVer"].split(".");
    if (version_list.size() < 2) {
-        QTextStream(stdout) 
+        QTextStream(stdout)
              << "Unexpected Leela Zero version: " << l[0] << endl;
         exit(EXIT_FAILURE);
     }
@@ -118,12 +118,12 @@ Result ValidationJob::execute(){
 
    if (m_state.load() == RUNNING) {
        QTextStream(stdout) << "Game has ended." << endl;
-       res.add("moves", QString::number(first.getMovesCount()));     
+       res.add("moves", QString::number(first.getMovesCount()));
        if (first.getScore()) {
-           res.add("score", first.getResult());                     
-           res.add("winner", first.getWinnerName());                 
+           res.add("score", first.getResult());
+           res.add("winner", first.getWinnerName());
            first.writeSgf();
-           res.add("file", first.getFile());                         
+           res.add("file", first.getFile());
        }
        // Game is finished, send the result
        res.type(Result::Win);

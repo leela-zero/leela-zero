@@ -210,7 +210,7 @@ Order Management::getWork() {
     QJsonObject opt = ob.value("options").toObject();
     QString options;
     QString optionsHash =  ob.value("options_hash").toString();
-    
+
     if (ob.contains("required_client_version")) {
         QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
         if (ob.value("required_client_version").toString().toInt() > m_version) {
@@ -240,11 +240,11 @@ Order Management::getWork() {
          rndSeed = ob.value("random_seed").toString();
     QMap<QString,QString> parameters;
     QTextStream(stdout) << options << endl;
-    parameters["leelazVer"] = leelazVersion;   
-    parameters["options"] = options;         
-    parameters["optHash"] = optionsHash;   
-    parameters["rndSeed"] = rndSeed;   
-      
+    parameters["leelazVer"] = leelazVersion;
+    parameters["options"] = options;
+    parameters["optHash"] = optionsHash;
+    parameters["rndSeed"] = rndSeed;
+
     if (ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
