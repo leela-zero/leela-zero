@@ -36,6 +36,7 @@ public:
     int type() { return m_type; }
     QMap<QString,QString> parameters() { return m_parameters; }
     void parameters(const QMap<QString,QString> &l) { m_parameters = l; }
+    bool isValid() { return (m_type == Production || m_type == Validation); }
 private:
     int m_type;
     QMap<QString,QString> m_parameters;
