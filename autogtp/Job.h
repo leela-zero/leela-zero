@@ -50,15 +50,16 @@ protected:
 };
 
 
-class ProdutionJob : public Job {
+class ProductionJob : public Job {
     Q_OBJECT
 public:
-    ProdutionJob(QString gpu);
-    ~ProdutionJob() = default;
+    ProductionJob(QString gpu);
+    ~ProductionJob() = default;
     void init(const QMap<QString,QString> &l);
     Result execute();
 private:
     QString m_network;
+    bool m_debug;
 };
 
 class ValidationJob : public Job {

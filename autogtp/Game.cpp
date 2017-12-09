@@ -317,6 +317,16 @@ bool Game::dumpTraining() {
     return true;
 }
 
+bool Game::dumpDebug() {
+    QTextStream(stdout) << "Dumping " << m_fileName + ".debug.txt" << endl;
+
+    if (!sendGtpCommand(qPrintable("dump_debug " +
+                        m_fileName + ".debug.txt"))) {
+        return false;
+    }
+    return true;
+}
+
 void Game::gameQuit() {
     write(qPrintable("quit\n"));
     waitForFinished(-1);
