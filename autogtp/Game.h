@@ -24,12 +24,11 @@
 #include <tuple>
 
 using VersionTuple = std::tuple<int, int>;
-extern const VersionTuple min_leelaz_version;
 
 class Game : QProcess {
 public:
     Game(const QString& weights,
-         const QString& opt = QString(" -g -q -n -d -m 30 -r 0 -w "));
+         const QString& opt);
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version);
     void move();
@@ -45,6 +44,9 @@ public:
     bool setMove(const QString& m);
     void setCmdLine(const QString& cmd)  { m_cmdLine = cmd; }
     int getWinner();
+    QString getWinnerName() const { return m_winner; }
+    int getMovesCount() const { return m_moveNum; }
+    QString getResult() const { return m_result.trimmed(); }
     enum {
         BLACK = 0,
         WHITE = 1,
@@ -62,6 +64,7 @@ private:
     QString m_winner;
     QString m_fileName;
     QString m_moveDone;
+    QString m_result;
     bool m_resignation;
     bool m_blackToMove;
     bool m_blackResigned;
