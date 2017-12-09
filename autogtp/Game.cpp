@@ -200,7 +200,8 @@ bool Game::readMove() {
     if(readCount == 0) {
         error(Game::WRONG_GTP);
     }
-    QTextStream(stdout) << m_moveNum << " (" << m_moveDone << ") ";
+    QTextStream(stdout) << m_moveNum << " (";
+    QTextStream(stdout) << (m_blackToMove ? "B " : "W ") << m_moveDone << ") ";
     QTextStream(stdout).flush();
     if (m_moveDone.compare(QStringLiteral("pass"),
                           Qt::CaseInsensitive) == 0) {
@@ -219,6 +220,7 @@ bool Game::setMove(const QString& m) {
     if (!sendGtpCommand(m)) {
         return false;
     }
+    m_moveNum++;
     QStringList moves = m.split(" ");
     if (moves.at(2)
         .compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
