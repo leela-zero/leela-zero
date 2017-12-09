@@ -60,7 +60,7 @@ private:
     int m_selfGames;
     int m_matchGames;
     int m_gamesPlayed;
-	int m_whiteWin;
+	int m_whiteWin=0;
     QAtomicInt m_movesMade;
     QString m_keepPath;
     QString m_debugPath;
