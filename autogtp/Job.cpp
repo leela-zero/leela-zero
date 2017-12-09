@@ -42,7 +42,7 @@ void Job::init(const QMap<QString,QString> &l) {
     std::get<1>(m_leelazMinVersion) = version_list[1].toInt();
 }
 
-ProdutionJob::ProdutionJob(QString gpu) :
+ProductionJob::ProductionJob(QString gpu) :
 Job(gpu)
 {
 }
@@ -52,7 +52,7 @@ Job(gpu)
 {
 }
 
-Result ProdutionJob::execute(){
+Result ProductionJob::execute(){
     Result res(Result::Error);
     Game game(m_network, m_option);
     if (!game.gameStart(m_leelazMinVersion)) {
@@ -71,6 +71,9 @@ Result ProdutionJob::execute(){
             game.writeSgf();
             game.fixSgfPlayerName(m_network);
             game.dumpTraining();
+            if (m_debug) {
+                game.dumpDebug();
+            }
         }
         res.type(Result::File);
         res.add("file", game.getFile());
@@ -83,9 +86,10 @@ Result ProdutionJob::execute(){
     return res;
 }
 
-void ProdutionJob::init(const QMap<QString,QString> &l) {
+void ProductionJob::init(const QMap<QString,QString> &l) {
     Job::init(l);
     m_network = l["network"];
+    m_debug = l["debug"] == "true";
 }
 
 

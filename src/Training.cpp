@@ -32,6 +32,7 @@
 #include "SGFTree.h"
 #include "Random.h"
 #include "Utils.h"
+#include "GTP.h"
 
 std::vector<TimeStep> Training::m_data{};
 
@@ -190,15 +191,16 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
     }
 }
 
-void Training::dump_stats(const std::string& filename) {
+void Training::dump_debug(const std::string& filename) {
     auto chunker = OutputChunker{filename, true};
-    dump_stats(chunker);
+    dump_debug(chunker);
 }
 
-void Training::dump_stats(OutputChunker& outchunk) {
+void Training::dump_debug(OutputChunker& outchunk) {
     {
         auto out = std::stringstream{};
-        out << "1" << std::endl; // File format version 1
+        out << "2" << std::endl; // File format version
+        out << cfg_resignpct << " " << cfg_weightsfile << std::endl;
         outchunk.append(out.str());
     }
     for (const auto& step : m_data) {

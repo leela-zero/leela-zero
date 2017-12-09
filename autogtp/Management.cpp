@@ -65,7 +65,7 @@ void Management::giveAssignments() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[thread_index] = new Worker(thread_index, myGpu, m_keepPath);
+            m_gamesThreads[thread_index] = new Worker(thread_index, myGpu);
             connect(m_gamesThreads[thread_index],
                     &Worker::resultReady,
                     this,
@@ -251,6 +251,7 @@ Order Management::getWorkInternal() {
     parameters["options"] = options;
     parameters["optHash"] = optionsHash;
     parameters["rndSeed"] = rndSeed;
+    parameters["debug"] = !m_debugPath.isEmpty() ? "true" : "false";
 
     if (ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
@@ -469,7 +470,7 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
         data_file.chop(4);
         QString debug_data_file = data_file;
         data_file += ".txt.0.gz";
-        debug_data_file += ".txt.debug.0.gz";
+        debug_data_file += ".debug.txt.0.gz";
         // Save first if requested
         if (!m_keepPath.isEmpty()) {
             QFile(sgf_file).copy(m_keepPath + '/' + sgf_file);
@@ -512,7 +513,9 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
         QTextStream(stdout) << outstr;
         dir.remove(sgf_file);
         dir.remove(data_file);
-        dir.remove(debug_data_file);
+        if (!m_debugPath.isEmpty()) {
+            dir.remove(debug_data_file);
+        }
     }
     return;
 }

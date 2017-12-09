@@ -22,10 +22,9 @@
 #include <chrono>
 
 
-Worker::Worker(int index,const QString& gpuIndex,const QString& keep) :
+Worker::Worker(int index, const QString& gpuIndex) :
     m_index(index),
     m_state(),
-    m_keepPath(keep),
     m_gpu(""),
     m_job(nullptr)
 {
@@ -56,7 +55,7 @@ void Worker::createJob(int type) {
     }
     switch(type) {
     case Order::Production:
-        m_job = new ProdutionJob(m_gpu);
+        m_job = new ProductionJob(m_gpu);
         break;
     case Order::Validation:
         m_job = new ValidationJob(m_gpu);

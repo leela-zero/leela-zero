@@ -38,6 +38,7 @@ public:
     bool writeSgf();
     bool fixSgfPlayerName(QString& weightFile);
     bool dumpTraining();
+    bool dumpDebug();
     void gameQuit();
     QString getMove() const { return m_moveDone; }
     QString getFile() const { return m_fileName; }
