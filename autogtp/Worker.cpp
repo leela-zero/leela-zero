@@ -36,6 +36,12 @@ Worker::Worker(int index,const QString& gpuIndex,const QString& keep) :
 
 void Worker::order(Order o)
 {
+    if (!o.isValid()) {
+        if (m_job != nullptr) {
+            m_job->finish();
+        }
+        return;
+    }
     if (m_todo.type() != o.type() || m_job == nullptr) {
         createJob(o.type());
     }
@@ -55,8 +61,6 @@ void Worker::createJob(int type) {
     case Order::Validation:
         m_job = new ValidationJob(m_gpu);
         break;
-    default:
-        m_job = nullptr;
     }
 }
 
