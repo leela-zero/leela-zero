@@ -89,6 +89,7 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     case Result::File:
         m_selfGames++,
         m_movesMade += res.parameters()["moves"].toInt();
+		m_whiteWin+= res.parameters()["winner"].toInt();
         uploadData(res.parameters()["file"], ord.parameters()["network"], ord.parameters()["optHash"]);
         break;
     case Result::Win:
@@ -119,6 +120,7 @@ void  Management::printTimingInfo(float duration) {
         << m_matchGames << " matches) played in "
         << total_time_min.count() << " minutes = "
         << total_time_s.count() / m_gamesPlayed << " seconds/game, "
+		<< "white won "<<m_whiteWin*100/ m_gamesPlayed<<"% of the games,"
         << total_time_millis.count() / m_movesMade  << " ms/move"
         << ", last game took " << (int) duration << " seconds." << endl;
 }
