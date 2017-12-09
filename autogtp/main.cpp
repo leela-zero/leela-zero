@@ -24,6 +24,7 @@
 #include <QCommandLineParser>
 #include <QProcess>
 #include <QFile>
+#include <QFileInfo>
 #include <QDir>
 #include <QDebug>
 #include <chrono>
@@ -51,7 +52,7 @@ int main(int argc, char *argv[]) {
               "num", "1");
     QCommandLineOption gpusOption(
         {"u", "gpus"},
-              "Index of the GPU to use for multiple GPUs support.",
+              "Index of the GPU to use for multiple GPUs support. For example, -u 0 -u 1 means use first two GPUs on system",
               "num");
     QCommandLineOption keepSgfOption(
         {"k", "keepSgf" },
@@ -89,12 +90,26 @@ int main(int argc, char *argv[]) {
 #else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
 #endif
+#ifdef WIN32
+	//We need to make sure these files we need are there before calling them. Otherwise it will result in nullptr.
+	QFileInfo curl_exe("curl.exe");
+	QFileInfo gzip_exe("gzip.exe");
+	QFileInfo leelaz_exe("leelaz.exe");
+	if (!(curl_exe.exists() && gzip_exe.exists() && leelaz_exe.exists()))
+	{
+		auto t = curl_exe.exists();
+		cerr << "exe files are missing!"<< endl;
+		getchar();
+		return EXIT_FAILURE;
+	}
+#endif
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
     cerr << "Using " << gamesNum << " thread(s)." << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"
                  << endl;
+			getchar();
             return EXIT_FAILURE;
         }
     }
@@ -102,6 +117,7 @@ int main(int argc, char *argv[]) {
         if (!QDir().mkpath(parser.value(keepDebugOption))) {
             cerr << "Couldn't create output directory for self-play Debug files!"
                  << endl;
+			getchar();
             return EXIT_FAILURE;
         }
     }

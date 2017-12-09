@@ -73,6 +73,7 @@ Result ProdutionJob::execute(){
         }
         res.type(Result::File);
         res.add("file", game.getFile());
+		res.add("winner", QString::number(game.getWinner()));
         res.add("moves", QString::number(game.getMovesCount()));
     } else {
         QTextStream(stdout) << "Program ends: exiting." << endl;
