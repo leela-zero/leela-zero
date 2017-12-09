@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
               "num", "1");
     QCommandLineOption gpusOption(
         {"u", "gpus"},
-              "Index of the GPU to use for multiple GPUs support.",
+              "Index of the GPU to use for multiple GPUs support. For example, -u 0 -u 1 means use first two GPUs on system",
               "num");
     QCommandLineOption keepSgfOption(
         {"k", "keepSgf" },
