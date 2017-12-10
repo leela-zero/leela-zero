@@ -155,21 +155,20 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
 }
 
 void UCTNode::kill_superkos(KoState & state) {
-
-    auto childIter = begin(m_children);
-    while (childIter != end(m_children)) {
-        int move = (*childIter)->get_move();
-
+    for (auto& child : m_children) {
+        int move = childIter->get_move();
         if (move != FastBoard::PASS) {
             KoState mystate = state;
             mystate.play_move(move);
 
             if (mystate.superko()) {
-                childIter = m_children.erase(childIter);
+                // Instead of removing invalide node just mark it as such.
+                // This logic is already used in UCTSearch.cpp, I want to
+                // revisit ko moves next so it can be cleaned up more then.
+                child.invalidate();
                 continue;
             }
         }
-        childIter++;
     }
 }
 
