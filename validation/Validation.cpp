@@ -45,6 +45,9 @@ void ValidationWorker::run() {
                 return;
             }
             first.readMove();
+            if(first.checkGameEnd()) {
+                break;
+            }
             second.setMove(bmove + first.getMove());
             second.move();
             if(!second.waitForMove()) {
