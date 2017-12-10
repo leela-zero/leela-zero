@@ -52,7 +52,6 @@ UCTNode::~UCTNode() {
     LOCK(get_mutex(), lock);
 }
 
-
 bool UCTNode::first_visit() const {
     return m_visits == 0;
 }
@@ -137,8 +136,8 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
         return;
     }
 
-    // sort (this will reverse scores, but linking is backwards too)
-    std::sort(rbegin(nodelist), rend(nodelist));
+    // sorting reverse scores, but insertion is backwards too.
+    std::stable_sort(rbegin(nodelist), rend(nodelist));
 
     LOCK(get_mutex(), lock);
 
@@ -158,11 +157,11 @@ void UCTNode::kill_superkos(KoState & state) {
             mystate.play_move(move);
 
             if (mystate.superko()) {
-                // Instead of removing invalide node just mark it as such.
+                // TODO delete comment before merge.
+                // Instead of removing invalid node just mark node invalid.
                 // This logic is already used in UCTSearch.cpp, I want to
                 // revisit ko moves next so it can be cleaned up more then.
                 child->invalidate();
-                continue;
             }
         }
     }
@@ -357,94 +356,43 @@ UCTNode* UCTNode::uct_select_child(int color) {
     return best;
 }
 
-class NodeComp : public std::binary_function<UCTNode::sortnode_t,
-                                             UCTNode::sortnode_t, bool> {
+class NodeComp : public std::binary_function<std::unique_ptr<UCTNode>&,
+                                             std::unique_ptr<UCTNode>&, bool> {
 public:
-    NodeComp() = default;
-    // winrate, visits, score, child
-    //        0,     1,     2,     3
-
-    bool operator()(const UCTNode::sortnode_t& a, const UCTNode::sortnode_t& b) {
-        // One node has visits, the other does not
-        if (!std::get<1>(a) && std::get<1>(b)) {
-            return false;
+    NodeComp(int color) : m_color(color) {};
+    bool operator()(const std::unique_ptr<UCTNode>& a,
+                    const std::unique_ptr<UCTNode>& b) {
+        // if visits are not same, sort on visits
+        if (a->get_visits() != b->get_visits()) {
+            return a->get_visits() < b->get_visits();
         }
 
-        if (!std::get<1>(b) && std::get<1>(a)) {
-            return true;
+        // neither has visits, sort on prior score
+        if (a->get_visits() == 0) {
+            return a->get_score() < b->get_score();
         }
 
-        // Neither has visits, sort on prior score
-        if (!std::get<1>(a) && !std::get<1>(b)) {
-            return std::get<2>(a) > std::get<2>(b);
-        }
-
-        // Both have visits, but the same amount, prefer winrate
-        if (std::get<1>(a) == std::get<1>(b)) {
-            return std::get<0>(a) > std::get<0>(b);
-        }
-
-        // Both have different visits, prefer greater visits
-        return std::get<1>(a) > std::get<1>(b);
+        // both have same non-zero numbor of visits
+        return a->get_eval(m_color) < b->get_eval(m_color);
     }
+private:
+    int m_color;
+
 };
 
 void UCTNode::sort_root_children(int color) {
     LOCK(get_mutex(), lock);
-    auto tmp = std::vector<sortnode_t>{};
-
-    for (const auto& child : m_children) {
-        auto visits = child->get_visits();
-        auto score = child->get_score();
-        if (visits) {
-            auto winrate = child->get_eval(color);
-            tmp.emplace_back(winrate, visits, score, child);
-        } else {
-            tmp.emplace_back(0.0f, 0, score, child);
-        }
-    }
-
-    std::stable_sort(rbegin(tmp), rend(tmp), NodeComp());
-    std::reverse(begin(tmp), end(tmp));
-
-    // I didn't get the same result with
-    // std::stable_sort(begin(tmp), end(tmp), NodeComp());
-    // maybe because of stable?
-
-    m_children.clear();
-    for (const auto& sortnode : tmp) {
-        m_children.emplace_back(std::get<3>(sortnode));
-    }
-}
-
-/**
- * Helper function to get a sortnode_t
- * eval is set to 0 if no visits instead of first-play-urgency
- */
-UCTNode::sortnode_t get_sortnode(int color, UCTNode* child) {
-    auto visits = child->get_visits();
-    return UCTNode::sortnode_t(
-        visits == 0 ? 0.0f : child->get_eval(color),
-        visits,
-        child->get_score(),
-        child);
+    std::stable_sort(begin(m_children), end(m_children),
+                     NodeComp(color));
+    std::reverse(begin(m_children), end(m_children));
 }
 
 UCTNode* UCTNode::get_best_root_child(int color) {
     LOCK(get_mutex(), lock);
     assert(!m_children.empty());
 
-    NodeComp compare;
-    auto best_child = get_sortnode(color, m_children.front().get());
-    for (const auto& child : m_children) {
-        auto test = get_sortnode(color, child.get());
-        if (compare(test, best_child)) {
-            best_child = test;
-        }
-    }
-    // TODO
-    return nullptr;
-    //return std::get<3>(best_child);
+    return std::max_element(begin(m_children), end(m_children),
+                            NodeComp(color))->get();
 }
 
 UCTNode* UCTNode::get_first_child() const {

@@ -114,13 +114,13 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
     m_root.sort_root_children(color);
 
 
-    auto children = parent.get_children();
-    if (children[0]->first_visit()) {
+    if (parent.get_first_child()->first_visit()) {
         return;
     }
 
     int movecount = 0;
-    for (const auto& node : children) {
+    for (const auto& node : parent.get_children()) {
+        if (!node->valid()) continue;
         if (++movecount > 2 && !node->get_visits()) break;
 
         std::string tmp = state.move_to_text(node->get_move());

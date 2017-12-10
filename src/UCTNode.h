@@ -24,7 +24,6 @@
 #include <atomic>
 #include <limits>
 #include <memory>
-#include <tuple>
 #include <vector>
 
 #include "SMP.h"
@@ -33,9 +32,6 @@
 
 class UCTNode {
 public:
-    // Should this have a pointer?
-    using sortnode_t = std::tuple<float, int, float, std::unique_ptr<UCTNode>>;
-
     // When we visit a node, add this amount of virtual losses
     // to it to encourage other CPUs to explore other parts of the
     // search tree.
