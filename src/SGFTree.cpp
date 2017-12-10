@@ -42,12 +42,12 @@ void SGFTree::init_state(void) {
     m_state.init_game(19, 7.5f);
 }
 
-KoState * SGFTree::get_state(void) {
+const KoState * SGFTree::get_state(void) const {
     assert(m_initialized);
     return &m_state;
 }
 
-SGFTree * SGFTree::get_child(size_t count) {
+const SGFTree * SGFTree::get_child(size_t count) const {
     if (count < m_children.size()) {
         assert(m_initialized);
         return &(m_children[count]);
@@ -59,8 +59,8 @@ SGFTree * SGFTree::get_child(size_t count) {
 // This follows the entire line, and doesn't really need the intermediate
 // states, just the moves. As a consequence, states that contain more than
 // just moves won't have any effect.
-GameState SGFTree::follow_mainline_state(unsigned int movenum) {
-    SGFTree * link = this;
+GameState SGFTree::follow_mainline_state(unsigned int movenum) const {
+    const SGFTree * link = this;
     // This initializes a starting state from a KoState and
     // sets up the game history.
     GameState result(get_state());
@@ -85,8 +85,8 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) {
 }
 
 // the number of states is one more than the number of moves
-int SGFTree::count_mainline_moves(void) {
-    SGFTree * link = this;
+int SGFTree::count_mainline_moves(void) const {
+    const SGFTree * link = this;
     int count = -1;
 
     while (link != nullptr) {
@@ -339,7 +339,7 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
     return vtx;
 }
 
-int SGFTree::get_move(int tomove) {
+int SGFTree::get_move(int tomove) const {
     std::string colorstring;
 
     if (tomove == FastBoard::BLACK) {
@@ -348,9 +348,7 @@ int SGFTree::get_move(int tomove) {
         colorstring = "W";
     }
 
-    PropertyMap::iterator it;
-    it = m_properties.find(colorstring);
-
+    auto it = m_properties.find(colorstring);
     if (it != m_properties.end()) {
         std::string movestring = it->second;
         return string_to_vertex(movestring);
@@ -359,14 +357,14 @@ int SGFTree::get_move(int tomove) {
     return SGFTree::EOT;
 }
 
-FastBoard::square_t SGFTree::get_winner() {
+FastBoard::square_t SGFTree::get_winner() const {
     return m_winner;
 }
 
-std::vector<int> SGFTree::get_mainline() {
+std::vector<int> SGFTree::get_mainline() const {
     std::vector<int> moves;
 
-    SGFTree * link = this;
+    const SGFTree * link = this;
     int tomove = link->m_state.get_to_move();
     link = link->get_child(0);
 
