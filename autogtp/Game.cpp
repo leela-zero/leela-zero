@@ -34,7 +34,6 @@ Game::Game(const QString& weights, const QString& opt) :
 #endif
     m_cmdLine.append(opt);
     m_cmdLine.append(weights);
-    m_cmdLine.append(" -p 1600 --noponder");
     m_fileName = QUuid::createUuid().toRfc4122().toHex();
 }
 
@@ -201,7 +200,8 @@ bool Game::readMove() {
     if(readCount == 0) {
         error(Game::WRONG_GTP);
     }
-    QTextStream(stdout) << m_moveNum << " (" << m_moveDone << ") ";
+    QTextStream(stdout) << m_moveNum << " (";
+    QTextStream(stdout) << (m_blackToMove ? "B " : "W ") << m_moveDone << ") ";
     QTextStream(stdout).flush();
     if (m_moveDone.compare(QStringLiteral("pass"),
                           Qt::CaseInsensitive) == 0) {
@@ -220,6 +220,7 @@ bool Game::setMove(const QString& m) {
     if (!sendGtpCommand(m)) {
         return false;
     }
+    m_moveNum++;
     QStringList moves = m.split(" ");
     if (moves.at(2)
         .compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
@@ -247,10 +248,12 @@ bool Game::getScore() {
     if(m_resignation) {
         if (m_blackResigned) {
             m_winner = QString(QStringLiteral("white"));
-            QTextStream(stdout) << "Score: W+Resign" << endl;
+            m_result = "W+Resign ";
+            QTextStream(stdout) << "Score: " << m_result << endl;
         } else {
             m_winner = QString(QStringLiteral("black"));
-            QTextStream(stdout) << "Score: B+Resign" << endl;
+            m_result = "B+Resign ";
+            QTextStream(stdout) << "Score: " << m_result << endl;
         }
     } else{
         write("final_score\n");
@@ -261,8 +264,8 @@ bool Game::getScore() {
         }
         char readBuffer[256];
         readLine(readBuffer, 256);
-        QString score = readBuffer;
-        score.remove(0, 2);
+        m_result = readBuffer;
+        m_result.remove(0, 2);
         if (readBuffer[2] == 'W') {
             m_winner = QString(QStringLiteral("white"));
         } else if (readBuffer[2] == 'B') {
@@ -272,7 +275,7 @@ bool Game::getScore() {
             error(Game::PROCESS_DIED);
             return false;
         }
-        QTextStream(stdout) << "Score: " << score;
+        QTextStream(stdout) << "Score: " << m_result;
     }
     if (m_winner.isNull()) {
         QTextStream(stdout) << "No winner found" << endl;

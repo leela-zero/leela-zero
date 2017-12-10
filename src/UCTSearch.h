@@ -45,7 +45,7 @@ public:
     }
 private:
     explicit SearchResult(float eval)
-        : m_valid(true), m_eval(eval) {};
+        : m_valid(true), m_eval(eval) {}
     bool m_valid{false};
     float m_eval{0.0f};
 };
@@ -96,7 +96,7 @@ private:
 class UCTWorker {
 public:
     UCTWorker(GameState & state, UCTSearch * search, UCTNode * root)
-      : m_rootstate(state), m_search(search), m_root(root) {};
+      : m_rootstate(state), m_search(search), m_root(root) {}
     void operator()();
 private:
     GameState & m_rootstate;

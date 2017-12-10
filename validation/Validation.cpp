@@ -19,6 +19,11 @@
 #include "Validation.h"
 #include <QFile>
 
+using VersionTuple = std::tuple<int, int>;
+// Minimal Leela Zero version we expect to see
+const VersionTuple min_leelaz_version{0, 9};
+
+
 void ValidationWorker::run() {
     do {
         Game first(m_firstNet,  m_option);
@@ -93,7 +98,7 @@ void ValidationWorker::init(const QString& gpuIndex,
                             const QString& secondNet,
                             const QString& keep,
                             const int expected) {
-    m_option = " -g -t 1 -q -d -r 0 -w ";
+    m_option = " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ";
     if (!gpuIndex.isEmpty()) {
         m_option.prepend(" --gpu=" + gpuIndex + " ");
     }

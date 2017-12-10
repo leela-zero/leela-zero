@@ -395,7 +395,6 @@ void OpenCL_Network::add_weights(size_t layer,
     }
 
     auto weightSize = size * sizeof(decltype(converted_weights)::value_type);
-    
     m_layers.back().weights.emplace_back(
         CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
         weightSize,
@@ -573,7 +572,7 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
     try {
         m_convolve_kernel->setArg(0, bufferInput);
         m_convolve_kernel->setArg(1, bufferMerge);
-        m_convolve_kernel->setArg(2, *weights);
+        m_convolve_kernel->setArg(2, *weights++);
         m_convolve_kernel->setArg(3, cl::Local(stripSize * channelGroup * rowGroup));
         m_convolve_kernel->setArg(4, cl::Local(rowSize));
         if (filter_size == 3) {
@@ -598,7 +597,7 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
     try {
         merge_kernel.setArg(0, bufferMerge);
         merge_kernel.setArg(1, bufferOutput);
-        merge_kernel.setArg(2, *(++weights));
+        merge_kernel.setArg(2, *weights);
         merge_kernel.setArg(3, channels >> channelShift);
 
         queue.enqueueNDRangeKernel(merge_kernel, cl::NullRange,
@@ -634,8 +633,8 @@ void OpenCL_Network::batchnorm(int outputs,
         } else {
             batchnorm_kernel.setArg(2, nullptr);
         }
-        batchnorm_kernel.setArg(3, *weights);
-        batchnorm_kernel.setArg(4, *(++weights));
+        batchnorm_kernel.setArg(3, *weights++);
+        batchnorm_kernel.setArg(4, *weights);
 
         queue.enqueueNDRangeKernel(batchnorm_kernel, cl::NullRange,
                                    cl::NDRange(outputs, channel_size),
@@ -684,7 +683,7 @@ void OpenCL::initialize(void) {
 
     myprintf("Detected %d OpenCL platforms\n", platforms.size());
 
-    for (auto &p : platforms) {
+    for (const auto &p : platforms) {
         std::string platvers = p.getInfo<CL_PLATFORM_VERSION>();
         std::string platprof = p.getInfo<CL_PLATFORM_PROFILE>();
         std::string platname = p.getInfo<CL_PLATFORM_NAME>();

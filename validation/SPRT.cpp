@@ -210,5 +210,5 @@ void Sprt::addGameResult(GameResult result)
 
 std::tuple<int, int, int> Sprt::getWDL() const
 {
-    return std::make_tuple(m_wins, m_draws, m_losses);
+       return std::make_tuple(m_wins, m_draws, m_losses);
 }
