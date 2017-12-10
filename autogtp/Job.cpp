@@ -106,6 +106,9 @@ Result ValidationJob::execute(){
            return res;
        }
        first.readMove();
+       if(first.checkGameEnd()) {
+           break;
+       }
        second.setMove(bmove + first.getMove());
        second.move();
        if(!second.waitForMove()) {
