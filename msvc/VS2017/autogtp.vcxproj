@@ -172,10 +172,10 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-  <Target Name="CopyQtDll" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <Target Name="CopyQtDll" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" BeforeTargets="Link">
     <Copy SourceFiles="$(QTDIR)\bin\Qt5Cored.dll" DestinationFolder="$(OutDir)" />
   </Target>
-  <Target Name="CopyQtDll" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <Target Name="CopyQtDll" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" BeforeTargets="Link">
     <Copy SourceFiles="$(QTDIR)\bin\Qt5Core.dll" DestinationFolder="$(OutDir)" />
   </Target>
   <ProjectExtensions>
