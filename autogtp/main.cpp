@@ -28,6 +28,9 @@
 #include <QDir>
 #include <QDebug>
 #include <chrono>
+#ifdef WIN32
+#include <direct.h>
+#endif
 #include <QCommandLineParser>
 #include <iostream>
 #include "Game.h"
@@ -98,7 +101,13 @@ int main(int argc, char *argv[]) {
 	if (!(curl_exe.exists() && gzip_exe.exists() && leelaz_exe.exists()))
 	{
 		auto t = curl_exe.exists();
-		cerr << "exe files are missing!"<< endl;
+
+		char cwd[_MAX_PATH];
+		_getcwd(cwd, _MAX_PATH);
+
+		cerr << "Autogtp cannot run as required executables (curl.exe, gzip.exe and leelaz.exe) are not found in the following folder: " << endl;
+		cerr << cwd << endl;
+		cerr << "Press a key to exit..." << endl;
 		getchar();
 		return EXIT_FAILURE;
 	}
