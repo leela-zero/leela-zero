@@ -228,7 +228,7 @@ bool Game::setMove(const QString& m) {
     } else if (moves.at(2)
                .compare(QStringLiteral("resign"), Qt::CaseInsensitive) == 0) {
         m_resignation = true;
-        m_blackResigned = m_blackToMove;
+        m_blackResigned = (moves.at(1).compare(QStringLiteral("black"), Qt::CaseInsensitive) == 0);
     } else {
         m_passes = 0;
     }
@@ -237,7 +237,7 @@ bool Game::setMove(const QString& m) {
 }
 
 bool Game::nextMove() {
-    if(m_resignation || m_passes > 1 || m_moveNum > (19 * 19 * 2)) {
+    if(checkGameEnd()) {
         return false;
     }
     m_blackToMove = !m_blackToMove;

@@ -42,6 +42,7 @@ public:
     QString getMove() const { return m_moveDone; }
     QString getFile() const { return m_fileName; }
     bool setMove(const QString& m);
+    bool checkGameEnd() { return (m_resignation || m_passes > 1 || m_moveNum > (19 * 19 * 2)); }
     void setCmdLine(const QString& cmd)  { m_cmdLine = cmd; }
     int getWinner();
     QString getWinnerName() const { return m_winner; }
