@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
               "num", "1");
     QCommandLineOption gpusOption(
         {"u", "gpus"},
-              "Index of the GPU to use for multiple GPUs support. For example, -u 0 -u 1 means use first two GPUs on system",
+              "Index of the GPU to use for multiple GPUs support.",
               "num");
     QCommandLineOption keepSgfOption(
         {"k", "keepSgf" },
@@ -109,7 +109,6 @@ int main(int argc, char *argv[]) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"
                  << endl;
-			getchar();
             return EXIT_FAILURE;
         }
     }
@@ -117,7 +116,6 @@ int main(int argc, char *argv[]) {
         if (!QDir().mkpath(parser.value(keepDebugOption))) {
             cerr << "Couldn't create output directory for self-play Debug files!"
                  << endl;
-			getchar();
             return EXIT_FAILURE;
         }
     }

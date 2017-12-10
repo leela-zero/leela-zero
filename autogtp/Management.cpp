@@ -79,8 +79,6 @@ void Management::giveAssignments() {
 
 void Management::getResult(Order ord, Result res, int index, int duration) {
     if (res.type() == Result::Error) {
-		QTextStream(stderr) << "Error occured in leela-zero." << endl;
-		getchar();
         exit(1);
     }
     m_syncMutex.lock();
