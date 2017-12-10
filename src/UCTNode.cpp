@@ -50,9 +50,6 @@ UCTNode::UCTNode(int vertex, float score, float init_eval)
 
 UCTNode::~UCTNode() {
     LOCK(get_mutex(), lock);
-    for (auto& child : m_children) {
-        delete child;
-    }
 }
 
 
@@ -146,8 +143,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
     LOCK(get_mutex(), lock);
 
     for (const auto& node : nodelist) {
-        auto child = new UCTNode(node.second, node.first, init_eval);
-        m_children.push_back(child);
+        m_children.emplace_back(std::make_unique<UCTNode>(node.second, node.first, init_eval));
     }
 
     nodecount += m_children.size();
@@ -156,7 +152,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
 
 void UCTNode::kill_superkos(KoState & state) {
     for (auto& child : m_children) {
-        int move = childIter->get_move();
+        int move = child->get_move();
         if (move != FastBoard::PASS) {
             KoState mystate = state;
             mystate.play_move(move);
@@ -165,7 +161,7 @@ void UCTNode::kill_superkos(KoState & state) {
                 // Instead of removing invalide node just mark it as such.
                 // This logic is already used in UCTSearch.cpp, I want to
                 // revisit ko moves next so it can be cleaned up more then.
-                child.invalidate();
+                child->invalidate();
                 continue;
             }
         }
@@ -353,7 +349,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
         if (value > best_value) {
             best_value = value;
-            best = child;
+            best = child.get();
         }
     }
 
@@ -368,7 +364,7 @@ public:
     // winrate, visits, score, child
     //        0,     1,     2,     3
 
-    bool operator()(const UCTNode::sortnode_t a, const UCTNode::sortnode_t b) {
+    bool operator()(const UCTNode::sortnode_t& a, const UCTNode::sortnode_t& b) {
         // One node has visits, the other does not
         if (!std::get<1>(a) && std::get<1>(b)) {
             return false;
@@ -417,7 +413,7 @@ void UCTNode::sort_root_children(int color) {
 
     m_children.clear();
     for (const auto& sortnode : tmp) {
-        m_children.push_back(std::get<3>(sortnode));
+        m_children.emplace_back(std::get<3>(sortnode));
     }
 }
 
@@ -439,24 +435,26 @@ UCTNode* UCTNode::get_best_root_child(int color) {
     assert(!m_children.empty());
 
     NodeComp compare;
-    auto best_child = get_sortnode(color, m_children[0]);
+    auto best_child = get_sortnode(color, m_children.front().get());
     for (const auto& child : m_children) {
-        auto test = get_sortnode(color, child);
+        auto test = get_sortnode(color, child.get());
         if (compare(test, best_child)) {
             best_child = test;
         }
     }
-    return std::get<3>(best_child);
+    // TODO
+    return nullptr;
+    //return std::get<3>(best_child);
 }
 
 UCTNode* UCTNode::get_first_child() const {
     if (m_children.empty()) {
         return nullptr;
     }
-    return m_children.front();
+    return m_children.front().get();
 }
 
-const std::vector<UCTNode*> UCTNode::get_children() const {
+const std::vector<std::unique_ptr<UCTNode>>& UCTNode::get_children() const {
     return m_children;
 }
 
@@ -468,7 +466,7 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
            we require it because we're overruling its moves. */
         if (child->m_move != FastBoard::PASS
             && !state.board.is_eye(state.get_to_move(), child->m_move)) {
-            return child;
+            return child.get();
         }
     }
     return nullptr;

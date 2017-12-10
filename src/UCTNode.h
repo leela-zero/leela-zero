@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <limits>
+#include <memory>
 #include <tuple>
 #include <vector>
 
@@ -32,7 +33,8 @@
 
 class UCTNode {
 public:
-    using sortnode_t = std::tuple<float, int, float, UCTNode*>;
+    // Should this have a pointer?
+    using sortnode_t = std::tuple<float, int, float, std::unique_ptr<UCTNode>>;
 
     // When we visit a node, add this amount of virtual losses
     // to it to encourage other CPUs to explore other parts of the
@@ -68,7 +70,7 @@ public:
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    const std::vector<UCTNode*> get_children() const;
+    const std::vector<std::unique_ptr<UCTNode>>& get_children() const;
 
     void sort_root_children(int color);
     UCTNode* get_best_root_child(int color);
@@ -83,7 +85,7 @@ private:
 
     // Tree data
     std::atomic<bool> m_has_children{false};
-    std::vector<UCTNode*> m_children;
+    std::vector<std::unique_ptr<UCTNode>> m_children;
 
     // Move
     int m_move;
