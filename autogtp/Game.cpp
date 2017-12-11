@@ -37,6 +37,12 @@ Game::Game(const QString& weights, const QString& opt) :
     m_fileName = QUuid::createUuid().toRfc4122().toHex();
 }
 
+bool Game::checkGameEnd() { 
+    return (m_resignation || 
+            m_passes > 1 || 
+            m_moveNum > (19 * 19 * 2)); 
+}
+
 void Game::error(int errnum) {
     QTextStream(stdout) << "*ERROR*: ";
     switch(errnum) {
