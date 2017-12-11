@@ -148,7 +148,7 @@ QString Management::getBoolOption(const QJsonObject &ob, const QString &key, con
 }
 
 
-Order Management::getWork() {
+Order Management::getWorkInternal() {
     Order o;
     o.type(Order::Error);
 
@@ -204,7 +204,14 @@ Order Management::getWork() {
         return o;
     }
     QJsonDocument doc;
-    doc = QJsonDocument::fromJson(curl.readAllStandardOutput());
+    QJsonParseError parseError;
+    doc = QJsonDocument::fromJson(curl.readAllStandardOutput(), &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        std::string errorString = parseError.errorString().toUtf8().constData();
+        throw NetworkException("JSON parse error: " + errorString);
+    }
+
     QTextStream(stdout) << doc.toJson() << endl;
     QJsonObject ob = doc.object();
     QJsonObject opt = ob.value("options").toObject();
@@ -263,6 +270,29 @@ Order Management::getWork() {
         o.parameters(parameters);
     }
     return o;
+}
+
+Order Management::getWork() {
+    for (auto retries = 0; retries < MAX_RETRIES; retries++) {
+        try {
+            return getWorkInternal();
+        } catch (NetworkException ex) {
+            QTextStream(stdout)
+                << "Network connection to server failed." << endl;
+            QTextStream(stdout)
+                << ex.what() << endl;
+            auto retry_delay =
+                std::min<int>(
+                    RETRY_DELAY_MIN_SEC * std::pow(1.5, retries),
+                    RETRY_DELAY_MAX_SEC);
+            QTextStream(stdout) << "Retrying in " << retry_delay << " s."
+                                << endl;
+            QThread::sleep(retry_delay);
+        }
+    }
+    QTextStream(stdout) << "Maximum number of retries exceeded. Giving up."
+                        << endl;
+    exit(EXIT_FAILURE);
 }
 
 
