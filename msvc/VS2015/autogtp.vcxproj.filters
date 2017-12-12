@@ -42,28 +42,31 @@
     <ClCompile Include="..\..\autogtp\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\autogtp\Production.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_Production.cpp">
+    <ClCompile Include="GeneratedFiles\Debug\moc_Job.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_Production.cpp">
+    <ClCompile Include="GeneratedFiles\Release\moc_Job.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\autogtp\SPRT.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\autogtp\Validation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_Validation.cpp">
+    <ClCompile Include="GeneratedFiles\Debug\moc_Management.cpp">
       <Filter>Generated Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_Validation.cpp">
+    <ClCompile Include="GeneratedFiles\Release\moc_Management.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\autogtp\Results.cpp">
+    <ClCompile Include="GeneratedFiles\Debug\moc_Worker.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_Worker.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\autogtp\Job.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\autogtp\Management.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\autogtp\Worker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -71,22 +74,25 @@
     <ClInclude Include="..\..\autogtp\Game.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\autogtp\SPRT.h">
+    <ClInclude Include="..\..\autogtp\Order.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\autogtp\Results.h">
+    <ClInclude Include="..\..\autogtp\Result.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\..\autogtp\Production.h">
-      <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="..\..\autogtp\Validation.h">
-      <Filter>Header Files</Filter>
-    </CustomBuild>
     <CustomBuild Include="..\curl.exe" />
     <CustomBuild Include="..\gzip.exe" />
+    <CustomBuild Include="..\..\autogtp\Job.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\..\autogtp\Management.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\..\autogtp\Worker.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\autogtp\README.md" />
