@@ -96,7 +96,7 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     make
     cd ..
     curl -O https://sjeng.org/zero/best_v1.txt.zip
-    unzip https://sjeng.org/zero/best_v1.txt.zip
+    unzip best_v1.txt.zip
     src/leelaz --weights weights.txt
 
 ## Example of compiling and running - Windows
