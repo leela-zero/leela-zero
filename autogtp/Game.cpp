@@ -17,6 +17,9 @@
 */
 
 #include <QUuid>
+#include <QFile>
+#include <QTextStream>
+#include <QRegularExpression>
 #include "Game.h"
 
 Game::Game(const QString& weights, const QString& opt) :
@@ -304,6 +307,30 @@ bool Game::writeSgf() {
     if (!sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"))) {
         return false;
     }
+    return true;
+}
+
+bool Game::fixSgfPlayerName(QString& weightFile) {
+    QFile sgfFile(m_fileName + ".sgf");
+    if (!sgfFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
+        return false;
+    }
+    QString sgfData = sgfFile.readAll();
+
+    QRegularExpression re("PW\\[Human\\]");
+    QString playerName("PW[Leela Zero ");
+    playerName += weightFile.left(8);
+    playerName += "]";
+
+    sgfData.replace(re, playerName);
+
+    sgfFile.close();
+    if(sgfFile.open(QFile::WriteOnly | QFile::Truncate)) {
+        QTextStream out(&sgfFile);
+        out << sgfData;
+    }
+    sgfFile.close();
+
     return true;
 }
 
