@@ -60,7 +60,7 @@ Result ProdutionJob::execute(){
     }
     do {
         game.move();
-        if(!game.waitForMove()) {
+        if (!game.waitForMove()) {
             return res;
         }
         game.readMove();
@@ -102,13 +102,16 @@ Result ValidationJob::execute(){
    QString bmove = "play black ";
    do {
        first.move();
-       if(!first.waitForMove()) {
+       if (!first.waitForMove()) {
            return res;
        }
        first.readMove();
+       if (first.checkGameEnd()) {
+           break;
+       }
        second.setMove(bmove + first.getMove());
        second.move();
-       if(!second.waitForMove()) {
+       if (!second.waitForMove()) {
            return res;
        }
        second.readMove();

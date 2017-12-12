@@ -65,6 +65,7 @@ private:
     QString m_debugPath;
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
+    Order getWorkInternal();
     Order getWork();
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);

@@ -36,7 +36,7 @@
 #include "Game.h"
 #include "Management.h"
 
-constexpr int AUTOGTP_VERSION = 9;
+constexpr int AUTOGTP_VERSION = 10;
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
@@ -100,8 +100,6 @@ int main(int argc, char *argv[]) {
 	QFileInfo leelaz_exe("leelaz.exe");
 	if (!(curl_exe.exists() && gzip_exe.exists() && leelaz_exe.exists()))
 	{
-		auto t = curl_exe.exists();
-
 		char cwd[_MAX_PATH];
 		_getcwd(cwd, _MAX_PATH);
 
