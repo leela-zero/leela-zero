@@ -398,6 +398,8 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
 #ifdef WIN32
     gzipCmd.append(".exe");
 #endif
+	//first save sgf file if requested
+	saveSgfFile(r["file"]+ ".sgf");
     gzipCmd.append(" " + r["file"] + ".sgf");
     QProcess::execute(gzipCmd);
     QString sgf_file = r["file"] + ".sgf.gz";
@@ -468,9 +470,7 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
         data_file += ".txt.0.gz";
         debug_data_file += ".txt.debug.0.gz";
         // Save first if requested
-        if (!m_keepPath.isEmpty()) {
-            QFile(sgf_file).copy(m_keepPath + '/' + sgf_file);
-        }
+       	saveSgfFile(sgf_file);
         if (!m_debugPath.isEmpty()) {
             QFile(data_file).copy(m_debugPath + '/' + data_file);
             QFile(debug_data_file).copy(m_debugPath + '/' + debug_data_file);
@@ -512,4 +512,11 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
         dir.remove(debug_data_file);
     }
     return;
+}
+void Management::saveSgfFile(const QString & sgfFile)
+{
+   if (!m_keepPath.isEmpty()) {
+            QFile(sgfFile).copy(m_keepPath + '/' + sgfFile);
+        }
+   return;
 }
