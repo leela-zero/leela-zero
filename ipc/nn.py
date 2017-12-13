@@ -6,6 +6,7 @@ import math
 import numpy as np
 import trollius
 from six.moves import urllib
+import os
 
 bsize = int(sys.argv[1])
 realbs = int(sys.argv[2])
@@ -21,13 +22,11 @@ def getLatestNNHash():
 
 def downloadBestNetworkWeight(hash):
     try:
-        return open(hash + ".txt", "r").read()
+        return open(hash).read()
     except Exception as ex:
-        txt = urllib.request.urlopen("http://zero.sjeng.org/networks/best-network").read().decode()
-        f = open(hash + ".txt", "w")
-        f.write(txt)
-        f.close()
-        return txt
+        os.system("curl http://zero.sjeng.org/networks/best-network.gz -o %s.gz" % hash)
+        os.system("gzip -fd %s.gz" % hash)
+        return open(hash).read()
 
 
 def loadWeight(text):
