@@ -373,7 +373,10 @@ void Management::fetchNetwork(const QString &name) {
     QTextStream(stdout) << "Net filename: " << outfile << endl;
 
     if (!networkExists(name)) {
-        exit(EXIT_FAILURE);
+        //If gunzip failed remove the .gz file
+        QFile f_gz(name + ".gz");
+        f_gz.remove();
+        throw NetworkException("Failed to fetch the network");
     }
 
     return;
