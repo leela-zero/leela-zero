@@ -74,6 +74,7 @@ private:
     void printTimingInfo(float duration);
     void uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l);
     void uploadResult(const QMap<QString, QString> &r, const QMap<QString, QString> &l);
+	void saveSgfFile(const QString &sgfFile);
 };
 
 #endif
