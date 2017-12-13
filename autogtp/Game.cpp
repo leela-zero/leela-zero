@@ -303,11 +303,7 @@ int Game::getWinner() {
 
 bool Game::writeSgf() {
     QTextStream(stdout) << "Writing " << m_fileName + ".sgf" << endl;
-
-    if (!sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"))) {
-        return false;
-    }
-    return true;
+    return sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"));
 }
 
 bool Game::fixSgfPlayerName(QString& weightFile) {
@@ -336,22 +332,14 @@ bool Game::fixSgfPlayerName(QString& weightFile) {
 
 bool Game::dumpTraining() {
     QTextStream(stdout) << "Dumping " << m_fileName + ".txt" << endl;
-
-    if (!sendGtpCommand(qPrintable("dump_training " + m_winner +
-                        " " + m_fileName + ".txt"))) {
-        return false;
-    }
-    return true;
+    return sendGtpCommand(
+        qPrintable("dump_training " + m_winner + " " + m_fileName + ".txt"));
 }
 
 bool Game::dumpDebug() {
     QTextStream(stdout) << "Dumping " << m_fileName + ".debug.txt" << endl;
-
-    if (!sendGtpCommand(qPrintable("dump_debug " +
-                        m_fileName + ".debug.txt"))) {
-        return false;
-    }
-    return true;
+    return sendGtpCommand(
+        qPrintable("dump_debug " + m_fileName + ".debug.txt"));
 }
 
 void Game::gameQuit() {
