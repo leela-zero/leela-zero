@@ -53,7 +53,8 @@ public:
 
     static void initialize();
     static void benchmark(GameState * state, int iterations = 1600);
-    static void show_heatmap(FastState * state, Netresult & netres, bool topmoves);
+    static void show_heatmap(FastState * state, Netresult & netres,
+                             bool topmoves);
     static void softmax(const std::vector<float>& input,
                         std::vector<float>& output,
                         float temperature = 1.0f);
@@ -63,6 +64,8 @@ private:
     static Netresult get_scored_moves_internal(
       GameState * state, NNPlanes & planes, int rotation);
     static int rotate_nn_idx(const int vertex, int symmetry);
+    static void forward(std::vector<float>& input,
+                        std::vector<float>& output);
 };
 
 #endif

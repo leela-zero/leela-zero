@@ -24,6 +24,7 @@
 #include <utility>
 #include "GameState.h"
 #include "Network.h"
+#include "UCTNode.h"
 
 class TimeStep {
 public:
