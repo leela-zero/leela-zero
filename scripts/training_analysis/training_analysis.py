@@ -16,39 +16,47 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys
 import argparse
 import gzip
 import math
 import fileinput
+import collections
+import os
 
+BOARDSIZE = 19
+NIBBLE = 4
+HISTORY_PLANES = 8
+
+def hook_compressed_encoded(encoding):
+    def hook_compressed(filename, mode):
+        ext = os.path.splitext(filename)[1]
+        if ext == '.gz':
+            #return gzip.open(filename, mode, encoding=encoding) # this doesn't work, why?
+            return gzip.open(filename, "rt", encoding=encoding)
+        else:
+            return open(filename, mode, encoding=encoding)
+    return hook_compressed
 
 def findEmptyBoard(tfh, hist):
     first_move_cnt = 0
-    zeros = "0"*math.ceil(19*19/4) + "\n"
+    zeros = "0"*math.ceil((BOARDSIZE**2+1)/NIBBLE) + "\n" # 362 bits in hex nibbles
     while (1):
-        #print(tfh.filelineno())
         empty_board = True
-        board = []
-        for _ in range(16):
+        for _ in range(HISTORY_PLANES*2):
             line = tfh.readline()
             if not line: break
-            line = line.decode("utf-8")               # Board input planes
             empty_board = empty_board and line == zeros
-            board.append(line)
-            #print(empty_board, line)
         if not line: break
-        to_move = int(tfh.readline().decode("utf-8"))           # 0 = black, 1 = white
-        policy_weights = tfh.readline().decode("utf-8")         # 361 moves + 1 pass
-        side_to_move_won = int(tfh.readline().decode("utf-8"))  # 1 = side to move won, -1 = lost
+        to_move = int(tfh.readline())           # 0 = black, 1 = white
+        policy_weights = tfh.readline()         # 361 moves + 1 pass
+        side_to_move_won = int(tfh.readline())  # 1 = side to move won, -1 = lost
         # Note: it can be empty_board and white to move if black passed
         if empty_board and to_move == 0:
             first_move_cnt += 1
             policy_weights = policy_weights.split()
             cnt = policy_weights.count("0")
-            if not cnt in hist: hist[cnt] = 0
             hist[cnt] += 1
-    print(hist)
+    print(dict(hist))
     return first_move_cnt
 
 if __name__ == "__main__":
@@ -75,12 +83,11 @@ etc.
     parser.add_argument("files", metavar="files", type=str, nargs="+", help="training files (with or without *.gz)")
     args = parser.parse_args()
     total_first_move_cnt = 0
-    hist = {}
+    hist = collections.defaultdict(int)
     for filename in args.files:
-        tfh = fileinput.input(filename, openhook=fileinput.hook_compressed)
+        tfh = fileinput.FileInput(filename, openhook=hook_compressed_encoded("utf-8"))
         print(filename, " ", end="")
-        first_move_cnt = findEmptyBoard(tfh, hist)
-        total_first_move_cnt += first_move_cnt
+        total_first_move_cnt += findEmptyBoard(tfh, hist)
     print("total first move cnt = ", total_first_move_cnt)
 
 
