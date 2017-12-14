@@ -21,14 +21,23 @@ clang:
 		LDFLAGS='$(LDFLAGS) -flto -fuse-linker-plugin' \
 		leelaz
 
-DYNAMIC_LIBS = -lboost_program_options -lpthread -lz -lrt
+DYNAMIC_LIBS = -lboost_program_options -lpthread -lz
 
-# for Linux with OpenBLAS
-# CXXFLAGS += -I/usr/include/openblas
-# DYNAMIC_LIBS += -lopenblas
-# DYNAMIC_LIBS += -lOpenCL
+ifeq ($(THE_OS),Linux)
+	#for Linux with OpenBLAS
+	CXXFLAGS += -I/usr/include/openblas
+	DYNAMIC_LIBS += -lopenblas
+	DYNAMIC_LIBS += -lOpenCL -lrt
+endif
 
 # for macOS (comment out the Linux part)
+ifeq ($(THE_OS),Darwin)
+    # for macOS (comment out the Linux part)
+	LIBS += -framework Accelerate
+	LIBS += -framework OpenCL
+	CXXFLAGS += -I/System/Library/Frameworks/Accelerate.framework/Versions/Current/Headers
+endif
+
 
 # for MKL instead of OpenBLAS
 #DYNAMIC_LIBS += -lmkl_rt

@@ -32,6 +32,8 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include <sys/socket.h>
+
+#define BOOST_INTERPROCESS_POSIX_SHARED_MEMORY_OBJECTS
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/sync/named_semaphore.hpp>
@@ -39,9 +41,9 @@
 
 
 #include "Im2Col.h"
-// #ifdef __APPLE__
-// #include <Accelerate/Accelerate.h>
-// #endif
+#ifdef __APPLE__
+#include <Accelerate/Accelerate.h>
+#endif
 #ifdef USE_MKL
 #include <mkl.h>
 #endif
@@ -133,20 +135,21 @@ void Network::initialize(void) {
     if (pname == NULL) pname = "lee";
     char name[100];
 
-    sprintf(name, "sm%s", pname);
+    sprintf(name, "/sm%s", pname);
 
     shmem= shared_memory_object(open_only, name, read_write);
     region = mapped_region(shmem, read_write);
+
     mem = static_cast<unsigned char*>(region.get_address());
 
     batch_size = int(mem[0]) * 256 + int(mem[1]);
     myprintf("batch size: %d\n", batch_size);
-    shmem.truncate(2 + batch_size + 4*batch_size*18*19*19 + 8 + batch_size*4*(19*19+2));
+    // shmem.truncate(2 + batch_size + 4*batch_size*18*19*19 + 8 + batch_size*4*(19*19+2));
 
     shmem.get_size(size);
     myprintf("size %d\n", size);
 
-    sprintf(name, "%s_counter", pname);
+    sprintf(name, "/%s_counter", pname);
     named_semaphore sem_counter{open_only, name};
     sem_counter.wait();
     int i = 0;
@@ -509,10 +512,10 @@ Network::Netresult Network::get_scored_moves_internal(
     char* pname = getenv ("LEELAZ");
     if (pname == NULL) pname = "lee";
 
-    sprintf(name, "%s_A_%d", pname, myid);
+    sprintf(name, "/%s_A_%d", pname, myid);
     named_semaphore sem_A{open_only, name};
 
-    sprintf(name, "%s_B_%d", pname, myid);
+    sprintf(name, "/%s_B_%d", pname, myid);
     named_semaphore sem_B{open_only, name};
 
     float * my_input_data = reinterpret_cast<float *>(input_mem);

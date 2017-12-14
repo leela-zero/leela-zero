@@ -24,26 +24,35 @@ if num_instances % realbs != 0:
     print("Error: number of instances isn't divisible by batch size")
     sys.exit(-1)
 
-name = "sm%s" % leename  # shared memory name
+name = "/sm%s" % leename  # shared memory name
 input_size   = 4*18*19*19
 output_size = 4 * (19*19 + 2)
+
+def roundup(size, page_size):
+    import math
+    s =  int( math.ceil(size/page_size)*page_size )
+    return s
 
 def createSMP(name):
     smp= ipc.Semaphore(name, ipc.O_CREAT)
     smp.unlink()
     return ipc.Semaphore(name, ipc.O_CREAT)
 
-sm = ipc.SharedMemory( name, flags = ipc.O_CREAT, size = 2 + num_instances + input_size*num_instances + 8  + num_instances*output_size)
+try:
+    sm = ipc.SharedMemory( name, flags = 0, size = roundup(2 + num_instances + input_size*num_instances + 8  + num_instances*output_size, ipc.PAGE_SIZE) )
+except Exception as ex:
+    sm = ipc.SharedMemory( name, flags = ipc.O_CREAT, size = roundup(2 + num_instances + input_size*num_instances + 8  + num_instances*output_size, ipc.PAGE_SIZE) )
+
 # memory layout of the shared memory:
 # | counter counter | input 1 | input 2 | .... |  8 bytes | output 1 | output 2| ..... |
 
-smp_counter =  createSMP("%s_counter" % leename) # counter semaphore
+smp_counter =  createSMP("/%s_counter" % leename) # counter semaphore
 
 smpA = []
 smpB = []
 for i in range(num_instances):
-    smpA.append(createSMP("%s_A_%d" % (leename,i)))    # two semaphores for each instance
-    smpB.append(createSMP("%s_B_%d" % (leename,i)))
+    smpA.append(createSMP("/%s_A_%d" % (leename,i)))    # two semaphores for each instance
+    smpB.append(createSMP("/%s_B_%d" % (leename,i)))
 
 mem = mmap.mmap(sm.fd, sm.size)
 sm.close_fd()

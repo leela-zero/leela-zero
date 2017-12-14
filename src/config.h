@@ -38,7 +38,7 @@
 //#define USE_OPENCL
 //#define USE_TUNER
 #define USE_IPC
-// Remember to turn on USE_BLAS, USE_OPENBLAS and USE_OPENCL when using USE_SERVER_TEST
+// Remember to turn on USE_BLAS, USE_OPENBLAS (for Linux only) and USE_OPENCL when using USE_IPC_TEST
 //#define USE_IPC_TEST
 
 #define PROGRAM_NAME "Leela Zero"
