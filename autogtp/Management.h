@@ -60,11 +60,12 @@ private:
     int m_selfGames;
     int m_matchGames;
     int m_gamesPlayed;
-    QAtomicInt m_movesMade;
+    int m_movesMade;
     QString m_keepPath;
     QString m_debugPath;
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
+    Order m_fallBack;
     Order getWorkInternal();
     Order getWork();
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);

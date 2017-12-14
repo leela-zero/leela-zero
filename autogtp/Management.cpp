@@ -50,7 +50,8 @@ Management::Management(const int gpus,
     m_gamesPlayed(0),
     m_keepPath(keep),
     m_debugPath(debug),
-    m_version(ver) {
+    m_version(ver),
+    m_fallBack(Order::Error) {
 }
 
 void Management::giveAssignments() {
@@ -149,8 +150,7 @@ QString Management::getBoolOption(const QJsonObject &ob, const QString &key, con
 
 
 Order Management::getWorkInternal() {
-    Order o;
-    o.type(Order::Error);
+    Order o(Order::Error);
 
     /*
 
@@ -259,6 +259,8 @@ Order Management::getWorkInternal() {
         o.type(Order::Production);
         parameters["network"] = net;
         o.parameters(parameters);
+        m_fallBack = o;
+        m_fallBack.parameters()["rndSeed"] = "";
     }
     if (ob.value("cmd").toString() == "match") {
         o.type(Order::Validation);
@@ -291,8 +293,10 @@ Order Management::getWork() {
             QThread::sleep(retry_delay);
         }
     }
-    QTextStream(stdout) << "Maximum number of retries exceeded. Giving up."
+    QTextStream(stdout) << "Maximum number of retries exceeded. Falling back to previous network."
                         << endl;
+    if(m_fallBack.type() != Order::Error)
+        return m_fallBack;
     exit(EXIT_FAILURE);
 }
 
@@ -303,8 +307,7 @@ bool Management::networkExists(const QString &name) {
         if (f.open(QFile::ReadOnly)) {
             QCryptographicHash hash(QCryptographicHash::Sha256);
             if (!hash.addData(&f)) {
-                QTextStream(stdout) << "Reading network file failed." << endl;
-                exit(EXIT_FAILURE);
+                throw NetworkException("Reading network file failed.");
             }
             QString result = hash.result().toHex();
             if (result == name) {
@@ -316,9 +319,8 @@ bool Management::networkExists(const QString &name) {
             if (f.remove()) {
                 return false;
             }
-            QTextStream(stdout) << "Unable to delete the network file. "
-                                << "Check permissions." << endl;
-            exit(EXIT_FAILURE);
+            throw NetworkException("Unable to delete the network file."
+                                   " Check permissions.");
         }
         QTextStream(stdout) << "Downloaded network hash doesn't match." << endl;
         f.remove();
