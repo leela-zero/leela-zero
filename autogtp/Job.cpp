@@ -69,7 +69,7 @@ Result ProductionJob::execute(){
         QTextStream(stdout) << "Game has ended." << endl;
         if (game.getScore()) {
             game.writeSgf();
-            game.fixSgfPlayerName(m_network);
+            game.fixSgf(m_network, false);
             game.dumpTraining();
             if (m_debug) {
                 game.dumpDebug();
@@ -131,7 +131,7 @@ Result ValidationJob::execute(){
            res.add("score", first.getResult());
            res.add("winner", first.getWinnerName());
            first.writeSgf();
-           first.fixSgfPlayerName(m_secondNet);
+           first.fixSgf(m_secondNet, (res.parameters()["score"] == "B+Resign"));
            res.add("file", first.getFile());
        }
        // Game is finished, send the result
