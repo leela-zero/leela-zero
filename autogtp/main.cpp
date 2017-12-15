@@ -26,6 +26,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
+#include <QtWidgets/QShortcut>
 #include <QDebug>
 #include <chrono>
 #ifdef WIN32
@@ -41,7 +42,7 @@ int main(int argc, char *argv[]) {
     app.setApplicationName("autogtp");
     app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
 
-    QTimer::singleShot(0, &app, SLOT(quit()));
+//    QTimer::singleShot(0, &app, SLOT(quit()));
 
     QCommandLineParser parser;
     parser.addHelpOption();
@@ -78,7 +79,6 @@ int main(int argc, char *argv[]) {
     }
 
     // Map streams
-    QTextStream cin(stdin, QIODevice::ReadOnly);
     QTextStream cout(stdout, QIODevice::WriteOnly);
 #if defined(LOG_ERRORS_TO_FILE)
     // Log stderr to file
@@ -126,13 +126,14 @@ int main(int argc, char *argv[]) {
         }
     }
     QMutex mutex;
-    Management boss(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION,
-                    parser.value(keepSgfOption), parser.value(keepDebugOption),
-                    &mutex);
-    boss.giveAssignments();
-    mutex.lock();
+    Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), parser.value(keepDebugOption), &mutex);
+    boss->checkStoredGames();
+    boss->giveAssignments();
+    int r = app.exec();
+    // Synchornize on the work_thread.  Letting it run to completion.
+    boss->wait();
     cerr.flush();
     cout.flush();
-    mutex.unlock();
-    return app.exec();
+    app.exit();
+    return r;
 }

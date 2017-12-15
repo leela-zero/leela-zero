@@ -9,7 +9,6 @@ equals(QT_MAJOR_VERSION, $$QT_REQ_MAJOR_VERSION):lessThan(QT_MINOR_VERSION, $$QT
     error(Minimum supported Qt version is $$QT_REQ_VERSION!)
 }
 
-QT  -= gui
 
 TARGET = autogtp
 CONFIG   += c++14
@@ -24,6 +23,7 @@ SOURCES += main.cpp \
     Worker.cpp \
     Order.cpp \
     Job.cpp \
+    Keypress.cpp \
     Management.cpp
 
 HEADERS += \
@@ -32,4 +32,5 @@ HEADERS += \
     Job.h \
     Order.h \
     Result.h \
+    Keypress.h \
     Management.h

@@ -42,10 +42,11 @@ public:
     ~Management() = default;
     void giveAssignments();
     void incMoves() { m_movesMade++; }
-    void storeGames();
+    void wait();
     void checkStoredGames();
 public slots:
     void getResult(Order ord, Result res, int index, int duration);
+    void storeGames();
 
 private:
 

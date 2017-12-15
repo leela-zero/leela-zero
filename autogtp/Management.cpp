@@ -123,6 +123,12 @@ void Management::storeGames() {
     }
 }
 
+void Management::wait() {
+    for (int i = 0; i < m_gpus * m_games; ++i) {
+        m_gamesThreads[i]->wait();
+    }
+}
+
 void Management::getResult(Order ord, Result res, int index, int duration) {
     if (res.type() == Result::Error) {
         exit(1);
