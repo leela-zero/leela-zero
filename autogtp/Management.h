@@ -70,10 +70,13 @@ private:
     Order getWork();
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
+    void sendAllGames();
     bool networkExists(const QString &name);
     void fetchNetwork(const QString &name);
     void printTimingInfo(float duration);
     void gzipFile(const QString &fileName);
+    bool sendCurl(const QStringList &lines);
+    void saveCurlCmdLine(const QStringList &prog_cmdline, const QString &name);
     void archiveFiles(const QString &fileName);
     void cleanupFiles(const QString &fileName);
     void uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l);
