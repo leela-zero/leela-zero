@@ -32,12 +32,14 @@ class Worker : public QThread {
 public:
     enum {
         RUNNING = 0,
-        FINISHING
+        FINISHING,
+        STORING
     };
     Worker(int index, const QString& gpuIndex, Management *parent);
     ~Worker() = default;
     void order(Order o);
     void doFinish() { m_job->finish(); m_state.store(FINISHING); }
+    void doStore() { m_job->store(); m_state.store(STORING); }
     void run() override;
 signals:
     void resultReady(Order o, Result r, int index, int duration);

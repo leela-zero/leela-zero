@@ -22,6 +22,7 @@ TEMPLATE = app
 SOURCES += main.cpp \
     Game.cpp \
     Worker.cpp \
+    Order.cpp \
     Job.cpp \
     Management.cpp
 

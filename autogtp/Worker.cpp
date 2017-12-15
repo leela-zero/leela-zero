@@ -19,6 +19,7 @@
 #include "Worker.h"
 #include "Game.h"
 #include <QTextStream>
+#include <QUuid>
 #include <chrono>
 
 
@@ -45,8 +46,8 @@ void Worker::order(Order o)
     if (m_todo.type() != o.type() || m_job == nullptr) {
         createJob(o.type());
     }
-     m_todo = o;
-     m_job->init(m_todo.parameters());
+    m_todo = o;
+    m_job->init(m_todo);
 }
 
 
@@ -56,9 +57,11 @@ void Worker::createJob(int type) {
     }
     switch(type) {
     case Order::Production:
+    case Order::RestoreSelfPlayed:
         m_job = new ProductionJob(m_gpu, m_boss);
         break;
     case Order::Validation:
+    case Order::RestoreMatch:
         m_job = new ValidationJob(m_gpu, m_boss);
         break;
     case Order::Wait:
@@ -68,15 +71,31 @@ void Worker::createJob(int type) {
 }
 
 void Worker::run() {
+     Result res;
      do {
         auto start = std::chrono::high_resolution_clock::now();
 
-        Result res = m_job->execute();
+        res = m_job->execute();
 
         auto end = std::chrono::high_resolution_clock::now();
         auto gameDuration =
         std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-        emit resultReady(m_todo, res, m_index, gameDuration);
-    } while (m_state != FINISHING);
+        if(m_state != STORING) {
+            emit resultReady(m_todo, res, m_index, gameDuration);
+        }
+    } while (m_state == RUNNING);
+    if(m_state == STORING) {
+        m_todo.add("moves", res.parameters()["moves"]);
+        if(res.type() == Result::StoreMatch) {
+            m_todo.add("sgfFirst", res.parameters()["sgfFirst"]);
+            m_todo.add("sgfSecond", res.parameters()["sgfSecond"]);
+            m_todo.type(Order::RestoreMatch);
+        } else {
+            m_todo.add("sgf", res.parameters()["sgf"]);
+            m_todo.type(Order::RestoreSelfPlayed);
+        }
+        QString unique = QUuid::createUuid().toRfc4122().toHex();
+        m_todo.save("storefile" + unique + ".bin");
+    }    
     QTextStream(stdout) << "Program ends: exiting." << endl;
 }

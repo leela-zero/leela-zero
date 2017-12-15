@@ -42,6 +42,8 @@ public:
     ~Management() = default;
     void giveAssignments();
     void incMoves() { m_movesMade++; }
+    void storeGames();
+    void checkStoredGames();
 public slots:
     void getResult(Order ord, Result res, int index, int duration);
 
@@ -67,6 +69,8 @@ private:
     QString m_debugPath;
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
+    int m_storeGames;
+    QList<Order> m_storedOrders;
     Order m_fallBack;
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);

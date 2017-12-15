@@ -21,6 +21,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QThread>
+#include <QList>
 #include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -106,9 +107,19 @@ void Management::giveAssignments() {
                     this,
                     &Management::getResult,
                     Qt::DirectConnection);
-            m_gamesThreads[thread_index]->order(getWork());
+            if(!m_storedOrders.isEmpty()) {
+                m_gamesThreads[thread_index]->order(m_storedOrders.takeFirst());
+            } else {
+                m_gamesThreads[thread_index]->order(getWork());
+            }            
             m_gamesThreads[thread_index]->start();
         }
+    }
+}
+
+void Management::storeGames() {
+    for (int i = 0; i < m_gpus * m_games; ++i) {
+        m_gamesThreads[i]->doStore();
     }
 }
 
@@ -132,9 +143,12 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
         break;
     }
     sendAllGames();
-    m_gamesThreads[index]->order(getWork());
+    if(!m_storedOrders.isEmpty()) {
+        m_gamesThreads[index]->order(m_storedOrders.takeFirst());
+    } else {
+        m_gamesThreads[index]->order(getWork());
+    }            
     m_syncMutex.unlock();
-
 }
 
 
@@ -699,4 +713,20 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
         return;
     }
     cleanupFiles(r["file"]);
+}
+
+void Management::checkStoredGames() {
+    QDir dir;
+    QStringList filters;
+    filters << "storefile*.bin";
+    dir.setNameFilters(filters);
+    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+
+    QFileInfoList list = dir.entryInfoList();
+    for (int i = 0; i < list.size(); ++i) {
+        QFileInfo fileInfo = list.at(i);
+        Order o;
+        o.load(fileInfo.fileName());
+        m_storedOrders.push_back(o);
+    }
 }
