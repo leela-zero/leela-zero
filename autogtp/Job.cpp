@@ -23,10 +23,11 @@
 
 #include <QThread>
 
-Job::Job(QString gpu) :
+Job::Job(QString gpu, const int index) :
   m_state(RUNNING),
   m_option(""),
-  m_gpu(gpu)
+  m_gpu(gpu),
+  m_index(index)
 {
 }
 
@@ -42,19 +43,23 @@ void Job::init(const QMap<QString,QString> &l) {
     std::get<1>(m_leelazMinVersion) = version_list[1].toInt();
 }
 
-ProductionJob::ProductionJob(QString gpu) :
-Job(gpu)
+ProductionJob::ProductionJob(QString gpu, const int index) :
+  Job(gpu, index)
 {
 }
 
-ValidationJob::ValidationJob(QString gpu) :
-Job(gpu)
+ValidationJob::ValidationJob(QString gpu, const int index) :
+  Job(gpu, index)
 {
 }
 
 Result ProductionJob::execute(){
     Result res(Result::Error);
+    QString output_filename = "output_production";
+    output_filename += QString::number(m_index);
+    output_filename += ".log";
     Game game(m_network, m_option);
+    game.setOutputFile(output_filename);
     if (!game.gameStart(m_leelazMinVersion)) {
         return res;
     }
@@ -95,14 +100,26 @@ void ProductionJob::init(const QMap<QString,QString> &l) {
 
 Result ValidationJob::execute(){
    Result res(Result::Error);
+
+   QString output_filename1 = "output_validation";
+   output_filename1 += QString::number(m_index);
+   output_filename1 += "_black.log";
+
+   QString output_filename2 = "output_validation";
+   output_filename2 += QString::number(m_index);
+   output_filename2 += "_white.log";
+
    Game first(m_firstNet,  m_option);
+   first.setOutputFile(output_filename1);
    if (!first.gameStart(m_leelazMinVersion)) {
        return res;
    }
    Game second(m_secondNet, m_option);
+   second.setOutputFile(output_filename2);
    if (!second.gameStart(m_leelazMinVersion)) {
        return res;
    }
+
    QString wmove = "play white ";
    QString bmove = "play black ";
    do {
@@ -125,7 +142,7 @@ Result ValidationJob::execute(){
    } while (first.nextMove() && m_state.load() == RUNNING);
 
    if (m_state.load() == RUNNING) {
-       QTextStream(stdout) << "Game has ended." << endl;
+       QTextStream(stdout) << "\nGame has ended." << endl;
        res.add("moves", QString::number(first.getMovesCount()));
        if (first.getScore()) {
            res.add("score", first.getResult());

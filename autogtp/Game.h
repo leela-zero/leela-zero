@@ -20,6 +20,8 @@
 #define GAME_H
 
 #include <QProcess>
+#include <QTextStream>
+#include <QFile>
 #include <tuple>
 
 using VersionTuple = std::tuple<int, int>;
@@ -49,6 +51,7 @@ public:
     QString getWinnerName() const { return m_winner; }
     int getMovesCount() const { return m_moveNum; }
     QString getResult() const { return m_result.trimmed(); }
+    bool setOutputFile(QString& filename);
     enum {
         BLACK = 0,
         WHITE = 1,
@@ -77,6 +80,9 @@ private:
     bool waitReady();
     bool eatNewLine();
     void error(int errnum);
+    QFile m_logfile;
+    QTextStream m_log;
+    bool m_islogopen;
 };
 
 #endif /* GAME_H */

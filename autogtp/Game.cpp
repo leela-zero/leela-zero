@@ -30,7 +30,9 @@ Game::Game(const QString& weights, const QString& opt) :
     m_blackToMove(true),
     m_blackResigned(false),
     m_passes(0),
-    m_moveNum(0)
+    m_moveNum(0),
+    m_log(stdout),
+    m_islogopen(false)
 {
 #ifdef WIN32
     m_cmdLine.append(".exe");
@@ -150,7 +152,7 @@ void Game::checkVersion(const VersionTuple &min_version) {
 }
 
 bool Game::gameStart(const VersionTuple &min_version) {
-    QTextStream(stdout) << m_cmdLine << endl;
+    m_log << endl << m_cmdLine << endl;
     start(m_cmdLine);
     if (!waitForStarted()) {
         error(Game::NO_LEELAZ);
@@ -159,9 +161,9 @@ bool Game::gameStart(const VersionTuple &min_version) {
     // This either succeeds or we exit immediately, so no need to
     // check any return values.
     checkVersion(min_version);
-    QTextStream(stdout) << "Engine has started." << endl;
+    m_log << "Engine has started." << endl;
     sendGtpCommand(m_timeSettings);
-    QTextStream(stdout) << "Infinite thinking time set." << endl;
+    m_log << "Infinite thinking time set." << endl;
     return true;
 }
 
@@ -195,6 +197,10 @@ bool Game::readMove() {
         error(Game::WRONG_GTP);
         QTextStream(stdout) << "Error read " << readCount << " '";
         QTextStream(stdout) << readBuffer << "'" << endl;
+        if (m_islogopen) {
+            m_log << "Error read " << readCount << " '";
+            m_log << readBuffer << "'" << endl;
+        }
         terminate();
         return false;
     }
@@ -212,6 +218,11 @@ bool Game::readMove() {
     QTextStream(stdout) << m_moveNum << " (";
     QTextStream(stdout) << (m_blackToMove ? "B " : "W ") << m_moveDone << ") ";
     QTextStream(stdout).flush();
+    if (m_islogopen) {
+        m_log << m_moveNum << " (";
+        m_log << (m_blackToMove ? "B " : "W ") << m_moveDone << ") ";
+        m_log.flush();
+    }
     if (m_moveDone.compare(QStringLiteral("pass"),
                           Qt::CaseInsensitive) == 0) {
         m_passes++;
@@ -258,11 +269,9 @@ bool Game::getScore() {
         if (m_blackResigned) {
             m_winner = QString(QStringLiteral("white"));
             m_result = "W+Resign ";
-            QTextStream(stdout) << "Score: " << m_result << endl;
         } else {
             m_winner = QString(QStringLiteral("black"));
             m_result = "B+Resign ";
-            QTextStream(stdout) << "Score: " << m_result << endl;
         }
     } else{
         write("final_score\n");
@@ -284,13 +293,26 @@ bool Game::getScore() {
             error(Game::PROCESS_DIED);
             return false;
         }
-        QTextStream(stdout) << "Score: " << m_result;
     }
+    // users may want to see results on screen
+    QTextStream(stdout) << "Score: " << m_result << endl;
+    if (m_islogopen) {
+        m_log << endl << "Score: " << m_result << endl;
+    }
+
     if (m_winner.isNull()) {
         QTextStream(stdout) << "No winner found" << endl;
+        if (m_islogopen) {
+            m_log << "No winner found" << endl;
+        }
         return false;
     }
+
     QTextStream(stdout) << "Winner: " << m_winner << endl;
+    if (m_islogopen) {
+        m_log << "Winner: " << m_winner << endl;
+    }
+
     return true;
 }
 
@@ -303,6 +325,7 @@ int Game::getWinner() {
 
 bool Game::writeSgf() {
     QTextStream(stdout) << "Writing " << m_fileName + ".sgf" << endl;
+    m_log << "Writing " << m_fileName + ".sgf" << endl;
     return sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"));
 }
 
@@ -332,6 +355,7 @@ bool Game::fixSgfPlayerName(QString& weightFile) {
 
 bool Game::dumpTraining() {
     QTextStream(stdout) << "Dumping " << m_fileName + ".txt" << endl;
+    m_log << "Dumping " << m_fileName + ".txt" << endl;
     return sendGtpCommand(
         qPrintable("dump_training " + m_winner + " " + m_fileName + ".txt"));
 }
@@ -345,4 +369,21 @@ bool Game::dumpDebug() {
 void Game::gameQuit() {
     write(qPrintable("quit\n"));
     waitForFinished(-1);
+    m_log << endl << "Engine quits." << endl << endl;
+}
+
+bool Game::setOutputFile(QString& filename) {
+    m_logfile.setFileName(filename);
+    if (!m_logfile.open(QFile::WriteOnly | QFile::Text | QFile::Append)) {
+        QTextStream(stdout) << "WARINING: Open log file: " << filename << " failed" << endl;
+        QTextStream(stdout) << "WARINING: Write log to stdout instead." << endl;
+        QTextStream(stdout) << "WARINING: This may mess up the log, but data submission is not affected." << endl;
+        QTextStream(stdout).flush();
+        return false;
+    } else {
+        m_islogopen = true;
+        m_log.setDevice(&m_logfile);
+        QTextStream(stdout) << "Successfully open log file: " << filename << endl;
+        return true;
+    }
 }
