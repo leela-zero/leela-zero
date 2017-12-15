@@ -394,12 +394,14 @@ void Management::archiveFiles(const QString &sgf_file, const QString &data_file,
     if (!m_debugPath.isEmpty()) {
         if(!data_file.isEmpty()) {
             QFile(data_file).copy(m_debugPath + '/' + data_file);
-            dir.remove(data_file);
         }
         if(!debug_file.isEmpty()) {
             QFile(debug_file).copy(m_debugPath + '/' + debug_file);
             dir.remove(debug_file);
         }
+    }
+    if(!data_file.isEmpty()) {
+        dir.remove(data_file);
     }
 }
 
