@@ -21,9 +21,9 @@
 
 #include <vector>
 
+#include "config.h"
 #include "SMP.h"
 #include "UCTNode.h"
-#include "config.h"
 
 class TTEntry {
 public:

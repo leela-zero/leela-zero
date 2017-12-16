@@ -24,10 +24,10 @@
 #include <tuple>
 #include <vector>
 
+#include "config.h"
 #include "GameState.h"
 #include "Network.h"
 #include "SMP.h"
-#include "config.h"
 
 class UCTNode {
 public:

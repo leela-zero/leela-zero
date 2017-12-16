@@ -16,6 +16,7 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "SGFTree.h"
 
 #include <assert.h>
@@ -33,7 +34,6 @@
 #include "KoState.h"
 #include "SGFParser.h"
 #include "Utils.h"
-#include "config.h"
 
 using namespace Utils;
 

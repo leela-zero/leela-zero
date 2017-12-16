@@ -17,8 +17,8 @@
 */
 
 #include <algorithm>
-#include <boost/program_options.hpp>
 #include <boost/format.hpp>
+#include <boost/program_options.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 
+#include "config.h"
 #include "GTP.h"
 #include "GameState.h"
 #include "Network.h"
@@ -33,7 +34,6 @@
 #include "ThreadPool.h"
 #include "Utils.h"
 #include "Zobrist.h"
-#include "config.h"
 
 using namespace Utils;
 

@@ -30,8 +30,6 @@
 
 #ifdef USE_OPENCL
 #include <atomic>
-
-class UCTNode;
 #endif
 
 #include "FastState.h"

@@ -16,6 +16,7 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "Random.h"
 
 #include <stdint.h>
@@ -24,7 +25,6 @@
 
 #include "GTP.h"
 #include "Utils.h"
-#include "config.h"
 
 Random& Random::get_Rng(void) {
     static thread_local Random s_rng{0};

@@ -16,6 +16,7 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "FastState.h"
 
 #include <algorithm>
@@ -25,7 +26,6 @@
 #include "FastBoard.h"
 #include "Utils.h"
 #include "Zobrist.h"
-#include "config.h"
 
 using namespace Utils;
 

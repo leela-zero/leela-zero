@@ -20,9 +20,9 @@
 
 #include <array>
 
+#include "config.h"
 #include "FastBoard.h"
 #include "Random.h"
-#include "config.h"
 
 class Zobrist {
 public:

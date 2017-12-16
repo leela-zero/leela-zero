@@ -24,10 +24,10 @@
 #include <utility>
 #include <vector>
 
+#include "config.h"
 #include "GameState.h"
 #include "Network.h"
 #include "UCTNode.h"
-#include "config.h"
 
 class TimeStep {
 public:

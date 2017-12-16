@@ -16,6 +16,7 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "UCTSearch.h"
 
 #include <assert.h>
@@ -35,7 +36,6 @@
 #include "Timing.h"
 #include "Training.h"
 #include "Utils.h"
-#include "config.h"
 
 using namespace Utils;
 

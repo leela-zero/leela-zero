@@ -23,8 +23,8 @@
 #include <string>
 #include <vector>
 
-#include "GameState.h"
 #include "config.h"
+#include "GameState.h"
 
 extern bool cfg_allow_pondering;
 extern int cfg_num_threads;

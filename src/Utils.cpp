@@ -21,16 +21,15 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#include "config.h"
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/select.h>
 #endif
 
-#include "Utils.h"
-
+#include "config.h"
 #include "GTP.h"
+#include "Utils.h"
 
 Utils::ThreadPool thread_pool;
 

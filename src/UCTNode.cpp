@@ -16,6 +16,7 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "UCTNode.h"
 
 #include <assert.h>
@@ -39,7 +40,6 @@
 #include "Network.h"
 #include "Random.h"
 #include "Utils.h"
-#include "config.h"
 
 using namespace Utils;
 

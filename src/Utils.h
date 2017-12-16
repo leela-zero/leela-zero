@@ -23,8 +23,8 @@
 #include <limits>
 #include <string>
 
-#include "ThreadPool.h"
 #include "config.h"
+#include "ThreadPool.h"
 
 extern Utils::ThreadPool thread_pool;
 

@@ -16,6 +16,7 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "FullBoard.h"
 
 #include <array>
@@ -23,7 +24,6 @@
 
 #include "Utils.h"
 #include "Zobrist.h"
-#include "config.h"
 
 using namespace Utils;
 
