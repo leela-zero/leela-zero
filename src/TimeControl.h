@@ -20,7 +20,10 @@
 #define TIMECONTROL_H_INCLUDED
 
 #include <array>
+
 #include "Timing.h"
+
+class Time;
 
 class TimeControl {
 public:

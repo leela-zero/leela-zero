@@ -19,11 +19,16 @@
 #ifndef SGFPARSER_H_INCLUDED
 #define SGFPARSER_H_INCLUDED
 
-#include <string>
-#include <sstream>
+#include <stddef.h>
+#include <stdint.h>
 #include <climits>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "SGFTree.h"
+
+class SGFTree;
 
 class SGFParser {
 private:

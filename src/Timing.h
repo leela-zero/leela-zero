@@ -19,9 +19,9 @@
 #ifndef TIMING_H_INCLUDED
 #define TIMING_H_INCLUDED
 
-#include "config.h"
-
 #include <time.h>
+
+#include "config.h"
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>

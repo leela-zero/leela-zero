@@ -19,15 +19,19 @@
 #ifndef UCTNODE_H_INCLUDED
 #define UCTNODE_H_INCLUDED
 
-#include "config.h"
-
-#include <tuple>
 #include <atomic>
 #include <limits>
+#include <tuple>
+#include <vector>
 
-#include "SMP.h"
 #include "GameState.h"
 #include "Network.h"
+#include "SMP.h"
+#include "config.h"
+
+class FastState;
+class GameState;
+class KoState;
 
 class UCTNode {
 public:

@@ -16,15 +16,12 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
-
-#include <iostream>
-#include <fstream>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <thread>
 #include <mutex>
+#include <stdarg.h>
+#include <stdio.h>
+#include <sys/time.h>
+
+#include "config.h"
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -32,6 +29,7 @@
 #endif
 
 #include "Utils.h"
+
 #include "GTP.h"
 
 Utils::ThreadPool thread_pool;

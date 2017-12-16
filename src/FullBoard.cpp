@@ -16,14 +16,14 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
-#include <algorithm>
-
-#include "config.h"
-
 #include "FullBoard.h"
-#include "Zobrist.h"
+
+#include <array>
+#include <cassert>
+
 #include "Utils.h"
+#include "Zobrist.h"
+#include "config.h"
 
 using namespace Utils;
 

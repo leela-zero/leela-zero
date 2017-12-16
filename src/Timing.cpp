@@ -16,11 +16,13 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ctime>
+#include "Timing.h"
+
+#include <sys/time.h>
+#include <time.h>
 #include <cstdlib>
 
 #include "config.h"
-#include "Timing.h"
 
 
 int Time::timediff (Time start, Time end) {

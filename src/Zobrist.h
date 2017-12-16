@@ -22,6 +22,9 @@
 
 #include "FastBoard.h"
 #include "Random.h"
+#include "config.h"
+
+class Random;
 
 class Zobrist {
 public:

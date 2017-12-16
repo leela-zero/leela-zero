@@ -16,27 +16,27 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
 #ifdef USE_OPENCL
+#include <assert.h>
+#include <algorithm>
+#include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
+#include <iterator>
+#include <limits>
+#include <stdexcept>
+
+#include "CL/cl2.hpp"
+#include "config.h"
+
+#include "OpenCL.h"
 
 #include <cstdio>
-#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <sstream>
-#include <fstream>
-#include <cmath>
-#include <array>
-#include <thread>
-#include <boost/algorithm/string.hpp>
-#include <boost/format.hpp>
 
-#include "Utils.h"
-#include "Timing.h"
-#include "OpenCL.h"
-#include "Network.h"
 #include "GTP.h"
+#include "Utils.h"
 
 using namespace Utils;
 

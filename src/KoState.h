@@ -23,6 +23,7 @@
 
 #include "FastState.h"
 #include "FullBoard.h"
+#include "config.h"
 
 class KoState : public FastState {
 public:

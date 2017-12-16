@@ -16,10 +16,14 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
 #include "TimeControl.h"
-#include "Utils.h"
+
+#include <algorithm>
+#include <cassert>
+
 #include "GTP.h"
+#include "Timing.h"
+#include "Utils.h"
 
 using namespace Utils;
 

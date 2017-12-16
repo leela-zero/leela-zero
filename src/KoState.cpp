@@ -16,17 +16,16 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "KoState.h"
+
 #include <assert.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string>
 #include <algorithm>
+#include <iterator>
 
-#include "config.h"
-
+#include "FastBoard.h"
 #include "FastState.h"
 #include "FullBoard.h"
-#include "KoState.h"
+#include "config.h"
 
 void KoState::init_game(int size, float komi) {
     assert(size <= FastBoard::MAXBOARDSIZE);

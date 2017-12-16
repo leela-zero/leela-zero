@@ -16,12 +16,15 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
+#include "TTable.h"
 
+#include <algorithm>
+#include <iterator>
+#include <memory>
 #include <vector>
 
-#include "Utils.h"
-#include "TTable.h"
+#include "UCTNode.h"
+#include "config.h"
 
 TTable* TTable::get_TT(void) {
     static TTable s_ttable;

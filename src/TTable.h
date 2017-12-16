@@ -21,8 +21,11 @@
 
 #include <vector>
 
-#include "UCTNode.h"
 #include "SMP.h"
+#include "UCTNode.h"
+#include "config.h"
+
+class UCTNode;
 
 class TTEntry {
 public:

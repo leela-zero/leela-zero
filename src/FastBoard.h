@@ -19,12 +19,13 @@
 #ifndef FASTBOARD_H_INCLUDED
 #define FASTBOARD_H_INCLUDED
 
-#include "config.h"
-
 #include <array>
-#include <string>
-#include <vector>
 #include <queue>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "config.h"
 
 class FastBoard {
     friend class FastState;

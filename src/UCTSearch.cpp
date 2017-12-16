@@ -16,29 +16,26 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
+#include "UCTSearch.h"
 
 #include <assert.h>
-#include <limits.h>
-#include <cmath>
-#include <vector>
-#include <utility>
-#include <thread>
-#include <algorithm>
+#include <stddef.h>
+#include <limits>
+#include <memory>
 #include <type_traits>
 
 #include "FastBoard.h"
-#include "UCTSearch.h"
-#include "Timing.h"
-#include "Random.h"
-#include "Utils.h"
-#include "Network.h"
+#include "FullBoard.h"
 #include "GTP.h"
+#include "GameState.h"
+#include "KoState.h"
 #include "TTable.h"
+#include "ThreadPool.h"
+#include "TimeControl.h"
+#include "Timing.h"
 #include "Training.h"
-#ifdef USE_OPENCL
-#include "OpenCL.h"
-#endif
+#include "Utils.h"
+#include "config.h"
 
 using namespace Utils;
 

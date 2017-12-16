@@ -19,12 +19,18 @@
 #ifndef TRAINING_H_INCLUDED
 #define TRAINING_H_INCLUDED
 
-#include "config.h"
+#include <stddef.h>
 #include <string>
 #include <utility>
+#include <vector>
+
 #include "GameState.h"
 #include "Network.h"
 #include "UCTNode.h"
+#include "config.h"
+
+class GameState;
+class UCTNode;
 
 class TimeStep {
 public:
