@@ -59,17 +59,17 @@ void TimeControl::start(int color) {
 
 void TimeControl::stop(int color) {
     Time stop;
-    int elapsed = Time::timediff(m_times[color], stop);
+    int elapsed_centis = Time::timediff_centis(m_times[color], stop);
 
-    assert(elapsed >= 0);
+    assert(elapsed_centis >= 0);
 
-    m_remaining_time[color] -= elapsed;
+    m_remaining_time[color] -= elapsed_centis;
 
     if (m_inbyo[color]) {
         if (m_byostones) {
             m_stones_left[color]--;
         } else if (m_byoperiods) {
-            if (elapsed > m_byotime) {
+            if (elapsed_centis > m_byotime) {
                 m_periods_left[color]--;
             }
         }

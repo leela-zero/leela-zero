@@ -102,9 +102,9 @@ void Network::benchmark(GameState * state, int iterations) {
     tg.wait_all();
 
     Time end;
-    auto centiseconds = Time::timediff(start,end) / 100.0;
+    auto elapsed = Time::timediff_seconds(start,end);
     myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
-             iterations, centiseconds, (int)(iterations / centiseconds));
+             iterations, elapsed, (int)(iterations / elapsed));
 }
 
 void Network::initialize(void) {

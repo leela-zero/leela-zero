@@ -82,16 +82,4 @@ using net_t = float;
     #pragma warning(disable : 4996)
 #endif /* VC8+ */
 
-#ifdef GETTICKCOUNT
-    typedef int rtime_t;
-#else
-    #if defined(GETTIMEOFDAY)
-        #include <sys/time.h>
-        #include <time.h>
-        typedef struct timeval rtime_t;
-    #else
-        typedef time_t rtime_t;
-    #endif
-#endif
-
 #endif
