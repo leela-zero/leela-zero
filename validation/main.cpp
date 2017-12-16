@@ -29,15 +29,15 @@
 #include <chrono>
 #include <QCommandLineParser>
 #include <iostream>
-#include "Game.h"
-#include "Management.h"
+#include "../autogtp/Game.h"
+#include "Validation.h"
 
-constexpr int AUTOGTP_VERSION = 10;
+constexpr int VALIDATION_VERSION = 1;
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
-    app.setApplicationName("autogtp");
-    app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
+    app.setApplicationName("validation");
+    app.setApplicationVersion(QString("v%1").arg(VALIDATION_VERSION));
 
     QTimer::singleShot(0, &app, SLOT(quit()));
 
@@ -45,29 +45,34 @@ int main(int argc, char *argv[]) {
     parser.addHelpOption();
     parser.addVersionOption();
 
+    QCommandLineOption networkOption(
+        {"n", "network"},
+            "Networks to use as players in competition mode (two are needed).",
+            "filename");
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
-              "Play 'gamesNum' games on one GPU at the same time.",
-              "num", "1");
+            "Play 'gamesNum' games on one GPU at the same time.",
+            "num", "1");
     QCommandLineOption gpusOption(
         {"u", "gpus"},
-              "Index of the GPU to use for multiple GPUs support.",
-              "num");
+            "Index of the GPU to use for multiple GPUs support.",
+            "num");
     QCommandLineOption keepSgfOption(
         {"k", "keepSgf" },
-              "Save SGF files after each self-play game.",
-              "output directory");
-    QCommandLineOption keepDebugOption(
-        { "d", "debug" }, "Save training and extra debug files after each self-play game.",
-                          "output directory");
+            "Save SGF files after each self-play game.",
+            "output directory");
 
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
+    parser.addOption(networkOption);
     parser.addOption(keepSgfOption);
-    parser.addOption(keepDebugOption);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
+    QStringList netList = parser.values(networkOption);
+    if(netList.count() != 2) {
+        parser.showHelp();
+    }
     int gamesNum = parser.value(gamesNumOption).toInt();
     QStringList gpusList = parser.values(gpusOption);
     int gpusNum = gpusList.count();
@@ -76,21 +81,9 @@ int main(int argc, char *argv[]) {
     }
 
     // Map streams
-    QTextStream cin(stdin, QIODevice::ReadOnly);
     QTextStream cout(stdout, QIODevice::WriteOnly);
-#if defined(LOG_ERRORS_TO_FILE)
-    // Log stderr to file
-    QFile caFile("output.txt");
-    caFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append);
-    if(!caFile.isOpen()){
-        qDebug() << "- Error, unable to open" << "outputFilename" << "for output";
-    }
-    QTextStream cerr(&caFile);
-#else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
-#endif
-    cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
-    cerr << "Using " << gamesNum << " thread(s)." << endl;
+    cerr << "validation v" << VALIDATION_VERSION << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"
@@ -98,19 +91,13 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
     }
-    if (parser.isSet(keepDebugOption)) {
-        if (!QDir().mkpath(parser.value(keepDebugOption))) {
-            cerr << "Couldn't create output directory for self-play Debug files!"
-                 << endl;
-            return EXIT_FAILURE;
-        }
-    }
     QMutex mutex;
-    Management boss(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), parser.value(keepDebugOption), &mutex);
-    boss.giveAssignments();
+    Validation validate(gpusNum, gamesNum, gpusList,
+                        netList.at(0), netList.at(1),
+                        parser.value(keepSgfOption), &mutex);
+    validate.startGames();
     mutex.lock();
     cerr.flush();
     cout.flush();
-    mutex.unlock();
     return app.exec();
 }

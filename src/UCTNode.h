@@ -74,7 +74,6 @@ public:
 
 private:
     UCTNode();
-    void link_child(UCTNode * newchild);
     void link_nodelist(std::atomic<int> & nodecount,
                        std::vector<Network::scored_node> & nodelist,
                        float init_eval);
