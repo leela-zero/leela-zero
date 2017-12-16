@@ -531,8 +531,8 @@ void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) 
             int vtx = state->board.get_vertex(x, y);
 
             auto item = std::find_if(moves.cbegin(), moves.cend(),
-                [&vtx](scored_node const & item) {
-                return item.second == vtx;
+                [&vtx](scored_node const & test_item) {
+                return test_item.second == vtx;
             });
 
             float score = 0.0f;
