@@ -323,6 +323,10 @@ bool Game::fixSgf(QString& weightFile, bool resignation) {
         QRegularExpression oldResult("RE\\[B\\+.*\\]");
         QString newResult("RE[B+Resign] ");
         sgfData.replace(oldResult, newResult);
+        if(!sgfData.contains(newResult, Qt::CaseInsensitive)) {
+            QRegularExpression oldwResult("RE\\[W\\+.*\\]");
+            sgfData.replace(oldwResult, newResult);
+        }
         QRegularExpression lastpass(";W\\[tt\\]\\)");
         QString noPass(")");
         sgfData.replace(lastpass, noPass);
