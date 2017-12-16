@@ -72,7 +72,9 @@ private:
     bool networkExists(const QString &name);
     void fetchNetwork(const QString &name);
     void printTimingInfo(float duration);
-    void archiveFiles(const QString &sgf_file, const QString &data_file, const QString &debug_file);
+    void gzipFile(const QString &fileName);
+    void archiveFiles(const QString &fileName);
+    void cleanupFiles(const QString &fileName);
     void uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l);
     void uploadResult(const QMap<QString, QString> &r, const QMap<QString, QString> &l);
 };
