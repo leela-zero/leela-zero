@@ -26,15 +26,9 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <boost/utility.hpp>
+#include <boost/format.hpp>
 
-#include "Network.h"
-#include "FastState.h"
-#include "FullBoard.h"
-#include "GameState.h"
-#include "Im2Col.h"
-#include "OpenCL.h"
-#include "ThreadPool.h"
-#include "Timing.h"
 #include "config.h"
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -47,15 +41,19 @@
 #endif
 #ifdef USE_OPENCL
 #include "OpenCL.h"
+#include "UCTNode.h"
 #endif
 
-#include <boost/utility.hpp>
-#include <boost/format.hpp>
-#include <stdlib.h>
-
+#include "Network.h"
 #include "FastBoard.h"
+#include "FastState.h"
+#include "FullBoard.h"
+#include "Im2Col.h"
 #include "GTP.h"
+#include "GameState.h"
 #include "Random.h"
+#include "ThreadPool.h"
+#include "Timing.h"
 #include "Utils.h"
 
 using namespace Utils;
