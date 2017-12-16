@@ -29,10 +29,6 @@
 #include "SMP.h"
 #include "config.h"
 
-class FastState;
-class GameState;
-class KoState;
-
 class UCTNode {
 public:
     using sortnode_t = std::tuple<float, int, float, UCTNode*>;

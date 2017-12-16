@@ -23,8 +23,6 @@
 
 #include "Timing.h"
 
-class Time;
-
 class TimeControl {
 public:
     /*

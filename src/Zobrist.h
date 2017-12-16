@@ -24,8 +24,6 @@
 #include "Random.h"
 #include "config.h"
 
-class Random;
-
 class Zobrist {
 public:
     static std::array<std::array<uint64, FastBoard::MAXSQ>,     4> zobrist;

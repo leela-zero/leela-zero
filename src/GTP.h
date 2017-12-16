@@ -26,8 +26,6 @@
 #include "GameState.h"
 #include "config.h"
 
-class GameState;
-
 extern bool cfg_allow_pondering;
 extern int cfg_num_threads;
 extern int cfg_max_playouts;

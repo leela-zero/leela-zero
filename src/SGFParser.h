@@ -28,8 +28,6 @@
 
 #include "SGFTree.h"
 
-class SGFTree;
-
 class SGFParser {
 private:
     static std::string parse_property_name(std::istringstream & strm);

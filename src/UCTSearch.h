@@ -26,10 +26,9 @@
 
 #include "FastBoard.h"
 #include "GameState.h"
+#include "KoState.h"
 #include "UCTNode.h"
 
-class GameState;
-class KoState;
 
 class SearchResult {
 public:

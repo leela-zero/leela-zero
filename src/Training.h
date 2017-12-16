@@ -29,9 +29,6 @@
 #include "UCTNode.h"
 #include "config.h"
 
-class GameState;
-class UCTNode;
-
 class TimeStep {
 public:
     Network::NNPlanes planes;

@@ -25,8 +25,6 @@
 #include "UCTNode.h"
 #include "config.h"
 
-class UCTNode;
-
 class TTEntry {
 public:
     TTEntry() = default;

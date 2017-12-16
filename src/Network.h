@@ -37,9 +37,6 @@ class UCTNode;
 #include "FastState.h"
 #include "GameState.h"
 
-class FastState;
-class GameState;
-
 class Network {
 public:
     enum Ensemble {
