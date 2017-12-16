@@ -175,7 +175,7 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
         for (auto it = begin(step.probabilities);
             it != end(step.probabilities); ++it) {
             out << *it;
-            if (boost::next(it) != end(step.probabilities)) {
+            if (next(it) != end(step.probabilities)) {
                 out << " ";
             }
         }

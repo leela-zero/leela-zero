@@ -370,16 +370,16 @@ int UCTSearch::think(int color, passflag_t passflag) {
         }
 
         Time elapsed;
-        int centiseconds_elapsed = Time::timediff(start, elapsed);
+        int elapsed_centis = Time::timediff_centis(start, elapsed);
 
         // output some stats every few seconds
         // check if we should still search
-        if (centiseconds_elapsed - last_update > 250) {
-            last_update = centiseconds_elapsed;
+        if (elapsed_centis - last_update > 250) {
+            last_update = elapsed_centis;
             dump_analysis(static_cast<int>(m_playouts));
         }
         keeprunning  = is_running();
-        keeprunning &= (centiseconds_elapsed < time_for_move);
+        keeprunning &= (elapsed_centis < time_for_move);
         keeprunning &= !playout_limit_reached();
     } while(keeprunning);
 
@@ -398,13 +398,13 @@ int UCTSearch::think(int color, passflag_t passflag) {
     Training::record(m_rootstate, m_root);
 
     Time elapsed;
-    int centiseconds_elapsed = Time::timediff(start, elapsed);
-    if (centiseconds_elapsed > 0) {
+    int elapsed_centis = Time::timediff_centis(start, elapsed);
+    if (elapsed_centis > 0) {
         myprintf("%d visits, %d nodes, %d playouts, %d n/s\n\n",
                  m_root.get_visits(),
                  static_cast<int>(m_nodes),
                  static_cast<int>(m_playouts),
-                 (m_playouts * 100) / (centiseconds_elapsed+1));
+                 (m_playouts * 100) / (elapsed_centis+1));
     }
     int bestmove = get_best_move(passflag);
     return bestmove;
