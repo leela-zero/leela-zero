@@ -92,61 +92,41 @@ void TimeControl::stop(int color) {
     }
 }
 
-void TimeControl::display_times() {
-    {
-        int rem = m_remaining_time[0] / 100;  /* centiseconds to seconds */
-        int hours = rem / (60 * 60);
-        rem = rem % (60 * 60);
-        int minutes = rem / 60;
-        rem = rem % 60;
-        int seconds = rem;
-        myprintf("Black time: %02d:%02d:%02d", hours, minutes, seconds);
-        if (m_inbyo[0]) {
-            if (m_byostones) {
-                myprintf(", %d stones left", m_stones_left[0]);
-            } else if (m_byoperiods) {
-                myprintf(", %d period(s) of %d seconds left",
-                         m_periods_left[0], m_byotime / 100);
-            }
+void TimeControl::display_color_time(int color) {
+    auto rem = m_remaining_time[color] / 100;  /* centiseconds to seconds */
+    auto minuteDiv = std::div(rem, 60);
+    auto hourDiv = std::div(minuteDiv.quot, 60);
+    auto seconds = minuteDiv.rem;
+    auto minutes = hourDiv.rem;
+    auto hours = hourDiv.quot;
+    auto name = color == 0 ? "Black" : "White";
+    myprintf("%s time: %02d:%02d:%02d", name, hours, minutes, seconds);
+    if (m_inbyo[color]) {
+        if (m_byostones) {
+            myprintf(", %d stones left", m_stones_left[color]);
+        } else if (m_byoperiods) {
+            myprintf(", %d period(s) of %d seconds left",
+                     m_periods_left[color], m_byotime / 100);
         }
-        myprintf("\n");
-    }
-    {
-        int rem = m_remaining_time[1] / 100;  /* centiseconds to seconds */
-        int hours = rem / (60 * 60);
-        rem = rem % (60 * 60);
-        int minutes = rem / 60;
-        rem = rem % 60;
-        int seconds = rem;
-        myprintf("White time: %02d:%02d:%02d", hours, minutes, seconds);
-        if (m_inbyo[1]) {
-            if (m_byostones) {
-                myprintf(", %d stones left", m_stones_left[1]);
-            } else if (m_byoperiods) {
-                myprintf(", %d period(s) of %d seconds left",
-                         m_periods_left[1], m_byotime / 100);
-            }
-        }
-        myprintf("\n");
     }
     myprintf("\n");
 }
 
+void TimeControl::display_times() {
+    display_color_time(0); // Black
+    display_color_time(1); // White
+}
+
 int TimeControl::max_time_for_move(int color) {
-    /*
-        always keep a 1 second margin for net hiccups
-    */
-    const int BUFFER_CENTISECS = cfg_lagbuffer_cs;
+    // always keep a 1 second margin for net hiccups
+    const auto BUFFER_CENTISECS = cfg_lagbuffer_cs;
+    
+    // default: no byo yomi (absolute)
+    auto time_remaining = m_remaining_time[color];
+    auto moves_remaining = m_moves_expected;
+    auto extra_time_per_move = 0;
 
-    int timealloc = 0;
-
-    /*
-        no byo yomi (absolute), easiest
-    */
-    if (m_byotime == 0) {
-        timealloc = (m_remaining_time[color] - BUFFER_CENTISECS)
-                    / m_moves_expected;
-    } else if (m_byotime != 0) {
+    if (m_byotime != 0) {
         /*
           no periods or stones set means
           infinite time = 1 month
@@ -155,41 +135,38 @@ int TimeControl::max_time_for_move(int color) {
             return 31 * 24 * 60 * 60 * 100;
         }
 
-        /*
-          byo yomi and in byo yomi
-        */
+        // byo yomi and in byo yomi
         if (m_inbyo[color]) {
             if (m_byostones) {
-                timealloc = (m_remaining_time[color] - BUFFER_CENTISECS)
-                             / std::max<int>(m_stones_left[color], 1);
+                moves_remaining = m_stones_left[color];
             } else {
                 assert(m_byoperiods);
                 // Just use the byo yomi period
-                timealloc = m_byotime - BUFFER_CENTISECS;
+                time_remaining = 0;
+                extra_time_per_move = m_byotime;
             }
         } else {
             /*
               byo yomi time but not in byo yomi yet
             */
             if (m_byostones) {
-                int byo_extra = m_byotime / m_byostones;
-                int total_time = m_remaining_time[color] + byo_extra;
-                timealloc = (total_time - BUFFER_CENTISECS) / m_moves_expected;
                 // Add back the guaranteed extra seconds
-                timealloc += std::max<int>(byo_extra - BUFFER_CENTISECS, 0);
+                extra_time_per_move = m_byotime / m_byostones;
             } else {
                 assert(m_byoperiods);
                 int byo_extra = m_byotime * (m_periods_left[color] - 1);
-                int total_time = m_remaining_time[color] + byo_extra;
-                timealloc = (total_time - BUFFER_CENTISECS) / m_moves_expected;
+                time_remaining = m_remaining_time[color] + byo_extra;
                 // Add back the guaranteed extra seconds
-                timealloc += std::max<int>(m_byotime - BUFFER_CENTISECS, 0);
+                extra_time_per_move = m_byotime;
             }
         }
     }
 
-    timealloc = std::max<int>(timealloc, 0);
-    return timealloc;
+    moves_remaining = std::max(moves_remaining, 1);
+    time_remaining = std::max(time_remaining - BUFFER_CENTISECS, 0);
+    extra_time_per_move = std::max(extra_time_per_move - BUFFER_CENTISECS, 0);
+    auto time_per_move = time_remaining / moves_remaining;
+    return time_per_move + (extra_time_per_move;
 }
 
 void TimeControl::adjust_time(int color, int time, int stones) {
