@@ -7,6 +7,13 @@ default:
 		LDFLAGS='$(LDFLAGS) -flto -g' \
 		leelaz
 
+iwyu:
+	@echo "Detected OS: ${THE_OS}"
+	$(MAKE) -k CC=gcc CXX=include-what-you-use \
+		CXXFLAGS='$(CXXFLAGS) -Wall -Wextra -pipe -O3 -g -ffast-math -flto -march=native -std=c++14 -DNDEBUG'  \
+		LDFLAGS='$(LDFLAGS) -flto -g' \
+		leelaz
+
 debug:
 	@echo "Detected OS: ${THE_OS}"
 	$(MAKE) CC=gcc CXX=g++ \
