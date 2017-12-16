@@ -17,6 +17,9 @@
 */
 
 #include <QUuid>
+#include <QFile>
+#include <QTextStream>
+#include <QRegularExpression>
 #include "Game.h"
 
 Game::Game(const QString& weights, const QString& opt) :
@@ -35,6 +38,12 @@ Game::Game(const QString& weights, const QString& opt) :
     m_cmdLine.append(opt);
     m_cmdLine.append(weights);
     m_fileName = QUuid::createUuid().toRfc4122().toHex();
+}
+
+bool Game::checkGameEnd() { 
+    return (m_resignation || 
+            m_passes > 1 || 
+            m_moveNum > (19 * 19 * 2)); 
 }
 
 void Game::error(int errnum) {
@@ -228,7 +237,7 @@ bool Game::setMove(const QString& m) {
     } else if (moves.at(2)
                .compare(QStringLiteral("resign"), Qt::CaseInsensitive) == 0) {
         m_resignation = true;
-        m_blackResigned = m_blackToMove;
+        m_blackResigned = (moves.at(1).compare(QStringLiteral("black"), Qt::CaseInsensitive) == 0);
     } else {
         m_passes = 0;
     }
@@ -237,7 +246,7 @@ bool Game::setMove(const QString& m) {
 }
 
 bool Game::nextMove() {
-    if(m_resignation || m_passes > 1 || m_moveNum > (19 * 19 * 2)) {
+    if(checkGameEnd()) {
         return false;
     }
     m_blackToMove = !m_blackToMove;
@@ -294,21 +303,43 @@ int Game::getWinner() {
 
 bool Game::writeSgf() {
     QTextStream(stdout) << "Writing " << m_fileName + ".sgf" << endl;
+    return sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"));
+}
 
-    if (!sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"))) {
+bool Game::fixSgfPlayerName(QString& weightFile) {
+    QFile sgfFile(m_fileName + ".sgf");
+    if (!sgfFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
         return false;
     }
+    QString sgfData = sgfFile.readAll();
+
+    QRegularExpression re("PW\\[Human\\]");
+    QString playerName("PW[Leela Zero ");
+    playerName += weightFile.left(8);
+    playerName += "]";
+
+    sgfData.replace(re, playerName);
+
+    sgfFile.close();
+    if(sgfFile.open(QFile::WriteOnly | QFile::Truncate)) {
+        QTextStream out(&sgfFile);
+        out << sgfData;
+    }
+    sgfFile.close();
+
     return true;
 }
 
 bool Game::dumpTraining() {
     QTextStream(stdout) << "Dumping " << m_fileName + ".txt" << endl;
+    return sendGtpCommand(
+        qPrintable("dump_training " + m_winner + " " + m_fileName + ".txt"));
+}
 
-    if (!sendGtpCommand(qPrintable("dump_training " + m_winner +
-                        " " + m_fileName + ".txt"))) {
-        return false;
-    }
-    return true;
+bool Game::dumpDebug() {
+    QTextStream(stdout) << "Dumping " << m_fileName + ".debug.txt" << endl;
+    return sendGtpCommand(
+        qPrintable("dump_debug " + m_fileName + ".debug.txt"));
 }
 
 void Game::gameQuit() {

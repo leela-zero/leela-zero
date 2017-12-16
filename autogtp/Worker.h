@@ -31,7 +31,7 @@ public:
         RUNNING = 0,
         FINISHING
     };
-    Worker(int index, const QString& gpuIndex,const QString& keep);
+    Worker(int index, const QString& gpuIndex);
     ~Worker() = default;
     void order(Order o);
     void doFinish() { m_job->finish(); m_state.store(FINISHING); }
@@ -41,7 +41,6 @@ signals:
 private:
     int m_index;
     QAtomicInt m_state;
-    QString m_keepPath;
     QString m_gpu;
     Order m_todo;
     Job *m_job;

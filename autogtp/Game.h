@@ -20,7 +20,6 @@
 #define GAME_H
 
 #include <QProcess>
-#include <QTextStream>
 #include <tuple>
 
 using VersionTuple = std::tuple<int, int>;
@@ -37,11 +36,14 @@ public:
     bool nextMove();
     bool getScore();
     bool writeSgf();
+    bool fixSgfPlayerName(QString& weightFile);
     bool dumpTraining();
+    bool dumpDebug();
     void gameQuit();
     QString getMove() const { return m_moveDone; }
     QString getFile() const { return m_fileName; }
     bool setMove(const QString& m);
+    bool checkGameEnd();
     void setCmdLine(const QString& cmd)  { m_cmdLine = cmd; }
     int getWinner();
     QString getWinnerName() const { return m_winner; }
