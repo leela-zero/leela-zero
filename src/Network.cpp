@@ -437,7 +437,6 @@ Network::Netresult Network::get_scored_moves(
 
     NNPlanes planes;
     gather_features(state, planes);
-    //gather_features2(state, planes);
 
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
@@ -575,8 +574,6 @@ void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) 
     }
 }
 
-using namespace std;
-
 void Network::gather_features(GameState * state, NNPlanes & planes) {
     planes.resize(18);
     BoardPlane& black_to_move  = planes[16];
@@ -593,77 +590,10 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
     const auto black_offset = blacks_move ? 0 : 8;
     const auto white_offset = blacks_move ? 8 : 0;
 
-    //cout << "gather_new " << state->get_movenum() + 1 << endl;
-
-    for (auto h = 0; h < min<int>(state->get_movenum() + 1, 8); h++) {
+    for (auto h = 0; h < std::min<int>(state->get_movenum() + 1, 8); h++) {
         auto test = state->get_boardplanes(h);
         planes[black_offset + h] = *test.first;
         planes[white_offset + h] = *test.second;
-    }
-}
-
-
-void Network::gather_features2(GameState * state, NNPlanes & planes) {
-    planes.resize(18);
-    constexpr size_t our_offset   = 0;
-    constexpr size_t their_offset = 8;
-    BoardPlane& black_to_move  = planes[16];
-    BoardPlane& white_to_move  = planes[17];
-
-    const auto saved_movenum = std::min<int>(state->get_movenum() + 1, 8);
-
-    const auto to_move = state->get_to_move();
-    const auto whites_move = to_move == FastBoard::WHITE;
-    if (whites_move) {
-        white_to_move.set();
-    } else {
-        black_to_move.set();
-    }
-    // Go back in time, fill history boards
-    size_t backtracks = 0;
-    for (auto h = 0; h < 8; h++) {
-        // collect white, black occupation planes
-        for (int j = 0; j < 19; j++) {
-            for(int i = 0; i < 19; i++) {
-                int vtx = state->board.get_vertex(i, j);
-                FastBoard::square_t color =
-                    state->board.get_square(vtx);
-                int idx = j * 19 + i;
-                if (color != FastBoard::EMPTY) {
-                    if (color == to_move) {
-                        planes[our_offset + h][idx] = true;
-                    } else {
-                        planes[their_offset + h][idx] = true;
-                    }
-                }
-            }
-        }
-
-        if (!state->undo_move()) {
-            //cout << "gather " << h << " vs " << (saved_movenum - 1) << endl;
-            assert(h == (saved_move_num - 1));
-            break;
-        } else {
-            backtracks++;
-        }
-    }
-
-    // Now go back to present day
-    for (size_t h = 0; h < backtracks; h++) {
-        state->forward_move();
-    }
-    
-    const auto blacks_move = to_move == FastBoard::BLACK;
-    const auto black_offset = blacks_move ? 0 : 8;
-    const auto white_offset = blacks_move ? 8 : 0;
-
-    for (auto h = 0; h < saved_movenum; h++) {
-        auto test = state->get_boardplanes(h);
-        //cout << "hi " << h << " " << to_move << " equal "
-        //    << "b: " << (planes[black_offset + h] == *test.first)
-        //    << "w: " << (planes[white_offset + h] == *test.second) << endl;
-        assert(planes[black_offset + h] == *test.first);
-        assert(planes[white_offset + h] == *test.second);
     }
 }
 
