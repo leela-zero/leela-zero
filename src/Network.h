@@ -40,6 +40,7 @@ public:
         DIRECT, RANDOM_ROTATION
     };
     using BoardPlane = std::bitset<19*19>;
+    using InputPlane = std::pair<BoardPlane, BoardPlane>;
     using NNPlanes = std::vector<BoardPlane>;
     using scored_node = std::pair<float, int>;
     using Netresult = std::pair<std::vector<scored_node>, float>;
@@ -59,8 +60,9 @@ public:
     static void softmax(const std::vector<float>& input,
                         std::vector<float>& output,
                         float temperature = 1.0f);
+
+    static void fill_input_plane(FastBoard& board, InputPlane& plane);
     static void gather_features(GameState* state, NNPlanes & planes);
-    static void gather_features2(GameState* state, NNPlanes & planes);
 
 private:
     static Netresult get_scored_moves_internal(

@@ -574,6 +574,25 @@ void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) 
     }
 }
 
+
+void Network::fill_input_plane(FastBoard& board, InputPlane& plane) {
+    auto idx = 0;
+    for (int j = 0; j < 19; j++) {
+        for(int i = 0; i < 19; i++) {
+            int vtx = board.get_vertex(i, j);
+            auto color = board.get_square(vtx);
+            if (color != FastBoard::EMPTY) {
+                if (color == FastBoard::BLACK) {
+                    plane.first[idx] = true;
+                } else {
+                    plane.second[idx] = true;
+                }
+            }
+            idx++;
+        }
+    }
+}
+
 void Network::gather_features(GameState * state, NNPlanes & planes) {
     planes.resize(INPUT_CHANNELS);
     BoardPlane& black_to_move  = planes[16];

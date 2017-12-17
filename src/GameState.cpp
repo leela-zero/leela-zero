@@ -63,6 +63,11 @@ void GameState::reset_game() {
     m_timecontrol.reset_clocks();
 }
 
+void GameState::disable_history() {
+    m_history_enabled = false;
+    game_history.clear();
+}
+
 bool GameState::forward_move(void) {
     if (m_history_enabled && game_history.size() > m_movenum + 1) {
         m_movenum++;
@@ -349,11 +354,6 @@ void GameState::place_free_handicap(int stones) {
     set_handicap(orgstones);
 }
 
-void GameState::disable_history() {
-    m_history_enabled = false;
-    game_history.clear();
-}
-
 void GameState::append_to_gamehistory() {
     if (m_history_enabled) {
         game_history.emplace_back(std::make_shared<KoState>(*this));
@@ -365,31 +365,13 @@ void GameState::update_boardplanes() {
         m_boardplanes.pop_back();
     }
 
-    InputPlane plane;
-    state_to_board_plane(plane.first, plane.second);
-    m_boardplanes.emplace_front(plane);
+    // create new InputPlane then fill from the current board
+    m_boardplanes.emplace_front();
+    Network::fill_input_plane(board, m_boardplanes.front());
 }
 
-const GameState::InputPlane& GameState::get_boardplanes(int moves_ago) const {
+const Network::InputPlane& GameState::get_boardplanes(int moves_ago) const {
     assert(moves_ago < Network::INPUT_MOVES);
     assert(moves_ago < m_boardplanes.size());
     return m_boardplanes[moves_ago];
-}
-
-void GameState::state_to_board_plane(Network::BoardPlane& black, Network::BoardPlane& white) const {
-    auto idx = 0;
-    for (int j = 0; j < 19; j++) {
-        for(int i = 0; i < 19; i++) {
-            int vtx = board.get_vertex(i, j);
-            FastBoard::square_t color = board.get_square(vtx);
-            if (color != FastBoard::EMPTY) {
-                if (color == FastBoard::BLACK) {
-                    black[idx] = true;
-                } else {
-                    white[idx] = true;
-                }
-            }
-            idx++;
-        }
-    }
 }

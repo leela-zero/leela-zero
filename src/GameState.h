@@ -34,7 +34,6 @@
 
 class GameState : public KoState {
 public:
-    using InputPlane = std::pair<Network::BoardPlane, Network::BoardPlane>;
 
     explicit GameState() = default;
     explicit GameState(const KoState* rhs) {
@@ -49,9 +48,11 @@ public:
     void place_free_handicap(int stones);
     void anchor_game_history(void);
 
-    void rewind(void); /* undo infinite */
+    void disable_history();
     bool undo_move(void);
     bool forward_move(void);
+    void rewind(void); /* undo infinite */
+    const Network::InputPlane& get_boardplanes(int moves_ago) const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
@@ -67,20 +68,13 @@ public:
     void adjust_time(int color, int time, int stones);
 
     void display_state();
-
-    // TODO private?
-    const InputPlane& get_boardplanes(int moves_ago) const;
-    void state_to_board_plane(Network::BoardPlane& our_plane, Network::BoardPlane& their_plane) const;
-
-    void disable_history();
-
 private:
     bool valid_handicap(int stones);
     void update_boardplanes();
     void append_to_gamehistory();
 
     std::vector<std::shared_ptr<KoState>> game_history;
-    std::deque<InputPlane> m_boardplanes;
+    std::deque<Network::InputPlane> m_boardplanes;
 
     TimeControl m_timecontrol;
     bool m_history_enabled = true;
