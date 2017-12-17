@@ -38,8 +38,11 @@
 #endif
 //#define USE_MKL
 #define USE_OPENCL
+
 // Use 16-bit floating point storage for net calculations
+// only works for OpenCL implementations
 // #define USE_HALF
+
 //#define USE_TUNER
 
 #define PROGRAM_NAME "Leela Zero"
@@ -72,6 +75,9 @@ typedef  unsigned long long int uint64;
 #endif
 
 #ifdef USE_HALF
+#ifndef USE_OPENCL
+#error "Half-precision not supported without OpenCL"
+#endif
 #include "half/half.hpp"
 using net_t = half_float::half;
 #else

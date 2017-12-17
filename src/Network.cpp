@@ -364,6 +364,7 @@ void batchnorm(size_t channels,
     }
 }
 
+#if defined(USE_BLAS) && !defined(USE_OPENCL)
 void Network::forward(std::vector<float>& input,
                       std::vector<float>& output) {
     // Input convolution
@@ -405,6 +406,7 @@ void Network::forward(std::vector<float>& input,
     }
     std::copy(begin(conv_out), end(conv_out), begin(output));
 }
+#endif
 #endif
 
 void Network::softmax(const std::vector<float>& input,
