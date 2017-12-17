@@ -383,10 +383,7 @@ std::vector<int> SGFTree::get_mainline() {
 }
 
 std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
-    auto state = std::make_unique<GameState>();
-
-    // make a working copy
-    *state = pstate;
+    auto state = std::make_unique<GameState>(pstarte);
 
     std::string header;
     std::string moves;

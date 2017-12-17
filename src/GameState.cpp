@@ -39,7 +39,9 @@ void GameState::init_game(int size, float komi) {
     KoState::init_game(size, komi);
 
     game_history.clear();
-    game_history.emplace_back(std::make_shared<KoState>(*this));
+    if (m_history_enabled) {
+        game_history.emplace_back(std::make_shared<KoState>(*this));
+    }
 
     m_boardplanes.clear();
     add_boardplanes();
@@ -54,8 +56,9 @@ void GameState::reset_game() {
     KoState::reset_game();
 
     game_history.clear();
-    game_history.emplace_back(std::make_shared<KoState>(*this));
-
+    if (m_history_enabled) {
+        game_history.emplace_back(std::make_shared<KoState>(*this));
+    }
     m_boardplanes.clear();
     add_boardplanes();
 
@@ -63,7 +66,7 @@ void GameState::reset_game() {
 }
 
 bool GameState::forward_move(void) {
-    if (game_history.size() > m_movenum + 1) {
+    if (m_history_enabled && game_history.size() > m_movenum + 1) {
         m_movenum++;
         *(static_cast<KoState*>(this)) = *game_history[m_movenum];
         return true;
@@ -73,7 +76,7 @@ bool GameState::forward_move(void) {
 }
 
 bool GameState::undo_move(void) {
-    if (m_movenum > 0) {
+    if (m_history_enabled && m_movenum > 0) {
         m_movenum--;
 
         // don't actually delete it!
@@ -90,8 +93,10 @@ bool GameState::undo_move(void) {
 }
 
 void GameState::rewind(void) {
-    *(static_cast<KoState*>(this)) = *game_history[0];
-    m_movenum = 0;
+    if (m_history_enabled) {
+        *(static_cast<KoState*>(this)) = *game_history[0];
+        m_movenum = 0;
+    }
 }
 
 void GameState::play_move(int vertex) {
@@ -116,8 +121,10 @@ void GameState::play_move(int color, int vertex) {
     }
 
     // cut off any leftover moves from navigating
-    game_history.resize(m_movenum);
-    game_history.emplace_back(std::make_shared<KoState>(*this));
+    if (m_history_enabled) {
+        game_history.resize(m_movenum);
+        game_history.emplace_back(std::make_shared<KoState>(*this));
+    }
 
     m_boardplanes.resize(m_movenum);
     add_boardplanes();
@@ -208,7 +215,9 @@ void GameState::anchor_game_history(void) {
     // handicap moves don't count in game history
     m_movenum = 0;
     game_history.clear();
-    game_history.emplace_back(std::make_shared<KoState>(*this));
+    if (m_history_enabled) {
+        game_history.emplace_back(std::make_shared<KoState>(*this));
+    }
 
     m_boardplanes.clear();
     add_boardplanes();
@@ -349,6 +358,14 @@ std::pair<Network::BoardPlane*, Network::BoardPlane*> GameState::get_boardplanes
     assert(movenum >= 0);
     return make_pair(&m_boardplanes[movenum].first,
                      &m_boardplanes[movenum].second);
+}
+
+void GameState::disable_history() {
+    m_history_enabled = false;
+    game_history.clear();
+    if (m_boardplanes.size() > 8) {
+        m_boardplanes.erase(std::begin(m_boardplanes), std::end(m_boardplanes) - 8);
+    }
 }
 
 void GameState::add_boardplanes() {

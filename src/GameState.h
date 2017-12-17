@@ -69,6 +69,8 @@ public:
     std::pair<Network::BoardPlane*, Network::BoardPlane*> get_boardplanes(int moves_ago);
     void state_to_board_plane(Network::BoardPlane& our_plane, Network::BoardPlane& their_plane);
 
+    void disable_history();
+
 private:
     bool valid_handicap(int stones);
     void add_boardplanes();
@@ -77,6 +79,7 @@ private:
     std::vector<std::pair<Network::BoardPlane, Network::BoardPlane>> m_boardplanes;
 
     TimeControl m_timecontrol;
+    bool m_history_enabled = true;
 };
 
 #endif

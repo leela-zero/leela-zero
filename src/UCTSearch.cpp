@@ -311,6 +311,8 @@ bool UCTSearch::playout_limit_reached() const {
 void UCTWorker::operator()() {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
+        currstate->disable_history();
+
         auto result = m_search->play_simulation(*currstate, m_root);
         if (result.valid()) {
             m_search->increment_playouts();
@@ -363,6 +365,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     int last_update = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
+        currstate->disable_history();
 
         auto result = play_simulation(*currstate, &m_root);
         if (result.valid()) {
@@ -422,6 +425,8 @@ void UCTSearch::ponder() {
     }
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
+        currstate->disable_history();
+
         auto result = play_simulation(*currstate, &m_root);
         if (result.valid()) {
             increment_playouts();
