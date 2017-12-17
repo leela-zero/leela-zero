@@ -383,6 +383,44 @@ void Management::fetchNetwork(const QString &name) {
     return;
 }
 
+
+void Management::archiveFiles(const QString &fileName) {
+    if (!m_keepPath.isEmpty()) {
+        QFile(fileName + ".sgf").copy(m_keepPath + '/' + fileName + ".sgf");
+    }
+    if (!m_debugPath.isEmpty()) {
+        QFile d(fileName + ".txt.0.gz");
+        if(d.exists()) {
+            d.copy(m_debugPath + '/' + fileName + ".txt.0.gz");
+        }
+        QFile db(fileName + ".debug.txt.0.gz");
+        if(db.exists()) {
+            db.copy(m_debugPath + '/' + fileName + ".debug.txt.0.gz");
+        }
+    }
+}
+void Management::cleanupFiles(const QString &fileName) {
+    QDir dir;
+    QStringList filters;
+    filters << fileName + ".*";
+    dir.setNameFilters(filters);
+    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+    QFileInfoList list = dir.entryInfoList();
+    for (int i = 0; i < list.size(); ++i) {
+        QFile(list.at(i).fileName()).remove();
+    }
+}
+
+void Management::gzipFile(const QString &fileName) {
+    QString gzipCmd ="gzip";
+#ifdef WIN32
+    gzipCmd.append(".exe");
+#endif
+    gzipCmd.append(" " + fileName);
+    QProcess::execute(gzipCmd);
+}
+
+
 /*
 -F winnerhash=223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6
 -F loserhash=92c658d7325fe38f0c8adbbb1444ed17afd891b9f208003c272547a7bcb87909
@@ -398,12 +436,8 @@ http://zero-test.sjeng.org/submit-match
 
 void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString,QString> &l) {
 
-    QString gzipCmd ="gzip";
-#ifdef WIN32
-    gzipCmd.append(".exe");
-#endif
-    gzipCmd.append(" " + r["file"] + ".sgf");
-    QProcess::execute(gzipCmd);
+    archiveFiles(r["file"]);
+    gzipFile(r["file"] + ".sgf");
     QString sgf_file = r["file"] + ".sgf.gz";
     QString prog_cmdline("curl");
 #ifdef WIN32
@@ -424,7 +458,6 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
     prog_cmdline.append(" -F random_seed="+ l["rndSeed"]);
     prog_cmdline.append(" -F sgf=@"+ sgf_file);
     prog_cmdline.append(" http://zero-test.sjeng.org/submit-match");
-
     QTextStream(stdout) << prog_cmdline << endl;
     QProcess curl;
     curl.start(prog_cmdline);
@@ -437,8 +470,7 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
     QByteArray output = curl.readAllStandardOutput();
     QString outstr(output);
     QTextStream(stdout) << outstr;
-    QDir dir;
-    dir.remove(sgf_file);
+    cleanupFiles(r["file"]);
 }
 
 
@@ -471,20 +503,9 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
         QString debug_data_file = data_file;
         data_file += ".txt.0.gz";
         debug_data_file += ".debug.txt.0.gz";
-        // Save first if requested
-        if (!m_keepPath.isEmpty()) {
-            QFile(sgf_file).copy(m_keepPath + '/' + sgf_file);
-        }
-        if (!m_debugPath.isEmpty()) {
-            QFile(data_file).copy(m_debugPath + '/' + data_file);
-            QFile(debug_data_file).copy(m_debugPath + '/' + debug_data_file);
-        }
+        archiveFiles(r["file"]);
         // Gzip up the sgf too
-#ifdef WIN32
-        QProcess::execute("gzip.exe " + sgf_file);
-#else
-        QProcess::execute("gzip " + sgf_file);
-#endif
+        gzipFile(r["file"] + ".sgf");
         sgf_file += ".gz";
         QString prog_cmdline("curl");
 #ifdef WIN32
@@ -507,15 +528,10 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
                 << curl.exitCode() << endl;
             QTextStream(stdout) << "Continuing..." << endl;
         }
-
         QByteArray output = curl.readAllStandardOutput();
         QString outstr(output);
         QTextStream(stdout) << outstr;
-        dir.remove(sgf_file);
-        dir.remove(data_file);
-        if (!m_debugPath.isEmpty()) {
-            dir.remove(debug_data_file);
-        }
+        cleanupFiles(r["file"]);
     }
     return;
 }

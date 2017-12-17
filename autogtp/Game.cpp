@@ -306,7 +306,7 @@ bool Game::writeSgf() {
     return sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"));
 }
 
-bool Game::fixSgfPlayerName(QString& weightFile) {
+bool Game::fixSgf(QString& weightFile, bool resignation) {
     QFile sgfFile(m_fileName + ".sgf");
     if (!sgfFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
         return false;
@@ -317,8 +317,20 @@ bool Game::fixSgfPlayerName(QString& weightFile) {
     QString playerName("PW[Leela Zero ");
     playerName += weightFile.left(8);
     playerName += "]";
-
     sgfData.replace(re, playerName);
+
+    if(resignation) {
+        QRegularExpression oldResult("RE\\[B\\+.*\\]");
+        QString newResult("RE[B+Resign] ");
+        sgfData.replace(oldResult, newResult);
+        if(!sgfData.contains(newResult, Qt::CaseInsensitive)) {
+            QRegularExpression oldwResult("RE\\[W\\+.*\\]");
+            sgfData.replace(oldwResult, newResult);
+        }
+        QRegularExpression lastpass(";W\\[tt\\]\\)");
+        QString noPass(")");
+        sgfData.replace(lastpass, noPass);
+    }
 
     sgfFile.close();
     if(sgfFile.open(QFile::WriteOnly | QFile::Truncate)) {
