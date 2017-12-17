@@ -34,6 +34,8 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <chrono>
+#include <boost/lexical_cast.hpp>
 
 #include "Network.h"
 #include "GTP.h"
@@ -42,25 +44,52 @@
 using namespace Utils;
 
 static std::string sourceCode_config = R"(
-    #ifdef USE_HALF
-    typedef half net_t;
-    #define vload_net_t(offset,p) vload_half(offset,p)
-    #define vstore_net_t(data,offset,p) vstore_half(data,offset,p)
+    // vfloat_t : float if normal, float4 if compiled for batch-of-4
+    #if (BATCH_SIZE == 4)
+        typedef float4 vfloat_t;
     #else
-    typedef float net_t;
-    #define vload_net_t(offset,p) ((p)[(offset)])
-    #define vstore_net_t(data,offset,p) (((p)[(offset)])=(data))
+        typedef float vfloat_t;
+    #endif
+
+    #ifdef USE_HALF
+        typedef half net_t;
+        #define vload_net_t(offset,p) vload_half(offset,p)
+        #define vstore_net_t(data,offset,p) vstore_half(data,offset,p)
+        #if (BATCH_SIZE == 4)
+            typedef struct __net4_t {
+                half x; half y; half z; half w;
+            } net4_t;
+            #define vload_net4_t(offset,p) (float4)(vload_half((offset)*4+0,(global half*)(p)),vload_half((offset)*4+1,(global half*)(p)),vload_half((offset)*4+2,(global half*)(p)),vload_half((offset)*4+3,(global half*)(p)))
+            #define vstore_net4_t(data,offset,p) do{vstore_half(data.x,(offset)*4+0,(global half*)(p));vstore_half(data.y,(offset)*4+1,(global half*)(p));vstore_half(data.z,(offset)*4+2,(global half*)(p));vstore_half(data.w,(offset)*4+3,(global half*)(p));} while(0)
+        #else // BATCH_SIZE != 4
+            typedef net_t net4_t;
+            #define vload_net4_t(offset,p) vload_net_t(offset,p)
+            #define vstore_net4_t(data,offset,p) vstore_net_t(data,offset,p)
+        #endif
+    #else // !USE_HALF
+        typedef float net_t;
+        #define vload_net_t(offset,p) ((p)[(offset)])
+        #define vstore_net_t(data,offset,p) (((p)[(offset)])=(data))
+        #if (BATCH_SIZE == 4)
+            typedef float4 net4_t;
+            #define vload_net4_t(offset,p) ((p)[(offset)])
+            #define vstore_net4_t(data,offset,p) (((p)[(offset)])=(data))
+        #else
+            typedef net_t net4_t;
+            #define vload_net4_t(offset,p) vload_net_t(offset,p)
+            #define vstore_net4_t(data,offset,p) vstore_net_t(data,offset,p)
+        #endif
     #endif
 )";
 static std::string sourceCode_convolve1 = R"(
     __kernel
     __attribute__((work_group_size_hint(8, 16, 1)))
     void convolve1(
-                   __global const net_t * in,
-                   __global net_t * merge,
+                   __global const net4_t * in,
+                   __global net4_t * merge,
                    __global const net_t * weights,
-                   __local float * channel_buff,
-                   __local float * row_buff) {
+                   __local vfloat_t * channel_buff,
+                   __local vfloat_t * row_buff) {
         // cl::NDRange global(channels, outputs, row);
         const int c   = get_global_id(0);  // channel
         const int o   = get_global_id(1);  // output
@@ -92,11 +121,11 @@ static std::string sourceCode_convolve1 = R"(
             // strip-row
             for (int w = 0; w < width; w++) {
                 channel_buff[lx * width + w] =
-                    vload_net_t((c * height + row) * width + w, in);
+                    vload_net4_t((c * height + row) * width + w, in);
             }
         } else if (out_buff_size >= 19 && ly < 19) {
             // Every thread copies a column
-            channel_buff[lx * width + ly] = vload_net_t((c * height + row) * width + ly, in);
+            channel_buff[lx * width + ly] = vload_net4_t((c * height + row) * width + ly, in);
         }
 
         // Copy the filter we are applying locally
@@ -109,14 +138,14 @@ static std::string sourceCode_convolve1 = R"(
         #pragma unroll
         for (int cw = 0; cw < width; cw++) {
             int fid = lx * strip_size;
-            float out  = channel_buff[fid + cw] * filter_buff;
+            vfloat_t out  = channel_buff[fid + cw] * filter_buff;
             row_buff[(ly * chan_buff_size + lx) * row_buff_size + out_lane] = out;
             out_lane++;
             // Row buffer full or last lane?
             if (out_lane == row_buff_size || (cw == width - 1)) {
                 barrier(CLK_LOCAL_MEM_FENCE);
                 if (lx < out_lane) {
-                    float val;
+                    vfloat_t val;
                     val  = row_buff[(ly * chan_buff_size + 0) * row_buff_size + lx];
                     val += row_buff[(ly * chan_buff_size + 1) * row_buff_size + lx];
                     val += row_buff[(ly * chan_buff_size + 2) * row_buff_size + lx];
@@ -125,7 +154,7 @@ static std::string sourceCode_convolve1 = R"(
                     val += row_buff[(ly * chan_buff_size + 5) * row_buff_size + lx];
                     val += row_buff[(ly * chan_buff_size + 6) * row_buff_size + lx];
                     val += row_buff[(ly * chan_buff_size + 7) * row_buff_size + lx];
-                    vstore_net_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
+                    vstore_net4_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
                 }
                 out_cw  += row_buff_size;
                 out_lane = 0;
@@ -138,11 +167,11 @@ static std::string sourceCode_convolve3 = R"(
     __kernel
     __attribute__((work_group_size_hint(8, 32, 1)))
     void convolve3(
-                   __global const net_t * in,
-                   __global net_t * merge,
+                   __global const net4_t * in,
+                   __global net4_t * merge,
                    __global const net_t * weights,
-                   __local float * channel_buff,
-                   __local float * row_buff,
+                   __local vfloat_t * channel_buff,
+                   __local vfloat_t * row_buff,
                    const int row_tile_size,
                    const int row_buff_size,
                    const int chan_buff_size,
@@ -176,8 +205,8 @@ static std::string sourceCode_convolve3 = R"(
         // merge = channels * outputs * height * width
 
         __private float filter_buff[9];
-        __private float chan_cache[2];
-        __private float stripe_cache[9];
+        __private vfloat_t chan_cache[2];
+        __private vfloat_t stripe_cache[9];
 
         // Copy the filter we are applying locally
         // output * channel * filter_len
@@ -197,7 +226,7 @@ static std::string sourceCode_convolve3 = R"(
                     channel_buff[(lx * pad_width + 0) * filter_size + srow]             = 0.0f;
                     if ((unsigned)in_row < height) {
                         for (int w = 0; w < width; w++) {
-                            float val = vload_net_t((c * height + in_row) * width + w, in);
+                            vfloat_t val = vload_net4_t((c * height + in_row) * width + w, in);
                             channel_buff[(lx * pad_width + w + extent) * filter_size + srow] = val;
                         }
                     } else {
@@ -214,9 +243,9 @@ static std::string sourceCode_convolve3 = R"(
                     // Every thread copies a column
                     for (int srow = 0; srow < filter_size; srow++) {
                         int in_row = row - extent + srow;
-                        float val = 0.0f;
+                        vfloat_t val = 0.0f;
                         if ((unsigned)in_row < height && ly >= 1 && ly <= 19) {
-                            val = vload_net_t((c * height + in_row) * width + ly - 1, in);
+                            val = vload_net4_t((c * height + in_row) * width + ly - 1, in);
                         }
                         channel_buff[copy_idx + srow] = val;
                         if (srow > 0) {
@@ -225,9 +254,9 @@ static std::string sourceCode_convolve3 = R"(
                     }
                 } else {
                     int in_row = row - extent + 2;
-                    float val = 0.0f;
+                    vfloat_t val = 0.0f;
                     if (ly >= 1 && ly <= 19) {
-                        val = vload_net_t((c * height + in_row) * width + ly - 1, in);
+                        val = vload_net4_t((c * height + in_row) * width + ly - 1, in);
                     }
                     channel_buff[copy_idx + 0] = chan_cache[0];
                     channel_buff[copy_idx + 1] = chan_cache[1];
@@ -239,7 +268,7 @@ static std::string sourceCode_convolve3 = R"(
 
             int out_lane = 0;
             int out_cw   = 0;
-            __local float * out_row_buff = &row_buff[(ly * chan_buff_size + lx) * row_buff_size];
+            __local vfloat_t * out_row_buff = &row_buff[(ly * chan_buff_size + lx) * row_buff_size];
             int fid = (lx * pad_width) * filter_size;
             barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -250,7 +279,7 @@ static std::string sourceCode_convolve3 = R"(
             #pragma unroll
             for (int cw = 0; cw < width; cw++) {
                 // Start filter
-                float out  =   stripe_cache[      0] * filter_buff[0]
+                vfloat_t out  =   stripe_cache[      0] * filter_buff[0]
                              + stripe_cache[      1] * filter_buff[3]
                              + stripe_cache[      2] * filter_buff[6]
                              + stripe_cache[      3] * filter_buff[1]
@@ -277,7 +306,7 @@ static std::string sourceCode_convolve3 = R"(
                         // lx = channels 2 or 8, ly = outputs 32
                         // repurpose the lx threads over columns now
                         if (chan_buff_size == 8) {
-                            float val;
+                            vfloat_t val;
                             val  = row_buff[(ly * chan_buff_size + 0) * row_buff_size + lx];
                             val += row_buff[(ly * chan_buff_size + 1) * row_buff_size + lx];
                             val += row_buff[(ly * chan_buff_size + 2) * row_buff_size + lx];
@@ -286,12 +315,12 @@ static std::string sourceCode_convolve3 = R"(
                             val += row_buff[(ly * chan_buff_size + 5) * row_buff_size + lx];
                             val += row_buff[(ly * chan_buff_size + 6) * row_buff_size + lx];
                             val += row_buff[(ly * chan_buff_size + 7) * row_buff_size + lx];
-                            vstore_net_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
+                            vstore_net4_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
                         } else if (chan_buff_size == 2) {
-                            float val;
+                            vfloat_t val;
                             val  = row_buff[(ly * chan_buff_size + 0) * row_buff_size + lx];
                             val += row_buff[(ly * chan_buff_size + 1) * row_buff_size + lx];
-                            vstore_net_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
+                            vstore_net4_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
                         }
                     }
                     out_cw  += row_buff_size;
@@ -304,8 +333,8 @@ static std::string sourceCode_convolve3 = R"(
 
 static std::string sourceCode_utility = R"(
     __kernel void merge(
-                        __global const net_t * in,
-                        __global net_t * out,
+                        __global const net4_t * in,
+                        __global net4_t * out,
                         __constant const net_t * biases,
                         __private const int channels) {
 
@@ -324,17 +353,17 @@ static std::string sourceCode_utility = R"(
         const int o = output;
         const float bias = vload_net_t(o, biases);
 
-        float sum = bias;
+        vfloat_t sum = bias;
         for (int c = 0; c < channels; c++) {
-            sum += vload_net_t((c * boardsize + b) * outputs + o, in);
+            sum += vload_net4_t((c * boardsize + b) * outputs + o, in);
         }
-        vstore_net_t(sum, o * boardsize + b, out);
+        vstore_net4_t(sum, o * boardsize + b, out);
     }
 
     __kernel void batchnorm(
-                        __global const net_t * in,
-                        __global net_t * out,
-                        __global const net_t * residual,
+                        __global const net4_t * in,
+                        __global net4_t * out,
+                        __global const net4_t * residual,
                         __constant const net_t * means,
                         __constant const net_t * stddivs) {
 
@@ -353,13 +382,14 @@ static std::string sourceCode_utility = R"(
         const float scale_stddiv = vload_net_t(o, stddivs);
 
         // BN
-        float sum = scale_stddiv * (vload_net_t(o * channel_size + b, in) - mean);
+        vfloat_t sum = scale_stddiv * (vload_net4_t(o * channel_size + b, in) - mean);
         // Residual Eltwise
         if (residual) {
-            sum += vload_net_t(o * channel_size + b, residual);
+            sum += vload_net4_t(o * channel_size + b, residual);
         }
         // ReLU
-        vstore_net_t(sum > 0 ? sum : 0.0f, o * channel_size + b, out);
+	vfloat_t v = sum > 0 ? sum : 0.0f;
+        vstore_net4_t(v, o * channel_size + b, out);
     }
 )";
 
@@ -377,6 +407,7 @@ void OpenCL::ensure_thread_initialized() {
         opencl_thread_data.m_commandqueue = cl::CommandQueue(cl::Context::getDefault(),
                                                              cl::Device::getDefault());
         opencl_thread_data.m_is_initialized = true;
+
     }
 }
 
@@ -401,6 +432,82 @@ void OpenCL_Network::add_weights(size_t layer,
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
                              std::vector<float>& output) {
+    if(cfg_batchsize == 1) {
+        // we don't need workers to group workloads on a batch size of 1.
+        // directly call run_forward
+        const std::vector<net_t> * inptr = &input;
+        std::vector<float_t> * outptr = &output;
+        run_forward(&inptr, &outptr);
+
+        return;
+    }
+
+    if(!m_workers_launched) {
+        // launch the worker thread.  2 threads so that we can fully utilize GPU, since the 
+        // worker thread consists of some CPU work for task preparation.
+        constexpr int num_threads = 2;
+        for(int i=0; i<num_threads; i++) {
+            std::thread worker( [this]{
+                while(true) {
+                    std::unique_lock<std::mutex> lk(m_task_mutex);
+                    // the 50ms timeout is based on a while guess, assuming we will not run out of evaluation operations
+                    // due to the sheer amount of concurrent threads.  timeouts will probably only happen
+                    // on the final evaluations of the move.
+                    m_task_cond.wait_for(lk, std::chrono::milliseconds(50), [this]{
+                        return (m_task_queue.size() >= cfg_batchsize); 
+                    });
+               
+                    if(m_task_queue.empty()) {
+                        lk.unlock();
+                        continue;
+                    }
+     
+                    unsigned int count = 0;
+                    ForwardTask tasks[cfg_batchsize];
+                    while(count < cfg_batchsize && !m_task_queue.empty()) {
+                        tasks[count++] = std::move(m_task_queue.front());
+                        m_task_queue.pop_front();
+                    }
+                    lk.unlock();
+    
+                    const std::vector<net_t> * inputs[cfg_batchsize];
+                    std::vector<float> * outputs[cfg_batchsize];
+                    for(unsigned int i=0; i<cfg_batchsize; i++) {
+                        inputs[i] = tasks[i].input;
+                        outputs[i] = tasks[i].output;
+                    }
+                    
+                    run_forward(inputs, outputs);
+                    for(unsigned int i=0; i<count; i++) {
+                        tasks[i].prom.set_value();
+                    }
+                }
+            });
+    
+            worker.detach();
+        }
+        m_workers_launched = true;
+    }
+
+    // to let the worker thread do it, push the network evaluation into the task queue
+    // and signal conditional variable that something is pushed.
+    std::future<void> ret;
+    {
+        std::lock_guard<std::mutex> lock(m_task_mutex);
+        ForwardTask tsk(&input, &output);
+        ret = tsk.prom.get_future();
+        m_task_queue.emplace_back(std::move(tsk));
+    }
+    m_task_cond.notify_one();
+
+    // this method will return when worker thread finishes its job
+    ret.get();
+}
+
+OpenCL_Network::OpenCL_Network() {
+}
+void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
+                             std::vector<float> ** outputs) {
     constexpr auto width = 19;
     constexpr auto height = 19;
     constexpr auto one_plane = width * height * sizeof(net_t);
@@ -416,8 +523,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                                          layer.outputs * channelGroups);
             maxInBufferSize = std::max<int>(maxInBufferSize, layer.channels);
         }
-        const auto alloc_inSize = one_plane *  maxInBufferSize;
-        const auto alloc_mergeSize = one_plane * maxMergeSize;
+        const auto alloc_inSize = one_plane *  maxInBufferSize * cfg_batchsize;
+        const auto alloc_mergeSize = one_plane * maxMergeSize * cfg_batchsize;
 
         opencl_thread_data.m_inBuffer = cl::Buffer(
             CL_MEM_READ_WRITE, alloc_inSize);
@@ -436,8 +543,17 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     cl::Buffer & residualBuffer = opencl_thread_data.m_residualBuffer;
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
-    const auto inSize = sizeof(net_t) * input.size();
-    queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, input.data());
+    std::vector<net_t> interleaved_input(inputs[0]->size() * cfg_batchsize);
+    for(size_t i=0; i<inputs[0]->size(); i++) {
+        for(unsigned int j=0; j<cfg_batchsize; j++) {
+            if(inputs[j] != nullptr) {
+                interleaved_input[i * cfg_batchsize + j] = inputs[j]->at(i);
+            }
+        }
+    }
+
+    const auto inSize = sizeof(net_t) * inputs[0]->size() * cfg_batchsize;
+    queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, interleaved_input.data());
 
     for (const auto& layer : m_layers) {
         if (layer.is_batchnorm) {
@@ -455,7 +571,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             auto bn1_weights   = begin(layer.weights) + 2;
             auto conv2_weights = begin(layer.weights) + 4;
             auto bn2_weights   = begin(layer.weights) + 6;
-            const auto inBufferSize = layer.channels * one_plane;
+            const auto inBufferSize = layer.channels * one_plane * cfg_batchsize;
             queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0, inBufferSize);
             convolve(layer.filter_size,
                      layer.channels,
@@ -501,21 +617,18 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         }
     }
 
-    const auto finalSize = m_layers.back().outputs * one_plane;
-#ifdef USE_HALF
-    // if NN uses half type, we have to convert it back to float before sending it back out.
-    std::vector<net_t> output_half(finalSize / sizeof(net_t));
-    queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, output_half.data());
+    std::vector<net_t> interleaved_output(outputs[0]->size() * cfg_batchsize);
+    const auto finalSize = m_layers.back().outputs * one_plane * cfg_batchsize;
+    queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, interleaved_output.data());
     queue.finish();
 
-    for(int i=0; i<output.size(); i++) {
-        output[i] = output_half[i];
+    for(size_t i=0; i<outputs[0]->size(); i++) {
+        for(unsigned int j=0; j<cfg_batchsize; j++) {
+            if(outputs[j] != nullptr) {
+                (*outputs[j])[i] = interleaved_output[cfg_batchsize * i + j];
+            }
+        }
     }
-#else
-    queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, output.data());
-    queue.finish();
-#endif
-
 }
 
 void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
@@ -584,8 +697,8 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
         m_convolve_kernel->setArg(0, bufferInput);
         m_convolve_kernel->setArg(1, bufferMerge);
         m_convolve_kernel->setArg(2, weights[0]);
-        m_convolve_kernel->setArg(3, cl::Local(stripSize * channelGroup * rowGroup));
-        m_convolve_kernel->setArg(4, cl::Local(rowSize));
+        m_convolve_kernel->setArg(3, cl::Local(stripSize * channelGroup * rowGroup * cfg_batchsize));
+        m_convolve_kernel->setArg(4, cl::Local(rowSize * cfg_batchsize));
         if (filter_size == 3) {
             m_convolve_kernel->setArg(5, rowTileSize);
             m_convolve_kernel->setArg(6, rowBuffer);
@@ -799,6 +912,7 @@ void OpenCL::initialize(void) {
 #ifdef USE_HALF
         args += " -DUSE_HALF";
 #endif
+        args += " -DBATCH_SIZE=" + boost::lexical_cast<std::string>(cfg_batchsize);
         m_program.build(args.c_str());
     } catch (const cl::Error&) {
         myprintf("Error building kernels: %s\n",

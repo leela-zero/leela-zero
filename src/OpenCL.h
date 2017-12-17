@@ -29,6 +29,11 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <deque>
+#include <thread>
+#include <condition_variable>
+#include <mutex>
+#include <future>
 
 class Layer {
     friend class OpenCL_Network;
@@ -62,6 +67,7 @@ private:
 
 class OpenCL_Network {
 public:
+    OpenCL_Network();
     void push_batchnorm(unsigned int spatial_size,
                         const std::vector<float>& means,
                         const std::vector<float>& variances) {
@@ -116,8 +122,8 @@ public:
     }
 
     void forward(const std::vector<net_t>& input, std::vector<float>& output);
-
 private:
+    void run_forward(const std::vector<net_t> ** inputs, std::vector<float> ** outputs);
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
 
     void push_weights(size_t layer, const std::vector<float>& weights) {
@@ -131,6 +137,19 @@ private:
                    cl::Buffer& output, cl::Buffer* residual,
                    weight_slice_t weights);
     std::vector<Layer> m_layers;
+    
+    bool m_workers_launched = false;
+    class ForwardTask {
+    public:
+        const std::vector<net_t> *input;
+        std::vector<float> * output;
+        std::promise<void> prom;
+        ForwardTask() : input(nullptr), output(nullptr) {}
+        ForwardTask(const std::vector<net_t> * in, std::vector<float> * out) : input(in), output(out) {}
+    };
+    std::deque<ForwardTask> m_task_queue;
+    std::condition_variable m_task_cond;
+    std::mutex m_task_mutex;
 };
 
 class OpenCL {
