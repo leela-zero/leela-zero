@@ -22,10 +22,13 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <bitset>
+#include <utility>
 
 #include "FastState.h"
 #include "FullBoard.h"
 #include "KoState.h"
+#include "Network.h"
 #include "TimeControl.h"
 
 class GameState : public KoState {
@@ -62,10 +65,17 @@ public:
 
     void display_state();
 
+    // TODO private?
+    std::pair<Network::BoardPlane*, Network::BoardPlane*> get_boardplanes(int moves_ago);
+    void state_to_board_plane(Network::BoardPlane& our_plane, Network::BoardPlane& their_plane);
+
 private:
     bool valid_handicap(int stones);
+    void add_boardplanes();
 
     std::vector<std::shared_ptr<KoState>> game_history;
+    std::vector<std::pair<Network::BoardPlane, Network::BoardPlane>> m_boardplanes;
+
     TimeControl m_timecontrol;
 };
 

@@ -32,7 +32,7 @@ class UCTNode;
 #endif
 
 #include "FastState.h"
-#include "GameState.h"
+class GameState;
 
 class Network {
 public:
@@ -59,6 +59,7 @@ public:
                         std::vector<float>& output,
                         float temperature = 1.0f);
     static void gather_features(GameState* state, NNPlanes & planes);
+    static void gather_features2(GameState* state, NNPlanes & planes);
 
 private:
     static Netresult get_scored_moves_internal(

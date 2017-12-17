@@ -22,6 +22,8 @@
 #include <sstream>
 #include <algorithm>
 #include <array>
+#include <bitset>
+#include <utility>
 
 #include "config.h"
 
@@ -39,6 +41,9 @@ void GameState::init_game(int size, float komi) {
     game_history.clear();
     game_history.emplace_back(std::make_shared<KoState>(*this));
 
+    m_boardplanes.clear();
+    add_boardplanes();
+
     m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
 
@@ -50,6 +55,9 @@ void GameState::reset_game() {
 
     game_history.clear();
     game_history.emplace_back(std::make_shared<KoState>(*this));
+
+    m_boardplanes.clear();
+    add_boardplanes();
 
     m_timecontrol.reset_clocks();
 }
@@ -87,7 +95,7 @@ void GameState::rewind(void) {
 }
 
 void GameState::play_move(int vertex) {
-    play_move(board.get_to_move(), vertex);
+    play_move(get_to_move(), vertex);
 }
 
 void GameState::play_pass() {
@@ -110,6 +118,9 @@ void GameState::play_move(int color, int vertex) {
     // cut off any leftover moves from navigating
     game_history.resize(m_movenum);
     game_history.emplace_back(std::make_shared<KoState>(*this));
+
+    m_boardplanes.resize(m_movenum);
+    add_boardplanes();
 }
 
 bool GameState::play_textmove(std::string color, std::string vertex) {
@@ -198,6 +209,9 @@ void GameState::anchor_game_history(void) {
     m_movenum = 0;
     game_history.clear();
     game_history.emplace_back(std::make_shared<KoState>(*this));
+
+    m_boardplanes.clear();
+    add_boardplanes();
 }
 
 bool GameState::set_fixed_handicap(int handicap) {
@@ -328,4 +342,36 @@ void GameState::place_free_handicap(int stones) {
     anchor_game_history();
 
     set_handicap(orgstones);
+}
+
+std::pair<Network::BoardPlane*, Network::BoardPlane*> GameState::get_boardplanes(int moves_ago) {
+    auto movenum = m_movenum - moves_ago;
+    assert(movenum >= 0);
+    return make_pair(&m_boardplanes[movenum].first,
+                     &m_boardplanes[movenum].second);
+}
+
+void GameState::add_boardplanes() {
+    // TODO this can be optimized I believe by first emplacing then filling.
+    Network::BoardPlane black, white;
+    state_to_board_plane(black, white);
+    m_boardplanes.emplace_back(std::make_pair(black, white));
+}
+
+void GameState::state_to_board_plane(Network::BoardPlane& black, Network::BoardPlane& white) {
+    auto idx = 0;
+    for (int j = 0; j < 19; j++) {
+        for(int i = 0; i < 19; i++) {
+            int vtx = board.get_vertex(i, j);
+            FastBoard::square_t color = board.get_square(vtx);
+            if (color != FastBoard::EMPTY) {
+                if (color == FastBoard::BLACK) {
+                    black[idx] = true;
+                } else {
+                    white[idx] = true;
+                }
+            }
+            idx++;
+        }
+    }
 }
