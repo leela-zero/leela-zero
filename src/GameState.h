@@ -24,6 +24,7 @@
 #include <string>
 #include <bitset>
 #include <utility>
+#include <deque>
 
 #include "FastState.h"
 #include "FullBoard.h"
@@ -73,10 +74,11 @@ public:
 
 private:
     bool valid_handicap(int stones);
-    void add_boardplanes();
+    void update_boardplanes();
+    void append_to_gamehistory();
 
     std::vector<std::shared_ptr<KoState>> game_history;
-    std::vector<std::pair<Network::BoardPlane, Network::BoardPlane>> m_boardplanes;
+    std::deque<std::pair<Network::BoardPlane, Network::BoardPlane>> m_boardplanes;
 
     TimeControl m_timecontrol;
     bool m_history_enabled = true;

@@ -575,22 +575,24 @@ void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) 
 }
 
 void Network::gather_features(GameState * state, NNPlanes & planes) {
-    planes.resize(18);
+    planes.resize(INPUT_CHANNELS);
     BoardPlane& black_to_move  = planes[16];
     BoardPlane& white_to_move  = planes[17];
 
     const auto to_move = state->get_to_move();
     const auto blacks_move = to_move == FastBoard::BLACK;
+
+    const auto black_offset = blacks_move ? 0 : INPUT_MOVES;
+    const auto white_offset = blacks_move ? INPUT_MOVES : 0;
+
     if (blacks_move) {
         black_to_move.set();
     } else {
         white_to_move.set();
     }
 
-    const auto black_offset = blacks_move ? 0 : 8;
-    const auto white_offset = blacks_move ? 8 : 0;
-
-    for (auto h = 0; h < std::min<int>(state->get_movenum() + 1, 8); h++) {
+    const auto moves = std::min<int>(state->get_movenum() + 1, INPUT_MOVES);
+    for (auto h = 0; h < moves; h++) {
         auto test = state->get_boardplanes(h);
         planes[black_offset + h] = *test.first;
         planes[white_offset + h] = *test.second;

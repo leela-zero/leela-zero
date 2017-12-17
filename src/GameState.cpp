@@ -24,6 +24,7 @@
 #include <array>
 #include <bitset>
 #include <utility>
+#include <deque>
 
 #include "config.h"
 
@@ -39,12 +40,10 @@ void GameState::init_game(int size, float komi) {
     KoState::init_game(size, komi);
 
     game_history.clear();
-    if (m_history_enabled) {
-        game_history.emplace_back(std::make_shared<KoState>(*this));
-    }
+    append_to_gamehistory();
 
     m_boardplanes.clear();
-    add_boardplanes();
+    update_boardplanes();
 
     m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
@@ -56,11 +55,10 @@ void GameState::reset_game() {
     KoState::reset_game();
 
     game_history.clear();
-    if (m_history_enabled) {
-        game_history.emplace_back(std::make_shared<KoState>(*this));
-    }
+    append_to_gamehistory();
+
     m_boardplanes.clear();
-    add_boardplanes();
+    update_boardplanes();
 
     m_timecontrol.reset_clocks();
 }
@@ -123,11 +121,11 @@ void GameState::play_move(int color, int vertex) {
     // cut off any leftover moves from navigating
     if (m_history_enabled) {
         game_history.resize(m_movenum);
-        game_history.emplace_back(std::make_shared<KoState>(*this));
+        append_to_gamehistory();
     }
 
     m_boardplanes.resize(m_movenum);
-    add_boardplanes();
+    update_boardplanes();
 }
 
 bool GameState::play_textmove(std::string color, std::string vertex) {
@@ -215,12 +213,10 @@ void GameState::anchor_game_history(void) {
     // handicap moves don't count in game history
     m_movenum = 0;
     game_history.clear();
-    if (m_history_enabled) {
-        game_history.emplace_back(std::make_shared<KoState>(*this));
-    }
+    append_to_gamehistory();
 
     m_boardplanes.clear();
-    add_boardplanes();
+    update_boardplanes();
 }
 
 bool GameState::set_fixed_handicap(int handicap) {
@@ -353,26 +349,31 @@ void GameState::place_free_handicap(int stones) {
     set_handicap(orgstones);
 }
 
-std::pair<Network::BoardPlane*, Network::BoardPlane*> GameState::get_boardplanes(int moves_ago) {
-    auto movenum = m_movenum - moves_ago;
-    assert(movenum >= 0);
-    return make_pair(&m_boardplanes[movenum].first,
-                     &m_boardplanes[movenum].second);
-}
-
 void GameState::disable_history() {
     m_history_enabled = false;
     game_history.clear();
-    if (m_boardplanes.size() > 8) {
-        m_boardplanes.erase(std::begin(m_boardplanes), std::end(m_boardplanes) - 8);
+}
+
+void GameState::append_to_gamehistory() {
+    if (m_history_enabled) {
+        game_history.emplace_back(std::make_shared<KoState>(*this));
     }
 }
 
-void GameState::add_boardplanes() {
-    // TODO this can be optimized I believe by first emplacing then filling.
+void GameState::update_boardplanes() {
+    if (m_boardplanes.size() == Network::INPUT_MOVES) {
+        m_boardplanes.pop_back();
+    }
+
     Network::BoardPlane black, white;
     state_to_board_plane(black, white);
-    m_boardplanes.emplace_back(std::make_pair(black, white));
+    m_boardplanes.emplace_front(std::make_pair(black, white));
+}
+
+std::pair<Network::BoardPlane*, Network::BoardPlane*> GameState::get_boardplanes(int moves_ago) {
+    assert(moves_ago < NETWORK::INPUT_MOVES);
+    assert(moves_ago < m_boardplanes.size());
+    return make_pair(&m_boardplanes[moves_ago].first, &m_boardplanes[moves_ago].second);
 }
 
 void GameState::state_to_board_plane(Network::BoardPlane& black, Network::BoardPlane& white) {

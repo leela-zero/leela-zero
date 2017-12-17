@@ -48,8 +48,9 @@ public:
                                       Ensemble ensemble,
                                       int rotation = -1);
     // File format version
-    static constexpr int FORMAT_VERSION = 1;
-    static constexpr int INPUT_CHANNELS = 18;
+    static constexpr auto FORMAT_VERSION = 1;
+    static constexpr auto INPUT_MOVES = 8;
+    static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
 
     static void initialize();
     static void benchmark(GameState * state, int iterations = 1600);
