@@ -593,9 +593,9 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
 
     const auto moves = std::min<int>(state->get_movenum() + 1, INPUT_MOVES);
     for (auto h = 0; h < moves; h++) {
-        auto test = state->get_boardplanes(h);
-        planes[black_offset + h] = *test.first;
-        planes[white_offset + h] = *test.second;
+        const auto& test = state->get_boardplanes(h);
+        planes[black_offset + h] = test.first;
+        planes[white_offset + h] = test.second;
     }
 }
 

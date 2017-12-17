@@ -34,6 +34,8 @@
 
 class GameState : public KoState {
 public:
+    using InputPlane = std::pair<Network::BoardPlane, Network::BoardPlane>;
+
     explicit GameState() = default;
     explicit GameState(const KoState* rhs) {
         // Copy in fields from base class.
@@ -67,8 +69,8 @@ public:
     void display_state();
 
     // TODO private?
-    std::pair<Network::BoardPlane*, Network::BoardPlane*> get_boardplanes(int moves_ago);
-    void state_to_board_plane(Network::BoardPlane& our_plane, Network::BoardPlane& their_plane);
+    const InputPlane& get_boardplanes(int moves_ago) const;
+    void state_to_board_plane(Network::BoardPlane& our_plane, Network::BoardPlane& their_plane) const;
 
     void disable_history();
 
@@ -78,7 +80,7 @@ private:
     void append_to_gamehistory();
 
     std::vector<std::shared_ptr<KoState>> game_history;
-    std::deque<std::pair<Network::BoardPlane, Network::BoardPlane>> m_boardplanes;
+    std::deque<InputPlane> m_boardplanes;
 
     TimeControl m_timecontrol;
     bool m_history_enabled = true;

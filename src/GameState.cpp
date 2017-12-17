@@ -365,18 +365,18 @@ void GameState::update_boardplanes() {
         m_boardplanes.pop_back();
     }
 
-    Network::BoardPlane black, white;
-    state_to_board_plane(black, white);
-    m_boardplanes.emplace_front(std::make_pair(black, white));
+    InputPlane plane;
+    state_to_board_plane(plane.first, plane.second);
+    m_boardplanes.emplace_front(plane);
 }
 
-std::pair<Network::BoardPlane*, Network::BoardPlane*> GameState::get_boardplanes(int moves_ago) {
-    assert(moves_ago < NETWORK::INPUT_MOVES);
+const GameState::InputPlane& GameState::get_boardplanes(int moves_ago) const {
+    assert(moves_ago < Network::INPUT_MOVES);
     assert(moves_ago < m_boardplanes.size());
-    return make_pair(&m_boardplanes[moves_ago].first, &m_boardplanes[moves_ago].second);
+    return m_boardplanes[moves_ago];
 }
 
-void GameState::state_to_board_plane(Network::BoardPlane& black, Network::BoardPlane& white) {
+void GameState::state_to_board_plane(Network::BoardPlane& black, Network::BoardPlane& white) const {
     auto idx = 0;
     for (int j = 0; j < 19; j++) {
         for(int i = 0; i < 19; i++) {
