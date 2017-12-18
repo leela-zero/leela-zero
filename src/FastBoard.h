@@ -93,8 +93,9 @@ public:
     std::vector<bool> calc_reach_color(int col);
 
     int get_prisoners(int side);
-    bool black_to_move();
-    int get_to_move();
+    int get_to_move() const;
+    bool black_to_move() const;
+    bool white_to_move() const;
     void set_to_move(int color);
 
     std::string move_to_text(int move);
@@ -134,6 +135,7 @@ protected:
     int m_maxsq;
 
     int m_boardsize;
+    int m_squaresize;
 
     int count_neighbours(const int color, const int i);
     void merge_strings(const int ip, const int aip);

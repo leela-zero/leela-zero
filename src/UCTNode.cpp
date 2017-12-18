@@ -102,9 +102,8 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
 
     // DCNN returns winrate as side to move
     auto net_eval = raw_netlist.second;
-    auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
-    if (to_move == FastBoard::WHITE) {
+    if (state.board.white_to_move()) {
         net_eval = 1.0f - net_eval;
     }
     eval = net_eval;
@@ -196,7 +195,7 @@ float UCTNode::eval_state(GameState& state) {
     auto net_eval = raw_netlist.second;
 
     // But we score from black's point of view
-    if (state.get_to_move() == FastBoard::WHITE) {
+    if (state.board.white_to_move()) {
         net_eval = 1.0f - net_eval;
     }
 

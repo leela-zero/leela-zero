@@ -581,9 +581,8 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
     BoardPlane& black_to_move  = planes[16];
     BoardPlane& white_to_move  = planes[17];
 
-    int to_move = state->get_to_move();
-    bool whites_move = to_move == FastBoard::WHITE;
-    if (whites_move) {
+    auto to_move = state->get_to_move();
+    if (to_move == FastBoard::WHITE) {
         white_to_move.set();
     } else {
         black_to_move.set();

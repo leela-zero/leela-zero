@@ -450,7 +450,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
             break;
         }
         std::string movestr = state->board.move_to_text_sgf(move);
-        if (state->get_to_move() == FastBoard::BLACK) {
+        if (state->board.black_to_move()) {
             moves.append(";W[" + movestr + "]");
         } else {
             moves.append(";B[" + movestr + "]");
@@ -470,7 +470,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         }
     } else {
         // Last move was resign, so side to move won
-        if (state->get_to_move() == FastBoard::BLACK) {
+        if (state->board.black_to_move()) {
             header.append("RE[B+Resign]");
         } else {
             header.append("RE[W+Resign]");
