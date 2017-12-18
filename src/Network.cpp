@@ -42,7 +42,7 @@
 
 #include "Im2Col.h"
 #ifdef __APPLE__
-#include <Accelerate/Accelerate.h>
+//#include <Accelerate/Accelerate.h>
 #endif
 #ifdef USE_MKL
 #include <mkl.h>
@@ -532,11 +532,11 @@ Network::Netresult Network::get_scored_moves_internal(
     sem_A.wait();
     float * myout = reinterpret_cast<float *>(output_mem);
 
-    std::vector<float> my_policy_out(myout, myout + 19*19+1); 
+    std::vector<float> my_policy_out(myout, myout + 19*19+1);
 
-    softmax(my_policy_out, softmax_data, cfg_softmax_temp);
+    if (cfg_softmax_temp != 1.0f) printf("ERROR: wrong temperature");
 
-    std::vector<float>& outputs = softmax_data;
+    std::vector<float>& outputs = my_policy_out;
     float winrate_sig = (1.0f + myout[19*19+1]) / 2.0f;
     // printf("My threadID %d with socket id %d\n", idx, thread_pool.udpconnections[idx]++);
         

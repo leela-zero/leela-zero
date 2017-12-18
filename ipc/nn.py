@@ -175,7 +175,7 @@ def LZN(ws, nb, nf):
     polbn0   = mybn(polconv0, 2, params, "polbn0")
     polrelu0 = relu(polbn0)
     polfcinp = polrelu0.flatten(ndim=2)
-    polfcout = myfc(polfcinp, 19*19*2, 19*19+1, params, "polfc")
+    polfcout = softmax(myfc(polfcinp, 19*19*2, 19*19+1, params, "polfc"))
 
     out = polfcout
 
@@ -199,6 +199,7 @@ from theano import *
 import theano.tensor as T
 from theano.tensor.nnet import conv2d
 from theano.tensor.nnet import relu
+from theano.tensor.nnet import softmax
 from theano.tensor.nnet.bn import batch_normalization_test as bn
 
 net = LZN(weights, numBlocks, numFilters)
