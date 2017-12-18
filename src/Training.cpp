@@ -30,6 +30,7 @@
 #include "UCTNode.h"
 #include "SGFParser.h"
 #include "SGFTree.h"
+#include "Timing.h"
 #include "Random.h"
 #include "Utils.h"
 #include "GTP.h"
@@ -222,41 +223,34 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
 
     do {
         auto to_move = state.get_to_move();
-        auto move = tree_moves[counter];
-        auto this_move = size_t{0};
+        auto move_vertex = tree_moves[counter];
+        auto move_idx = size_t{0};
 
         // Detect if this SGF seems to be corrupted
-        auto moves = state.generate_moves(to_move);
-        auto moveseen = false;
-        for(const auto& gen_move : moves) {
-            if (gen_move == move) {
-                if (move != FastBoard::PASS) {
-                    // get x y coords for actual move
-                    auto xy = state.board.get_xy(move);
-                    this_move = (xy.second * 19) + xy.first;
-                } else {
-                    this_move = (19 * 19); // PASS
-                }
-                moveseen = true;
-                break;
-            }
-        }
-
-        if (!moveseen) {
-            std::cout << "Mainline move not found: " << move << std::endl;
+        if (!state.is_move_legal(to_move, move_vertex)) {
+            std::cout << "Mainline move not found: " << move_vertex << std::endl;
             return;
         }
+
+        if (move_vertex != FastBoard::PASS) {
+            // get x y coords for actual move
+            auto xy = state.board.get_xy(move_vertex);
+            move_idx = (xy.second * 19) + xy.first;
+        } else {
+            move_idx = (19 * 19); // PASS
+        }
+
 
         // Pick every 1/SKIP_SIZE th position.
         auto skip = Random::get_Rng().randfix<SKIP_SIZE>();
         if (skip == 0) {
             auto step = TimeStep{};
-            step.to_move = state.board.get_to_move();
+            step.to_move = to_move;
             step.planes = Network::NNPlanes{};
             Network::gather_features(&state, step.planes);
 
             step.probabilities.resize((19 * 19) + 1);
-            step.probabilities[this_move] = 1.0f;
+            step.probabilities[move_idx] = 1.0f;
 
             train_pos++;
             m_data.emplace_back(step);
@@ -281,6 +275,7 @@ void Training::dump_supervised(const std::string& sgf_name,
     std::shuffle(begin(games), end(games), Random::get_Rng());
     std::cout << "done." << std::endl;
 
+    Time start;
     // Loop over the database multiple times. We will select different
     // positions from each game on every pass.
     for (auto repeat = size_t{0}; repeat < SKIP_SIZE; repeat++) {
@@ -292,9 +287,11 @@ void Training::dump_supervised(const std::string& sgf_name,
                 continue;
             };
 
-            if (gamecount % (1000) == 0) {
-                std::cout << "Game " << gamecount
-                          << ", " << train_pos << " positions" << std::endl;
+            if (gamecount > 0 && gamecount % 1000 == 0) {
+                Time elapsed;
+                auto elapsed_s = Time::timediff(start, elapsed) / 100.0;
+                Utils::myprintf("Game %5d, %5d positions in %5.2f seconds -> %d pos/s\n",
+                    gamecount, train_pos, elapsed_s, (int)(train_pos / elapsed_s));
             }
 
             auto tree_moves = sgftree->get_mainline();
