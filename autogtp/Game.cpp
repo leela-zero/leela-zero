@@ -312,9 +312,13 @@ bool Game::fixSgf(QString& weightFile, bool resignation) {
         return false;
     }
     QString sgfData = sgfFile.readAll();
-
-    QRegularExpression re("PW\\[Human\\]");
-    QString playerName("PW[Leela Zero ");
+    QRegularExpression re("\\[Human\\]");
+    QString playerName("[Leela Zero ");
+    QRegularExpression le("\\[Leela Zero .* ");
+    QRegularExpressionMatch match = le.match(sgfData);
+    if (match.hasMatch()) {
+        playerName = match.captured(0);
+    }
     playerName += weightFile.left(8);
     playerName += "]";
     sgfData.replace(re, playerName);
