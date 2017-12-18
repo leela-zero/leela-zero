@@ -80,8 +80,8 @@ public:
     void set_square(int vertex, square_t content);
     std::pair<int, int> get_xy(int vertex) const;
 
-    bool is_suicide(int i, int color);
-    int count_pliberties(const int i);
+    bool is_suicide(int i, int color) const;
+    int count_pliberties(const int i) const;
     void augment_chain(std::vector<int> & chains, int vertex);
     bool is_eye(const int color, const int vtx);
     int get_dir(int i) const;
@@ -135,7 +135,7 @@ protected:
 
     int m_boardsize;
 
-    int count_neighbours(const int color, const int i);
+    int count_neighbours(const int color, const int i) const;
     void merge_strings(const int ip, const int aip);
     int remove_string_fast(int i);
     void add_neighbour(const int i, const int color);
