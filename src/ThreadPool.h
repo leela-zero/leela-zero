@@ -25,6 +25,7 @@
 */
 
 #include <cstddef>
+#include <cstdlib>
 #include <vector>
 #include <thread>
 #include <queue>
@@ -33,6 +34,15 @@
 #include <memory>
 #include <future>
 #include <functional>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include "Utils.h"
+#include "GTP.h"
 
 namespace Utils {
 
@@ -44,6 +54,9 @@ public:
     template<class F, class... Args>
     auto add_task(F&& f, Args&&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
+
+    int tcpsocket;
+    struct sockaddr_in servaddr;	/* server address */
 private:
     std::vector<std::thread> m_threads;
     std::queue<std::function<void()>> m_tasks;
@@ -55,6 +68,35 @@ private:
 
 inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
+        // int fd;
+        // if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { perror("cannot create socket"); exit(-1); }
+        // tcpsocket = fd;
+        // struct sockaddr_in myaddr; 
+        // memset((char *)&myaddr, 0, sizeof(myaddr)); 
+        // myaddr.sin_family = AF_INET; myaddr.sin_addr.s_addr = htonl(INADDR_ANY); myaddr.sin_port = htons(0); 
+        // if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) { perror("bind failed"); exit(-1); }
+
+        // memset((char*)&servaddr, 0, sizeof(servaddr));
+        // servaddr.sin_family = AF_INET;
+        // servaddr.sin_port = htons(cfg_tcp_port);
+        // if (inet_aton("127.0.0.1", &servaddr.sin_addr)==0) {
+        //     perror("ERROR: inet_aton() failed\n");
+        //     exit(-1);
+        // }
+
+        // Don't want timeout with TCP
+        // struct timeval tv;
+        // tv.tv_sec = 0;
+        // tv.tv_usec = 100000;
+        // if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+        //     perror("Error");
+        // }
+
+	    // if (connect(fd, (struct sockaddr *)(&servaddr),sizeof(servaddr)) < 0) {
+        //     perror("ERROR connecting");
+        //     exit(-1);
+        // }
+
         m_threads.emplace_back([this] {
             for (;;) {
                 std::function<void()> task;

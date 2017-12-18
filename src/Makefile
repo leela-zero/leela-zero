@@ -22,27 +22,29 @@ clang:
 		leelaz
 
 DYNAMIC_LIBS = -lboost_program_options -lpthread -lz
-LIBS =
 
 ifeq ($(THE_OS),Linux)
-# for Linux with OpenBLAS
+	#for Linux with OpenBLAS
 	CXXFLAGS += -I/usr/include/openblas
 	DYNAMIC_LIBS += -lopenblas
-	DYNAMIC_LIBS += -lOpenCL
+	DYNAMIC_LIBS += -lOpenCL -lrt
 endif
-ifeq ($(THE_OS),Darwin)
+
 # for macOS (comment out the Linux part)
+ifeq ($(THE_OS),Darwin)
+    # for macOS (comment out the Linux part)
 	LIBS += -framework Accelerate
 	LIBS += -framework OpenCL
 	CXXFLAGS += -I/System/Library/Frameworks/Accelerate.framework/Versions/Current/Headers
 endif
+
 
 # for MKL instead of OpenBLAS
 #DYNAMIC_LIBS += -lmkl_rt
 #CXXFLAGS += -I/opt/intel/mkl/include
 #LDFLAGS  += -L/opt/intel/mkl/lib/intel64/
 
-CXXFLAGS += -I.
+CXXFLAGS += -I. 
 CPPFLAGS += -MD -MP
 
 sources = Network.cpp FullBoard.cpp KoState.cpp Training.cpp \

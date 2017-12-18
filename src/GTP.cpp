@@ -44,6 +44,7 @@ using namespace Utils;
 
 // Configuration flags
 bool cfg_allow_pondering;
+int cfg_tcp_port;
 int cfg_num_threads;
 int cfg_max_playouts;
 int cfg_lagbuffer_cs;
@@ -62,9 +63,12 @@ std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
+extern unsigned char * mem;
+extern int myid;
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
+    cfg_tcp_port = 9999;
     cfg_num_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
     cfg_lagbuffer_cs = 100;
@@ -219,6 +223,8 @@ bool GTP::execute(GameState & game, std::string xinput) {
         gtp_printf(id, PROGRAM_VERSION);
         return true;
     } else if (command == "quit") {
+        // free the slot
+        mem[2+myid] = 0;
         gtp_printf(id, "");
         exit(EXIT_SUCCESS);
     } else if (command.find("known_command") == 0) {

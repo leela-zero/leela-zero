@@ -32,25 +32,26 @@
 #endif
 
 /* Features */
-#define USE_BLAS
-#if !defined(__APPLE__) && !defined(__MACOSX)
-#define USE_OPENBLAS
-#endif
+//#define USE_BLAS
+//#define USE_OPENBLAS
 //#define USE_MKL
-#define USE_OPENCL
-// Use 16-bit floating point storage for net calculations
-// #define USE_HALF
+//#define USE_OPENCL
 //#define USE_TUNER
+#define USE_IPC
+// Remember to turn on USE_BLAS, USE_OPENBLAS (for Linux only) and USE_OPENCL when using USE_IPC_TEST
+//#define USE_IPC_TEST
 
 #define PROGRAM_NAME "Leela Zero"
 #define PROGRAM_VERSION "0.9"
 
 // OpenBLAS limitation
-#if defined(USE_BLAS) && defined(USE_OPENBLAS)
-#define MAX_CPUS 64
-#else
-#define MAX_CPUS 128
-#endif
+// #if defined(USE_BLAS) && defined(USE_OPENBLAS)
+// #define MAX_CPUS 64
+// #else
+// #define MAX_CPUS 128
+// #endif
+
+#define MAX_CPUS 1
 
 /* Integer types */
 

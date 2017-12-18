@@ -26,8 +26,8 @@
 #include "zlib.h"
 #include "string.h"
 
-#include "Training.h"
 #include "UCTNode.h"
+#include "Training.h"
 #include "SGFParser.h"
 #include "SGFTree.h"
 #include "Random.h"

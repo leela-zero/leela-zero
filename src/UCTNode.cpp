@@ -150,7 +150,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
     }
 
     // sort (this will reverse scores, but linking is backwards too)
-    std::sort(begin(nodelist), end(nodelist));
+    std::stable_sort(begin(nodelist), end(nodelist));
 
     // link the nodes together
     auto childrenadded = 0;
