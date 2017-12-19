@@ -50,13 +50,15 @@ UCTNode::UCTNode(int vertex, float score, float init_eval)
 
 UCTNode::~UCTNode() {
     LOCK(get_mutex(), lock);
+    // Empty the children array while the lock is held
+    m_children.clear();
 }
 
 bool UCTNode::first_visit() const {
     return m_visits == 0;
 }
 
-SMP::Mutex & UCTNode::get_mutex() {
+SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
@@ -129,42 +131,45 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
 
 void UCTNode::link_nodelist(std::atomic<int> & nodecount,
                             std::vector<Network::scored_node> & nodelist,
-                            float init_eval)
-{
-    auto totalchildren = nodelist.size();
-    if (!totalchildren) {
+                            float init_eval) {
+    if (nodelist.empty()) {
         return;
     }
 
-    // sorting reverse scores, but insertion is backwards too.
+    // Use best to worst order, so highest go first
     std::stable_sort(rbegin(nodelist), rend(nodelist));
 
     LOCK(get_mutex(), lock);
 
     for (const auto& node : nodelist) {
-        m_children.emplace_back(std::make_unique<UCTNode>(node.second, node.first, init_eval));
+        m_children.emplace_back(
+            std::make_unique<UCTNode>(node.second, node.first, init_eval)
+        );
     }
 
     nodecount += m_children.size();
     m_has_children = true;
 }
 
-void UCTNode::kill_superkos(KoState & state) {
+void UCTNode::kill_superkos(const KoState& state) {
     for (auto& child : m_children) {
-        int move = child->get_move();
+        auto move = child->get_move();
         if (move != FastBoard::PASS) {
             KoState mystate = state;
             mystate.play_move(move);
 
             if (mystate.superko()) {
-                // TODO delete comment before merge.
-                // Instead of removing invalid node just mark node invalid.
-                // This logic is already used in UCTSearch.cpp, I want to
-                // revisit ko moves next so it can be cleaned up more then.
+                // Don't delete nodes for now, just mark them invalid.
                 child->invalidate();
             }
         }
     }
+
+    // Now do the actual deletion.
+    m_children.erase(
+        std::remove_if(begin(m_children), end(m_children),
+                       [](const auto &child) { return !child->valid(); })
+    );
 }
 
 float UCTNode::eval_state(GameState& state) {
@@ -318,20 +323,20 @@ void UCTNode::accumulate_eval(float eval) {
 }
 
 UCTNode* UCTNode::uct_select_child(int color) {
-    UCTNode * best = nullptr;
-    float best_value = -1000.0f;
+    UCTNode* best = nullptr;
+    auto best_value = -1000.0f;
 
     LOCK(get_mutex(), lock);
 
     // Count parentvisits.
     // We do this manually to avoid issues with transpositions.
-    int parentvisits = 0;
+    auto parentvisits = size_t{0};
     for (const auto& child : m_children) {
         if (child->valid()) {
             parentvisits += child->get_visits();
         }
     }
-    float numerator = std::sqrt((double)parentvisits);
+    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
 
     for (const auto& child : m_children) {
         if (!child->valid()) {
@@ -339,11 +344,11 @@ UCTNode* UCTNode::uct_select_child(int color) {
         }
 
         // get_eval() will automatically set first-play-urgency
-        float winrate = child->get_eval(color);
-        float psa = child->get_score();
-        float denom = 1.0f + child->get_visits();
-        float puct = cfg_puct * psa * (numerator / denom);
-        float value = winrate + puct;
+        auto winrate = child->get_eval(color);
+        auto psa = child->get_score();
+        auto denom = 1.0f + child->get_visits();
+        auto puct = cfg_puct * psa * (numerator / denom);
+        auto value = winrate + puct;
         assert(value > -1000.0f);
 
         if (value > best_value) {
@@ -356,12 +361,12 @@ UCTNode* UCTNode::uct_select_child(int color) {
     return best;
 }
 
-class NodeComp : public std::binary_function<std::unique_ptr<UCTNode>&,
-                                             std::unique_ptr<UCTNode>&, bool> {
+class NodeComp : public std::binary_function<UCTNode::node_ptr_t&,
+                                             UCTNode::node_ptr_t&, bool> {
 public:
     NodeComp(int color) : m_color(color) {};
-    bool operator()(const std::unique_ptr<UCTNode>& a,
-                    const std::unique_ptr<UCTNode>& b) {
+    bool operator()(const UCTNode::node_ptr_t& a,
+                    const UCTNode::node_ptr_t& b) {
         // if visits are not same, sort on visits
         if (a->get_visits() != b->get_visits()) {
             return a->get_visits() < b->get_visits();
@@ -372,27 +377,25 @@ public:
             return a->get_score() < b->get_score();
         }
 
-        // both have same non-zero numbor of visits
+        // both have same non-zero number of visits
         return a->get_eval(m_color) < b->get_eval(m_color);
     }
 private:
     int m_color;
-
 };
 
 void UCTNode::sort_root_children(int color) {
     LOCK(get_mutex(), lock);
-    std::stable_sort(begin(m_children), end(m_children),
-                     NodeComp(color));
+    std::stable_sort(begin(m_children), end(m_children), NodeComp(color));
     std::reverse(begin(m_children), end(m_children));
 }
 
-UCTNode* UCTNode::get_best_root_child(int color) {
+UCTNode& UCTNode::get_best_root_child(int color) {
     LOCK(get_mutex(), lock);
     assert(!m_children.empty());
 
-    return std::max_element(begin(m_children), end(m_children),
-                            NodeComp(color))->get();
+    return *(std::max_element(begin(m_children), end(m_children),
+                              NodeComp(color))->get());
 }
 
 UCTNode* UCTNode::get_first_child() const {
@@ -402,7 +405,7 @@ UCTNode* UCTNode::get_first_child() const {
     return m_children.front().get();
 }
 
-const std::vector<std::unique_ptr<UCTNode>>& UCTNode::get_children() const {
+const std::vector<UCTNode::node_ptr_t>& UCTNode::get_children() const {
     return m_children;
 }
 
