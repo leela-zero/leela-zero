@@ -42,6 +42,7 @@ extern std::string cfg_logfile;
 extern std::string cfg_weightsfile;
 extern FILE* cfg_logfile_handle;
 extern bool cfg_quiet;
+extern std::string cfg_options_str;
 
 class GTP {
 public:

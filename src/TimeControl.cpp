@@ -34,6 +34,19 @@ TimeControl::TimeControl(int boardsize, int maintime, int byotime,
     set_boardsize(boardsize);
 }
 
+std::string TimeControl::to_string() {
+    if (m_byotime != 0 && m_byostones == 0 && m_byoperiods == 0) {
+        return "Infinite";
+    }
+    if (!m_byotime) {
+        return std::to_string(m_maintime/100) + "s absolute";
+    }
+    return "main " + std::to_string(m_maintime/100) + "s"
+        + ", byoyomi " + std::to_string(m_byotime/100) + "s"
+        + ", byo stones " + std::to_string(m_byostones)
+        + ", byo periods " + std::to_string(m_byoperiods);
+}
+
 void TimeControl::reset_clocks() {
     m_remaining_time[0] = m_maintime;
     m_remaining_time[1] = m_maintime;

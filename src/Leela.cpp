@@ -222,6 +222,36 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         }
     }
 #endif
+
+    auto out = std::stringstream{};
+    for (const auto& it : vm) {
+        if (it.second.defaulted()) {
+            continue;
+        }
+        auto &type = it.second.value().type();
+
+        out << "--" << it.first;
+        if (type == typeid(uint64)) {
+            out << " " << it.second.as<uint64>();
+        } else if (type == typeid(std::string)) {
+            // skip unary string options
+            if (it.second.as<std::string>() != "") {
+                // Sanitize user supplied strings
+                out << " " << it.first;
+            }
+        } else if (type == typeid(int)) {
+            out << " " << it.second.as<int>();
+        } else if (type == typeid(float)) {
+            out << " " << it.second.as<float>();
+        } else {
+            out << " unknown option type";
+        }
+        out << " ";
+    }
+    if (!vm.count("seed")) {
+        out << "--seed " << cfg_rng_seed;
+    }
+    cfg_options_str = out.str();
 }
 
 int main (int argc, char *argv[]) {

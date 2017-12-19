@@ -477,6 +477,10 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         }
     }
 
+    auto tc = state->get_timecontrol();
+    header.append("\nC[LeelaZ options: " + cfg_options_str + "\n");
+    header.append("LeelaZ time control: " + tc.to_string() + "]");
+
     std::string result(header);
     result.append("\n");
     result.append(moves);

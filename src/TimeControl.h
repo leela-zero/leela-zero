@@ -40,6 +40,7 @@ public:
     void display_times();
     int get_remaining_time(int color);
     void reset_clocks();
+    std::string to_string();
 
 private:
     void display_color_time(int color);
