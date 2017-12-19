@@ -168,7 +168,8 @@ void UCTNode::kill_superkos(const KoState& state) {
     // Now do the actual deletion.
     m_children.erase(
         std::remove_if(begin(m_children), end(m_children),
-                       [](const auto &child) { return !child->valid(); })
+                       [](const auto &child) { return !child->valid(); }),
+        end(m_children)
     );
 }
 
