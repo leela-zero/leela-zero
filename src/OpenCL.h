@@ -123,13 +123,10 @@ private:
     void add_weights(size_t layer, size_t size, const float * weights);
     void convolve(int filter_size, int channels, int outputs,
                   cl::Buffer& input, cl::Buffer& output, cl::Buffer& merge,
-                  std::vector<cl::Buffer>& weights);
+                  std::vector<cl::Buffer>::const_iterator weights);
     void batchnorm(int outputs, int channel_size, cl::Buffer& input,
                    cl::Buffer& output, cl::Buffer* residual,
-                   std::vector<cl::Buffer>& weights);
-    void innerproduct(int inputs, int outputs,
-                      cl::Buffer& input, cl::Buffer& output,
-                      std::vector<cl::Buffer>& weights);
+                   std::vector<cl::Buffer>::const_iterator weights);
     std::vector<Layer> m_layers;
 };
 
