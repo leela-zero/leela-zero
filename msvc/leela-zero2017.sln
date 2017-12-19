@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27004.2009
+VisualStudioVersion = 15.0.27130.2003
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "leela-zero", "VS2017\leela-zero.vcxproj", "{7B887BFE-8D2C-46CD-B139-5213434BF218}"
 EndProject
@@ -29,6 +29,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
+		Qt5Version = $(DefaultQtVersion)
 		SolutionGuid = {D4C31DFC-30DA-4030-9A6D-70F1E6851A81}
 	EndGlobalSection
 EndGlobal

@@ -24,9 +24,13 @@
 #include <QCommandLineParser>
 #include <QProcess>
 #include <QFile>
+#include <QFileInfo>
 #include <QDir>
 #include <QDebug>
 #include <chrono>
+#ifdef WIN32
+#include <direct.h>
+#endif
 #include <QCommandLineParser>
 #include <iostream>
 #include "Game.h"
@@ -88,6 +92,23 @@ int main(int argc, char *argv[]) {
     QTextStream cerr(&caFile);
 #else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
+#endif
+#ifdef WIN32
+	//We need to make sure these files we need are there before calling them. Otherwise it will result in nullptr.
+	QFileInfo curl_exe("curl.exe");
+	QFileInfo gzip_exe("gzip.exe");
+	QFileInfo leelaz_exe("leelaz.exe");
+	if (!(curl_exe.exists() && gzip_exe.exists() && leelaz_exe.exists()))
+	{
+		char cwd[_MAX_PATH];
+		_getcwd(cwd, _MAX_PATH);
+
+		cerr << "Autogtp cannot run as required executables (curl.exe, gzip.exe and leelaz.exe) are not found in the following folder: " << endl;
+		cerr << cwd << endl;
+		cerr << "Press a key to exit..." << endl;
+		getchar();
+		return EXIT_FAILURE;
+	}
 #endif
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
     cerr << "Using " << gamesNum << " thread(s)." << endl;
