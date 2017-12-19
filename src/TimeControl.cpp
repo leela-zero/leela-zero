@@ -166,7 +166,7 @@ int TimeControl::max_time_for_move(int color) {
     time_remaining = std::max(time_remaining - BUFFER_CENTISECS, 0);
     extra_time_per_move = std::max(extra_time_per_move - BUFFER_CENTISECS, 0);
     auto time_per_move = time_remaining / moves_remaining;
-    return time_per_move + (extra_time_per_move;
+    return time_per_move + extra_time_per_move;
 }
 
 void TimeControl::adjust_time(int color, int time, int stones) {
