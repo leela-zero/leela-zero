@@ -150,8 +150,10 @@ int TimeControl::max_time_for_move(int color) {
               byo yomi time but not in byo yomi yet
             */
             if (m_byostones) {
+                int byo_extra = m_byotime / m_byostones;
+                time_remaining = m_remaining_time[color] + byo_extra;
                 // Add back the guaranteed extra seconds
-                extra_time_per_move = m_byotime / m_byostones;
+                extra_time_per_move = byo_extra;
             } else {
                 assert(m_byoperiods);
                 int byo_extra = m_byotime * (m_periods_left[color] - 1);
@@ -162,11 +164,9 @@ int TimeControl::max_time_for_move(int color) {
         }
     }
 
-    moves_remaining = std::max(moves_remaining, 1);
-    time_remaining = std::max(time_remaining - BUFFER_CENTISECS, 0);
-    extra_time_per_move = std::max(extra_time_per_move - BUFFER_CENTISECS, 0);
-    auto time_per_move = time_remaining / moves_remaining;
-    return time_per_move + extra_time_per_move;
+    return (std::max(time_remaining - BUFFER_CENTISECS, 0) /
+            std::max(moves_remaining, 1)) +
+           std::max(extra_time_per_move - BUFFER_CENTISECS, 0);
 }
 
 void TimeControl::adjust_time(int color, int time, int stones) {

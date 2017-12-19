@@ -5,7 +5,7 @@ default:
 	$(MAKE) CC=gcc CXX=g++ \
 		CXXFLAGS='$(CXXFLAGS) -Wall -Wextra -pipe -O3 -g -ffast-math -flto -march=native -std=c++14 -DNDEBUG'  \
 		LDFLAGS='$(LDFLAGS) -flto -g' \
-		leelaz
+		leelaz2
 
 debug:
 	@echo "Detected OS: ${THE_OS}"
@@ -59,7 +59,7 @@ deps = $(sources:%.cpp=%.d)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-leelaz: $(objects)
+leelaz2: $(objects)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) $(DYNAMIC_LIBS)
 
 clean:
