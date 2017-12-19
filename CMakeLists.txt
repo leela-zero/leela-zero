@@ -35,7 +35,9 @@ MESSAGE( STATUS "Qt5Core version: " ${Qt5Core_VERSION} )
 # We need OpenBLAS for now, because we make some specific
 # calls. Ideally we'd use OpenBLAS is possible and fall back to
 # not doing those calls if it's not present.
-set(BLA_VENDOR OpenBLAS)
+if(NOT APPLE)
+  set(BLA_VENDOR OpenBLAS)
+endif()
 FIND_PACKAGE(BLAS REQUIRED)
 find_path(BLAS_INCLUDE_DIRS openblas_config.h
   /usr/include
@@ -47,6 +49,8 @@ find_path(BLAS_INCLUDE_DIRS openblas_config.h
 
 # See if we can set optimization flags as expected.
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  SET(GccSpecificFlags 1)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
   SET(GccSpecificFlags 1)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   SET(GccSpecificFlags 1)
