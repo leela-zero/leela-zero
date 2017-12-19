@@ -36,7 +36,7 @@ public:
         Production = 0,
         Validation
     };
-    Job(QString gpu);
+    Job(QString gpu, const int index);
     ~Job() = default;
     virtual Result execute() = 0;
     virtual void init(const QMap<QString,QString> &l);
@@ -47,13 +47,14 @@ protected:
     QString m_option;
     QString m_gpu;
     VersionTuple m_leelazMinVersion;
+    int m_index;
 };
 
 
 class ProductionJob : public Job {
     Q_OBJECT
 public:
-    ProductionJob(QString gpu);
+    ProductionJob(QString gpu, const int index);
     ~ProductionJob() = default;
     void init(const QMap<QString,QString> &l);
     Result execute();
@@ -65,7 +66,7 @@ private:
 class ValidationJob : public Job {
     Q_OBJECT
 public:
-    ValidationJob(QString gpu);
+    ValidationJob(QString gpu, const int index);
     ~ValidationJob() = default;
     void init(const QMap<QString,QString> &l);
     Result execute();

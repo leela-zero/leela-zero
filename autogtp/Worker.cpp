@@ -55,10 +55,10 @@ void Worker::createJob(int type) {
     }
     switch(type) {
     case Order::Production:
-        m_job = new ProductionJob(m_gpu);
+        m_job = new ProductionJob(m_gpu, m_index);
         break;
     case Order::Validation:
-        m_job = new ValidationJob(m_gpu);
+        m_job = new ValidationJob(m_gpu, m_index);
         break;
     }
 }
