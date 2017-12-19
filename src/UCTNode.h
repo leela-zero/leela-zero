@@ -21,9 +21,10 @@
 
 #include "config.h"
 
-#include <tuple>
 #include <atomic>
 #include <limits>
+#include <memory>
+#include <vector>
 
 #include "SMP.h"
 #include "GameState.h"
@@ -31,8 +32,6 @@
 
 class UCTNode {
 public:
-    using sortnode_t = std::tuple<float, int, float, UCTNode*>;
-
     // When we visit a node, add this amount of virtual losses
     // to it to encourage other CPUs to explore other parts of the
     // search tree.
@@ -46,7 +45,6 @@ public:
                          GameState & state, float & eval);
     float eval_state(GameState& state);
     void kill_superkos(KoState & state);
-    void delete_child(UCTNode * child);
     void invalidate();
     bool valid() const;
     int get_move() const;
@@ -68,7 +66,7 @@ public:
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    UCTNode* get_sibling() const;
+    const std::vector<std::unique_ptr<UCTNode>>& get_children() const;
 
     void sort_root_children(int color);
     UCTNode* get_best_root_child(int color);
@@ -76,15 +74,14 @@ public:
 
 private:
     UCTNode();
-    void link_child(UCTNode * newchild);
     void link_nodelist(std::atomic<int> & nodecount,
                        std::vector<Network::scored_node> & nodelist,
                        float init_eval);
 
     // Tree data
     std::atomic<bool> m_has_children{false};
-    UCTNode* m_firstchild{nullptr};
-    UCTNode* m_nextsibling{nullptr};
+    std::vector<std::unique_ptr<UCTNode>> m_children;
+
     // Move
     int m_move;
     // UCT
