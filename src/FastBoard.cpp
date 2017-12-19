@@ -167,12 +167,10 @@ void FastBoard::reset_board(int size) {
     m_next[MAXSQ]   = MAXSQ;
 }
 
-bool FastBoard::is_suicide(int i, int color) {
+bool FastBoard::is_suicide(int i, int color) const {
     if (count_pliberties(i)) {
         return false;
     }
-
-    bool connecting = false;
 
     for (int k = 0; k < 4; k++) {
         int ai = i + m_dirs[k];
@@ -183,7 +181,6 @@ bool FastBoard::is_suicide(int i, int color) {
                 // connecting to live group = never suicide
                 return false;
             }
-            connecting = true;
         } else {
             if (libs <= 1) {
                 // killing neighbor = never suicide
@@ -192,39 +189,16 @@ bool FastBoard::is_suicide(int i, int color) {
         }
     }
 
-    add_neighbour(i, color);
-
-    bool opps_live = true;
-    bool ours_die = true;
-
-    for (int k = 0; k < 4; k++) {
-        int ai = i + m_dirs[k];
-
-        int libs = m_libs[m_parent[ai]];
-
-        if (libs == 0 && get_square(ai) != color) {
-            opps_live = false;
-        } else if (libs != 0 && get_square(ai) == color) {
-            ours_die = false;
-        }
-    }
-
-    remove_neighbour(i, color);
-
-    if (!connecting) {
-        return opps_live;
-    } else {
-        return opps_live && ours_die;
-    }
+    return true;
 }
 
-int FastBoard::count_pliberties(const int i) {
+int FastBoard::count_pliberties(const int i) const {
     return count_neighbours(EMPTY, i);
 }
 
 // count neighbours of color c at vertex v
 // the border of the board has fake neighours of both colors
-int FastBoard::count_neighbours(const int c, const int v) {
+int FastBoard::count_neighbours(const int c, const int v) const {
     assert(c == WHITE || c == BLACK || c == EMPTY);
     return (m_neighbours[v] >> (NBR_SHIFT * c)) & 7;
 }
