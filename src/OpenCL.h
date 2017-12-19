@@ -62,8 +62,8 @@ private:
 class OpenCL_Network {
 public:
     void push_batchnorm(unsigned int spatial_size,
-                        const std::vector<float> & means,
-                        const std::vector<float> & variances) {
+                        const std::vector<float>& means,
+                        const std::vector<float>& variances) {
         size_t layer = get_layer_count();
         push_weights(layer, means);
         push_weights(layer, variances);
@@ -74,8 +74,8 @@ public:
     }
 
     void push_convolve(unsigned int filter_size,
-                       const std::vector<float> & weights,
-                       const std::vector<float> & biases) {
+                       const std::vector<float>& weights,
+                       const std::vector<float>& biases) {
         size_t layer = get_layer_count();
         push_weights(layer, weights);
         push_weights(layer, biases);
@@ -86,14 +86,14 @@ public:
     }
 
     void push_residual(unsigned int filter_size,
-                       const std::vector<float> & weights_1,
-                       const std::vector<float> & biases_1,
-                       const std::vector<float> & means_1,
-                       const std::vector<float> & variances_1,
-                       const std::vector<float> & weights_2,
-                       const std::vector<float> & biases_2,
-                       const std::vector<float> & means_2,
-                       const std::vector<float> & variances_2) {
+                       const std::vector<float>& weights_1,
+                       const std::vector<float>& biases_1,
+                       const std::vector<float>& means_1,
+                       const std::vector<float>& variances_1,
+                       const std::vector<float>& weights_2,
+                       const std::vector<float>& biases_2,
+                       const std::vector<float>& means_2,
+                       const std::vector<float>& variances_2) {
         size_t layer = get_layer_count();
         push_weights(layer, weights_1);
         push_weights(layer, biases_1);
@@ -117,16 +117,18 @@ public:
     void forward(const std::vector<net_t>& input, std::vector<net_t>& output);
 
 private:
-    void push_weights(size_t layer, const std::vector<float> & weights) {
+    using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
+
+    void push_weights(size_t layer, const std::vector<float>& weights) {
         add_weights(layer, weights.size(), weights.data());
     }
-    void add_weights(size_t layer, size_t size, const float * weights);
+    void add_weights(size_t layer, size_t size, const float* weights);
     void convolve(int filter_size, int channels, int outputs,
                   cl::Buffer& input, cl::Buffer& output, cl::Buffer& merge,
-                  std::vector<cl::Buffer>::const_iterator weights);
+                  weight_slice_t weights);
     void batchnorm(int outputs, int channel_size, cl::Buffer& input,
                    cl::Buffer& output, cl::Buffer* residual,
-                   std::vector<cl::Buffer>::const_iterator weights);
+                   weight_slice_t weights);
     std::vector<Layer> m_layers;
 };
 
