@@ -484,6 +484,9 @@ void Management::sendAllGames() {
                 QTextStream(stdout) << "File: " << file.fileName() << " sent" << endl;
                 file.remove();
                 cleanupFiles(name);
+                if(i+1 < list.size()) { 
+                    QThread::sleep(10);
+                }
             }
         } catch (NetworkException ex) {
             QTextStream(stdout)
