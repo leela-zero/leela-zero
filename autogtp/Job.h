@@ -23,6 +23,7 @@
 #include "Order.h"
 #include <QObject>
 #include <QAtomicInt>
+#include <QTextStream>
 class Management;
 using VersionTuple = std::tuple<int, int, int>;
 
@@ -43,7 +44,10 @@ public:
     virtual Result execute() = 0;
     virtual void init(const Order &o);
     void finish() { m_state.store(FINISHING); }
-    void store() { m_state.store(STORING); }
+    void store() { 
+        QTextStream(stdout) << "Job is saving game" << endl;
+        m_state.store(STORING); 
+    }
 
 protected:
     QAtomicInt m_state;

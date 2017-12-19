@@ -42,8 +42,6 @@ int main(int argc, char *argv[]) {
     app.setApplicationName("autogtp");
     app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
 
-//    QTimer::singleShot(0, &app, SLOT(quit()));
-
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addVersionOption();
@@ -63,11 +61,15 @@ int main(int argc, char *argv[]) {
     QCommandLineOption keepDebugOption(
         { "d", "debug" }, "Save training and extra debug files after each self-play game.",
                           "output directory");
+    QCommandLineOption timeoutOption(
+        { "t", "timeout" }, "Save running games after the timeout (in minutes) is passed.",
+                          "time in minutes");
 
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(keepSgfOption);
     parser.addOption(keepDebugOption);
+    parser.addOption(timeoutOption);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
@@ -79,36 +81,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Map streams
-    QTextStream cout(stdout, QIODevice::WriteOnly);
-#if defined(LOG_ERRORS_TO_FILE)
-    // Log stderr to file
-    QFile caFile("output.txt");
-    caFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append);
-    if(!caFile.isOpen()){
-        qDebug() << "- Error, unable to open" << "outputFilename" << "for output";
-    }
-    QTextStream cerr(&caFile);
-#else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
-#endif
-#ifdef WIN32
-    // We need to make sure these files we need are there before calling them.
-    // Otherwise it will result in a crash.
-    QFileInfo curl_exe("curl.exe");
-    QFileInfo gzip_exe("gzip.exe");
-    QFileInfo leelaz_exe("leelaz.exe");
-    if (!(curl_exe.exists() && gzip_exe.exists() && leelaz_exe.exists())) {
-        char cwd[_MAX_PATH];
-        _getcwd(cwd, _MAX_PATH);
-        cerr << "Autogtp cannot run as required executables ";
-        cerr << "(curl.exe, gzip.exe and leelaz.exe) are not found in the ";
-        cerr << "following folder: " << endl;
-        cerr << cwd << endl;
-        cerr << "Press a key to exit..." << endl;
-        getchar();
-        return EXIT_FAILURE;
-    }
-#endif
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
     cerr << "Using " << gamesNum << " thread(s) for GPU(s)." << endl;
     if (parser.isSet(keepSgfOption)) {
@@ -127,13 +100,14 @@ int main(int argc, char *argv[]) {
     }
     QMutex mutex;
     Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), parser.value(keepDebugOption), &mutex);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
+    QTimer *timer = new QTimer();
     boss->checkStoredGames();
     boss->giveAssignments();
-    int r = app.exec();
-    // Synchornize on the work_thread.  Letting it run to completion.
-    boss->wait();
-    cerr.flush();
-    cout.flush();
-    app.exit();
-    return r;
+    if(parser.isSet(timeoutOption))
+    {
+        QObject::connect(timer, &QTimer::timeout, &app, &QCoreApplication::quit);
+        timer->start(parser.value(timeoutOption).toInt() * 60000);
+    }
+    return app.exec();
 }

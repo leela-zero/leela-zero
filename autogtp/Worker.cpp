@@ -35,6 +35,12 @@ Worker::Worker(int index, const QString& gpuIndex, Management *parent) :
     }
 }
 
+void Worker::doStore() { 
+    QTextStream(stdout) << "Worker: Command receive store my game" << endl;
+    m_job->store(); 
+    m_state.store(STORING); 
+}
+
 void Worker::order(Order o)
 {
     if (!o.isValid()) {
@@ -75,7 +81,9 @@ void Worker::run() {
      do {
         auto start = std::chrono::high_resolution_clock::now();
 
+        QTextStream(stdout) << "Worker: before execute" << endl;
         res = m_job->execute();
+        QTextStream(stdout) << "Worker: after execute" << endl;
 
         auto end = std::chrono::high_resolution_clock::now();
         auto gameDuration =
@@ -85,17 +93,17 @@ void Worker::run() {
         }
     } while (m_state == RUNNING);
     if(m_state == STORING) {
-        m_todo.add("moves", res.parameters()["moves"]);
+        m_todo.add("0moves", res.parameters()["moves"]);
         if(res.type() == Result::StoreMatch) {
-            m_todo.add("sgfFirst", res.parameters()["sgfFirst"]);
-            m_todo.add("sgfSecond", res.parameters()["sgfSecond"]);
+            m_todo.add("0sgfFirst", res.parameters()["sgfFirst"]);
+            m_todo.add("0sgfSecond", res.parameters()["sgfSecond"]);
             m_todo.type(Order::RestoreMatch);
         } else {
-            m_todo.add("sgf", res.parameters()["sgf"]);
+            m_todo.add("0sgf", res.parameters()["sgf"]);
             m_todo.type(Order::RestoreSelfPlayed);
         }
         QString unique = QUuid::createUuid().toRfc4122().toHex();
         m_todo.save("storefile" + unique + ".bin");
     }    
-    QTextStream(stdout) << "Program ends: exiting." << endl;
+    QTextStream(stdout) << "Worker: Program ends: exiting." << endl;
 }

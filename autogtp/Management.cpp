@@ -118,15 +118,21 @@ void Management::giveAssignments() {
 }
 
 void Management::storeGames() {
+    QTextStream(stdout) << "Management: Signal received saving game(s)" << endl;
+
     for (int i = 0; i < m_gpus * m_games; ++i) {
         m_gamesThreads[i]->doStore();
     }
+    wait();
 }
 
 void Management::wait() {
+    QTextStream(stdout) << "Management: waiting for workers" << endl;
     for (int i = 0; i < m_gpus * m_games; ++i) {
         m_gamesThreads[i]->wait();
+        QTextStream(stdout) << "Management: Worker " << i+1 << " ended" << endl;
     }
+    m_mainMutex->unlock();
 }
 
 void Management::getResult(Order ord, Result res, int index, int duration) {

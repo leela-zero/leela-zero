@@ -23,7 +23,6 @@ SOURCES += main.cpp \
     Worker.cpp \
     Order.cpp \
     Job.cpp \
-    Keypress.cpp \
     Management.cpp
 
 HEADERS += \
@@ -32,5 +31,4 @@ HEADERS += \
     Job.h \
     Order.h \
     Result.h \
-    Keypress.h \
     Management.h

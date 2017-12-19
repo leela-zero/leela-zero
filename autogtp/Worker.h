@@ -39,7 +39,7 @@ public:
     ~Worker() = default;
     void order(Order o);
     void doFinish() { m_job->finish(); m_state.store(FINISHING); }
-    void doStore() { m_job->store(); m_state.store(STORING); }
+    void doStore();
     void run() override;
 signals:
     void resultReady(Order o, Result r, int index, int duration);

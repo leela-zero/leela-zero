@@ -99,17 +99,17 @@ Result ProductionJob::execute(){
         res.add("moves", QString::number(game.getMovesCount()));
         break;
     case STORING:
-        QTextStream(stdout) << "Program ends: Storing game." << endl;
+        QTextStream(stdout) << "ProductionJob: Program ends: Storing game." << endl;
         res.type(Result::StoreSelfPlayed);
         game.writeSgf();
         res.add("sgf", game.getFile());
         res.add("moves", QString::number(game.getMovesCount()));
         break;
     default:
-        QTextStream(stdout) << "Program ends: exiting." << endl;
+        QTextStream(stdout) << "ProductionJob:Program ends: exiting." << endl;
         break;
     }
-    QTextStream(stdout) << "Stopping engine." << endl;
+    QTextStream(stdout) << "ProductionJob: Stopping engine." << endl;
     game.gameQuit();
     return res;
 }
@@ -184,7 +184,7 @@ Result ValidationJob::execute(){
         res.type(Result::Win);
         break;
     case STORING:
-        QTextStream(stdout) << "Program ends: Storing game." << endl;
+        QTextStream(stdout) << "ValidationJob: Program ends: Storing game." << endl;
         res.type(Result::StoreMatch);
         first.writeSgf();
         second.writeSgf();
@@ -193,7 +193,7 @@ Result ValidationJob::execute(){
         res.add("moves", QString::number(first.getMovesCount()));
         break;
     default:
-        QTextStream(stdout) << "Program ends: exiting." << endl;
+        QTextStream(stdout) << "ValidationJob: Program ends: exiting code: " <<  m_state.load() << endl;
         break;
     }
     first.gameQuit();
