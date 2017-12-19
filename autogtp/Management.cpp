@@ -69,7 +69,7 @@ void Management::giveAssignments() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[thread_index] = new Worker(thread_index, myGpu);
+            m_gamesThreads[thread_index] = new Worker(thread_index, myGpu, this);
             connect(m_gamesThreads[thread_index],
                     &Worker::resultReady,
                     this,
@@ -90,13 +90,11 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     switch(res.type()) {
     case Result::File:
         m_selfGames++,
-        m_movesMade += res.parameters()["moves"].toInt();
         uploadData(res.parameters(), ord.parameters());
         break;
     case Result::Win:
     case Result::Loss:
         m_matchGames++,
-        m_movesMade += res.parameters()["moves"].toInt();
         uploadResult(res.parameters(), ord.parameters());
         break;
     }
@@ -122,7 +120,7 @@ void  Management::printTimingInfo(float duration) {
         << m_matchGames << " matches) played in "
         << total_time_min.count() << " minutes = "
         << total_time_s.count() / m_gamesPlayed << " seconds/game, "
-        << total_time_millis.count() / m_movesMade  << " ms/move"
+        << total_time_millis.count() / m_movesMade.load()  << " ms/move"
         << ", last game took " << (int) duration << " seconds." << endl;
 }
 
