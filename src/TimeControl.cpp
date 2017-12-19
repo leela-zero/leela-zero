@@ -115,6 +115,7 @@ void TimeControl::display_color_time(int color) {
 void TimeControl::display_times() {
     display_color_time(0); // Black
     display_color_time(1); // White
+    myprintf("\n");
 }
 
 int TimeControl::max_time_for_move(int color) {
