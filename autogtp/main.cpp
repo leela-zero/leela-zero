@@ -94,21 +94,22 @@ int main(int argc, char *argv[]) {
     QTextStream cerr(stderr, QIODevice::WriteOnly);
 #endif
 #ifdef WIN32
-	//We need to make sure these files we need are there before calling them. Otherwise it will result in nullptr.
-	QFileInfo curl_exe("curl.exe");
-	QFileInfo gzip_exe("gzip.exe");
-	QFileInfo leelaz_exe("leelaz.exe");
-	if (!(curl_exe.exists() && gzip_exe.exists() && leelaz_exe.exists()))
-	{
-		char cwd[_MAX_PATH];
-		_getcwd(cwd, _MAX_PATH);
-
-		cerr << "Autogtp cannot run as required executables (curl.exe, gzip.exe and leelaz.exe) are not found in the following folder: " << endl;
-		cerr << cwd << endl;
-		cerr << "Press a key to exit..." << endl;
-		getchar();
-		return EXIT_FAILURE;
-	}
+    // We need to make sure these files we need are there before calling them.
+    // Otherwise it will result in a crash.
+    QFileInfo curl_exe("curl.exe");
+    QFileInfo gzip_exe("gzip.exe");
+    QFileInfo leelaz_exe("leelaz.exe");
+    if (!(curl_exe.exists() && gzip_exe.exists() && leelaz_exe.exists())) {
+        char cwd[_MAX_PATH];
+        _getcwd(cwd, _MAX_PATH);
+        cerr << "Autogtp cannot run as required executables ";
+        cerr << "(curl.exe, gzip.exe and leelaz.exe) are not found in the ";
+        cerr << "following folder: " << endl;
+        cerr << cwd << endl;
+        cerr << "Press a key to exit..." << endl;
+        getchar();
+        return EXIT_FAILURE;
+    }
 #endif
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
     cerr << "Using " << gamesNum << " thread(s)." << endl;
@@ -127,7 +128,9 @@ int main(int argc, char *argv[]) {
         }
     }
     QMutex mutex;
-    Management boss(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), parser.value(keepDebugOption), &mutex);
+    Management boss(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION,
+                    parser.value(keepSgfOption), parser.value(keepDebugOption),
+                    &mutex);
     boss.giveAssignments();
     mutex.lock();
     cerr.flush();
