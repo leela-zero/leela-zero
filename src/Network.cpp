@@ -109,6 +109,12 @@ void Network::benchmark(GameState * state, int iterations) {
              iterations, elapsed, (int)(iterations / elapsed));
 }
 
+void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
+    for(size_t i=0;i < weights.size(); i++) {
+        weights[i] = 1.0f / std::sqrt(weights[i] + epsilon);
+    }
+}
+
 void Network::initialize(void) {
 #ifdef USE_OPENCL
     myprintf("Initializing OpenCL\n");
@@ -183,6 +189,7 @@ void Network::initialize(void) {
             } else if (linecount % 4 == 2) {
                 batchnorm_means.emplace_back(weights);
             } else if (linecount % 4 == 3) {
+                process_bn_var(weights);
                 batchnorm_variances.emplace_back(weights);
             }
         } else if (linecount == plain_conv_wts) {
@@ -192,6 +199,7 @@ void Network::initialize(void) {
         } else if (linecount == plain_conv_wts + 2) {
             std::copy(begin(weights), end(weights), begin(bn_pol_w1));
         } else if (linecount == plain_conv_wts + 3) {
+            process_bn_var(weights);
             std::copy(begin(weights), end(weights), begin(bn_pol_w2));
         } else if (linecount == plain_conv_wts + 4) {
             std::copy(begin(weights), end(weights), begin(ip_pol_w));
@@ -204,6 +212,7 @@ void Network::initialize(void) {
         } else if (linecount == plain_conv_wts + 8) {
             std::copy(begin(weights), end(weights), begin(bn_val_w1));
         } else if (linecount == plain_conv_wts + 9) {
+            process_bn_var(weights);
             std::copy(begin(weights), end(weights), begin(bn_val_w2));
         } else if (linecount == plain_conv_wts + 10) {
             std::copy(begin(weights), end(weights), begin(ip1_val_w));
@@ -335,18 +344,15 @@ template <size_t spatial_size>
 void batchnorm(size_t channels,
                std::vector<float>& data,
                const float* means,
-               const float* variances,
+               const float* scale_stddivs,
                const float* eltwise = nullptr)
 {
-    constexpr auto epsilon = 1e-5f;
-
     auto lambda_ReLU = [](float val) { return (val > 0.0f) ?
                                        val : 0.0f; };
 
     for (auto c = size_t{0}; c < channels; ++c) {
         auto mean = means[c];
-        auto variance = variances[c] + epsilon;
-        auto scale_stddiv = 1.0f / std::sqrt(variance);
+        auto scale_stddiv = scale_stddivs[c];
 
         if (eltwise == nullptr) {
             // Classical BN

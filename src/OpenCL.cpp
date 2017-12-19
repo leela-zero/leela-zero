@@ -335,7 +335,7 @@ static std::string sourceCode_utility = R"(
                         __global net_t * out,
                         __global const net_t * residual,
                         __constant const net_t * means,
-                        __constant const net_t * variances) {
+                        __constant const net_t * scale_stddivs) {
 
         // cl::NDRange global(outputs, 19*19);
         const int gx = get_global_id(0);
@@ -348,11 +348,8 @@ static std::string sourceCode_utility = R"(
         const unsigned int o = output;
         const unsigned int b = gy;
 
-        const float epsilon = 1e-5;
-
         const float mean = vload_net_t(o, means);
-        const float variance = epsilon + vload_net_t(o, variances);
-        const float scale_stddiv = 1.0f / sqrt(variance);
+        const float scale_stddiv = vload_net_t(o, scale_stddivs);
 
         // BN
         float sum = scale_stddiv * (vload_net_t(o * channel_size + b, in) - mean);
