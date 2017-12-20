@@ -40,6 +40,7 @@ public:
                QMutex* mutex);
     ~Management() = default;
     void giveAssignments();
+    void incMoves() { m_movesMade++; }
 public slots:
     void getResult(Order ord, Result res, int index, int duration);
 
@@ -60,7 +61,7 @@ private:
     int m_selfGames;
     int m_matchGames;
     int m_gamesPlayed;
-    int m_movesMade;
+    QAtomicInt m_movesMade;
     QString m_keepPath;
     QString m_debugPath;
     int m_version;
