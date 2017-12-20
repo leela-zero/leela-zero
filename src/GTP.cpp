@@ -726,7 +726,6 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("dump_debug") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp, filename;
-        int who_won;
 
         // tmp will eat "dump_debug"
         cmdstream >> tmp >> filename;

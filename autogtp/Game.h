@@ -36,7 +36,7 @@ public:
     bool nextMove();
     bool getScore();
     bool writeSgf();
-    bool fixSgfPlayerName(QString& weightFile);
+    bool fixSgf(QString& weightFile, bool resignation);
     bool dumpTraining();
     bool dumpDebug();
     void gameQuit();

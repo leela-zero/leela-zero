@@ -19,9 +19,10 @@
 #include "config.h"
 #include "Random.h"
 
+#include <limits.h>
 #include <stdint.h>
-#include <time.h>
 #include <thread>
+#include <time.h>
 
 #include "GTP.h"
 #include "Utils.h"

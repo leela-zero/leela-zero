@@ -103,9 +103,9 @@ void Network::benchmark(GameState * state, int iterations) {
     tg.wait_all();
 
     Time end;
-    auto centiseconds = Time::timediff(start,end) / 100.0;
+    auto elapsed = Time::timediff_seconds(start,end);
     myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
-             iterations, centiseconds, (int)(iterations / centiseconds));
+             iterations, elapsed, (int)(iterations / elapsed));
 }
 
 void Network::initialize(void) {
@@ -365,6 +365,7 @@ void batchnorm(size_t channels,
     }
 }
 
+#if defined(USE_BLAS) && !defined(USE_OPENCL)
 void Network::forward(std::vector<float>& input,
                       std::vector<float>& output) {
     // Input convolution
@@ -406,6 +407,7 @@ void Network::forward(std::vector<float>& input,
     }
     std::copy(begin(conv_out), end(conv_out), begin(output));
 }
+#endif
 #endif
 
 void Network::softmax(const std::vector<float>& input,
@@ -532,8 +534,8 @@ void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) 
             int vtx = state->board.get_vertex(x, y);
 
             auto item = std::find_if(moves.cbegin(), moves.cend(),
-                [&vtx](scored_node const & item) {
-                return item.second == vtx;
+                [&vtx](scored_node const& test_item) {
+                return test_item.second == vtx;
             });
 
             float score = 0.0f;

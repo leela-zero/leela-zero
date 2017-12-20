@@ -29,7 +29,6 @@ class KoState : public FastState {
 public:
     void init_game(int size, float komi);
     bool superko(void) const;
-    bool superko(uint64 newhash) const;
     void reset_game();
 
     void play_pass(void);
@@ -38,7 +37,6 @@ public:
 
 private:
     std::vector<uint64> m_ko_hash_history;
-    std::vector<uint64> m_hash_history;
 };
 
 #endif
