@@ -344,7 +344,7 @@ template <size_t spatial_size>
 void batchnorm(size_t channels,
                std::vector<float>& data,
                const float* means,
-               const float* scale_stddivs,
+               const float* stddivs,
                const float* eltwise = nullptr)
 {
     auto lambda_ReLU = [](float val) { return (val > 0.0f) ?
@@ -352,7 +352,7 @@ void batchnorm(size_t channels,
 
     for (auto c = size_t{0}; c < channels; ++c) {
         auto mean = means[c];
-        auto scale_stddiv = scale_stddivs[c];
+        auto scale_stddiv = stddivs[c];
 
         if (eltwise == nullptr) {
             // Classical BN
