@@ -402,6 +402,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     header.append("DT[" + std::string(timestr) + "]");
     header.append("SZ[" + std::to_string(size) + "]");
     header.append("KM[" + str(boost::format("%.1f") % komi) + "]");
+    header.append(state->get_timecontrol().to_text_sgf());
 
     auto leela_name = std::string{PROGRAM_NAME};
     leela_name.append(" " + std::string(PROGRAM_VERSION));
@@ -477,9 +478,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         }
     }
 
-    auto tc = state->get_timecontrol();
-    header.append("\nC[LeelaZ options: " + cfg_options_str + "\n");
-    header.append("LeelaZ time control: " + tc.to_string() + "]");
+    header.append("\nC[LeelaZ options: " + cfg_options_str + "]");
 
     std::string result(header);
     result.append("\n");
