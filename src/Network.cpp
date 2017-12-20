@@ -63,7 +63,7 @@ using namespace Utils;
 static std::vector<std::vector<float>> conv_weights;
 static std::vector<std::vector<float>> conv_biases;
 static std::vector<std::vector<float>> batchnorm_means;
-static std::vector<std::vector<float>> batchnorm_variances;
+static std::vector<std::vector<float>> batchnorm_stddivs;
 
 // Policy head
 static std::vector<float> conv_pol_w;
@@ -107,6 +107,12 @@ void Network::benchmark(GameState * state, int iterations) {
     auto elapsed = Time::timediff_seconds(start,end);
     myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
              iterations, elapsed, (int)(iterations / elapsed));
+}
+
+void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
+    for(auto&& w : weights) {
+        w = 1.0f / std::sqrt(w + epsilon);
+    }
 }
 
 void Network::initialize(void) {
@@ -183,7 +189,8 @@ void Network::initialize(void) {
             } else if (linecount % 4 == 2) {
                 batchnorm_means.emplace_back(weights);
             } else if (linecount % 4 == 3) {
-                batchnorm_variances.emplace_back(weights);
+                process_bn_var(weights);
+                batchnorm_stddivs.emplace_back(weights);
             }
         } else if (linecount == plain_conv_wts) {
             conv_pol_w = std::move(weights);
@@ -192,6 +199,7 @@ void Network::initialize(void) {
         } else if (linecount == plain_conv_wts + 2) {
             std::copy(begin(weights), end(weights), begin(bn_pol_w1));
         } else if (linecount == plain_conv_wts + 3) {
+            process_bn_var(weights);
             std::copy(begin(weights), end(weights), begin(bn_pol_w2));
         } else if (linecount == plain_conv_wts + 4) {
             std::copy(begin(weights), end(weights), begin(ip_pol_w));
@@ -204,6 +212,7 @@ void Network::initialize(void) {
         } else if (linecount == plain_conv_wts + 8) {
             std::copy(begin(weights), end(weights), begin(bn_val_w1));
         } else if (linecount == plain_conv_wts + 9) {
+            process_bn_var(weights);
             std::copy(begin(weights), end(weights), begin(bn_val_w2));
         } else if (linecount == plain_conv_wts + 10) {
             std::copy(begin(weights), end(weights), begin(ip1_val_w));
@@ -223,7 +232,7 @@ void Network::initialize(void) {
     opencl_net.push_convolve(3, conv_weights[weight_index],
                                 conv_biases[weight_index]);
     opencl_net.push_batchnorm(361, batchnorm_means[weight_index],
-                                   batchnorm_variances[weight_index]);
+                                   batchnorm_stddivs[weight_index]);
     weight_index++;
 
     // residual blocks
@@ -231,11 +240,11 @@ void Network::initialize(void) {
         opencl_net.push_residual(3, conv_weights[weight_index],
                                     conv_biases[weight_index],
                                     batchnorm_means[weight_index],
-                                    batchnorm_variances[weight_index],
+                                    batchnorm_stddivs[weight_index],
                                     conv_weights[weight_index + 1],
                                     conv_biases[weight_index + 1],
                                     batchnorm_means[weight_index + 1],
-                                    batchnorm_variances[weight_index + 1]);
+                                    batchnorm_stddivs[weight_index + 1]);
         weight_index += 2;
     }
     myprintf("done\n");
@@ -335,18 +344,15 @@ template <size_t spatial_size>
 void batchnorm(size_t channels,
                std::vector<float>& data,
                const float* means,
-               const float* variances,
+               const float* stddivs,
                const float* eltwise = nullptr)
 {
-    constexpr auto epsilon = 1e-5f;
-
     auto lambda_ReLU = [](float val) { return (val > 0.0f) ?
                                        val : 0.0f; };
 
     for (auto c = size_t{0}; c < channels; ++c) {
         auto mean = means[c];
-        auto variance = variances[c] + epsilon;
-        auto scale_stddiv = 1.0f / std::sqrt(variance);
+        auto scale_stddiv = stddivs[c];
 
         if (eltwise == nullptr) {
             // Classical BN
@@ -380,7 +386,7 @@ void Network::forward(std::vector<float>& input,
                 conv_weights[0], conv_biases[0], conv_out);
     batchnorm<361>(output_channels, conv_out,
                    batchnorm_means[0].data(),
-                   batchnorm_variances[0].data());
+                   batchnorm_stddivs[0].data());
 
     // Residual tower
     auto conv_in = std::vector<float>(output_channels * width * height);
@@ -394,7 +400,7 @@ void Network::forward(std::vector<float>& input,
                     conv_out);
         batchnorm<361>(output_channels, conv_out,
                        batchnorm_means[i].data(),
-                       batchnorm_variances[i].data());
+                       batchnorm_stddivs[i].data());
         std::swap(conv_out, conv_in);
         i++;
         output_channels = conv_biases[i].size();
@@ -403,7 +409,7 @@ void Network::forward(std::vector<float>& input,
                     conv_out);
         batchnorm<361>(output_channels, conv_out,
                        batchnorm_means[i].data(),
-                       batchnorm_variances[i].data(),
+                       batchnorm_stddivs[i].data(),
                        res.data());
     }
     std::copy(begin(conv_out), end(conv_out), begin(output));
