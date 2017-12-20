@@ -113,16 +113,13 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
     // sort children, put best move on top
     m_root.sort_root_children(color);
 
-    UCTNode * bestnode = parent.get_first_child();
 
-    if (bestnode->first_visit()) {
+    if (parent.get_first_child()->first_visit()) {
         return;
     }
 
     int movecount = 0;
-    UCTNode * node = bestnode;
-
-    while (node != nullptr) {
+    for (const auto& node : parent.get_children()) {
         if (++movecount > 2 && !node->get_visits()) break;
 
         std::string tmp = state.move_to_text(node->get_move());
@@ -140,8 +137,6 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
         pvstring += " " + get_pv(tmpstate, *node);
 
         myprintf("%s\n", pvstring.c_str());
-
-        node = node->get_sibling();
     }
 }
 
@@ -268,18 +263,18 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     return bestmove;
 }
 
-std::string UCTSearch::get_pv(KoState & state, UCTNode & parent) {
+std::string UCTSearch::get_pv(KoState & state, UCTNode& parent) {
     if (!parent.has_children()) {
         return std::string();
     }
 
-    auto best_child = parent.get_best_root_child(state.get_to_move());
-    auto best_move = best_child->get_move();
+    auto& best_child = parent.get_best_root_child(state.get_to_move());
+    auto best_move = best_child.get_move();
     auto res = state.move_to_text(best_move);
 
     state.play_move(best_move);
 
-    auto next = get_pv(state, *best_child);
+    auto next = get_pv(state, best_child);
     if (!next.empty()) {
         res.append(" ").append(next);
     }
@@ -370,16 +365,16 @@ int UCTSearch::think(int color, passflag_t passflag) {
         }
 
         Time elapsed;
-        int centiseconds_elapsed = Time::timediff(start, elapsed);
+        int elapsed_centis = Time::timediff_centis(start, elapsed);
 
         // output some stats every few seconds
         // check if we should still search
-        if (centiseconds_elapsed - last_update > 250) {
-            last_update = centiseconds_elapsed;
+        if (elapsed_centis - last_update > 250) {
+            last_update = elapsed_centis;
             dump_analysis(static_cast<int>(m_playouts));
         }
         keeprunning  = is_running();
-        keeprunning &= (centiseconds_elapsed < time_for_move);
+        keeprunning &= (elapsed_centis < time_for_move);
         keeprunning &= !playout_limit_reached();
     } while(keeprunning);
 
@@ -398,13 +393,13 @@ int UCTSearch::think(int color, passflag_t passflag) {
     Training::record(m_rootstate, m_root);
 
     Time elapsed;
-    int centiseconds_elapsed = Time::timediff(start, elapsed);
-    if (centiseconds_elapsed > 0) {
+    int elapsed_centis = Time::timediff_centis(start, elapsed);
+    if (elapsed_centis > 0) {
         myprintf("%d visits, %d nodes, %d playouts, %d n/s\n\n",
                  m_root.get_visits(),
                  static_cast<int>(m_nodes),
                  static_cast<int>(m_playouts),
-                 (m_playouts * 100) / (centiseconds_elapsed+1));
+                 (m_playouts * 100) / (elapsed_centis+1));
     }
     int bestmove = get_best_move(passflag);
     return bestmove;

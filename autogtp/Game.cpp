@@ -40,10 +40,10 @@ Game::Game(const QString& weights, const QString& opt) :
     m_fileName = QUuid::createUuid().toRfc4122().toHex();
 }
 
-bool Game::checkGameEnd() { 
-    return (m_resignation || 
-            m_passes > 1 || 
-            m_moveNum > (19 * 19 * 2)); 
+bool Game::checkGameEnd() {
+    return (m_resignation ||
+            m_passes > 1 ||
+            m_moveNum > (19 * 19 * 2));
 }
 
 void Game::error(int errnum) {
@@ -312,9 +312,13 @@ bool Game::fixSgf(QString& weightFile, bool resignation) {
         return false;
     }
     QString sgfData = sgfFile.readAll();
-
-    QRegularExpression re("PW\\[Human\\]");
-    QString playerName("PW[Leela Zero ");
+    QRegularExpression re("\\[Human\\]");
+    QString playerName("[Leela Zero ");
+    QRegularExpression le("\\[Leela Zero .* ");
+    QRegularExpressionMatch match = le.match(sgfData);
+    if (match.hasMatch()) {
+        playerName = match.captured(0);
+    }
     playerName += weightFile.left(8);
     playerName += "]";
     sgfData.replace(re, playerName);

@@ -38,8 +38,11 @@
 #endif
 //#define USE_MKL
 #define USE_OPENCL
+
 // Use 16-bit floating point storage for net calculations
+// only works for OpenCL implementations
 // #define USE_HALF
+
 //#define USE_TUNER
 
 #define PROGRAM_NAME "Leela Zero"
@@ -72,6 +75,9 @@ typedef  unsigned long long int uint64;
 #endif
 
 #ifdef USE_HALF
+#ifndef USE_OPENCL
+#error "Half-precision not supported without OpenCL"
+#endif
 #include "half/half.hpp"
 using net_t = half_float::half;
 #else
@@ -81,17 +87,5 @@ using net_t = float;
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */
     #pragma warning(disable : 4996)
 #endif /* VC8+ */
-
-#ifdef GETTICKCOUNT
-    typedef int rtime_t;
-#else
-    #if defined(GETTIMEOFDAY)
-        #include <sys/time.h>
-        #include <time.h>
-        typedef struct timeval rtime_t;
-    #else
-        typedef time_t rtime_t;
-    #endif
-#endif
 
 #endif

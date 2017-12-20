@@ -16,7 +16,6 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <time.h>
 #include <limits.h>
 #include <thread>
 #include "config.h"

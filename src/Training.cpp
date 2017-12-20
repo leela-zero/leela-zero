@@ -102,23 +102,18 @@ void Training::record(GameState& state, UCTNode& root) {
         Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
     step.net_winrate = result.second;
 
-    const auto best_node = root.get_best_root_child(step.to_move);
-    if (!best_node) {
-        return;
-    }
+    const auto& best_node = root.get_best_root_child(step.to_move);
     step.root_uct_winrate = root.get_eval(step.to_move);
-    step.child_uct_winrate = best_node->get_eval(step.to_move);
-    step.bestmove_visits = best_node->get_visits();
+    step.child_uct_winrate = best_node.get_eval(step.to_move);
+    step.bestmove_visits = best_node.get_visits();
 
     step.probabilities.resize((19 * 19) + 1);
 
     // Get total visit amount. We count rather
     // than trust the root to avoid ttable issues.
     auto sum_visits = 0.0;
-    auto child = root.get_first_child();
-    while (child != nullptr) {
+    for (const auto& child : root.get_children()) {
         sum_visits += child->get_visits();
-        child = child->get_sibling();
     }
 
     // In a terminal position (with 2 passes), we can have children, but we
@@ -129,8 +124,7 @@ void Training::record(GameState& state, UCTNode& root) {
         return;
     }
 
-    child = root.get_first_child();
-    while (child != nullptr) {
+    for (const auto& child : root.get_children()) {
         auto prob = static_cast<float>(child->get_visits() / sum_visits);
         auto move = child->get_move();
         if (move != FastBoard::PASS) {
@@ -139,7 +133,6 @@ void Training::record(GameState& state, UCTNode& root) {
         } else {
             step.probabilities[19 * 19] = prob;
         }
-        child = child->get_sibling();
     }
 
     m_data.emplace_back(step);
@@ -176,7 +169,7 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
         for (auto it = begin(step.probabilities);
             it != end(step.probabilities); ++it) {
             out << *it;
-            if (boost::next(it) != end(step.probabilities)) {
+            if (next(it) != end(step.probabilities)) {
                 out << " ";
             }
         }
@@ -237,7 +230,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
             auto xy = state.board.get_xy(move_vertex);
             move_idx = (xy.second * 19) + xy.first;
         } else {
-            move_idx = (19 * 19); // PASS
+            move_idx = 19 * 19; // PASS
         }
 
 
