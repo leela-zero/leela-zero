@@ -83,24 +83,21 @@
 #define MAX_CPUS 128
 #endif
 
-/* Integer types */
+/*
+ * Integer types.
+ * Don't use these for new code. This is a relic from pre-2007 compilers.
+ * Use the stdint ones instead, or even better, auto.
+ */
+#include <cstdint>
 
-typedef int int32;
-typedef short int16;
-typedef signed char int8;
-typedef unsigned int uint32;
-typedef unsigned short uint16;
-typedef unsigned char uint8;
-
-/* Data type definitions */
-
-#ifdef _WIN32
-typedef __int64 int64 ;
-typedef unsigned __int64 uint64;
-#else
-typedef long long int int64 ;
-typedef  unsigned long long int uint64;
-#endif
+using int64 = std::int64_t;
+using int32 = std::int32_t;
+using int16 = std::int16_t;
+using int8 = std::int8_t;
+using uint64 = std::uint64_t;
+using uint32 = std::uint32_t;
+using uint16 = std::uint16_t;
+using uint8 = std::uint8_t;
 
 #ifdef USE_HALF
 #ifndef USE_OPENCL
