@@ -19,9 +19,9 @@
 #ifndef SMP_H_INCLUDED
 #define SMP_H_INCLUDED
 
-#include <atomic>
-
 #include "config.h"
+
+#include <atomic>
 
 namespace SMP {
     int get_num_cpus();

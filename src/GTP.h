@@ -19,11 +19,12 @@
 #ifndef GTP_H_INCLUDED
 #define GTP_H_INCLUDED
 
+#include "config.h"
+
 #include <stdio.h>
 #include <string>
 #include <vector>
 
-#include "config.h"
 #include "GameState.h"
 
 extern bool cfg_allow_pondering;

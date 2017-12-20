@@ -19,9 +19,10 @@
 #ifndef TTABLE_H_INCLUDED
 #define TTABLE_H_INCLUDED
 
+#include "config.h"
+
 #include <vector>
 
-#include "config.h"
 #include "SMP.h"
 #include "UCTNode.h"
 

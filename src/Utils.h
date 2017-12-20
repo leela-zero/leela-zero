@@ -19,11 +19,12 @@
 #ifndef UTILS_H_DEFINED
 #define UTILS_H_DEFINED
 
+#include "config.h"
+
 #include <atomic>
 #include <limits>
 #include <string>
 
-#include "config.h"
 #include "ThreadPool.h"
 
 extern Utils::ThreadPool thread_pool;

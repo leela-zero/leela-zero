@@ -19,9 +19,10 @@
 #ifndef KOSTATE_H_INCLUDED
 #define KOSTATE_H_INCLUDED
 
+#include "config.h"
+
 #include <vector>
 
-#include "config.h"
 #include "FastState.h"
 #include "FullBoard.h"
 

@@ -17,9 +17,8 @@
 */
 
 #include "config.h"
-
-#include "Random.h"
 #include "Zobrist.h"
+#include "Random.h"
 
 std::array<std::array<uint64, FastBoard::MAXSQ>,     4> Zobrist::zobrist;
 std::array<std::array<uint64, FastBoard::MAXSQ * 2>, 2> Zobrist::zobrist_pris;

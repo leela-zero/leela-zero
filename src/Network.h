@@ -19,18 +19,14 @@
 #ifndef NETWORK_H_INCLUDED
 #define NETWORK_H_INCLUDED
 
+#include "config.h"
+
 #include <array>
 #include <bitset>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "config.h"
-
-#ifdef USE_OPENCL
-#include <atomic>
-#endif
 
 #include "FastState.h"
 #include "GameState.h"

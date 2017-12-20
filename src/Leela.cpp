@@ -16,6 +16,8 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
+
 #include <algorithm>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
@@ -26,7 +28,6 @@
 #include <string>
 #include <vector>
 
-#include "config.h"
 #include "GTP.h"
 #include "GameState.h"
 #include "Network.h"

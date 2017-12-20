@@ -17,6 +17,9 @@
 */
 
 
+#include "config.h"
+#include "Network.h"
+
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -29,7 +32,6 @@
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 
-#include "config.h"
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
 #endif
@@ -44,7 +46,6 @@
 #include "UCTNode.h"
 #endif
 
-#include "Network.h"
 #include "FastBoard.h"
 #include "FastState.h"
 #include "FullBoard.h"

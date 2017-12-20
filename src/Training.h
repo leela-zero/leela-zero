@@ -19,12 +19,13 @@
 #ifndef TRAINING_H_INCLUDED
 #define TRAINING_H_INCLUDED
 
+#include "config.h"
+
 #include <stddef.h>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "config.h"
 #include "GameState.h"
 #include "Network.h"
 #include "UCTNode.h"
