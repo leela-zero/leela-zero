@@ -18,20 +18,23 @@
 
 #include "config.h"
 
+#include <algorithm>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
-#include <boost/program_options.hpp>
-#include <boost/format.hpp>
-#include "Network.h"
+#include <string>
+#include <vector>
 
-#include "Zobrist.h"
 #include "GTP.h"
-#include "SMP.h"
+#include "GameState.h"
+#include "Network.h"
 #include "Random.h"
-#include "Utils.h"
 #include "ThreadPool.h"
+#include "Utils.h"
+#include "Zobrist.h"
 
 using namespace Utils;
 

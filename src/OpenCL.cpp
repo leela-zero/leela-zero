@@ -17,26 +17,26 @@
 */
 
 #include "config.h"
+#include "OpenCL.h"
 #ifdef USE_OPENCL
 
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <sstream>
-#include <fstream>
-#include <cmath>
-#include <array>
-#include <thread>
+#include <assert.h>
+#include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
+#include <iterator>
+#include <limits>
+#include <stdexcept>
 
-#include "Utils.h"
-#include "Timing.h"
-#include "OpenCL.h"
+#include <cstdio>
+#include <iostream>
+#include <memory>
+#include <sstream>
+#include <string>
+
 #include "Network.h"
 #include "GTP.h"
+#include "Utils.h"
 
 using namespace Utils;
 

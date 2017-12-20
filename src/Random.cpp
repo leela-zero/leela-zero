@@ -16,13 +16,16 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <limits.h>
-#include <thread>
 #include "config.h"
-
 #include "Random.h"
-#include "Utils.h"
+
+#include <limits.h>
+#include <stdint.h>
+#include <thread>
+#include <time.h>
+
 #include "GTP.h"
+#include "Utils.h"
 
 Random& Random::get_Rng(void) {
     static thread_local Random s_rng{0};

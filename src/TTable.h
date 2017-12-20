@@ -19,10 +19,12 @@
 #ifndef TTABLE_H_INCLUDED
 #define TTABLE_H_INCLUDED
 
+#include "config.h"
+
 #include <vector>
 
-#include "UCTNode.h"
 #include "SMP.h"
+#include "UCTNode.h"
 
 class TTEntry {
 public:

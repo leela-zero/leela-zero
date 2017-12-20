@@ -26,9 +26,9 @@
 #include <memory>
 #include <vector>
 
-#include "SMP.h"
 #include "GameState.h"
 #include "Network.h"
+#include "SMP.h"
 
 class UCTNode {
 public:

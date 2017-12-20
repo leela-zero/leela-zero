@@ -17,30 +17,29 @@
 */
 
 #include "config.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <assert.h>
-#include <limits>
-#include <cmath>
-
-#include <iostream>
-#include <vector>
-#include <functional>
-#include <algorithm>
-#include <random>
-#include <numeric>
-#include "FastState.h"
 #include "UCTNode.h"
-#include "UCTSearch.h"
-#include "Utils.h"
-#include "Network.h"
+
+#include <assert.h>
+#include <stdio.h>
+#include <algorithm>
+#include <cmath>
+#include <functional>
+#include <iterator>
+#include <limits>
+#include <numeric>
+#include <random>
+#include <utility>
+#include <vector>
+
+#include "FastBoard.h"
+#include "FastState.h"
+#include "FullBoard.h"
 #include "GTP.h"
+#include "GameState.h"
+#include "KoState.h"
+#include "Network.h"
 #include "Random.h"
-#ifdef USE_OPENCL
-#include "OpenCL.h"
-#endif
+#include "Utils.h"
 
 using namespace Utils;
 

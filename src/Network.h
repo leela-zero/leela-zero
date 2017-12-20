@@ -20,16 +20,13 @@
 #define NETWORK_H_INCLUDED
 
 #include "config.h"
-#include <vector>
-#include <string>
+
+#include <array>
 #include <bitset>
 #include <memory>
-#include <array>
-
-#ifdef USE_OPENCL
-#include <atomic>
-class UCTNode;
-#endif
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "FastState.h"
 #include "GameState.h"

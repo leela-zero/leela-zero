@@ -16,22 +16,22 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #include "config.h"
+#include "Network.h"
+
 #include <algorithm>
-#include <functional>
+#include <array>
 #include <cassert>
-#include <iostream>
+#include <cmath>
 #include <fstream>
 #include <iterator>
-#include <string>
 #include <memory>
-#include <cmath>
-#include <array>
-#include <thread>
+#include <sstream>
+#include <string>
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 
-#include "Im2Col.h"
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
 #endif
@@ -46,13 +46,15 @@
 #include "UCTNode.h"
 #endif
 
-#include "SGFTree.h"
-#include "SGFParser.h"
-#include "Utils.h"
 #include "FastBoard.h"
-#include "Random.h"
-#include "Network.h"
+#include "FastState.h"
+#include "FullBoard.h"
+#include "Im2Col.h"
 #include "GTP.h"
+#include "GameState.h"
+#include "Random.h"
+#include "ThreadPool.h"
+#include "Timing.h"
 #include "Utils.h"
 
 using namespace Utils;

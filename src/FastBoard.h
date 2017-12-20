@@ -22,9 +22,10 @@
 #include "config.h"
 
 #include <array>
-#include <string>
-#include <vector>
 #include <queue>
+#include <string>
+#include <utility>
+#include <vector>
 
 class FastBoard {
     friend class FastState;

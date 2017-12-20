@@ -16,19 +16,16 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <algorithm>
+#include "FastBoard.h"
+
 #include <assert.h>
 #include <array>
+#include <iostream>
 #include <queue>
+#include <sstream>
+#include <string>
 
-#include "config.h"
-
-#include "FastBoard.h"
 #include "Utils.h"
-#include "Random.h"
 
 using namespace Utils;
 

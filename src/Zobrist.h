@@ -18,6 +18,8 @@
 #ifndef ZOBRIST_H_INCLUDED
 #define ZOBRIST_H_INCLUDED
 
+#include "config.h"
+
 #include <array>
 
 #include "FastBoard.h"

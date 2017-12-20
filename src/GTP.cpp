@@ -16,29 +16,31 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <cstdlib>
-#include <cctype>
-#include <string>
-#include <sstream>
-#include <cmath>
-#include <climits>
-#include <algorithm>
-#include <random>
-#include <chrono>
-
 #include "config.h"
-#include "Utils.h"
-#include "GameState.h"
 #include "GTP.h"
-#include "UCTSearch.h"
-#include "UCTNode.h"
-#include "SGFTree.h"
+
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cmath>
+#include <cstdlib>
+#include <exception>
+#include <fstream>
+#include <limits>
+#include <memory>
+#include <random>
+#include <string>
+#include <vector>
+
+#include "FastBoard.h"
+#include "FullBoard.h"
+#include "GameState.h"
 #include "Network.h"
-#include "TTable.h"
+#include "SGFTree.h"
+#include "SMP.h"
 #include "Training.h"
+#include "UCTSearch.h"
+#include "Utils.h"
 
 using namespace Utils;
 

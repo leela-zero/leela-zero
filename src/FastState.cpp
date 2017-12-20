@@ -16,18 +16,16 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <vector>
+#include "config.h"
+#include "FastState.h"
+
 #include <algorithm>
-#include <iostream>
-#include <cmath>
+#include <iterator>
+#include <vector>
 
 #include "FastBoard.h"
-#include "FastState.h"
-#include "Random.h"
 #include "Utils.h"
 #include "Zobrist.h"
-#include "GTP.h"
 
 using namespace Utils;
 
