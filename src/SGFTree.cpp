@@ -478,7 +478,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         }
     }
 
-    header.append("\nC[LeelaZ options: " + cfg_options_str + "]");
+    header.append("\nC[" + std::string{PROGRAM_NAME} + " options:" + cfg_options_str + "]");
 
     std::string result(header);
     result.append("\n");
