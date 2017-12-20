@@ -24,12 +24,14 @@
 #include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QUuid>
+#include <QRegularExpression>
 #include "Management.h"
 #include "Game.h"
 
 constexpr int RETRY_DELAY_MIN_SEC = 30;
 constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
-constexpr int MAX_RETRIES = 4 * 24;           // Stop retrying after 4 days
+constexpr int MAX_RETRIES = 3;           // Stop retrying after 3 times
 const QString Leelaz_min_version = "0.9";
 
 Management::Management(const int gpus,
@@ -50,10 +52,12 @@ Management::Management(const int gpus,
     m_gamesPlayed(0),
     m_keepPath(keep),
     m_debugPath(debug),
-    m_version(ver) {
+    m_version(ver),
+    m_fallBack(Order::Error) {
 }
 
 void Management::giveAssignments() {
+    sendAllGames();
     m_start = std::chrono::high_resolution_clock::now();
     m_mainMutex->lock();
     QString myGpu;
@@ -96,6 +100,7 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
         uploadResult(res.parameters(), ord.parameters());
         break;
     }
+    sendAllGames();
     printTimingInfo(duration);
     m_gamesThreads[index]->order(getWork());
     m_syncMutex.unlock();
@@ -149,8 +154,7 @@ QString Management::getBoolOption(const QJsonObject &ob, const QString &key, con
 
 
 Order Management::getWorkInternal() {
-    Order o;
-    o.type(Order::Error);
+    Order o(Order::Error);
 
     /*
 
@@ -206,7 +210,6 @@ Order Management::getWorkInternal() {
     QJsonDocument doc;
     QJsonParseError parseError;
     doc = QJsonDocument::fromJson(curl.readAllStandardOutput(), &parseError);
-
     if (parseError.error != QJsonParseError::NoError) {
         std::string errorString = parseError.errorString().toUtf8().constData();
         throw NetworkException("JSON parse error: " + errorString);
@@ -259,6 +262,7 @@ Order Management::getWorkInternal() {
         o.type(Order::Production);
         parameters["network"] = net;
         o.parameters(parameters);
+        m_fallBack = o;
     }
     if (ob.value("cmd").toString() == "match") {
         o.type(Order::Validation);
@@ -291,8 +295,19 @@ Order Management::getWork() {
             QThread::sleep(retry_delay);
         }
     }
-    QTextStream(stdout) << "Maximum number of retries exceeded. Giving up."
+    QTextStream(stdout) << "Maximum number of retries exceeded. Falling back to previous network."
                         << endl;
+    if (m_fallBack.type() != Order::Error) {
+        QMap<QString,QString> map = m_fallBack.parameters();
+        QString rs = "-s " + QString::number(QUuid::createUuid().toRfc4122().toHex().left(8).toLongLong(Q_NULLPTR, 16)) + " ";
+        map["rndSeed"] = rs;
+        QString opt = map["options"];
+        QRegularExpression re("-s .* ");
+        opt.replace(re, rs);
+        map["options"] = opt;
+        m_fallBack.parameters(map);
+        return m_fallBack;
+    }
     exit(EXIT_FAILURE);
 }
 
@@ -303,8 +318,7 @@ bool Management::networkExists(const QString &name) {
         if (f.open(QFile::ReadOnly)) {
             QCryptographicHash hash(QCryptographicHash::Sha256);
             if (!hash.addData(&f)) {
-                QTextStream(stdout) << "Reading network file failed." << endl;
-                exit(EXIT_FAILURE);
+                throw NetworkException("Reading network file failed.");
             }
             QString result = hash.result().toHex();
             if (result == name) {
@@ -316,9 +330,8 @@ bool Management::networkExists(const QString &name) {
             if (f.remove()) {
                 return false;
             }
-            QTextStream(stdout) << "Unable to delete the network file. "
-                                << "Check permissions." << endl;
-            exit(EXIT_FAILURE);
+            throw NetworkException("Unable to delete the network file."
+                                   " Check permissions.");
         }
         QTextStream(stdout) << "Downloaded network hash doesn't match." << endl;
         f.remove();
@@ -407,6 +420,7 @@ void Management::cleanupFiles(const QString &fileName) {
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
     QFileInfoList list = dir.entryInfoList();
     for (int i = 0; i < list.size(); ++i) {
+        QTextStream(stdout) << "deleting " << list.at(i).fileName() << endl;
         QFile(list.at(i).fileName()).remove();
     }
 }
@@ -420,6 +434,97 @@ void Management::gzipFile(const QString &fileName) {
     QProcess::execute(gzipCmd);
 }
 
+void Management::saveCurlCmdLine(const QStringList &prog_cmdline, const QString &name) {
+    QFile f("curl_save" + QUuid::createUuid().toRfc4122().toHex() + ".bin");
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return;
+    }
+    QTextStream out(&f);
+    out << name << endl;
+    out << prog_cmdline.size() << endl;
+    QStringList::ConstIterator it = prog_cmdline.constBegin();
+    while (it != prog_cmdline.constEnd()) {
+        out << *it << " " << endl;
+        ++it;
+    }
+    f.close();
+}
+
+void Management::sendAllGames() {
+    QDir dir;
+    QStringList filters;
+    filters << "curl_save*.bin";
+    dir.setNameFilters(filters);
+    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+    QFileInfoList list = dir.entryInfoList();
+    for (int i = 0; i < list.size(); ++i) {
+        QFileInfo fileInfo = list.at(i);
+        QFile file (fileInfo.fileName());
+        if (!file.open(QFile::ReadOnly)) {
+            continue;
+        }
+        QTextStream in(&file);
+        QString name;
+        QString tmp;
+        QStringList lines;
+        int count;
+        in >> name;
+        in >> count;
+        count = 2 * count - 1;
+        for (int i = 0; i < count; i++) {
+            in >> tmp;
+            lines << tmp;
+        }
+        file.close();
+        bool sent = false;
+
+        try {
+            sent = sendCurl(lines);
+            if (sent) {
+                QTextStream(stdout) << "File: " << file.fileName() << " sent" << endl;
+                file.remove();
+                cleanupFiles(name);
+                if (i+1 < list.size()) {
+                    QThread::sleep(10);
+                }
+            }
+        } catch (NetworkException ex) {
+            QTextStream(stdout)
+                << "Network connection to server failed." << endl;
+            QTextStream(stdout)
+                << ex.what() << endl;
+            QTextStream(stdout)
+                    << "Retrying when next game is finished."
+                    << endl;
+        }
+    }
+}
+
+bool Management::sendCurl(const QStringList &lines) {
+    QString prog_cmdline("curl");
+#ifdef WIN32
+    prog_cmdline.append(".exe");
+#endif
+    QStringList::ConstIterator it = lines.constBegin();
+    while (it != lines.constEnd()) {
+        prog_cmdline.append(" " + *it);
+        ++it;
+    }
+    QTextStream(stdout) << prog_cmdline << endl;
+    QProcess curl;
+    curl.start(prog_cmdline);
+    curl.waitForFinished(-1);
+    if (curl.exitCode()) {
+        QTextStream(stdout) << "Upload failed. Curl Exit code: "
+            << curl.exitCode() << endl;
+        QTextStream(stdout) << curl.readAllStandardOutput();
+        throw NetworkException("Curl returned non-zero exit code "
+                                   + std::to_string(curl.exitCode()));
+        return false;
+    }
+    QTextStream(stdout) << curl.readAllStandardOutput();
+    return (curl.exitCode() == 0);
+}
 
 /*
 -F winnerhash=223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6
@@ -438,38 +543,46 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
 
     archiveFiles(r["file"]);
     gzipFile(r["file"] + ".sgf");
-    QString sgf_file = r["file"] + ".sgf.gz";
-    QString prog_cmdline("curl");
-#ifdef WIN32
-    prog_cmdline.append(".exe");
-#endif
+    QStringList prog_cmdline;
     if (r["winner"] == "black") {
-        prog_cmdline.append(" -F winnerhash=" + l["firstNet"]);
-        prog_cmdline.append(" -F loserhash=" + l["secondNet"]);
+        prog_cmdline.append("-F winnerhash=" + l["firstNet"]);
+        prog_cmdline.append("-F loserhash=" + l["secondNet"]);
     } else {
-        prog_cmdline.append(" -F winnerhash=" + l["secondNet"]);
-        prog_cmdline.append(" -F loserhash=" + l["firstNet"]);
+        prog_cmdline.append("-F winnerhash=" + l["secondNet"]);
+        prog_cmdline.append("-F loserhash=" + l["firstNet"]);
     }
-    prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
-    prog_cmdline.append(" -F winnercolor="+ r["winner"]);
-    prog_cmdline.append(" -F movescount="+ r["moves"]);
-    prog_cmdline.append(" -F score="+ r["score"]);
-    prog_cmdline.append(" -F options_hash="+ l["optHash"]);
-    prog_cmdline.append(" -F random_seed="+ l["rndSeed"]);
-    prog_cmdline.append(" -F sgf=@"+ sgf_file);
-    prog_cmdline.append(" http://zero-test.sjeng.org/submit-match");
-    QTextStream(stdout) << prog_cmdline << endl;
-    QProcess curl;
-    curl.start(prog_cmdline);
-    curl.waitForFinished(-1);
+    prog_cmdline.append("-F clientversion=" + QString::number(m_version));
+    prog_cmdline.append("-F winnercolor="+ r["winner"]);
+    prog_cmdline.append("-F movescount="+ r["moves"]);
+    prog_cmdline.append("-F score="+ r["score"]);
+    prog_cmdline.append("-F options_hash="+ l["optHash"]);
+    prog_cmdline.append("-F random_seed="+ l["rndSeed"]);
+    prog_cmdline.append("-F sgf=@"+ r["file"] + ".sgf.gz");
+    prog_cmdline.append("http://zero-test.sjeng.org/submit-match");
 
-    if (curl.exitCode()) {
-        QTextStream(stdout) << "Upload failed. Curl Exit code: "
-            << curl.exitCode() << endl;
+    bool sent = false;
+    for (auto retries = 0; retries < MAX_RETRIES; retries++) {
+        try {
+            sent = sendCurl(prog_cmdline);
+            break;
+        } catch (NetworkException ex) {
+            QTextStream(stdout)
+                << "Network connection to server failed." << endl;
+            QTextStream(stdout)
+                << ex.what() << endl;
+            auto retry_delay =
+                std::min<int>(
+                    RETRY_DELAY_MIN_SEC * std::pow(1.5, retries),
+                    RETRY_DELAY_MAX_SEC);
+            QTextStream(stdout) << "Retrying in " << retry_delay << " s."
+                                << endl;
+            QThread::sleep(retry_delay);
+        }
     }
-    QByteArray output = curl.readAllStandardOutput();
-    QString outstr(output);
-    QTextStream(stdout) << outstr;
+    if (!sent) {
+        saveCurlCmdLine(prog_cmdline, r["file"]);
+        return;
+    }
     cleanupFiles(r["file"]);
 }
 
@@ -485,53 +598,40 @@ http://zero-test.sjeng.org/submit
 */
 
 void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l) { 
-    // Find output SGF and txt files
-    QTextStream(stdout) << "Upload game: " << r["file"] << " network " << r["net"] << endl;
-    QDir dir;
-    QStringList filters;
-    filters << r["file"] + ".sgf";
-    dir.setNameFilters(filters);
-    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+    QTextStream(stdout) << "Upload game: " << r["file"] << " for network " << r["network"] << endl;
+    archiveFiles(r["file"]);
+    gzipFile(r["file"] + ".sgf");
+    QStringList prog_cmdline;
+    prog_cmdline.append("-F networkhash=" + l["network"]);
+    prog_cmdline.append("-F clientversion=" + QString::number(m_version));
+    prog_cmdline.append("-F options_hash="+ l["optHash"]);
+    prog_cmdline.append("-F random_seed="+ l["rndSeed"]);
+    prog_cmdline.append("-F sgf=@" + r["file"] + ".sgf.gz");
+    prog_cmdline.append("-F trainingdata=@" + r["file"] + ".txt.0.gz");
+    prog_cmdline.append("http://zero-test.sjeng.org/submit");
 
-    QFileInfoList list = dir.entryInfoList();
-    for (int i = 0; i < list.size(); ++i) {
-        QFileInfo fileInfo = list.at(i);
-        QString sgf_file = fileInfo.fileName();
-        QString data_file = sgf_file;
-        // Cut .sgf, add .txt.0.gz
-        data_file.chop(4);
-        QString debug_data_file = data_file;
-        data_file += ".txt.0.gz";
-        debug_data_file += ".debug.txt.0.gz";
-        archiveFiles(r["file"]);
-        // Gzip up the sgf too
-        gzipFile(r["file"] + ".sgf");
-        sgf_file += ".gz";
-        QString prog_cmdline("curl");
-#ifdef WIN32
-        prog_cmdline.append(".exe");
-#endif
-        prog_cmdline.append(" -F networkhash=" + l["network"]);
-        prog_cmdline.append(" -F clientversion=" + QString::number(m_version));
-        prog_cmdline.append(" -F options_hash="+ l["optHash"]);
-        prog_cmdline.append(" -F random_seed="+ l["rndSeed"]);
-        prog_cmdline.append(" -F sgf=@" + sgf_file);
-        prog_cmdline.append(" -F trainingdata=@" + data_file);
-        prog_cmdline.append(" http://zero-test.sjeng.org/submit");
-        QTextStream(stdout) << prog_cmdline << endl;
-        QProcess curl;
-        curl.start(prog_cmdline);
-        curl.waitForFinished(-1);
-
-        if (curl.exitCode()) {
-            QTextStream(stdout) << "Upload failed. Curl Exit code: "
-                << curl.exitCode() << endl;
-            QTextStream(stdout) << "Continuing..." << endl;
+    bool sent = false;
+    for (auto retries = 0; retries < MAX_RETRIES; retries++) {
+        try {
+            sent = sendCurl(prog_cmdline);
+            break;
+        } catch (NetworkException ex) {
+            QTextStream(stdout)
+                << "Network connection to server failed." << endl;
+            QTextStream(stdout)
+                << ex.what() << endl;
+            auto retry_delay =
+                std::min<int>(
+                    RETRY_DELAY_MIN_SEC * std::pow(1.5, retries),
+                    RETRY_DELAY_MAX_SEC);
+            QTextStream(stdout) << "Retrying in " << retry_delay << " s."
+                                << endl;
+            QThread::sleep(retry_delay);
         }
-        QByteArray output = curl.readAllStandardOutput();
-        QString outstr(output);
-        QTextStream(stdout) << outstr;
-        cleanupFiles(r["file"]);
     }
-    return;
+    if (!sent) {
+        saveCurlCmdLine(prog_cmdline, r["file"]);
+        return;
+    }
+    cleanupFiles(r["file"]);
 }
