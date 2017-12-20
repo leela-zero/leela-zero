@@ -80,9 +80,14 @@ if(APPLE)
     INCLUDE_DIRECTORIES("/System/Library/Frameworks/Accelerate.framework/Versions/Current/Headers")
 endif()
 
+SET(leelaz_MAIN "${SrcPath}/Leela.cpp")
 FILE(GLOB leelaz_SRC "${SrcPath}/*.cpp")
+LIST(REMOVE_ITEM leelaz_SRC ${leelaz_MAIN})
 
-ADD_EXECUTABLE(leelaz ${leelaz_SRC})
+# Reuse for leelaz and gtest
+ADD_LIBRARY(objs OBJECT ${leelaz_SRC})
+
+ADD_EXECUTABLE(leelaz $<TARGET_OBJECTS:objs> ${leelaz_MAIN})
 
 TARGET_LINK_LIBRARIES(leelaz ${Boost_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${BLAS_LIBRARIES})
@@ -91,11 +96,9 @@ TARGET_LINK_LIBRARIES(leelaz ${ZLIB_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${CMAKE_THREAD_LIBS_INIT})
 
 # Google Test below
-# `Leela.cpp` needs to be removed since it has main entry
 FILE(GLOB tests_SRC "${SrcPath}/tests/*.cpp")
-list(REMOVE_ITEM leelaz_SRC "${SrcPath}/Leela.cpp")
 
-ADD_EXECUTABLE(tests ${tests_SRC} ${leelaz_SRC})
+ADD_EXECUTABLE(tests ${tests_SRC} $<TARGET_OBJECTS:objs>)
 
 TARGET_LINK_LIBRARIES(tests ${Boost_LIBRARIES})
 TARGET_LINK_LIBRARIES(tests ${BLAS_LIBRARIES})
