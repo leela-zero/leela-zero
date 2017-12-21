@@ -620,7 +620,7 @@ bool FastBoard::black_to_move() const {
 }
 
 bool FastBoard::white_to_move() const {
-    return m_tomove == BLACK;
+    return m_tomove == WHITE;
 }
 
 
