@@ -6,7 +6,6 @@ RUN apt-get install -y curl
 RUN curl https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add -
 RUN apt-get install -y clang-4.0 lldb-4.0 cmake
 RUN apt-get install -y libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
-RUN apt-get install -y qt5-default qt5-qmake
 
 RUN mkdir -p /src/
 WORKDIR /src/
