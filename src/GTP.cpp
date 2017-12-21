@@ -293,8 +293,10 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         return true;
     } else if (command.find("play") == 0) {
-        if (command.find("pass") != std::string::npos
-            || command.find("resign") != std::string::npos) {
+        if (command.find("resign") != std::string::npos) {
+            game.play_move(FastBoard::RESIGN);
+            gtp_printf(id, "");
+        } else if (command.find("pass") != std::string::npos) {
             game.play_pass();
             gtp_printf(id, "");
         } else {
