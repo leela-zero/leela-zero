@@ -1,3 +1,9 @@
+QT_REQ_VERSION = 5.3
+
+lessThan(QT_VERSION, $$QT_REQ_VERSION) {
+    error(Minimum supported Qt5 version is $$QT_REQ_VERSION!)
+}
+
 QT  -= gui
 
 TARGET = autogtp

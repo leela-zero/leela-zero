@@ -17,26 +17,27 @@
 */
 
 #include "config.h"
-#ifdef USE_OPENCL
 
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <sstream>
-#include <fstream>
-#include <cmath>
-#include <array>
-#include <thread>
+#ifdef USE_OPENCL
+#include "OpenCL.h"
+
+#include <assert.h>
+#include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
+#include <iterator>
+#include <limits>
+#include <stdexcept>
 
-#include "Utils.h"
-#include "Timing.h"
-#include "OpenCL.h"
+#include <cstdio>
+#include <iostream>
+#include <memory>
+#include <sstream>
+#include <string>
+
 #include "Network.h"
 #include "GTP.h"
+#include "Utils.h"
 
 using namespace Utils;
 
@@ -335,7 +336,7 @@ static std::string sourceCode_utility = R"(
                         __global net_t * out,
                         __global const net_t * residual,
                         __constant const net_t * means,
-                        __constant const net_t * variances) {
+                        __constant const net_t * stddivs) {
 
         // cl::NDRange global(outputs, 19*19);
         const int gx = get_global_id(0);
@@ -348,11 +349,8 @@ static std::string sourceCode_utility = R"(
         const unsigned int o = output;
         const unsigned int b = gy;
 
-        const float epsilon = 1e-5;
-
         const float mean = vload_net_t(o, means);
-        const float variance = epsilon + vload_net_t(o, variances);
-        const float scale_stddiv = 1.0f / sqrt(variance);
+        const float scale_stddiv = vload_net_t(o, stddivs);
 
         // BN
         float sum = scale_stddiv * (vload_net_t(o * channel_size + b, in) - mean);

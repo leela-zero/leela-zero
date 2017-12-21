@@ -18,20 +18,24 @@
 
 #include "config.h"
 
+#include <cstdint>
+#include <algorithm>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
-#include <boost/program_options.hpp>
-#include <boost/format.hpp>
-#include "Network.h"
+#include <string>
+#include <vector>
 
-#include "Zobrist.h"
 #include "GTP.h"
-#include "SMP.h"
+#include "GameState.h"
+#include "Network.h"
 #include "Random.h"
-#include "Utils.h"
 #include "ThreadPool.h"
+#include "Utils.h"
+#include "Zobrist.h"
 
 using namespace Utils;
 
@@ -64,7 +68,7 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("randomcnt,m", po::value<int>()->default_value(cfg_random_cnt),
                         "Play more randomly the first x moves.")
         ("noise,n", "Enable policy network randomization.")
-        ("seed,s", po::value<uint64>(),
+        ("seed,s", po::value<std::uint64_t>(),
                    "Random number generation seed.")
         ("dumbpass,d", "Don't use heuristics for smarter passing.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
@@ -161,7 +165,7 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
     }
 
     if (vm.count("seed")) {
-        cfg_rng_seed = vm["seed"].as<uint64>();
+        cfg_rng_seed = vm["seed"].as<std::uint64_t>();
         if (cfg_num_threads > 1) {
             myprintf("Seed specified but multiple threads enabled.\n");
             myprintf("Games will likely not be reproducible.\n");

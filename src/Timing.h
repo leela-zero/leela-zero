@@ -21,9 +21,6 @@
 
 #include <chrono>
 
-#include "config.h"
-
-
 class Time {
 public:
     /* sets to current time */

@@ -16,29 +16,31 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <cstdlib>
-#include <cctype>
-#include <string>
-#include <sstream>
-#include <cmath>
-#include <climits>
-#include <algorithm>
-#include <random>
-#include <chrono>
-
 #include "config.h"
-#include "Utils.h"
-#include "GameState.h"
 #include "GTP.h"
-#include "UCTSearch.h"
-#include "UCTNode.h"
-#include "SGFTree.h"
+
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cmath>
+#include <cstdlib>
+#include <exception>
+#include <fstream>
+#include <limits>
+#include <memory>
+#include <random>
+#include <string>
+#include <vector>
+
+#include "FastBoard.h"
+#include "FullBoard.h"
+#include "GameState.h"
 #include "Network.h"
-#include "TTable.h"
+#include "SGFTree.h"
+#include "SMP.h"
 #include "Training.h"
+#include "UCTSearch.h"
+#include "Utils.h"
 
 using namespace Utils;
 
@@ -50,7 +52,7 @@ int cfg_lagbuffer_cs;
 int cfg_resignpct;
 int cfg_noise;
 int cfg_random_cnt;
-uint64 cfg_rng_seed;
+std::uint64_t cfg_rng_seed;
 bool cfg_dumbpass;
 #ifdef USE_OPENCL
 std::vector<int> cfg_gpus;
@@ -86,9 +88,9 @@ void GTP::setup_default_parameters() {
     // helps when it *is* high quality (Linux, MSVC).
     std::random_device rd;
     std::ranlux48 gen(rd());
-    uint64 seed1 = (gen() << 16) ^ gen();
+    std::uint64_t seed1 = (gen() << 16) ^ gen();
     // If the above fails, this is one of our best, portable, bets.
-    uint64 seed2 = std::chrono::high_resolution_clock::
+    std::uint64_t seed2 = std::chrono::high_resolution_clock::
         now().time_since_epoch().count();
     cfg_rng_seed = seed1 ^ seed2;
 }

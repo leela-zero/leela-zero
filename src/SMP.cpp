@@ -16,7 +16,6 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
 #include "SMP.h"
 
 #include <thread>

@@ -19,9 +19,9 @@
 #ifndef GAMESTATE_H_INCLUDED
 #define GAMESTATE_H_INCLUDED
 
-#include <vector>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "FastState.h"
 #include "FullBoard.h"
