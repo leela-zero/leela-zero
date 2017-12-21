@@ -83,22 +83,6 @@
 #define MAX_CPUS 128
 #endif
 
-/*
- * Integer types.
- * Don't use these for new code. This is a relic from pre-2007 compilers.
- * Use the stdint ones instead, or even better, auto.
- */
-#include <cstdint>
-
-using int64 = std::int64_t;
-using int32 = std::int32_t;
-using int16 = std::int16_t;
-using int8 = std::int8_t;
-using uint64 = std::uint64_t;
-using uint32 = std::uint32_t;
-using uint16 = std::uint16_t;
-using uint8 = std::uint8_t;
-
 #ifdef USE_HALF
 #ifndef USE_OPENCL
 #error "Half-precision not supported without OpenCL"

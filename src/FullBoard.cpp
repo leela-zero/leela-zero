@@ -17,11 +17,11 @@
 */
 
 #include "config.h"
-#include "FullBoard.h"
 
 #include <array>
 #include <cassert>
 
+#include "FullBoard.h"
 #include "Utils.h"
 #include "Zobrist.h"
 
@@ -56,8 +56,8 @@ int FullBoard::remove_string(int i) {
     return removed;
 }
 
-uint64 FullBoard::calc_ko_hash(void) {
-    auto res = uint64{0x1234567887654321ULL};
+std::uint64_t FullBoard::calc_ko_hash(void) {
+    auto res = std::uint64_t{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
@@ -71,8 +71,8 @@ uint64 FullBoard::calc_ko_hash(void) {
     return res;
 }
 
-uint64 FullBoard::calc_hash(void) {
-    auto res = uint64{0x1234567887654321ULL};
+std::uint64_t FullBoard::calc_hash(void) {
+    auto res = std::uint64_t{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
@@ -93,11 +93,11 @@ uint64 FullBoard::calc_hash(void) {
     return res;
 }
 
-uint64 FullBoard::get_hash(void) const {
+std::uint64_t FullBoard::get_hash(void) const {
     return m_hash;
 }
 
-uint64 FullBoard::get_ko_hash(void) const {
+std::uint64_t FullBoard::get_ko_hash(void) const {
     return m_ko_hash;
 }
 

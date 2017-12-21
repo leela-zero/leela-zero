@@ -52,7 +52,7 @@ int cfg_lagbuffer_cs;
 int cfg_resignpct;
 int cfg_noise;
 int cfg_random_cnt;
-uint64 cfg_rng_seed;
+std::uint64_t cfg_rng_seed;
 bool cfg_dumbpass;
 #ifdef USE_OPENCL
 std::vector<int> cfg_gpus;
@@ -88,9 +88,9 @@ void GTP::setup_default_parameters() {
     // helps when it *is* high quality (Linux, MSVC).
     std::random_device rd;
     std::ranlux48 gen(rd());
-    uint64 seed1 = (gen() << 16) ^ gen();
+    std::uint64_t seed1 = (gen() << 16) ^ gen();
     // If the above fails, this is one of our best, portable, bets.
-    uint64 seed2 = std::chrono::high_resolution_clock::
+    std::uint64_t seed2 = std::chrono::high_resolution_clock::
         now().time_since_epoch().count();
     cfg_rng_seed = seed1 ^ seed2;
 }

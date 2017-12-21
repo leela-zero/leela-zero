@@ -37,7 +37,7 @@ public:
     void play_move(int vertex);
 
 private:
-    std::vector<uint64> m_ko_hash_history;
+    std::vector<std::uint64_t> m_ko_hash_history;
 };
 
 #endif
