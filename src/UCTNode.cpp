@@ -87,31 +87,24 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
     m_is_expanding = true;
     lock.unlock();
 
-    auto raw_netlist = Network::get_scored_moves(
+    const auto raw_netlist = Network::get_scored_moves(
         &state, Network::Ensemble::RANDOM_ROTATION);
 
     // DCNN returns winrate as side to move
     auto net_eval = raw_netlist.second;
-    auto to_move = state.board.get_to_move();
+    const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
     if (to_move == FastBoard::WHITE) {
         net_eval = 1.0f - net_eval;
     }
     eval = net_eval;
 
-    FastBoard & board = state.board;
     std::vector<Network::scored_node> nodelist;
 
     auto legal_sum = 0.0f;
     for (const auto& node : raw_netlist.first) {
         auto vertex = node.second;
-        if (vertex != FastBoard::PASS) {
-            if (vertex != state.m_komove
-                && !board.is_suicide(vertex, board.get_to_move())) {
-                nodelist.emplace_back(node);
-                legal_sum += node.first;
-            }
-        } else {
+        if (state.is_move_legal(to_move, vertex)) {
             nodelist.emplace_back(node);
             legal_sum += node.first;
         }

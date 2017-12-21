@@ -35,7 +35,7 @@ public:
     void play_pass(void);
     void play_move(int vertex);
 
-    std::vector<int> generate_moves(int color);
+    bool is_move_legal(int color, int vertex);
 
     void set_komi(float komi);
     float get_komi() const;
