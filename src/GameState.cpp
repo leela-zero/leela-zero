@@ -167,7 +167,7 @@ void GameState::display_state() {
     m_timecontrol.display_times();
 }
 
-int GameState::has_resigned() {
+int GameState::has_resigned() const {
     return m_resigned;
 }
 

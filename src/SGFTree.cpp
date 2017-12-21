@@ -362,7 +362,7 @@ int SGFTree::get_move(int tomove) {
     return SGFTree::EOT;
 }
 
-FastBoard::square_t SGFTree::get_winner() {
+FastBoard::square_t SGFTree::get_winner() const {
     return m_winner;
 }
 
@@ -449,7 +449,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
 
     while (state->forward_move()) {
         int move = state->get_last_move();
-        assert(move != FastBoard::RESIGN) {
+        assert(move != FastBoard::RESIGN);
         std::string movestr = state->board.move_to_text_sgf(move);
         if (state->get_to_move() == FastBoard::BLACK) {
             moves.append(";W[" + movestr + "]");
