@@ -17,8 +17,9 @@
 */
 
 #include "config.h"
-#include "OpenCL.h"
+
 #ifdef USE_OPENCL
+#include "OpenCL.h"
 
 #include <assert.h>
 #include <algorithm>
