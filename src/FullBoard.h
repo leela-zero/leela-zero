@@ -25,7 +25,7 @@
 class FullBoard : public FastBoard {
 public:
     int remove_string(int i);
-    int update_board(const int color, const int i, bool & capture);
+    int update_board(const int color, const int i);
 
     uint64 calc_hash(void);
     uint64 calc_ko_hash(void);

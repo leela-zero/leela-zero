@@ -255,33 +255,6 @@ void FastBoard::remove_neighbour(const int vtx, const int color) {
     }
 }
 
-int FastBoard::remove_string_fast(int i) {
-    int pos = i;
-    int removed = 0;
-    int color = m_square[i];
-
-    assert(color == WHITE || color == BLACK || color == EMPTY);
-
-    do {
-        assert(m_square[pos] == color);
-
-        m_square[pos]  = EMPTY;
-        m_parent[pos]  = MAXSQ;
-        m_totalstones[color]--;
-
-        remove_neighbour(pos, color);
-
-        m_empty_idx[pos]     = m_empty_cnt;
-        m_empty[m_empty_cnt] = pos;
-        m_empty_cnt++;
-
-        removed++;
-        pos = m_next[pos];
-    } while (pos != i);
-
-    return removed;
-}
-
 std::vector<bool> FastBoard::calc_reach_color(int col) const {
     auto bd = std::vector<bool>(m_maxsq, false);
     auto open = std::queue<int>();

@@ -137,7 +137,6 @@ protected:
 
     int count_neighbours(const int color, const int i) const;
     void merge_strings(const int ip, const int aip);
-    int remove_string_fast(int i);
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
 };

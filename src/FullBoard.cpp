@@ -101,7 +101,7 @@ uint64 FullBoard::get_ko_hash(void) const {
     return m_ko_hash;
 }
 
-int FullBoard::update_board(const int color, const int i, bool &capture) {
+int FullBoard::update_board(const int color, const int i) {
     assert(m_square[i] == EMPTY);
 
     m_hash ^= Zobrist::zobrist[m_square[i]][i];
@@ -161,15 +161,12 @@ int FullBoard::update_board(const int color, const int i, bool &capture) {
     /* check whether we still live (i.e. detect suicide) */
     if (m_libs[m_parent[i]] == 0) {
         assert(captured_stones == 0);
-        remove_string_fast(i);
+        remove_string(i);
     }
 
-    if (captured_stones) {
-        capture = true;
-        /* check for possible simple ko */
-        if (captured_stones == 1 && eyeplay) {
-            return captured_sq;
-        }
+    /* check for possible simple ko */
+    if (captured_stones == 1 && eyeplay) {
+        return captured_sq;
     }
 
     return -1;
