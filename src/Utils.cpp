@@ -17,21 +17,18 @@
 */
 
 #include "config.h"
+#include "Utils.h"
 
-#include <iostream>
-#include <fstream>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <thread>
 #include <mutex>
+#include <stdarg.h>
+#include <stdio.h>
+
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/select.h>
 #endif
 
-#include "Utils.h"
 #include "GTP.h"
 
 Utils::ThreadPool thread_pool;

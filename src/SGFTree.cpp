@@ -16,21 +16,24 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
-#include <fstream>
-#include <cctype>
-#include <sstream>
-#include <stdexcept>
-#include <memory>
-#include <ctime>
+#include "config.h"
+#include "SGFTree.h"
+
+#include <assert.h>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <ctime>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
 
-#include "SGFTree.h"
+#include "FullBoard.h"
+#include "GTP.h"
 #include "KoState.h"
 #include "SGFParser.h"
 #include "Utils.h"
-#include "GTP.h"
 
 using namespace Utils;
 

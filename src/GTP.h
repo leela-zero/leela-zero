@@ -19,8 +19,12 @@
 #ifndef GTP_H_INCLUDED
 #define GTP_H_INCLUDED
 
+#include "config.h"
+
+#include <stdio.h>
 #include <string>
 #include <vector>
+
 #include "GameState.h"
 
 extern bool cfg_allow_pondering;
@@ -30,7 +34,7 @@ extern int cfg_lagbuffer_cs;
 extern int cfg_resignpct;
 extern int cfg_noise;
 extern int cfg_random_cnt;
-extern uint64 cfg_rng_seed;
+extern std::uint64_t cfg_rng_seed;
 extern bool cfg_dumbpass;
 #ifdef USE_OPENCL
 extern std::vector<int> cfg_gpus;

@@ -20,6 +20,7 @@
 #define SMP_H_INCLUDED
 
 #include "config.h"
+
 #include <atomic>
 
 namespace SMP {

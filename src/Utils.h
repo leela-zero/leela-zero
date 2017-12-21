@@ -20,8 +20,11 @@
 #define UTILS_H_DEFINED
 
 #include "config.h"
-#include <string>
+
 #include <atomic>
+#include <limits>
+#include <string>
+
 #include "ThreadPool.h"
 
 extern Utils::ThreadPool thread_pool;
