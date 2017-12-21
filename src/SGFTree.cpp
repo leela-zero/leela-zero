@@ -362,7 +362,7 @@ int SGFTree::get_move(int tomove) {
     return SGFTree::EOT;
 }
 
-FastBoard::square_t SGFTree::get_winner() {
+FastBoard::square_t SGFTree::get_winner() const {
     return m_winner;
 }
 
@@ -449,9 +449,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
 
     while (state->forward_move()) {
         int move = state->get_last_move();
-        if (move == FastBoard::RESIGN) {
-            break;
-        }
+        assert(move != FastBoard::RESIGN);
         std::string movestr = state->board.move_to_text_sgf(move);
         if (state->get_to_move() == FastBoard::BLACK) {
             moves.append(";W[" + movestr + "]");
@@ -463,7 +461,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         }
     }
 
-    if (state->get_last_move() != FastBoard::RESIGN) {
+    if (state->has_resigned() == FastBoard::EMPTY) {
         float score = state->final_score();
 
         if (score > 0.0f) {
@@ -472,8 +470,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
             header.append("RE[W+" + str(boost::format("%.1f") % -score) + "]");
         }
     } else {
-        // Last move was resign, so side to move won
-        if (state->get_to_move() == FastBoard::BLACK) {
+        if (state->has_resigned() == FastBoard::WHITE) {
             header.append("RE[B+Resign]");
         } else {
             header.append("RE[W+Resign]");

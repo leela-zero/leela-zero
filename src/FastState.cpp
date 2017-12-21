@@ -89,7 +89,7 @@ void FastState::play_move(int vertex) {
 }
 
 void FastState::play_move(int color, int vertex) {
-    if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
+    if (vertex != FastBoard::PASS) {
         int kosq = board.update_board(color, vertex);
 
         m_komove = kosq;
@@ -108,7 +108,7 @@ void FastState::play_move(int color, int vertex) {
             set_passes(0);
             board.m_hash ^= Zobrist::zobrist_pass[0];
         }
-    } else {
+    } else if (vertex == FastBoard::PASS) {
         play_pass();
     }
 }

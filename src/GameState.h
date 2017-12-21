@@ -61,12 +61,14 @@ public:
     void adjust_time(int color, int time, int stones);
 
     void display_state();
+    int has_resigned() const;
 
 private:
     bool valid_handicap(int stones);
 
     std::vector<std::shared_ptr<KoState>> game_history;
     TimeControl m_timecontrol;
+    int m_resigned{FastBoard::EMPTY};
 };
 
 #endif
