@@ -25,12 +25,6 @@ FIND_PACKAGE(Boost 1.58.0 REQUIRED program_options)
 FIND_PACKAGE(Threads REQUIRED)
 FIND_PACKAGE(ZLIB REQUIRED)
 FIND_PACKAGE(OpenCL REQUIRED)
-FIND_PACKAGE(Qt5Core REQUIRED)
-if (Qt5Core_VERSION VERSION_LESS 5.3.0)
-    message(FATAL_ERROR "Minimum supported Qt5 version is 5.3.0!")
-endif()
-
-MESSAGE( STATUS "Qt5Core version: " ${Qt5Core_VERSION} )
 # We need OpenBLAS for now, because we make some specific
 # calls. Ideally we'd use OpenBLAS is possible and fall back to
 # not doing those calls if it's not present.

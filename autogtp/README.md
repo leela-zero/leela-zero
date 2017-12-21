@@ -6,7 +6,7 @@ the SGF and training data at the end of the game.
 
 # Requirements
 
-* Qt 5.x with qmake
+* Qt 5.3 or later with qmake
 * C++14 capable compiler
 * curl
 * gzip and gunzip
