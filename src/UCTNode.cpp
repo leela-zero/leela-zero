@@ -18,29 +18,29 @@
 
 #include "config.h"
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <assert.h>
-#include <limits>
-#include <cmath>
-
-#include <iostream>
-#include <vector>
-#include <functional>
+#include <stdio.h>
+#include <cstdint>
 #include <algorithm>
-#include <random>
+#include <cmath>
+#include <functional>
+#include <iterator>
+#include <limits>
 #include <numeric>
-#include "FastState.h"
+#include <random>
+#include <utility>
+#include <vector>
+
 #include "UCTNode.h"
-#include "UCTSearch.h"
-#include "Utils.h"
-#include "Network.h"
+#include "FastBoard.h"
+#include "FastState.h"
+#include "FullBoard.h"
 #include "GTP.h"
+#include "GameState.h"
+#include "KoState.h"
+#include "Network.h"
 #include "Random.h"
-#ifdef USE_OPENCL
-#include "OpenCL.h"
-#endif
+#include "Utils.h"
 
 using namespace Utils;
 
@@ -213,8 +213,8 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 }
 
 void UCTNode::randomize_first_proportionally() {
-    auto accum = uint32{0};
-    auto accum_vector = std::vector<uint32>{};
+    auto accum = std::uint32_t{0};
+    auto accum_vector = std::vector<decltype(accum)>{};
     for (const auto& child : m_children) {
         accum += child->get_visits();
         accum_vector.emplace_back(accum);

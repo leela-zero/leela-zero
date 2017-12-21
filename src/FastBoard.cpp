@@ -16,19 +16,16 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <algorithm>
+#include "FastBoard.h"
+
 #include <assert.h>
 #include <array>
+#include <iostream>
 #include <queue>
+#include <sstream>
+#include <string>
 
-#include "config.h"
-
-#include "FastBoard.h"
 #include "Utils.h"
-#include "Random.h"
 
 using namespace Utils;
 
@@ -167,64 +164,42 @@ void FastBoard::reset_board(int size) {
     m_next[MAXSQ]   = MAXSQ;
 }
 
-bool FastBoard::is_suicide(int i, int color) {
+bool FastBoard::is_suicide(int i, int color) const {
+    // If there are liberties next to us, it is never suicide
     if (count_pliberties(i)) {
         return false;
     }
 
-    bool connecting = false;
+    // If we get here, we played in a "hole" surrounded by stones
+    for (auto k = 0; k < 4; k++) {
+        auto ai = i + m_dirs[k];
 
-    for (int k = 0; k < 4; k++) {
-        int ai = i + m_dirs[k];
-
-        int libs = m_libs[m_parent[ai]];
+        auto libs = m_libs[m_parent[ai]];
         if (get_square(ai) == color) {
             if (libs > 1) {
-                // connecting to live group = never suicide
+                // connecting to live group = not suicide
                 return false;
             }
-            connecting = true;
-        } else {
+        } else if (get_square(ai) == !color) {
             if (libs <= 1) {
-                // killing neighbor = never suicide
+                // killing neighbour = not suicide
                 return false;
             }
         }
     }
 
-    add_neighbour(i, color);
-
-    bool opps_live = true;
-    bool ours_die = true;
-
-    for (int k = 0; k < 4; k++) {
-        int ai = i + m_dirs[k];
-
-        int libs = m_libs[m_parent[ai]];
-
-        if (libs == 0 && get_square(ai) != color) {
-            opps_live = false;
-        } else if (libs != 0 && get_square(ai) == color) {
-            ours_die = false;
-        }
-    }
-
-    remove_neighbour(i, color);
-
-    if (!connecting) {
-        return opps_live;
-    } else {
-        return opps_live && ours_die;
-    }
+    // We played in a hole, friendlies had one liberty at most and
+    // we did not kill anything. So we killed ourselves.
+    return true;
 }
 
-int FastBoard::count_pliberties(const int i) {
+int FastBoard::count_pliberties(const int i) const {
     return count_neighbours(EMPTY, i);
 }
 
 // count neighbours of color c at vertex v
 // the border of the board has fake neighours of both colors
-int FastBoard::count_neighbours(const int c, const int v) {
+int FastBoard::count_neighbours(const int c, const int v) const {
     assert(c == WHITE || c == BLACK || c == EMPTY);
     return (m_neighbours[v] >> (NBR_SHIFT * c)) & 7;
 }
@@ -280,34 +255,7 @@ void FastBoard::remove_neighbour(const int vtx, const int color) {
     }
 }
 
-int FastBoard::remove_string_fast(int i) {
-    int pos = i;
-    int removed = 0;
-    int color = m_square[i];
-
-    assert(color == WHITE || color == BLACK || color == EMPTY);
-
-    do {
-        assert(m_square[pos] == color);
-
-        m_square[pos]  = EMPTY;
-        m_parent[pos]  = MAXSQ;
-        m_totalstones[color]--;
-
-        remove_neighbour(pos, color);
-
-        m_empty_idx[pos]     = m_empty_cnt;
-        m_empty[m_empty_cnt] = pos;
-        m_empty_cnt++;
-
-        removed++;
-        pos = m_next[pos];
-    } while (pos != i);
-
-    return removed;
-}
-
-std::vector<bool> FastBoard::calc_reach_color(int col) {
+std::vector<bool> FastBoard::calc_reach_color(int col) const {
     auto bd = std::vector<bool>(m_maxsq, false);
     auto open = std::queue<int>();
     for (auto i = 0; i < m_boardsize; i++) {
@@ -336,7 +284,7 @@ std::vector<bool> FastBoard::calc_reach_color(int col) {
 }
 
 // Needed for scoring passed out games not in MC playouts
-float FastBoard::area_score(float komi) {
+float FastBoard::area_score(float komi) const {
     auto white = calc_reach_color(WHITE);
     auto black = calc_reach_color(BLACK);
 
@@ -357,7 +305,7 @@ float FastBoard::area_score(float komi) {
     return score;
 }
 
-int FastBoard::estimate_mc_score(float komi) {
+int FastBoard::estimate_mc_score(float komi) const {
     int wsc, bsc;
 
     bsc = m_totalstones[BLACK];
@@ -366,7 +314,7 @@ int FastBoard::estimate_mc_score(float komi) {
     return bsc-wsc-((int)komi)+1;
 }
 
-float FastBoard::final_mc_score(float komi) {
+float FastBoard::final_mc_score(float komi) const {
     int wsc, bsc;
     int maxempty = m_empty_cnt;
 
@@ -479,7 +427,7 @@ void FastBoard::merge_strings(const int ip, const int aip) {
     m_next[ip] = tmp;
 }
 
-bool FastBoard::is_eye(const int color, const int i) {
+bool FastBoard::is_eye(const int color, const int i) const {
     /* check for 4 neighbors of the same color */
     int ownsurrounded = (m_neighbours[i] & s_eyemask[color]);
 
@@ -516,7 +464,7 @@ bool FastBoard::is_eye(const int color, const int i) {
     return true;
 }
 
-std::string FastBoard::move_to_text(int move) {
+std::string FastBoard::move_to_text(int move) const {
     std::ostringstream result;
 
     int column = move % (m_boardsize + 2);
@@ -542,7 +490,7 @@ std::string FastBoard::move_to_text(int move) {
     return result.str();
 }
 
-std::string FastBoard::move_to_text_sgf(int move) {
+std::string FastBoard::move_to_text_sgf(int move) const {
     std::ostringstream result;
 
     int column = move % (m_boardsize + 2);
@@ -610,17 +558,17 @@ bool FastBoard::starpoint(int size, int x, int y) {
     return starpoint(size, y * size + x);
 }
 
-int FastBoard::get_prisoners(int side) {
+int FastBoard::get_prisoners(int side)  const {
     assert(side == WHITE || side == BLACK);
 
     return m_prisoners[side];
 }
 
-bool FastBoard::black_to_move() {
+bool FastBoard::black_to_move() const {
     return m_tomove == BLACK;
 }
 
-int FastBoard::get_to_move() {
+int FastBoard::get_to_move() const {
     return m_tomove;
 }
 

@@ -19,6 +19,9 @@
 #ifndef FASTSTATE_H_INCLUDED
 #define FASTSTATE_H_INCLUDED
 
+#include <stddef.h>
+#include <array>
+#include <string>
 #include <vector>
 
 #include "FullBoard.h"
@@ -61,8 +64,7 @@ public:
     int m_passes;
     int m_komove;
     size_t m_movenum;
-    std::array<int, 16> m_lastmove;
-    bool m_last_was_capture;
+    std::array<int, 2> m_lastmove;
 
 protected:
     void play_move(int color, int vertex);

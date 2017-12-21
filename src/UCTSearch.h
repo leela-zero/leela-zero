@@ -19,12 +19,16 @@
 #ifndef UCTSEARCH_H_INCLUDED
 #define UCTSEARCH_H_INCLUDED
 
-#include <memory>
 #include <atomic>
+#include <memory>
+#include <string>
 #include <tuple>
 
+#include "FastBoard.h"
 #include "GameState.h"
+#include "KoState.h"
 #include "UCTNode.h"
+
 
 class SearchResult {
 public:

@@ -22,9 +22,10 @@
 #include "config.h"
 
 #include <array>
-#include <string>
-#include <vector>
 #include <queue>
+#include <string>
+#include <utility>
+#include <vector>
 
 class FastBoard {
     friend class FastState;
@@ -80,25 +81,24 @@ public:
     void set_square(int vertex, square_t content);
     std::pair<int, int> get_xy(int vertex) const;
 
-    bool is_suicide(int i, int color);
-    int count_pliberties(const int i);
-    void augment_chain(std::vector<int> & chains, int vertex);
-    bool is_eye(const int color, const int vtx);
+    bool is_suicide(int i, int color) const;
+    int count_pliberties(const int i) const;
+    bool is_eye(const int color, const int vtx) const;
     int get_dir(int i) const;
     int get_extra_dir(int i) const;
 
-    int estimate_mc_score(float komi);
-    float final_mc_score(float komi);
-    float area_score(float komi);
-    std::vector<bool> calc_reach_color(int col);
+    int estimate_mc_score(float komi) const;
+    float final_mc_score(float komi) const;
+    float area_score(float komi) const;
+    std::vector<bool> calc_reach_color(int col) const;
 
-    int get_prisoners(int side);
-    bool black_to_move();
-    int get_to_move();
+    int get_prisoners(int side) const;
+    bool black_to_move() const;
+    int get_to_move() const;
     void set_to_move(int color);
 
-    std::string move_to_text(int move);
-    std::string move_to_text_sgf(int move);
+    std::string move_to_text(int move) const;
+    std::string move_to_text_sgf(int move) const;
     std::string get_stone_list();
     std::string get_string(int vertex);
 
@@ -135,9 +135,8 @@ protected:
 
     int m_boardsize;
 
-    int count_neighbours(const int color, const int i);
+    int count_neighbours(const int color, const int i) const;
     void merge_strings(const int ip, const int aip);
-    int remove_string_fast(int i);
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
 };
