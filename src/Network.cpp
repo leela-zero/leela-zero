@@ -372,9 +372,8 @@ void batchnorm(size_t channels,
     }
 }
 
-#if defined(USE_BLAS) && !defined(USE_OPENCL)
-void Network::forward(std::vector<float>& input,
-                      std::vector<float>& output) {
+void Network::forward_cpu(std::vector<float>& input,
+                          std::vector<float>& output) {
     // Input convolution
     constexpr int width = 19;
     constexpr int height = 19;
@@ -391,7 +390,7 @@ void Network::forward(std::vector<float>& input,
     // Residual tower
     auto conv_in = std::vector<float>(output_channels * width * height);
     auto res = std::vector<float>(output_channels * width * height);
-    for (auto i = size_t{1}; i < conv_weights.size(); i++) {
+    for (auto i = size_t{1}; i < conv_weights.size(); i += 2) {
         auto output_channels = conv_biases[i].size();
         std::swap(conv_out, conv_in);
         std::copy(begin(conv_in), end(conv_in), begin(res));
@@ -401,20 +400,57 @@ void Network::forward(std::vector<float>& input,
         batchnorm<361>(output_channels, conv_out,
                        batchnorm_means[i].data(),
                        batchnorm_stddivs[i].data());
+
+        output_channels = conv_biases[i + 1].size();
         std::swap(conv_out, conv_in);
-        i++;
-        output_channels = conv_biases[i].size();
         convolve<3>(output_channels, conv_in,
-                    conv_weights[i], conv_biases[i],
+                    conv_weights[i + 1], conv_biases[i + 1],
                     conv_out);
         batchnorm<361>(output_channels, conv_out,
-                       batchnorm_means[i].data(),
-                       batchnorm_stddivs[i].data(),
+                       batchnorm_means[i + 1].data(),
+                       batchnorm_stddivs[i + 1].data(),
                        res.data());
     }
     std::copy(begin(conv_out), end(conv_out), begin(output));
 }
-#endif
+
+template<typename T>
+T relative_difference(T a, T b) {
+    // Handle NaN
+    if (std::isnan(a) || std::isnan(b)) {
+        return std::numeric_limits<T>::max();
+    }
+    // Handle sign difference
+    if (((a < 0) != (b < 0)) && (a != 0) && (b != 0)) {
+        return std::numeric_limits<T>::max();
+    }
+    a = std::fabs(a);
+    b = std::fabs(b);
+
+    // Handle underflow
+    constexpr float small_number = 1e-3;
+    a = std::max(a, small_number);
+    b = std::max(b, small_number);
+
+    return std::max(fabs((a - b) / a), fabs((a - b) / b));
+}
+
+void compare_net_outputs(std::vector<float>& data,
+                         std::vector<float>& ref) {
+    // We accept an error up to 5%, but output values
+    // smaller than 1/1000th are "rounded up" for the comparison.
+    constexpr float relative_error = 5e-2;
+    for (auto idx = size_t{0}; idx < data.size(); ++idx) {
+        auto err = relative_difference(data[idx], ref[idx]);
+        if (err > relative_error) {
+            myprintf("Error in OpenCL calculation: expected %f got %f "
+                     "(error=%f%%)\n", ref[idx], data[idx], err * 100.0);
+            myprintf("Update your GPU drivers or reduce the amount of games "
+                     "played simultaneously.\n");
+            throw std::runtime_error("OpenCL self-check mismatch.");
+        }
+    }
+}
 #endif
 
 void Network::softmax(const std::vector<float>& input,
@@ -489,7 +525,16 @@ Network::Netresult Network::get_scored_moves_internal(
 #ifdef USE_OPENCL
     opencl_net.forward(input_data, output_data);
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
-    forward(input_data, output_data);
+    forward_cpu(input_data, output_data);
+#endif
+#ifdef USE_OPENCL_SELFCHECK
+    // Both implementations are available, self-check the OpenCL driver by
+    // running both with a probability of 1/2000.
+    if (Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
+        auto cpu_output_data = std::vector<float>(output_data.size());
+        forward_cpu(input_data, cpu_output_data);
+        compare_net_outputs(output_data, cpu_output_data);
+    }
 #endif
     // We calculate both network heads on the CPU. They are irregular
     // and have a much lower compute densitity than the residual layers,
@@ -513,7 +558,7 @@ Network::Netresult Network::get_scored_moves_internal(
     float winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
 
     std::vector<scored_node> result;
-    for (size_t idx = 0; idx < outputs.size(); idx++) {
+    for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
         if (idx < 19*19) {
             auto val = outputs[idx];
             auto rot_idx = rotate_nn_idx(idx, rotation);

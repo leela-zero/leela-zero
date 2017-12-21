@@ -62,9 +62,9 @@ private:
     static Netresult get_scored_moves_internal(
       GameState * state, NNPlanes & planes, int rotation);
     static int rotate_nn_idx(const int vertex, int symmetry);
-#if defined(USE_BLAS) && !defined(USE_OPENCL)
-    static void forward(std::vector<float>& input,
-                        std::vector<float>& output);
+#if defined(USE_BLAS)
+    static void forward_cpu(std::vector<float>& input,
+                            std::vector<float>& output);
 #endif
 };
 
