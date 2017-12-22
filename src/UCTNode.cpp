@@ -391,8 +391,6 @@ UCTNode* UCTNode::uct_select_child(int color) {
         }
     }
 
-    assert(best != nullptr);
-
     return best;
 }
 
