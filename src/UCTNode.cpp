@@ -204,12 +204,9 @@ float UCTNode::eval_state(GameState& state) {
 }
 
 void UCTNode::dirichlet_noise(float epsilon, float alpha) {
-    auto child = m_firstchild;
     auto child_cnt = size_t{0};
-
-    while (child != nullptr) {
+    for (auto child = m_firstchild; child ; child = child->m_nextsibling) {
         child_cnt++;
-        child = child->m_nextsibling;
     }
 
     auto dirichlet_vector = std::vector<float>{};
@@ -232,26 +229,22 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
         v /= sample_sum;
     }
 
-    child = m_firstchild;
     child_cnt = 0;
-    while (child != nullptr) {
+    for (auto child = m_firstchild; child ; child = child->m_nextsibling) {
         auto score = child->get_score();
         auto eta_a = dirichlet_vector[child_cnt++];
         score = score * (1 - epsilon) + epsilon * eta_a;
         child->set_score(score);
-        child = child->m_nextsibling;
     }
 }
 
 void UCTNode::randomize_first_proportionally() {
     auto accum_vector = std::vector<uint32>{};
 
-    auto child = m_firstchild;
     auto accum = uint32{0};
-    while (child != nullptr) {
+    for (auto child = m_firstchild; child ; child = child->m_nextsibling) {
         accum += child->get_visits();
         accum_vector.emplace_back(accum);
-        child = child->m_nextsibling;
     }
 
     auto pick = Random::get_Rng().randuint32(accum);
@@ -269,9 +262,8 @@ void UCTNode::randomize_first_proportionally() {
     }
 
     // Now swap the child at index with the first child
-    child = m_firstchild;
     auto child_cnt = size_t{0};
-    while (child != nullptr) {
+    for (auto child = m_firstchild; child ; child = child->m_nextsibling) {
         // Because of the early out we can't be swapping the first
         // child. Stop at the predecessor, so we can put the nextsibling
         // pointer.
@@ -288,7 +280,6 @@ void UCTNode::randomize_first_proportionally() {
             return;
         }
         child_cnt++;
-        child = child->m_nextsibling;
     }
 }
 
@@ -373,35 +364,19 @@ UCTNode* UCTNode::uct_select_child(int color) {
     float best_value = -1000.0f;
 
     LOCK(get_mutex(), lock);
-    UCTNode * child = m_firstchild;
 
     // Count parentvisits.
     // We do this manually to avoid issues with transpositions.
     int parentvisits = 0;
-    // Make sure we are at a valid successor.
-    while (child != nullptr && !child->valid()) {
-        child = child->m_nextsibling;
-    }
-    while (child != nullptr) {
+    for (auto child = m_firstchild; child ; child = child->m_nextsibling) {
+        if (!child->valid()) continue;
         parentvisits      += child->get_visits();
-        child = child->m_nextsibling;
-        // Make sure we are at a valid successor.
-        while (child != nullptr && !child->valid()) {
-            child = child->m_nextsibling;
-        }
     }
     float numerator = std::sqrt((double)parentvisits);
 
-    child = m_firstchild;
-    // Make sure we are at a valid successor.
-    while (child != nullptr && !child->valid()) {
-        child = child->m_nextsibling;
-    }
-    if (child == nullptr) {
-        return nullptr;
-    }
+    for (auto child = m_firstchild; child ; child = child->m_nextsibling) {
+        if (!child->valid()) continue;
 
-    while (child != nullptr) {
         // get_eval() will automatically set first-play-urgency
         float winrate = child->get_eval(color);
         float psa = child->get_score();
@@ -414,15 +389,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
             best_value = value;
             best = child;
         }
-
-        child = child->m_nextsibling;
-        // Make sure we are at a valid successor.
-        while (child != nullptr && !child->valid()) {
-            child = child->m_nextsibling;
-        }
     }
-
-    assert(best != nullptr);
 
     return best;
 }
@@ -463,8 +430,7 @@ void UCTNode::sort_root_children(int color) {
     LOCK(get_mutex(), lock);
     auto tmp = std::vector<sortnode_t>{};
 
-    auto child = m_firstchild;
-    while (child != nullptr) {
+    for (auto child = m_firstchild; child ; child = child->m_nextsibling) {
         auto visits = child->get_visits();
         auto score = child->get_score();
         if (visits) {
@@ -473,7 +439,6 @@ void UCTNode::sort_root_children(int color) {
         } else {
             tmp.emplace_back(0.0f, 0, score, child);
         }
-        child = child->m_nextsibling;
     }
 
     // reverse sort, because list reconstruction is backwards
@@ -504,14 +469,12 @@ UCTNode* UCTNode::get_best_root_child(int color) {
     assert(m_firstchild != nullptr);
 
     NodeComp compare;
-    auto child = m_firstchild;
-    auto best_child = get_sortnode(color, child);
-    while (child != nullptr) {
+    auto best_child = get_sortnode(color, m_firstchild);
+    for (auto child = m_firstchild; child ; child = child->m_nextsibling) {
         auto test = get_sortnode(color, child);
         if (compare(test, best_child)) {
             best_child = test;
         }
-        child = child->m_nextsibling;
     }
     return std::get<3>(best_child);
 }
@@ -525,9 +488,7 @@ UCTNode* UCTNode::get_sibling() const {
 }
 
 UCTNode* UCTNode::get_nopass_child(FastState& state) const {
-    UCTNode * child = m_firstchild;
-
-    while (child != nullptr) {
+    for (auto child = m_firstchild; child ; child = child->m_nextsibling) {
         /* If we prevent the engine from passing, we must bail out when
            we only have unreasonable moves to pick, like filling eyes.
            Note that this isn't knowledge isn't required by the engine,
@@ -536,7 +497,6 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
             && !state.board.is_eye(state.get_to_move(), child->m_move)) {
             return child;
         }
-        child = child->m_nextsibling;
     }
 
     return nullptr;
