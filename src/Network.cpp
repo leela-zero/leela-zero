@@ -49,9 +49,10 @@
 #include "FastBoard.h"
 #include "FastState.h"
 #include "FullBoard.h"
-#include "Im2Col.h"
-#include "GTP.h"
 #include "GameState.h"
+#include "GTP.h"
+#include "Im2Col.h"
+#include "NNCache.h"
 #include "Random.h"
 #include "ThreadPool.h"
 #include "Timing.h"
@@ -486,6 +487,11 @@ Network::Netresult Network::get_scored_moves(
     NNPlanes planes;
     gather_features(state, planes);
 
+    // See if we already have this in the cache.
+    if (auto r = NNCache::get_NNCache()->lookup(planes)) {
+      return *r;
+    }
+
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
         result = get_scored_moves_internal(state, planes, rotation);
@@ -495,6 +501,9 @@ Network::Netresult Network::get_scored_moves(
         auto rand_rot = Random::get_Rng().randfix<8>();
         result = get_scored_moves_internal(state, planes, rand_rot);
     }
+
+    // Insert result into cache.
+    NNCache::get_NNCache()->insert(planes, result);
 
     return result;
 }

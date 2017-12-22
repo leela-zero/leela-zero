@@ -30,7 +30,7 @@
 #include "GTP.h"
 #include "GameState.h"
 #include "KoState.h"
-#include "TTable.h"
+#include "NNCache.h"
 #include "ThreadPool.h"
 #include "TimeControl.h"
 #include "Timing.h"
@@ -46,12 +46,9 @@ UCTSearch::UCTSearch(GameState & g)
 
 SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
     const auto color = currstate.get_to_move();
-    const auto hash = currstate.board.get_hash();
-    const auto komi = currstate.get_komi();
 
     auto result = SearchResult{};
 
-    TTable::get_TT()->sync(hash, komi, node);
     node->virtual_loss();
 
     if (!node->has_children()) {
@@ -95,7 +92,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
         node->update(result.eval());
     }
     node->virtual_loss_undo();
-    TTable::get_TT()->update(hash, komi, node);
 
     return result;
 }
@@ -332,6 +328,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
 
+    // Keep statistics for nncache.
+    auto nn_hr1 = NNCache::get_NNCache()->hit_rate();
+
     // create a sorted list off legal moves (make sure we
     // play something legal and decent even in time trouble)
     float root_eval;
@@ -392,11 +391,14 @@ int UCTSearch::think(int color, passflag_t passflag) {
     Time elapsed;
     int elapsed_centis = Time::timediff_centis(start, elapsed);
     if (elapsed_centis > 0) {
-        myprintf("%d visits, %d nodes, %d playouts, %d n/s\n\n",
+        auto nn_hr2 = NNCache::get_NNCache()->hit_rate();
+        NNCache::get_NNCache()->dump_stats();
+        myprintf("%d visits, %d nodes, %d playouts, %d n/s, %d/%d nncache\n\n",
                  m_root.get_visits(),
                  static_cast<int>(m_nodes),
                  static_cast<int>(m_playouts),
-                 (m_playouts * 100) / (elapsed_centis+1));
+                 (m_playouts * 100) / (elapsed_centis+1),
+                 nn_hr2.first - nn_hr1.first, nn_hr2.second - nn_hr1.second);
     }
     int bestmove = get_best_move(passflag);
     return bestmove;
