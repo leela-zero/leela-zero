@@ -30,11 +30,11 @@
 #include "GTP.h"
 #include "GameState.h"
 #include "KoState.h"
-#include "TTable.h"
 #include "ThreadPool.h"
 #include "TimeControl.h"
 #include "Timing.h"
 #include "Training.h"
+#include "TTable.h"
 #include "Utils.h"
 
 using namespace Utils;
