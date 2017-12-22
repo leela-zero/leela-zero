@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017 Michael O
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,16 +44,6 @@ static size_t compute_hash(const Network::NNPlanes& features) {
     return hash;
 }
 
-// Return true if the feature planes are the same.
-static bool compare(const Network::NNPlanes& a, const Network::NNPlanes& b) {
-  if (a.size() != b.size()) return false;
-  for (size_t i = 0; i < a.size(); ++i) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
-
-
 const Network::Netresult* NNCache::lookup(const Network::NNPlanes& features) {
   LOCK(m_mutex, lock);
   ++m_lookups;
@@ -63,7 +53,7 @@ const Network::Netresult* NNCache::lookup(const Network::NNPlanes& features) {
   if (iter == m_cache.end()) return nullptr;  // Not found.
 
   const auto& entry = iter->second;
-  if (!compare(entry->features, features)) {
+  if (entry->features != features) {
       // Got a hash collision.
       ++m_collisions;
       return nullptr;
