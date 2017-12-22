@@ -21,7 +21,6 @@
 
 #include "config.h"
 
-#include <vector>
 #include <deque>
 #include <unordered_map>
 
