@@ -636,13 +636,13 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
     BoardPlane& black_to_move  = planes[16];
     BoardPlane& white_to_move  = planes[17];
 
-    auto to_move = state->get_to_move();
-    if (to_move == FastBoard::WHITE) {
+    if (state->board.white_to_move()) {
         white_to_move.set();
     } else {
         black_to_move.set();
     }
 
+    auto to_move = state->get_to_move();
     // Go back in time, fill history boards
     size_t backtracks = 0;
     for (int h = 0; h < 8; h++) {
