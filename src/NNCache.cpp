@@ -1,10 +1,6 @@
 /*
     This file is part of Leela Zero.
-<<<<<<< bd72bdb2bee1fece5bab0230fae430429957cf03
     Copyright (C) 2017 Michael O
-=======
-    Copyright (C) 2017 Gian-Carlo Pascutto
->>>>>>> Cache the network evaluation results.
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
