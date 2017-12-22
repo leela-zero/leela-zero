@@ -21,15 +21,8 @@
 
 #include "config.h"
 
-<<<<<<< 7c208bdc874d4fa4e8e62506c006cb2629293b8c
 #include <mutex>
 #include <vector>
-
-=======
-#include <vector>
-
-#include "SMP.h"
->>>>>>> Restore TTable
 #include "UCTNode.h"
 
 class TTEntry {
@@ -61,11 +54,7 @@ public:
 private:
     TTable(int size = 500000);
 
-<<<<<<< 7c208bdc874d4fa4e8e62506c006cb2629293b8c
     std::mutex m_mutex;
-=======
-    SMP::Mutex m_mutex;
->>>>>>> Restore TTable
     std::vector<TTEntry> m_buckets;
     float m_komi;
 };
