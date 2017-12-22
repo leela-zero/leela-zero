@@ -41,8 +41,8 @@ void GameState::init_game(int size, float komi) {
     m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
 
-    return;
-};
+    m_resigned = FastBoard::EMPTY;
+}
 
 void GameState::reset_game() {
     KoState::reset_game();
@@ -51,6 +51,8 @@ void GameState::reset_game() {
     game_history.emplace_back(std::make_shared<KoState>(*this));
 
     m_timecontrol.reset_clocks();
+
+    m_resigned = FastBoard::EMPTY;
 }
 
 bool GameState::forward_move(void) {
@@ -66,9 +68,6 @@ bool GameState::forward_move(void) {
 bool GameState::undo_move(void) {
     if (m_movenum > 0) {
         m_movenum--;
-
-        // don't actually delete it!
-        //game_history.pop_back();
 
         // this is not so nice, but it should work
         *(static_cast<KoState*>(this)) = *game_history[m_movenum];
@@ -96,13 +95,10 @@ void GameState::play_pass() {
 void GameState::play_move(int color, int vertex) {
     if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
         KoState::play_move(color, vertex);
-    } else {
+    } else if (vertex == FastBoard::PASS) {
         KoState::play_pass();
-        if (vertex == FastBoard::RESIGN) {
-            std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1,
-                        rend(m_lastmove));
-            m_lastmove[0] = vertex;
-        }
+    } else if (vertex == FastBoard::RESIGN) {
+        m_resigned = color;
     }
 
     // cut off any leftover moves from navigating
@@ -169,6 +165,10 @@ void GameState::display_state() {
     FastState::display_state();
 
     m_timecontrol.display_times();
+}
+
+int GameState::has_resigned() const {
+    return m_resigned;
 }
 
 TimeControl& GameState::get_timecontrol() {
