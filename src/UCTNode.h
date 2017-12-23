@@ -24,11 +24,11 @@
 #include <atomic>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "GameState.h"
 #include "Network.h"
-#include "SMP.h"
 
 class UCTNode {
 public:
@@ -73,7 +73,6 @@ public:
 
     void sort_root_children(int color);
     UCTNode& get_best_root_child(int color);
-    SMP::Mutex& get_mutex();
 
 private:
     void link_nodelist(std::atomic<int>& nodecount,
@@ -98,7 +97,7 @@ private:
     // Is someone adding scores to this node?
     // We don't need to unset this.
     bool m_is_expanding{false};
-    SMP::Mutex m_nodemutex;
+    std::mutex m_nodemutex;
 };
 
 #endif
