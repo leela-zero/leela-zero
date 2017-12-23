@@ -12,5 +12,5 @@ WORKDIR /src/
 
 COPY . /src/
 RUN CXX=/usr/bin/clang++-4.0 CC=/usr/bin/clang-4.0 cmake CMakeLists.txt
-RUN make -j2 tests
+RUN make -j2
 RUN ./tests
