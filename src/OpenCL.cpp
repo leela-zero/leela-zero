@@ -400,7 +400,7 @@ void OpenCL_Network::add_weights(size_t layer,
 }
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
-                             std::vector<net_t>& output) {
+                             std::vector<float>& output) {
     constexpr auto width = 19;
     constexpr auto height = 19;
     constexpr auto one_plane = width * height * sizeof(net_t);
@@ -502,9 +502,20 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     }
 
     const auto finalSize = m_layers.back().outputs * one_plane;
-    queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, output.data());
-
+#ifdef USE_HALF
+    // if NN uses half type, we have to convert it back to float before sending it back out.
+    std::vector<net_t> output_half(finalSize / sizeof(net_t));
+    queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, output_half.data());
     queue.finish();
+
+    for(int i=0; i<output.size(); i++) {
+        output[i] = output_half[i];
+    }
+#else
+    queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, output.data());
+    queue.finish();
+#endif
+
 }
 
 void OpenCL_Network::convolve(int filter_size, int channels, int outputs,

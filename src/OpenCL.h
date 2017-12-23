@@ -115,7 +115,7 @@ public:
         return m_layers.size();
     }
 
-    void forward(const std::vector<net_t>& input, std::vector<net_t>& output);
+    void forward(const std::vector<net_t>& input, std::vector<float>& output);
 
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
