@@ -461,7 +461,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         }
     }
 
-    if (state->has_resigned() == FastBoard::EMPTY) {
+    if (state->has_resigned()) {
         float score = state->final_score();
 
         if (score > 0.0f) {
@@ -470,7 +470,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
             header.append("RE[W+" + str(boost::format("%.1f") % -score) + "]");
         }
     } else {
-        if (state->has_resigned() == FastBoard::WHITE) {
+        if (state->who_resigned() == FastBoard::WHITE) {
             header.append("RE[B+Resign]");
         } else {
             header.append("RE[W+Resign]");
