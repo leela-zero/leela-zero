@@ -167,8 +167,12 @@ void GameState::display_state() {
     m_timecontrol.display_times();
 }
 
-int GameState::has_resigned() const {
+int GameState::who_resigned() const {
     return m_resigned;
+}
+
+bool GameState::has_resigned() const {
+    return m_resigned != FastBoard::EMPTY;
 }
 
 TimeControl& GameState::get_timecontrol() {
