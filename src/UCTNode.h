@@ -41,7 +41,6 @@ public:
 
     explicit UCTNode(int vertex, float score, float init_eval);
     UCTNode() = delete;
-    ~UCTNode();
     bool first_visit() const;
     bool has_children() const;
     bool create_children(std::atomic<int>& nodecount,
