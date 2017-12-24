@@ -48,14 +48,14 @@ class ThreadData {
 private:
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
-    cl::Kernel m_convolve1_kernel;
-    cl::Kernel m_convolve3_kernel;
-    cl::Kernel m_merge_kernel;
+    cl::Kernel m_in_transform_kernel;
+    cl::Kernel m_sgemm_kernel;
+    cl::Kernel m_out_transform_kernel;
     cl::Kernel m_batchnorm_kernel;
     cl::Buffer m_inBuffer;
     cl::Buffer m_tmpBuffer;
-    cl::Buffer m_mergeBuffer;
-    cl::Buffer m_outBuffer;
+    cl::Buffer m_VBuffer;
+    cl::Buffer m_MBuffer;
     cl::Buffer m_residualBuffer;
     bool m_buffers_allocated{false};
 };
@@ -124,9 +124,9 @@ private:
         add_weights(layer, weights.size(), weights.data());
     }
     void add_weights(size_t layer, size_t size, const float* weights);
-    void convolve(int filter_size, int channels, int outputs,
-                  cl::Buffer& input, cl::Buffer& output, cl::Buffer& merge,
-                  weight_slice_t weights);
+    void convolve3(int channels, int outputs,
+                    cl::Buffer& bufferInOut, cl::Buffer& bufferV,
+                    cl::Buffer& bufferM, weight_slice_t weights);
     void batchnorm(int outputs, int channel_size, cl::Buffer& input,
                    cl::Buffer& output, cl::Buffer* residual,
                    weight_slice_t weights);
@@ -141,8 +141,11 @@ public:
     std::string get_device_name();
 
 private:
+    void process_tuners(std::string tuners);
+
     cl::Program m_program;
 
+    size_t m_sgemm_wgd, m_sgemm_mdimcd, m_sgemm_ndimcd;
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};
     std::vector<size_t> m_max_workgroup_dims;
