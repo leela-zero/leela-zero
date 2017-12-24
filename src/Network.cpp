@@ -98,7 +98,7 @@ void Network::benchmark(GameState * state, int iterations) {
         tg.add_task([iters_per_thread, state]() {
             GameState mystate = *state;
             for (int loop = 0; loop < iters_per_thread; loop++) {
-                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION);
+                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION, true);
             }
         });
     };
@@ -478,7 +478,7 @@ void Network::softmax(const std::vector<float>& input,
 }
 
 Network::Netresult Network::get_scored_moves(
-    GameState * state, Ensemble ensemble, int rotation) {
+    GameState * state, Ensemble ensemble, int rotation, bool skip_cache) {
     Netresult result;
     if (state->board.get_boardsize() != 19) {
         return result;
@@ -488,8 +488,10 @@ Network::Netresult Network::get_scored_moves(
     gather_features(state, planes);
 
     // See if we already have this in the cache.
-    if (auto r = NNCache::get_NNCache()->lookup(planes)) {
-      return *r;
+    if (!skip_cache) {
+      if (auto r = NNCache::get_NNCache()->lookup(planes)) {
+        return *r;
+      }
     }
 
     if (ensemble == DIRECT) {
