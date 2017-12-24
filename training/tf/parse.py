@@ -22,6 +22,7 @@ import gzip
 import random
 import math
 import multiprocessing as mp
+import numpy as np
 import tensorflow as tf
 from tfprocess import TFProcess
 
@@ -29,6 +30,7 @@ from tfprocess import TFProcess
 DATA_ITEM_LINES = 16 + 1 + 1 + 1
 
 BATCH_SIZE = 256
+reflection_table = []
 
 def remap_vertex(vertex, symmetry):
     """
@@ -46,71 +48,10 @@ def remap_vertex(vertex, symmetry):
         y = 19 - y - 1
     return y * 19 + x
 
-def apply_symmetry(plane, symmetry):
-    """
-        Applies one of 8 symmetries to the go board.
-
-        The supplied go board can have 361 or 362 elements. The 362th
-        element is pass will which get the identity mapping.
-    """
-    assert symmetry >= 0 and symmetry < 8
-    work_plane = [0.0] * 361
-    for vertex in range(0, 361):
-        work_plane[vertex] = plane[remap_vertex(vertex, symmetry)]
-    # Map back "pass"
-    if len(plane) == 362:
-        work_plane.append(plane[361])
-    return work_plane
-
-def convert_train_data(text_item):
-    """
-        Convert textual training data to python lists.
-
-        Converts a set of 19 lines of text into a pythonic dataformat.
-        [[plane_1],[plane_2],...],...
-        [probabilities],...
-        winner,...
-    """
-    planes = []
-    for plane in range(0, 16):
-        # 360 first bits are 90 hex chars
-        hex_string = text_item[plane][0:90]
-        integer = int(hex_string, 16)
-        as_str = format(integer, '0>360b')
-        # remaining bit that didn't fit
-        last_digit = text_item[plane][90]
-        assert last_digit == "0" or last_digit == "1"
-        as_str += last_digit
-        assert len(as_str) == 361
-        plane = [0.0 if digit == "0" else 1.0 for digit in as_str]
-        planes.append(plane)
-    stm = text_item[16][0]
-    assert stm == "0" or stm == "1"
-    if stm == "0":
-        planes.append([1.0] * 361)
-        planes.append([0.0] * 361)
-    else:
-        planes.append([0.0] * 361)
-        planes.append([1.0] * 361)
-    assert len(planes) == 18
-    probabilities = []
-    for val in text_item[17].split():
-        float_val = float(val)
-        # Work around a bug in leela-zero v0.3
-        if math.isnan(float_val):
-            return False, None
-        probabilities.append(float_val)
-    assert len(probabilities) == 362
-    winner = float(text_item[18])
-    assert winner == 1.0 or winner == -1.0
-    # Get one of 8 symmetries
-    symmetry = random.randrange(8)
-    sym_planes = [apply_symmetry(plane, symmetry) for plane in planes]
-    sym_probabilities = apply_symmetry(probabilities, symmetry)
-    return True, (sym_planes, sym_probabilities, [winner])
-
 class ChunkParser:
     def __init__(self, chunks):
+        # Build reflection tables.
+        self.reflection_table = [[remap_vertex(vertex, sym) for vertex in range(361)] for sym in range(8)]
         self.queue = mp.Queue(4096)
         # Start worker processes, leave 1 for TensorFlow
         workers = max(1, mp.cpu_count() - 1)
@@ -118,6 +59,64 @@ class ChunkParser:
         for _ in range(workers):
             mp.Process(target=self.task,
                        args=(chunks, self.queue)).start()
+
+    def apply_symmetry(self, plane, symmetry):
+        """
+            Applies one of 8 symmetries to the go board. Assumes 'plane'
+            is an np.array type.
+
+            The supplied go board can have 361 or 362 elements. The 362th
+            element is pass will which get the identity mapping.
+        """
+        assert symmetry >= 0 and symmetry < 8
+        work_plane = plane[self.reflection_table[symmetry]]
+        # Map back "pass"
+        if len(plane) == 362:
+            work_plane = np.append(work_plane, plane[361])
+        return work_plane.tolist()
+
+    def convert_train_data(self, text_item):
+        """
+            Convert textual training data to python lists.
+
+            Converts a set of 19 lines of text into a pythonic dataformat.
+            [[plane_1],[plane_2],...],...
+            [probabilities],...
+            winner,...
+        """
+        # Pick a random symmetry to apply
+        symmetry = random.randrange(8)
+        planes = []
+        for plane in range(0, 16):
+            # first 360 first bits are 90 hex chars, encoded MSB
+            hex_string = text_item[plane][0:90]
+            array = np.unpackbits(np.frombuffer(bytearray.fromhex(hex_string), dtype=np.uint8))
+            array = array.astype(float)
+            # Remaining bit that didn't fit. Encoded LSB so
+            # it needs to be specially handled.
+            last_digit = text_item[plane][90]
+            assert last_digit == "0" or last_digit == "1"
+            array = np.append(array, float(last_digit))
+            assert len(array) == 361
+            # Apply symmetry and append
+            planes.append(self.apply_symmetry(array, symmetry))
+        stm = float(text_item[16][0])
+        assert stm == 0. or stm == 1.
+        planes.append([1.0 - stm] * 361)
+        planes.append([stm] * 361)
+        assert len(planes) == 18
+
+        probabilities = np.array(text_item[17].split()).astype(float)
+        if np.any(np.isnan(probabilities)):
+            # Work around a bug in leela-zero v0.3
+            return False, None
+        assert len(probabilities) == 362
+        winner = float(text_item[18])
+        assert winner == 1.0 or winner == -1.0
+        # Apply symmetry
+        probabilities = self.apply_symmetry(probabilities, symmetry)
+
+        return True, (planes, probabilities, [winner])
 
     def task(self, chunks, queue):
         while True:
@@ -130,7 +129,7 @@ class ChunkParser:
                         pick_offset = item_idx * DATA_ITEM_LINES
                         item = file_content[pick_offset:pick_offset + DATA_ITEM_LINES]
                         str_items = [str(line, 'ascii') for line in item]
-                        success, data = convert_train_data(str_items)
+                        success, data = self.convert_train_data(str_items)
                         if success:
                             queue.put(data)
 
