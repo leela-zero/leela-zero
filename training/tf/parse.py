@@ -142,6 +142,7 @@ def get_chunks(data_prefix):
     return glob.glob(data_prefix + "*.gz")
 
 def main(args):
+    dtype = tf.float32
     train_data_prefix = args.pop(0)
 
     chunks = get_chunks(train_data_prefix)
@@ -153,14 +154,14 @@ def main(args):
     parser = ChunkParser(chunks)
 
     dataset = tf.data.Dataset.from_generator(
-        parser.parse_chunk, output_types=(tf.float32, tf.float32, tf.float32))
+        parser.parse_chunk, output_types=(dtype, tf.float32, tf.float32))
     dataset = dataset.shuffle(65536)
     dataset = dataset.batch(BATCH_SIZE)
     dataset = dataset.prefetch(16)
     iterator = dataset.make_one_shot_iterator()
     next_batch = iterator.get_next()
 
-    tfprocess = TFProcess(next_batch)
+    tfprocess = TFProcess(next_batch, dtype)
     if args:
         restore_file = args.pop(0)
         tfprocess.restore(restore_file)
