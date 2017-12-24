@@ -69,6 +69,8 @@ void Management::giveAssignments() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
+            QTextStream(stdout) << "Starting thread " << game + 1 ;
+            QTextStream(stdout) << " on GPU " << gpu << endl;
             m_gamesThreads[thread_index] = new Worker(thread_index, myGpu, this);
             connect(m_gamesThreads[thread_index],
                     &Worker::resultReady,
@@ -194,8 +196,6 @@ Order Management::getWorkInternal() {
     prog_cmdline.append(" -s -J");
     prog_cmdline.append(" http://zero-test.sjeng.org/get-task/7");
 
-    QTextStream(stdout) << prog_cmdline << endl;
-
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
@@ -213,15 +213,14 @@ Order Management::getWorkInternal() {
         throw NetworkException("JSON parse error: " + errorString);
     }
 
-    QTextStream(stdout) << doc.toJson() << endl;
     QJsonObject ob = doc.object();
     QJsonObject opt = ob.value("options").toObject();
     QString options;
     QString optionsHash =  ob.value("options_hash").toString();
 
     if (ob.contains("required_client_version")) {
-        QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
         if (ob.value("required_client_version").toString().toInt() > m_version) {
+            QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
             QTextStream(stdout) << ' ' <<  endl;
             QTextStream(stdout)
                 << "Server requires client version " << ob.value("required_client_version").toString()
@@ -247,7 +246,6 @@ Order Management::getWorkInternal() {
     if (ob.contains("random_seed"))
          rndSeed = ob.value("random_seed").toString();
     QMap<QString,QString> parameters;
-    QTextStream(stdout) << options << endl;
     parameters["leelazVer"] = leelazVersion;
     parameters["options"] = options;
     parameters["optHash"] = optionsHash;
@@ -272,6 +270,7 @@ Order Management::getWorkInternal() {
         parameters["secondNet"] = net2;
         o.parameters(parameters);
     }
+    QTextStream(stdout) << "Got new job." << endl;
     return o;
 }
 
@@ -339,7 +338,6 @@ bool Management::networkExists(const QString &name) {
 
 void Management::fetchNetwork(const QString &name) {
     if (networkExists(name)) {
-        QTextStream(stdout) << "Already downloaded network." << endl;
         return;
     }
     if (QFileInfo::exists(name + ".gz")) {
@@ -359,8 +357,6 @@ void Management::fetchNetwork(const QString &name) {
     prog_cmdline.append(" -w %{filename_effective}");
     prog_cmdline.append(" http://zero.sjeng.org/networks/" + name + ".gz");
 
-    QTextStream(stdout) << prog_cmdline << endl;
-
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
@@ -374,7 +370,6 @@ void Management::fetchNetwork(const QString &name) {
     QString outstr(output);
     QStringList outlst = outstr.split("\n");
     QString outfile = outlst[0];
-    QTextStream(stdout) << "Curl filename: " << outfile << endl;
 #ifdef WIN32
     QProcess::execute("gzip.exe -d -q " + outfile);
 #else
@@ -418,7 +413,6 @@ void Management::cleanupFiles(const QString &fileName) {
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
     QFileInfoList list = dir.entryInfoList();
     for (int i = 0; i < list.size(); ++i) {
-        QTextStream(stdout) << "deleting " << list.at(i).fileName() << endl;
         QFile(list.at(i).fileName()).remove();
     }
 }
@@ -508,7 +502,6 @@ bool Management::sendCurl(const QStringList &lines) {
         prog_cmdline.append(" " + *it);
         ++it;
     }
-    QTextStream(stdout) << prog_cmdline << endl;
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
@@ -538,7 +531,8 @@ http://zero-test.sjeng.org/submit-match
 */
 
 void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString,QString> &l) {
-
+    QTextStream(stdout) << "Uploading match: " << r["file"] << " for networks ";
+    QTextStream(stdout) << r["firstNet"] << " and " << l["secondNet"] << endl;
     archiveFiles(r["file"]);
     gzipFile(r["file"] + ".sgf");
     QStringList prog_cmdline;
@@ -596,7 +590,7 @@ http://zero-test.sjeng.org/submit
 */
 
 void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l) { 
-    QTextStream(stdout) << "Upload game: " << r["file"] << " for network " << r["network"] << endl;
+    QTextStream(stdout) << "Uploading game: " << r["file"] << " for network " << r["network"] << endl;
     archiveFiles(r["file"]);
     gzipFile(r["file"] + ".sgf");
     QStringList prog_cmdline;

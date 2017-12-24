@@ -150,7 +150,6 @@ void Game::checkVersion(const VersionTuple &min_version) {
 }
 
 bool Game::gameStart(const VersionTuple &min_version) {
-    QTextStream(stdout) << m_cmdLine << endl;
     start(m_cmdLine);
     if (!waitForStarted()) {
         error(Game::NO_LEELAZ);
@@ -302,7 +301,6 @@ int Game::getWinner() {
 }
 
 bool Game::writeSgf() {
-    QTextStream(stdout) << "Writing " << m_fileName + ".sgf" << endl;
     return sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"));
 }
 
@@ -347,13 +345,11 @@ bool Game::fixSgf(QString& weightFile, bool resignation) {
 }
 
 bool Game::dumpTraining() {
-    QTextStream(stdout) << "Dumping " << m_fileName + ".txt" << endl;
     return sendGtpCommand(
         qPrintable("dump_training " + m_winner + " " + m_fileName + ".txt"));
 }
 
 bool Game::dumpDebug() {
-    QTextStream(stdout) << "Dumping " << m_fileName + ".debug.txt" << endl;
     return sendGtpCommand(
         qPrintable("dump_debug " + m_fileName + ".debug.txt"));
 }
