@@ -116,6 +116,44 @@ void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
     }
 }
 
+
+void Network::winograd_transform_f(const std::vector<float>& f, std::vector<float>& U,
+        const int outputs, const int channels) {
+    //F(2x2, 3x3) Winograd filter transformation
+    //G.dot(f).dot(G.transpose())
+
+    const float G[16] = {1.0, 0.0, 0.0,
+                        0.5, 0.5, 0.5,
+                        0.5, -0.5, 0.5,
+                        0.0, 0.0, 1.0};
+    float temp[12];
+    float acc;
+
+    for (auto o = 0; o < outputs; o++) {
+        for (auto c = 0; c < channels; c++) {
+            for (auto i = 0; i < 4; i++){
+                for (auto j = 0; j < 3; j++) {
+                    acc = 0;
+                    for (auto k = 0; k < 3; k++) {
+                        acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j];
+                    }
+                    temp[i*3 + j] = acc;
+                }
+            }
+
+            for (auto xi = 0; xi < 4; xi++) {
+                for (auto nu = 0; nu < 4; nu++) {
+                    acc = 0;
+                    for (int k = 0; k < 3; k++) {
+                        acc += temp[xi*3 + k] * G[nu*3 + k];
+                    }
+                    U[xi*(4*outputs*channels) + nu*(outputs*channels) + o*channels + c] = acc;
+                }
+            }
+        }
+    }
+}
+
 void Network::initialize(void) {
 #ifdef USE_OPENCL
     myprintf("Initializing OpenCL\n");
@@ -131,6 +169,7 @@ void Network::initialize(void) {
     std::string line;
     auto linecount = size_t{0};
     auto format_version = -1;
+    auto channels = 0;
     while (std::getline(wtfile, line)) {
         std::stringstream iss(line);
         // First line is the file format version id
@@ -150,6 +189,7 @@ void Network::initialize(void) {
             auto count = std::distance(std::istream_iterator<std::string>(iss),
                                        std::istream_iterator<std::string>());
             myprintf("%d channels...", count);
+            channels = count;
         }
         linecount++;
     }
@@ -230,7 +270,12 @@ void Network::initialize(void) {
 #ifdef USE_OPENCL
     // input
     size_t weight_index = 0;
-    opencl_net.push_convolve(3, conv_weights[weight_index],
+    std::vector<float> U(16*18*channels);
+
+    winograd_transform_f(conv_weights[weight_index], U, channels, 18);
+
+    //Winograd filter transformation changes filter size to 4x4
+    opencl_net.push_convolve(4, U,
                                 conv_biases[weight_index]);
     opencl_net.push_batchnorm(361, batchnorm_means[weight_index],
                                    batchnorm_stddivs[weight_index]);
@@ -238,11 +283,16 @@ void Network::initialize(void) {
 
     // residual blocks
     for (auto i = size_t{0}; i < residual_blocks; i++) {
-        opencl_net.push_residual(3, conv_weights[weight_index],
+        std::vector<float> U1(16*channels*channels);
+        std::vector<float> U2(16*channels*channels);
+        winograd_transform_f(conv_weights[weight_index], U1, channels, channels);
+        winograd_transform_f(conv_weights[weight_index + 1], U2, channels, channels);
+
+        opencl_net.push_residual(4, U1,
                                     conv_biases[weight_index],
                                     batchnorm_means[weight_index],
                                     batchnorm_stddivs[weight_index],
-                                    conv_weights[weight_index + 1],
+                                    U2,
                                     conv_biases[weight_index + 1],
                                     batchnorm_means[weight_index + 1],
                                     batchnorm_stddivs[weight_index + 1]);

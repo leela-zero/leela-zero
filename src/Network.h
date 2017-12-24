@@ -60,6 +60,8 @@ public:
 
 private:
     static void process_bn_var(std::vector<float>& weights, const float epsilon=1e-5f);
+    static void winograd_transform_f(const std::vector<float>& f, std::vector<float>& U,
+        const int outputs, const int channels);
     static Netresult get_scored_moves_internal(
       GameState * state, NNPlanes & planes, int rotation);
     static int rotate_nn_idx(const int vertex, int symmetry);
