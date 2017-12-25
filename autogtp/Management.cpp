@@ -601,6 +601,7 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
     prog_cmdline.append("-F clientversion=" + QString::number(m_version));
     prog_cmdline.append("-F options_hash="+ l["optHash"]);
     prog_cmdline.append("-F movescount="+ r["moves"]);
+    prog_cmdline.append("-F winnercolor="+ r["winner"]);
     prog_cmdline.append("-F random_seed="+ l["rndSeed"]);
     prog_cmdline.append("-F sgf=@" + r["file"] + ".sgf.gz");
     prog_cmdline.append("-F trainingdata=@" + r["file"] + ".txt.0.gz");
