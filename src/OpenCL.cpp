@@ -47,6 +47,8 @@ static std::string sourceCode_config = R"(
     // vfloat_t : float if normal, float4 if compiled for batch-of-4
     #if (BATCH_SIZE == 4)
         typedef float4 vfloat_t;
+    #elif (BATCH_SIZE == 2)
+        typedef float2 vfloat_t;
     #else
         typedef float vfloat_t;
     #endif
@@ -56,28 +58,38 @@ static std::string sourceCode_config = R"(
         #define vload_net_t(offset,p) vload_half(offset,p)
         #define vstore_net_t(data,offset,p) vstore_half(data,offset,p)
         #if (BATCH_SIZE == 4)
-            typedef struct __net4_t {
+            typedef struct __vnet_t {
                 half x; half y; half z; half w;
-            } net4_t;
-            #define vload_net4_t(offset,p) (float4)(vload_half((offset)*4+0,(global half*)(p)),vload_half((offset)*4+1,(global half*)(p)),vload_half((offset)*4+2,(global half*)(p)),vload_half((offset)*4+3,(global half*)(p)))
-            #define vstore_net4_t(data,offset,p) do{vstore_half(data.x,(offset)*4+0,(global half*)(p));vstore_half(data.y,(offset)*4+1,(global half*)(p));vstore_half(data.z,(offset)*4+2,(global half*)(p));vstore_half(data.w,(offset)*4+3,(global half*)(p));} while(0)
+            } vnet_t;
+            #define vload_vnet_t(offset,p) (float4)(vload_half((offset)*4+0,(global half*)(p)),vload_half((offset)*4+1,(global half*)(p)),vload_half((offset)*4+2,(global half*)(p)),vload_half((offset)*4+3,(global half*)(p)))
+            #define vstore_vnet_t(data,offset,p) do{vstore_half(data.x,(offset)*4+0,(global half*)(p));vstore_half(data.y,(offset)*4+1,(global half*)(p));vstore_half(data.z,(offset)*4+2,(global half*)(p));vstore_half(data.w,(offset)*4+3,(global half*)(p));} while(0)
+        #elif (BATCH_SIZE == 2)
+            typedef struct __vnet_t {
+                half x; half y;
+            } vnet_t;
+            #define vload_vnet_t(offset,p) (float2)(vload_half((offset)*2+0,(global half*)(p)),vload_half((offset)*2+1,(global half*)(p)))
+            #define vstore_vnet_t(data,offset,p) do{vstore_half(data.x,(offset)*2+0,(global half*)(p));vstore_half(data.y,(offset)*2+1,(global half*)(p));} while(0)
         #else // BATCH_SIZE != 4
-            typedef net_t net4_t;
-            #define vload_net4_t(offset,p) vload_net_t(offset,p)
-            #define vstore_net4_t(data,offset,p) vstore_net_t(data,offset,p)
+            typedef net_t vnet_t;
+            #define vload_vnet_t(offset,p) vload_net_t(offset,p)
+            #define vstore_vnet_t(data,offset,p) vstore_net_t(data,offset,p)
         #endif
     #else // !USE_HALF
         typedef float net_t;
         #define vload_net_t(offset,p) ((p)[(offset)])
         #define vstore_net_t(data,offset,p) (((p)[(offset)])=(data))
         #if (BATCH_SIZE == 4)
-            typedef float4 net4_t;
-            #define vload_net4_t(offset,p) ((p)[(offset)])
-            #define vstore_net4_t(data,offset,p) (((p)[(offset)])=(data))
+            typedef float4 vnet_t;
+            #define vload_vnet_t(offset,p) ((p)[(offset)])
+            #define vstore_vnet_t(data,offset,p) (((p)[(offset)])=(data))
+        #elif (BATCH_SIZE == 2)
+            typedef float2 vnet_t;
+            #define vload_vnet_t(offset,p) ((p)[(offset)])
+            #define vstore_vnet_t(data,offset,p) (((p)[(offset)])=(data))
         #else
-            typedef net_t net4_t;
-            #define vload_net4_t(offset,p) vload_net_t(offset,p)
-            #define vstore_net4_t(data,offset,p) vstore_net_t(data,offset,p)
+            typedef net_t vnet_t;
+            #define vload_vnet_t(offset,p) vload_net_t(offset,p)
+            #define vstore_vnet_t(data,offset,p) vstore_net_t(data,offset,p)
         #endif
     #endif
 )";
@@ -85,8 +97,8 @@ static std::string sourceCode_convolve1 = R"(
     __kernel
     __attribute__((work_group_size_hint(8, 16, 1)))
     void convolve1(
-                   __global const net4_t * in,
-                   __global net4_t * merge,
+                   __global const vnet_t * in,
+                   __global vnet_t * merge,
                    __global const net_t * weights,
                    __local vfloat_t * channel_buff,
                    __local vfloat_t * row_buff) {
@@ -121,11 +133,11 @@ static std::string sourceCode_convolve1 = R"(
             // strip-row
             for (int w = 0; w < width; w++) {
                 channel_buff[lx * width + w] =
-                    vload_net4_t((c * height + row) * width + w, in);
+                    vload_vnet_t((c * height + row) * width + w, in);
             }
         } else if (out_buff_size >= 19 && ly < 19) {
             // Every thread copies a column
-            channel_buff[lx * width + ly] = vload_net4_t((c * height + row) * width + ly, in);
+            channel_buff[lx * width + ly] = vload_vnet_t((c * height + row) * width + ly, in);
         }
 
         // Copy the filter we are applying locally
@@ -154,7 +166,7 @@ static std::string sourceCode_convolve1 = R"(
                     val += row_buff[(ly * chan_buff_size + 5) * row_buff_size + lx];
                     val += row_buff[(ly * chan_buff_size + 6) * row_buff_size + lx];
                     val += row_buff[(ly * chan_buff_size + 7) * row_buff_size + lx];
-                    vstore_net4_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
+                    vstore_vnet_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
                 }
                 out_cw  += row_buff_size;
                 out_lane = 0;
@@ -167,8 +179,8 @@ static std::string sourceCode_convolve3 = R"(
     __kernel
     __attribute__((work_group_size_hint(8, 32, 1)))
     void convolve3(
-                   __global const net4_t * in,
-                   __global net4_t * merge,
+                   __global const vnet_t * in,
+                   __global vnet_t * merge,
                    __global const net_t * weights,
                    __local vfloat_t * channel_buff,
                    __local vfloat_t * row_buff,
@@ -226,7 +238,7 @@ static std::string sourceCode_convolve3 = R"(
                     channel_buff[(lx * pad_width + 0) * filter_size + srow]             = 0.0f;
                     if ((unsigned)in_row < height) {
                         for (int w = 0; w < width; w++) {
-                            vfloat_t val = vload_net4_t((c * height + in_row) * width + w, in);
+                            vfloat_t val = vload_vnet_t((c * height + in_row) * width + w, in);
                             channel_buff[(lx * pad_width + w + extent) * filter_size + srow] = val;
                         }
                     } else {
@@ -245,7 +257,7 @@ static std::string sourceCode_convolve3 = R"(
                         int in_row = row - extent + srow;
                         vfloat_t val = 0.0f;
                         if ((unsigned)in_row < height && ly >= 1 && ly <= 19) {
-                            val = vload_net4_t((c * height + in_row) * width + ly - 1, in);
+                            val = vload_vnet_t((c * height + in_row) * width + ly - 1, in);
                         }
                         channel_buff[copy_idx + srow] = val;
                         if (srow > 0) {
@@ -256,7 +268,7 @@ static std::string sourceCode_convolve3 = R"(
                     int in_row = row - extent + 2;
                     vfloat_t val = 0.0f;
                     if (ly >= 1 && ly <= 19) {
-                        val = vload_net4_t((c * height + in_row) * width + ly - 1, in);
+                        val = vload_vnet_t((c * height + in_row) * width + ly - 1, in);
                     }
                     channel_buff[copy_idx + 0] = chan_cache[0];
                     channel_buff[copy_idx + 1] = chan_cache[1];
@@ -315,12 +327,12 @@ static std::string sourceCode_convolve3 = R"(
                             val += row_buff[(ly * chan_buff_size + 5) * row_buff_size + lx];
                             val += row_buff[(ly * chan_buff_size + 6) * row_buff_size + lx];
                             val += row_buff[(ly * chan_buff_size + 7) * row_buff_size + lx];
-                            vstore_net4_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
+                            vstore_vnet_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
                         } else if (chan_buff_size == 2) {
                             vfloat_t val;
                             val  = row_buff[(ly * chan_buff_size + 0) * row_buff_size + lx];
                             val += row_buff[(ly * chan_buff_size + 1) * row_buff_size + lx];
-                            vstore_net4_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
+                            vstore_vnet_t(val, (((c >> chan_shift) * height + row) * width + out_cw + lx) * outputs + o, merge);
                         }
                     }
                     out_cw  += row_buff_size;
@@ -333,8 +345,8 @@ static std::string sourceCode_convolve3 = R"(
 
 static std::string sourceCode_utility = R"(
     __kernel void merge(
-                        __global const net4_t * in,
-                        __global net4_t * out,
+                        __global const vnet_t * in,
+                        __global vnet_t * out,
                         __constant const net_t * biases,
                         __private const int channels) {
 
@@ -355,15 +367,15 @@ static std::string sourceCode_utility = R"(
 
         vfloat_t sum = bias;
         for (int c = 0; c < channels; c++) {
-            sum += vload_net4_t((c * boardsize + b) * outputs + o, in);
+            sum += vload_vnet_t((c * boardsize + b) * outputs + o, in);
         }
-        vstore_net4_t(sum, o * boardsize + b, out);
+        vstore_vnet_t(sum, o * boardsize + b, out);
     }
 
     __kernel void batchnorm(
-                        __global const net4_t * in,
-                        __global net4_t * out,
-                        __global const net4_t * residual,
+                        __global const vnet_t * in,
+                        __global vnet_t * out,
+                        __global const vnet_t * residual,
                         __constant const net_t * means,
                         __constant const net_t * stddivs) {
 
@@ -382,14 +394,14 @@ static std::string sourceCode_utility = R"(
         const float scale_stddiv = vload_net_t(o, stddivs);
 
         // BN
-        vfloat_t sum = scale_stddiv * (vload_net4_t(o * channel_size + b, in) - mean);
+        vfloat_t sum = scale_stddiv * (vload_vnet_t(o * channel_size + b, in) - mean);
         // Residual Eltwise
         if (residual) {
-            sum += vload_net4_t(o * channel_size + b, residual);
+            sum += vload_vnet_t(o * channel_size + b, residual);
         }
         // ReLU
 	vfloat_t v = sum > 0 ? sum : 0.0f;
-        vstore_net4_t(v, o * channel_size + b, out);
+        vstore_vnet_t(v, o * channel_size + b, out);
     }
 )";
 
