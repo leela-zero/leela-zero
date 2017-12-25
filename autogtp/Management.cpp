@@ -534,8 +534,8 @@ http://zero-test.sjeng.org/submit-match
 */
 
 void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString,QString> &l) {
-    QTextStream(stdout) << "Uploading match: " << r["file"] << " for networks ";
-    QTextStream(stdout) << r["firstNet"] << " and " << l["secondNet"] << endl;
+    QTextStream(stdout) << "Uploading match: " << r["file"] << ".sgf for networks ";
+    QTextStream(stdout) << l["firstNet"] << " and " << l["secondNet"] << endl;
     archiveFiles(r["file"]);
     gzipFile(r["file"] + ".sgf");
     QStringList prog_cmdline;
@@ -593,7 +593,7 @@ http://zero-test.sjeng.org/submit
 */
 
 void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l) { 
-    QTextStream(stdout) << "Uploading game: " << r["file"] << " for network " << r["network"] << endl;
+    QTextStream(stdout) << "Uploading game: " << r["file"] << ".sgf for network " << l["network"] << endl;
     archiveFiles(r["file"]);
     gzipFile(r["file"] + ".sgf");
     QStringList prog_cmdline;
