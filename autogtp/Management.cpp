@@ -252,6 +252,7 @@ Order Management::getWorkInternal() {
     parameters["rndSeed"] = rndSeed;
     parameters["debug"] = !m_debugPath.isEmpty() ? "true" : "false";
 
+    QTextStream(stdout) << "Got new job: " << ob.value("cmd").toString() << endl;
     if (ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
@@ -259,6 +260,7 @@ Order Management::getWorkInternal() {
         parameters["network"] = net;
         o.parameters(parameters);
         m_fallBack = o;
+        QTextStream(stdout) << "net: " << net << "." << endl;
     }
     if (ob.value("cmd").toString() == "match") {
         o.type(Order::Validation);
@@ -269,8 +271,9 @@ Order Management::getWorkInternal() {
         parameters["firstNet"] = net1;
         parameters["secondNet"] = net2;
         o.parameters(parameters);
+        QTextStream(stdout) << "first network: " << net1 << "." << endl;
+        QTextStream(stdout) << "second network " << net2 << "." << endl;
     }
-    QTextStream(stdout) << "Got new job." << endl;
     return o;
 }
 
