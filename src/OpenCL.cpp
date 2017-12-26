@@ -45,7 +45,9 @@ using namespace Utils;
 
 static std::string sourceCode_config = R"(
     // vfloat_t : float if normal, float4 if compiled for batch-of-4
-    #if (BATCH_SIZE == 4)
+    #if (BATCH_SIZE == 8)
+        typedef float8 vfloat_t;
+    #elif (BATCH_SIZE == 4)
         typedef float4 vfloat_t;
     #elif (BATCH_SIZE == 2)
         typedef float2 vfloat_t;
@@ -57,19 +59,25 @@ static std::string sourceCode_config = R"(
         typedef half net_t;
         #define vload_net_t(offset,p) vload_half(offset,p)
         #define vstore_net_t(data,offset,p) vstore_half(data,offset,p)
-        #if (BATCH_SIZE == 4)
+        #if (BATCH_SIZE == 8)
+            typedef struct __vnet_t {
+                half x; half y; half z; half w; half a; half b; half c; half d;
+            } vnet_t;
+            #define vload_vnet_t(offset,p) vload_half8(offset,(__global half*)(p))
+            #define vstore_vnet_t(data,offset,p) vstore_half8(data,offset,(__global half*)(p))
+        #elif (BATCH_SIZE == 4)
             typedef struct __vnet_t {
                 half x; half y; half z; half w;
             } vnet_t;
-            #define vload_vnet_t(offset,p) (float4)(vload_half((offset)*4+0,(global half*)(p)),vload_half((offset)*4+1,(global half*)(p)),vload_half((offset)*4+2,(global half*)(p)),vload_half((offset)*4+3,(global half*)(p)))
-            #define vstore_vnet_t(data,offset,p) do{vstore_half(data.x,(offset)*4+0,(global half*)(p));vstore_half(data.y,(offset)*4+1,(global half*)(p));vstore_half(data.z,(offset)*4+2,(global half*)(p));vstore_half(data.w,(offset)*4+3,(global half*)(p));} while(0)
+            #define vload_vnet_t(offset,p) vload_half4(offset,(__global half*)(p))
+            #define vstore_vnet_t(data,offset,p) vstore_half4(data,offset,(__global half*)(p))
         #elif (BATCH_SIZE == 2)
             typedef struct __vnet_t {
                 half x; half y;
             } vnet_t;
-            #define vload_vnet_t(offset,p) (float2)(vload_half((offset)*2+0,(global half*)(p)),vload_half((offset)*2+1,(global half*)(p)))
-            #define vstore_vnet_t(data,offset,p) do{vstore_half(data.x,(offset)*2+0,(global half*)(p));vstore_half(data.y,(offset)*2+1,(global half*)(p));} while(0)
-        #else // BATCH_SIZE != 4
+            #define vload_vnet_t(offset,p) vload_half2(offset,(__global half*)(p))
+            #define vstore_vnet_t(data,offset,p) vstore_half2(data,offset,(__global half*)(p))
+        #else // BATCH_SIZE == 1
             typedef net_t vnet_t;
             #define vload_vnet_t(offset,p) vload_net_t(offset,p)
             #define vstore_vnet_t(data,offset,p) vstore_net_t(data,offset,p)
@@ -78,7 +86,11 @@ static std::string sourceCode_config = R"(
         typedef float net_t;
         #define vload_net_t(offset,p) ((p)[(offset)])
         #define vstore_net_t(data,offset,p) (((p)[(offset)])=(data))
-        #if (BATCH_SIZE == 4)
+        #if (BATCH_SIZE == 8)
+            typedef float8 vnet_t;
+            #define vload_vnet_t(offset,p) ((p)[(offset)])
+            #define vstore_vnet_t(data,offset,p) (((p)[(offset)])=(data))
+        #elif (BATCH_SIZE == 4)
             typedef float4 vnet_t;
             #define vload_vnet_t(offset,p) ((p)[(offset)])
             #define vstore_vnet_t(data,offset,p) (((p)[(offset)])=(data))
@@ -412,13 +424,16 @@ thread_local ThreadData opencl_thread_data;
 void OpenCL::ensure_thread_initialized() {
     if (!opencl_thread_data.m_is_initialized) {
         // Make kernels
-        opencl_thread_data.m_convolve1_kernel = cl::Kernel(m_program, "convolve1");
-        opencl_thread_data.m_convolve3_kernel = cl::Kernel(m_program, "convolve3");
-        opencl_thread_data.m_merge_kernel = cl::Kernel(m_program, "merge");
-        opencl_thread_data.m_batchnorm_kernel = cl::Kernel(m_program, "batchnorm");
+        for(const auto & x : m_program) {
+            opencl_thread_data.m_convolve1_kernel[x.first] = cl::Kernel(x.second, "convolve1");
+            opencl_thread_data.m_convolve3_kernel[x.first] = cl::Kernel(x.second, "convolve3");
+            opencl_thread_data.m_merge_kernel[x.first] = cl::Kernel(x.second, "merge");
+            opencl_thread_data.m_batchnorm_kernel[x.first] = cl::Kernel(x.second, "batchnorm");
+        }
         opencl_thread_data.m_commandqueue = cl::CommandQueue(cl::Context::getDefault(),
                                                              cl::Device::getDefault());
         opencl_thread_data.m_is_initialized = true;
+
 
     }
 }
@@ -444,52 +459,74 @@ void OpenCL_Network::add_weights(size_t layer,
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
                              std::vector<float>& output) {
-    if(cfg_batchsize == 1) {
-        // we don't need workers to group workloads on a batch size of 1.
-        // directly call run_forward
-        const std::vector<net_t> * inptr = &input;
-        std::vector<float_t> * outptr = &output;
-        run_forward(&inptr, &outptr);
+#ifndef USE_OPENCL_BATCHING
+    // we don't need workers to group workloads on a batch size of 1.
+    // directly call run_forward
+    const std::vector<net_t> * inptr = &input;
+    std::vector<float_t> * outptr = &output;
+    run_forward(&inptr, &outptr, 1);
 
-        return;
-    }
-
+#else
     if(!m_workers_launched) {
+        // test run each batch size.  pick ones that successfully passed sanity check
+        std::list<unsigned int> valid_batches;
+        for(const auto & x : opencl.m_program) {
+            unsigned int batch_size = x.first;
+            try {
+                myprintf("OpenCL: testing batch size %d\n", batch_size);
+                run_forward(nullptr, nullptr, batch_size);
+                valid_batches.push_back(batch_size);
+            } catch(cl::Error &) {
+                myprintf("OpenCL: failed batch size %d and dropping\n", batch_size);
+            }
+        }
+
         // launch the worker thread.  2 threads so that we can fully utilize GPU, since the 
         // worker thread consists of some CPU work for task preparation.
         constexpr int num_threads = 2;
         for(int i=0; i<num_threads; i++) {
-            std::thread worker( [this]{
+            std::thread worker( [this, valid_batches]{
                 while(true) {
                     std::unique_lock<std::mutex> lk(m_task_mutex);
-                    // the 50ms timeout is based on a while guess, assuming we will not run out of evaluation operations
+
+                    unsigned int max_batchsize = valid_batches.back();
+
+                    // the 50ms timeout is based on a wild guess, assuming we will not run out of evaluation operations
                     // due to the sheer amount of concurrent threads.  timeouts will probably only happen
                     // on the final evaluations of the move.
-                    m_task_cond.wait_for(lk, std::chrono::milliseconds(50), [this]{
-                        return (m_task_queue.size() >= cfg_batchsize); 
+                    m_task_cond.wait_for(lk, std::chrono::milliseconds(50), [this,max_batchsize]{
+                        return (m_task_queue.size() >= max_batchsize); 
                     });
                
                     if(m_task_queue.empty()) {
                         lk.unlock();
                         continue;
                     }
-     
+
+                    unsigned int batch_size = 1;
+                    for(auto & x : valid_batches) {
+                        if(m_task_queue.size() < x) {
+                            break;
+                        }
+                        batch_size = x;
+                    } 
+
                     unsigned int count = 0;
-                    ForwardTask tasks[cfg_batchsize];
-                    while(count < cfg_batchsize && !m_task_queue.empty()) {
+                    ForwardTask tasks[batch_size];
+                    while(count < batch_size && !m_task_queue.empty()) {
                         tasks[count++] = std::move(m_task_queue.front());
                         m_task_queue.pop_front();
                     }
                     lk.unlock();
     
-                    const std::vector<net_t> * inputs[cfg_batchsize];
-                    std::vector<float> * outputs[cfg_batchsize];
-                    for(unsigned int i=0; i<cfg_batchsize; i++) {
+                    const std::vector<net_t> * inputs[batch_size];
+                    std::vector<float> * outputs[batch_size];
+                    for(unsigned int i=0; i<batch_size; i++) {
                         inputs[i] = tasks[i].input;
                         outputs[i] = tasks[i].output;
                     }
                     
-                    run_forward(inputs, outputs);
+                    run_forward(inputs, outputs, batch_size);
                     for(unsigned int i=0; i<count; i++) {
                         tasks[i].prom.set_value();
                     }
@@ -514,12 +551,14 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
 
     // this method will return when worker thread finishes its job
     ret.get();
+#endif // USE_OPENCL_BATCHING
 }
 
 OpenCL_Network::OpenCL_Network() {
 }
 void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
-                             std::vector<float> ** outputs) {
+                             std::vector<float> ** outputs,
+                             size_t batch_size) {
     constexpr auto width = 19;
     constexpr auto height = 19;
     constexpr auto one_plane = width * height * sizeof(net_t);
@@ -527,6 +566,9 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
     opencl.ensure_thread_initialized();
 
     if (!opencl_thread_data.m_buffers_allocated) {
+	auto iter = opencl_thread_data.m_convolve1_kernel.end();
+	iter--;
+        auto maxBatchSize = iter->first;
         auto maxInBufferSize = 0;
         auto maxMergeSize = 0;
         for (const auto& layer : m_layers) {
@@ -535,8 +577,8 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
                                          layer.outputs * channelGroups);
             maxInBufferSize = std::max<int>(maxInBufferSize, layer.channels);
         }
-        const auto alloc_inSize = one_plane *  maxInBufferSize * cfg_batchsize;
-        const auto alloc_mergeSize = one_plane * maxMergeSize * cfg_batchsize;
+        const auto alloc_inSize = one_plane *  maxInBufferSize * maxBatchSize;
+        const auto alloc_mergeSize = one_plane * maxMergeSize * maxBatchSize;
 
         opencl_thread_data.m_inBuffer = cl::Buffer(
             CL_MEM_READ_WRITE, alloc_inSize);
@@ -555,22 +597,26 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
     cl::Buffer & residualBuffer = opencl_thread_data.m_residualBuffer;
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
-    std::vector<net_t> interleaved_input(inputs[0]->size() * cfg_batchsize);
-    for(size_t i=0; i<inputs[0]->size(); i++) {
-        for(unsigned int j=0; j<cfg_batchsize; j++) {
+    // a null input pointer means we just want to test if the task runs
+    if(inputs != nullptr) {
+        std::vector<net_t> interleaved_input(inputs[0]->size() * batch_size);
+        for(unsigned int j=0; j<batch_size; j++) {
             if(inputs[j] != nullptr) {
-                interleaved_input[i * cfg_batchsize + j] = inputs[j]->at(i);
+                for(size_t i=0; i<inputs[0]->size(); i++) {
+                    interleaved_input[i * batch_size + j] = inputs[j]->at(i);
+                }
             }
         }
+    
+        const auto inSize = sizeof(net_t) * inputs[0]->size() * batch_size;
+        queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, interleaved_input.data());
     }
-
-    const auto inSize = sizeof(net_t) * inputs[0]->size() * cfg_batchsize;
-    queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, interleaved_input.data());
 
     for (const auto& layer : m_layers) {
         if (layer.is_batchnorm) {
             auto bn_weights = begin(layer.weights);
-            batchnorm(layer.outputs,
+            batchnorm(batch_size,
+                      layer.outputs,
                       layer.filter_size,
                       inBuffer,
                       tmpBuffer,
@@ -583,9 +629,10 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
             auto bn1_weights   = begin(layer.weights) + 2;
             auto conv2_weights = begin(layer.weights) + 4;
             auto bn2_weights   = begin(layer.weights) + 6;
-            const auto inBufferSize = layer.channels * one_plane * cfg_batchsize;
+            const auto inBufferSize = layer.channels * one_plane * batch_size;
             queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0, inBufferSize);
-            convolve(layer.filter_size,
+            convolve(batch_size,
+                     layer.filter_size,
                      layer.channels,
                      layer.outputs,
                      inBuffer,
@@ -593,14 +640,16 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
                      mergeBuffer,
                      conv1_weights);
             std::swap(inBuffer, tmpBuffer);
-            batchnorm(layer.outputs,
+            batchnorm(batch_size,
+                      layer.outputs,
                       361,
                       inBuffer,
                       tmpBuffer,
                       nullptr,
                       bn1_weights);
             std::swap(inBuffer, tmpBuffer);
-            convolve(layer.filter_size,
+            convolve(batch_size,
+                     layer.filter_size,
                      layer.channels,
                      layer.outputs,
                      inBuffer,
@@ -608,7 +657,8 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
                      mergeBuffer,
                      conv2_weights);
             std::swap(inBuffer, tmpBuffer);
-            batchnorm(layer.outputs,
+            batchnorm(batch_size,
+                      layer.outputs,
                       361,
                       inBuffer,
                       tmpBuffer,
@@ -618,7 +668,8 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
         } else  {
             auto conv_weights = begin(layer.weights);
             // plain convolution
-            convolve(layer.filter_size,
+            convolve(batch_size,
+                     layer.filter_size,
                      layer.channels,
                      layer.outputs,
                      inBuffer,
@@ -629,21 +680,26 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
         }
     }
 
-    std::vector<net_t> interleaved_output(outputs[0]->size() * cfg_batchsize);
-    const auto finalSize = m_layers.back().outputs * one_plane * cfg_batchsize;
-    queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, interleaved_output.data());
-    queue.finish();
+    // a null output pointer means that we just want to test if the kernel runs.
+    if(outputs != nullptr) {
+        std::vector<net_t> interleaved_output(outputs[0]->size() * batch_size);
+        const auto finalSize = m_layers.back().outputs * one_plane * batch_size;
+        queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, interleaved_output.data());
+        queue.finish();
 
-    for(size_t i=0; i<outputs[0]->size(); i++) {
-        for(unsigned int j=0; j<cfg_batchsize; j++) {
+        for(unsigned int j=0; j<batch_size; j++) {
             if(outputs[j] != nullptr) {
-                (*outputs[j])[i] = interleaved_output[cfg_batchsize * i + j];
+                for(size_t i=0; i<outputs[0]->size(); i++) {
+                    (*outputs[j])[i] = interleaved_output[batch_size * i + j];
+                }
             }
         }
+    } else {
+        queue.finish();
     }
 }
 
-void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
+void OpenCL_Network::convolve(size_t batch_size, int filter_size, int channels, int outputs,
                               cl::Buffer& bufferInput,
                               cl::Buffer& bufferOutput,
                               cl::Buffer& bufferMerge,
@@ -655,10 +711,10 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
 
     cl::Kernel * m_convolve_kernel = nullptr;
     if (filter_size == 3) {
-        m_convolve_kernel = &opencl_thread_data.m_convolve3_kernel;
+        m_convolve_kernel = &opencl_thread_data.m_convolve3_kernel[batch_size];
     } else {
         assert(filter_size == 1);
-        m_convolve_kernel = &opencl_thread_data.m_convolve1_kernel;
+        m_convolve_kernel = &opencl_thread_data.m_convolve1_kernel[batch_size];
     }
 
     // Input channel grouping in multiples of 8
@@ -709,8 +765,8 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
         m_convolve_kernel->setArg(0, bufferInput);
         m_convolve_kernel->setArg(1, bufferMerge);
         m_convolve_kernel->setArg(2, weights[0]);
-        m_convolve_kernel->setArg(3, cl::Local(stripSize * channelGroup * rowGroup * cfg_batchsize));
-        m_convolve_kernel->setArg(4, cl::Local(rowSize * cfg_batchsize));
+        m_convolve_kernel->setArg(3, cl::Local(stripSize * channelGroup * rowGroup * batch_size));
+        m_convolve_kernel->setArg(4, cl::Local(rowSize * batch_size));
         if (filter_size == 3) {
             m_convolve_kernel->setArg(5, rowTileSize);
             m_convolve_kernel->setArg(6, rowBuffer);
@@ -722,12 +778,12 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
                                    cl::NDRange(channels, outputs, rowTiles),
                                    cl::NDRange(channelGroup, outputGroup, rowGroup));
     } catch (const cl::Error &e) {
-        std::cerr << "Error in convolve: " << e.what() << ": "
+        std::cerr << "Error in convolve" << filter_size << ": " << e.what() << ": "
 	        << e.err() << std::endl;
         throw;
     }
 
-    cl::Kernel & merge_kernel = opencl_thread_data.m_merge_kernel;
+    cl::Kernel & merge_kernel = opencl_thread_data.m_merge_kernel[batch_size];
     assert(channels % (1 << channelShift) == 0);
 
     try {
@@ -746,7 +802,8 @@ void OpenCL_Network::convolve(int filter_size, int channels, int outputs,
     }
 }
 
-void OpenCL_Network::batchnorm(int outputs,
+void OpenCL_Network::batchnorm(size_t batch_size,
+                               int outputs,
                                int channel_size,
                                cl::Buffer& bufferInput,
                                cl::Buffer& bufferOutput,
@@ -754,7 +811,7 @@ void OpenCL_Network::batchnorm(int outputs,
                                weight_slice_t weights) {
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
-    cl::Kernel & batchnorm_kernel = opencl_thread_data.m_batchnorm_kernel;
+    cl::Kernel & batchnorm_kernel = opencl_thread_data.m_batchnorm_kernel[batch_size];
 
     size_t channelGroup = 1;
     if (channel_size == 361) {
@@ -909,33 +966,43 @@ void OpenCL::initialize(void) {
     //                       (std::istreambuf_iterator<char>()));
 
     // Make program of the source code in the context
-    try {
-        m_program = cl::Program(sourceCode_config
-                                + sourceCode_convolve1
-                                + sourceCode_convolve3
-                                + sourceCode_utility);
-    } catch (const cl::Error &e) {
-        myprintf("Error getting kernels: %s: %d", e.what(), e.err());
-        throw;
-    }
-    // Build program for these specific devices
-    try {
-	    std::string args = "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
+    cl::Error last_error(0);
+    for(size_t batch_size : {1,2,4,8}) {
+        cl::Program p;
+        try {
+            p = cl::Program(sourceCode_config
+                                    + sourceCode_convolve1
+                                    + sourceCode_convolve3
+                                    + sourceCode_utility);
+        } catch (const cl::Error &e) {
+            myprintf("Error getting kernels: %s: %d", e.what(), e.err());
+            last_error = e;
+            continue;
+        }
+        // Build program for these specific devices
+        try {
+    	    std::string args = "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
 #ifdef USE_HALF
-        args += " -DUSE_HALF";
+            args += " -DUSE_HALF";
 #endif
-        args += " -DBATCH_SIZE=" + boost::lexical_cast<std::string>(cfg_batchsize);
-        m_program.build(args.c_str());
-    } catch (const cl::Error&) {
-        myprintf("Error building kernels: %s\n",
-                    m_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl::Device::getDefault()).c_str());
-        throw;
+            args += " -DBATCH_SIZE=" + boost::lexical_cast<std::string>(batch_size);
+            p.build(args.c_str());
+        } catch (const cl::Error& e) {
+            myprintf("Error building kernels: %s\n",
+                        p.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl::Device::getDefault()).c_str());
+            last_error = e;
+            continue;
+        }
+        m_program[batch_size] = p;
+    }
+    if(m_program.empty()) {
+        throw last_error;
     }
 
     ensure_thread_initialized();
 
     m_wavefront_size =
-        opencl_thread_data.m_convolve3_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
+        opencl_thread_data.m_convolve3_kernel[1].getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
             best_device);
     myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
 

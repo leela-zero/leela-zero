@@ -30,6 +30,7 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <map>
 #include <thread>
 #include <condition_variable>
 #include <mutex>
@@ -53,10 +54,10 @@ class ThreadData {
 private:
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
-    cl::Kernel m_convolve1_kernel;
-    cl::Kernel m_convolve3_kernel;
-    cl::Kernel m_merge_kernel;
-    cl::Kernel m_batchnorm_kernel;
+    std::map<unsigned int,cl::Kernel> m_convolve1_kernel;
+    std::map<unsigned int,cl::Kernel> m_convolve3_kernel;
+    std::map<unsigned int,cl::Kernel> m_merge_kernel;
+    std::map<unsigned int,cl::Kernel> m_batchnorm_kernel;
     cl::Buffer m_inBuffer;
     cl::Buffer m_tmpBuffer;
     cl::Buffer m_mergeBuffer;
@@ -122,18 +123,18 @@ public:
     }
 
     void forward(const std::vector<net_t>& input, std::vector<float>& output);
+    void run_forward(const std::vector<net_t> ** inputs, std::vector<float> ** outputs, size_t batch_size = 1);
 private:
-    void run_forward(const std::vector<net_t> ** inputs, std::vector<float> ** outputs);
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
 
     void push_weights(size_t layer, const std::vector<float>& weights) {
         add_weights(layer, weights.size(), weights.data());
     }
     void add_weights(size_t layer, size_t size, const float* weights);
-    void convolve(int filter_size, int channels, int outputs,
+    void convolve(size_t batch_size, int filter_size, int channels, int outputs,
                   cl::Buffer& input, cl::Buffer& output, cl::Buffer& merge,
                   weight_slice_t weights);
-    void batchnorm(int outputs, int channel_size, cl::Buffer& input,
+    void batchnorm(size_t batch_size, int outputs, int channel_size, cl::Buffer& input,
                    cl::Buffer& output, cl::Buffer* residual,
                    weight_slice_t weights);
     std::vector<Layer> m_layers;
@@ -160,7 +161,7 @@ public:
     std::string get_device_name();
 
 private:
-    cl::Program m_program;
+    std::map<unsigned int,cl::Program> m_program;
 
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};

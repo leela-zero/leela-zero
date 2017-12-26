@@ -80,9 +80,6 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("rowtiles", po::value<int>()->default_value(cfg_rowtiles),
                      "Split up the board in # tiles.")
-        ("batchsize", po::value<int>()->default_value(cfg_batchsize),
-                     "Run multiple batches of network evaluations concurrently (valid values are 1, 2 or 4)"
-        )
 #endif
 #ifdef USE_TUNER
         ("puct", po::value<float>())
@@ -226,17 +223,6 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         if (rowtiles != cfg_rowtiles) {
             myprintf("Splitting the board in %d tiles.\n", rowtiles);
             cfg_rowtiles = rowtiles;
-        }
-    }
-
-    if (vm.count("batchsize")) {
-        int batchsize = vm["batchsize"].as<int>();
-        if (batchsize == 1 || batchsize == 2 || batchsize == 4) {
-            myprintf("OpenCL neural net batch size to be %d\n", batchsize);
-            cfg_batchsize = batchsize;
-        } else {
-            myprintf("Unsupported batch size %d : only 1, 2 or 4 supported.\n", batchsize);
-            exit(EXIT_FAILURE);
         }
     }
 #endif
