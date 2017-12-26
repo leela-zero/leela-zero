@@ -467,7 +467,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     run_forward(&inptr, &outptr, 1);
 
 #else
-    if(!m_workers_launched) {
+    bool expval = false;
+    if(m_workers_launched.compare_exchange_strong(expval, true)) {
         // test run each batch size.  pick ones that successfully passed sanity check
         std::list<unsigned int> valid_batches;
         for(const auto & x : opencl.m_program) {
@@ -535,7 +536,6 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     
             worker.detach();
         }
-        m_workers_launched = true;
     }
 
     // to let the worker thread do it, push the network evaluation into the task queue

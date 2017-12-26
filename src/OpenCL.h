@@ -31,6 +31,7 @@
 #include <vector>
 #include <deque>
 #include <map>
+#include <atomic>
 #include <thread>
 #include <condition_variable>
 #include <mutex>
@@ -139,7 +140,7 @@ private:
                    weight_slice_t weights);
     std::vector<Layer> m_layers;
     
-    bool m_workers_launched = false;
+    std::atomic<bool> m_workers_launched{false};
     class ForwardTask {
     public:
         const std::vector<net_t> *input;
