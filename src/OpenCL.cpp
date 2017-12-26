@@ -487,18 +487,17 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         constexpr int num_threads = 2;
         for(int i=0; i<num_threads; i++) {
             std::thread worker( [this, valid_batches]{
+                unsigned int wait_counter = valid_batches.back();
                 while(true) {
                     std::unique_lock<std::mutex> lk(m_task_mutex);
 
-                    unsigned int max_batchsize = valid_batches.back();
-
-                    // the 50ms timeout is based on a wild guess, assuming we will not run out of evaluation operations
-                    // due to the sheer amount of concurrent threads.  timeouts will probably only happen
+                    // the 10ms timeout is based on a wild guess, assuming we will not run out of evaluation operations
+                    // due to the sheer amount of concurrent threads. timeouts (hopefully) will only happen
                     // on the final evaluations of the move.
-                    m_task_cond.wait_for(lk, std::chrono::milliseconds(50), [this,max_batchsize]{
-                        return (m_task_queue.size() >= max_batchsize); 
+                    m_task_cond.wait_for(lk, std::chrono::milliseconds(10), [this,wait_counter]{
+                        return (m_task_queue.size() >= wait_counter); 
                     });
-               
+
                     if(m_task_queue.empty()) {
                         lk.unlock();
                         continue;
@@ -531,6 +530,9 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                     for(unsigned int i=0; i<count; i++) {
                         tasks[i].prom.set_value();
                     }
+
+                    // on next iteration, try to wait for the same number
+                    wait_counter = batch_size;
                 }
             });
     
