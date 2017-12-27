@@ -18,15 +18,17 @@
 
 #include "Job.h"
 #include "Game.h"
+#include "Management.h"
 #include <QTextStream>
 #include <chrono>
 
 #include <QThread>
 
-Job::Job(QString gpu) :
+Job::Job(QString gpu, Management *parent) :
   m_state(RUNNING),
   m_option(""),
-  m_gpu(gpu)
+  m_gpu(gpu),
+  m_boss(parent)
 {
 }
 
@@ -42,13 +44,13 @@ void Job::init(const QMap<QString,QString> &l) {
     std::get<1>(m_leelazMinVersion) = version_list[1].toInt();
 }
 
-ProductionJob::ProductionJob(QString gpu) :
-Job(gpu)
+ProductionJob::ProductionJob(QString gpu, Management *parent) :
+Job(gpu, parent)
 {
 }
 
-ValidationJob::ValidationJob(QString gpu) :
-Job(gpu)
+ValidationJob::ValidationJob(QString gpu, Management *parent) :
+Job(gpu, parent)
 {
 }
 
@@ -64,12 +66,13 @@ Result ProductionJob::execute(){
             return res;
         }
         game.readMove();
+        m_boss->incMoves();
     } while (game.nextMove() && m_state.load() == RUNNING);
     if (m_state.load() == RUNNING) {
         QTextStream(stdout) << "Game has ended." << endl;
         if (game.getScore()) {
             game.writeSgf();
-            game.fixSgfPlayerName(m_network);
+            game.fixSgf(m_network, false);
             game.dumpTraining();
             if (m_debug) {
                 game.dumpDebug();
@@ -111,6 +114,7 @@ Result ValidationJob::execute(){
            return res;
        }
        first.readMove();
+       m_boss->incMoves();
        if (first.checkGameEnd()) {
            break;
        }
@@ -120,18 +124,19 @@ Result ValidationJob::execute(){
            return res;
        }
        second.readMove();
+       m_boss->incMoves();
        first.setMove(wmove + second.getMove());
        second.nextMove();
    } while (first.nextMove() && m_state.load() == RUNNING);
 
    if (m_state.load() == RUNNING) {
-       QTextStream(stdout) << "Game has ended." << endl;
        res.add("moves", QString::number(first.getMovesCount()));
+       QTextStream(stdout) << "Game has ended." << endl;
        if (first.getScore()) {
            res.add("score", first.getResult());
            res.add("winner", first.getWinnerName());
            first.writeSgf();
-           first.fixSgfPlayerName(m_secondNet);
+           first.fixSgf(m_secondNet, (res.parameters()["score"] == "B+Resign"));
            res.add("file", first.getFile());
        }
        // Game is finished, send the result

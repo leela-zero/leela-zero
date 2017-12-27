@@ -20,23 +20,24 @@
 #define FULLBOARD_H_INCLUDED
 
 #include "config.h"
+#include <cstdint>
 #include "FastBoard.h"
 
 class FullBoard : public FastBoard {
 public:
     int remove_string(int i);
-    int update_board(const int color, const int i, bool & capture);
+    int update_board(const int color, const int i);
 
-    uint64 calc_hash(void);
-    uint64 calc_ko_hash(void);
-    uint64 get_hash(void) const;
-    uint64 get_ko_hash(void) const;
+    std::uint64_t calc_hash(void);
+    std::uint64_t calc_ko_hash(void);
+    std::uint64_t get_hash(void) const;
+    std::uint64_t get_ko_hash(void) const;
 
     void reset_board(int size);
     void display_board(int lastmove = -1);
 
-    uint64 m_hash;
-    uint64 m_ko_hash;
+    std::uint64_t m_hash;
+    std::uint64_t m_ko_hash;
 };
 
 #endif

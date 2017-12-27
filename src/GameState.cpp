@@ -16,25 +16,22 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <cctype>
-#include <string>
-#include <sstream>
+#include "GameState.h"
+
 #include <algorithm>
 #include <array>
-#include <bitset>
-#include <utility>
+#include <cctype>
 #include <deque>
+#include <iterator>
+#include <memory>
+#include <sstream>
+#include <string>
 
-#include "config.h"
-
-#include "KoState.h"
-#include "GameState.h"
+#include "FastBoard.h"
+#include "FastState.h"
 #include "FullBoard.h"
+#include "KoState.h"
 #include "UCTSearch.h"
-#include "Zobrist.h"
-#include "Random.h"
-#include "Utils.h"
 
 void GameState::init_game(int size, float komi) {
     KoState::init_game(size, komi);
@@ -48,8 +45,8 @@ void GameState::init_game(int size, float komi) {
     m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
 
-    return;
-};
+    m_resigned = FastBoard::EMPTY;
+}
 
 void GameState::reset_game() {
     KoState::reset_game();
@@ -61,6 +58,8 @@ void GameState::reset_game() {
     update_boardplanes();
 
     m_timecontrol.reset_clocks();
+
+    m_resigned = FastBoard::EMPTY;
 }
 
 void GameState::disable_history() {
@@ -81,9 +80,6 @@ bool GameState::forward_move(void) {
 bool GameState::undo_move(void) {
     if (m_history_enabled && m_movenum > 0) {
         m_movenum--;
-
-        // don't actually delete it!
-        //game_history.pop_back();
 
         // this is not so nice, but it should work
         *(static_cast<KoState*>(this)) = *game_history[m_movenum];
@@ -113,14 +109,10 @@ void GameState::play_pass() {
 void GameState::play_move(int color, int vertex) {
     if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
         KoState::play_move(color, vertex);
-    } else {
+    } else if (vertex == FastBoard::PASS) {
         KoState::play_pass();
-        if (vertex == FastBoard::RESIGN) {
-            std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1,
-                        rend(m_lastmove));
-            m_lastmove[0] = vertex;
-            m_last_was_capture = false;
-        }
+    } else if (vertex == FastBoard::RESIGN) {
+        m_resigned = color;
     }
 
     // cut off any leftover moves from navigating
@@ -192,6 +184,14 @@ void GameState::display_state() {
     FastState::display_state();
 
     m_timecontrol.display_times();
+}
+
+int GameState::who_resigned() const {
+    return m_resigned;
+}
+
+bool GameState::has_resigned() const {
+    return m_resigned != FastBoard::EMPTY;
 }
 
 TimeControl& GameState::get_timecontrol() {

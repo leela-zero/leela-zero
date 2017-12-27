@@ -19,12 +19,10 @@
 #ifndef GAMESTATE_H_INCLUDED
 #define GAMESTATE_H_INCLUDED
 
-#include <vector>
 #include <memory>
 #include <string>
-#include <bitset>
-#include <utility>
 #include <deque>
+#include <vector>
 
 #include "FastState.h"
 #include "FullBoard.h"
@@ -68,6 +66,9 @@ public:
     void adjust_time(int color, int time, int stones);
 
     void display_state();
+    bool has_resigned() const;
+    int who_resigned() const;
+
 private:
     bool valid_handicap(int stones);
     void update_boardplanes();
@@ -78,6 +79,7 @@ private:
 
     TimeControl m_timecontrol;
     bool m_history_enabled = true;
+    int m_resigned{FastBoard::EMPTY};
 };
 
 #endif

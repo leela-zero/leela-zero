@@ -21,32 +21,33 @@
 
 #include "config.h"
 
-#include <tuple>
 #include <atomic>
 #include <limits>
+#include <memory>
+#include <vector>
 
-#include "SMP.h"
 #include "GameState.h"
 #include "Network.h"
+#include "SMP.h"
 
 class UCTNode {
 public:
-    using sortnode_t = std::tuple<float, int, float, UCTNode*>;
-
     // When we visit a node, add this amount of virtual losses
     // to it to encourage other CPUs to explore other parts of the
     // search tree.
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
 
+    using node_ptr_t = std::unique_ptr<UCTNode>;
+
     explicit UCTNode(int vertex, float score, float init_eval);
+    UCTNode() = delete;
     ~UCTNode();
     bool first_visit() const;
     bool has_children() const;
-    bool create_children(std::atomic<int> & nodecount,
-                         GameState & state, float & eval);
+    bool create_children(std::atomic<int>& nodecount,
+                         GameState& state, float& eval);
     float eval_state(GameState& state);
-    void kill_superkos(KoState & state);
-    void delete_child(UCTNode * child);
+    void kill_superkos(const KoState& state);
     void invalidate();
     bool valid() const;
     int get_move() const;
@@ -68,23 +69,21 @@ public:
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    UCTNode* get_sibling() const;
+    const std::vector<node_ptr_t>& get_children() const;
 
     void sort_root_children(int color);
-    UCTNode* get_best_root_child(int color);
-    SMP::Mutex & get_mutex();
+    UCTNode& get_best_root_child(int color);
+    SMP::Mutex& get_mutex();
 
 private:
-    UCTNode();
-    void link_child(UCTNode * newchild);
-    void link_nodelist(std::atomic<int> & nodecount,
-                       std::vector<Network::scored_node> & nodelist,
+    void link_nodelist(std::atomic<int>& nodecount,
+                       std::vector<Network::scored_node>& nodelist,
                        float init_eval);
 
     // Tree data
     std::atomic<bool> m_has_children{false};
-    UCTNode* m_firstchild{nullptr};
-    UCTNode* m_nextsibling{nullptr};
+    std::vector<node_ptr_t> m_children;
+
     // Move
     int m_move;
     // UCT

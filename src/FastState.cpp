@@ -16,18 +16,16 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <vector>
+#include "config.h"
+#include "FastState.h"
+
 #include <algorithm>
-#include <iostream>
-#include <cmath>
+#include <iterator>
+#include <vector>
 
 #include "FastBoard.h"
-#include "FastState.h"
-#include "Random.h"
 #include "Utils.h"
 #include "Zobrist.h"
-#include "GTP.h"
 
 using namespace Utils;
 
@@ -38,7 +36,6 @@ void FastState::init_game(int size, float komi) {
 
     m_komove = 0;
     std::fill(begin(m_lastmove), end(m_lastmove), 0);
-    m_last_was_capture = false;
     m_komi = komi;
     m_handicap = 0;
     m_passes = 0;
@@ -59,29 +56,18 @@ void FastState::reset_game(void) {
     m_komove = 0;
 
     std::fill(begin(m_lastmove), end(m_lastmove), 0);
-    m_last_was_capture = false;
 }
 
 void FastState::reset_board(void) {
     board.reset_board(board.get_boardsize());
 }
 
-std::vector<int> FastState::generate_moves(int color) {
-    std::vector<int> result;
-
-    result.reserve(board.m_empty_cnt);
-
-    for (int i = 0; i < board.m_empty_cnt; i++) {
-        int vertex = board.m_empty[i];
-
-        if (vertex != m_komove && !board.is_suicide(vertex, color)) {
-            result.push_back(vertex);
-        }
-    }
-
-    result.push_back(FastBoard::PASS);
-
-    return result;
+bool FastState::is_move_legal(int color, int vertex) {
+    return vertex == FastBoard::PASS ||
+           vertex == FastBoard::RESIGN ||
+           (vertex != m_komove &&
+                board.get_square(vertex) == FastBoard::EMPTY &&
+                !board.is_suicide(vertex, color));
 }
 
 void FastState::play_pass(void) {
@@ -89,7 +75,6 @@ void FastState::play_pass(void) {
 
     std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1, rend(m_lastmove));
     m_lastmove[0] = FastBoard::PASS;
-    m_last_was_capture = false;
 
     board.m_hash  ^= 0xABCDABCDABCDABCDULL;
     board.m_tomove = !board.m_tomove;
@@ -104,16 +89,13 @@ void FastState::play_move(int vertex) {
 }
 
 void FastState::play_move(int color, int vertex) {
-    if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
-        bool capture = false;
-        int kosq = board.update_board(color, vertex, capture);
+    if (vertex != FastBoard::PASS) {
+        int kosq = board.update_board(color, vertex);
 
         m_komove = kosq;
         std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1,
                     rend(m_lastmove));
         m_lastmove[0] = vertex;
-        m_last_was_capture = capture;
-
         m_movenum++;
 
         if (board.m_tomove == color) {
@@ -126,7 +108,7 @@ void FastState::play_move(int color, int vertex) {
             set_passes(0);
             board.m_hash ^= Zobrist::zobrist_pass[0];
         }
-    } else {
+    } else if (vertex == FastBoard::PASS) {
         play_pass();
     }
 }

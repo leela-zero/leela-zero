@@ -25,7 +25,6 @@ FIND_PACKAGE(Boost 1.58.0 REQUIRED program_options)
 FIND_PACKAGE(Threads REQUIRED)
 FIND_PACKAGE(ZLIB REQUIRED)
 FIND_PACKAGE(OpenCL REQUIRED)
-
 # We need OpenBLAS for now, because we make some specific
 # calls. Ideally we'd use OpenBLAS is possible and fall back to
 # not doing those calls if it's not present.

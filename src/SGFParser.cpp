@@ -16,17 +16,16 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
-#include <iostream>
-#include <fstream>
-#include <iomanip>
-#include <cctype>
-#include <string>
-#include <memory>
-#include <stdexcept>
-
-#include "Utils.h"
 #include "SGFParser.h"
+
+#include <cassert>
+#include <cctype>
+#include <fstream>
+#include <stdexcept>
+#include <string>
+
+#include "SGFTree.h"
+#include "Utils.h"
 
 std::vector<std::string> SGFParser::chop_stream(std::istream& ins,
                                                 size_t stopat) {

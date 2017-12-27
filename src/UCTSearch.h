@@ -19,12 +19,16 @@
 #ifndef UCTSEARCH_H_INCLUDED
 #define UCTSEARCH_H_INCLUDED
 
-#include <memory>
 #include <atomic>
+#include <memory>
+#include <string>
 #include <tuple>
 
+#include "FastBoard.h"
 #include "GameState.h"
+#include "KoState.h"
 #include "UCTNode.h"
+
 
 class SearchResult {
 public:
@@ -68,7 +72,7 @@ public:
     */
     static constexpr auto MAX_TREE_SIZE = 40'000'000;
 
-    UCTSearch(GameState & g);
+    UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_analyzing(bool flag);
@@ -77,11 +81,11 @@ public:
     bool is_running() const;
     bool playout_limit_reached() const;
     void increment_playouts();
-    SearchResult play_simulation(GameState & currstate, UCTNode * const node);
+    SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
-    void dump_stats(KoState & state, UCTNode & parent);
-    std::string get_pv(KoState & state, UCTNode & parent);
+    void dump_stats(KoState& state, UCTNode& parent);
+    std::string get_pv(KoState& state, UCTNode& parent);
     void dump_analysis(int playouts);
     int get_best_move(passflag_t passflag);
 
