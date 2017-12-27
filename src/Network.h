@@ -63,7 +63,7 @@ private:
     static void fill_input_plane_pair(
       const FullBoard& board, BoardPlane& black, BoardPlane& white);
     static Netresult get_scored_moves_internal(
-      const FullBoard& board, NNPlanes & planes, int rotation);
+      const GameState* state, NNPlanes & planes, int rotation);
     static int rotate_nn_idx(const int vertex, int symmetry);
 #if defined(USE_BLAS)
     static void forward_cpu(std::vector<float>& input,
