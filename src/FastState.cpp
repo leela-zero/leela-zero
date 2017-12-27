@@ -117,10 +117,6 @@ size_t FastState::get_movenum() const {
     return m_movenum;
 }
 
-int FastState::estimate_mc_score(void) {
-    return board.estimate_mc_score(m_komi + m_handicap);
-}
-
 int FastState::get_last_move(void) const {
     return m_lastmove.front();
 }
