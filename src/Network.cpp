@@ -477,7 +477,7 @@ void Network::softmax(const std::vector<float>& input,
 }
 
 Network::Netresult Network::get_scored_moves(
-    GameState * state, Ensemble ensemble, int rotation) {
+    const GameState* state, Ensemble ensemble, int rotation) {
     Netresult result;
     if (state->board.get_boardsize() != 19) {
         return result;
@@ -488,19 +488,19 @@ Network::Netresult Network::get_scored_moves(
 
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
-        result = get_scored_moves_internal(state, planes, rotation);
+        result = get_scored_moves_internal(state->board, planes, rotation);
     } else {
         assert(ensemble == RANDOM_ROTATION);
         assert(rotation == -1);
         auto rand_rot = Random::get_Rng().randfix<8>();
-        result = get_scored_moves_internal(state, planes, rand_rot);
+        result = get_scored_moves_internal(state->board, planes, rand_rot);
     }
 
     return result;
 }
 
 Network::Netresult Network::get_scored_moves_internal(
-    GameState * state, NNPlanes & planes, int rotation) {
+    const FullBoard& board, NNPlanes & planes, int rotation) {
     assert(rotation >= 0 && rotation <= 7);
     assert(INPUT_CHANNELS == planes.size());
     constexpr int width = 19;
@@ -566,8 +566,8 @@ Network::Netresult Network::get_scored_moves_internal(
             auto rot_idx = rotate_nn_idx(idx, rotation);
             int x = rot_idx % 19;
             int y = rot_idx / 19;
-            int rot_vtx = state->board.get_vertex(x, y);
-            if (state->board.get_square(rot_vtx) == FastBoard::EMPTY) {
+            int rot_vtx = board.get_vertex(x, y);
+            if (board.get_square(rot_vtx) == FastBoard::EMPTY) {
                 result.emplace_back(val, rot_vtx);
             }
         } else {
@@ -631,8 +631,8 @@ void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) 
     }
 }
 
-
-void Network::fill_input_plane(FastBoard& board, InputPlane& plane) {
+void Network::fill_input_plane_pair(const FullBoard& board,
+                                    BoardPlane& black, BoardPlane& white) {
     auto idx = 0;
     for (int j = 0; j < 19; j++) {
         for(int i = 0; i < 19; i++) {
@@ -640,9 +640,9 @@ void Network::fill_input_plane(FastBoard& board, InputPlane& plane) {
             auto color = board.get_square(vtx);
             if (color != FastBoard::EMPTY) {
                 if (color == FastBoard::BLACK) {
-                    plane.first[idx] = true;
+                    black[idx] = true;
                 } else {
-                    plane.second[idx] = true;
+                    white[idx] = true;
                 }
             }
             idx++;
@@ -650,7 +650,7 @@ void Network::fill_input_plane(FastBoard& board, InputPlane& plane) {
     }
 }
 
-void Network::gather_features(GameState * state, NNPlanes & planes) {
+void Network::gather_features(const GameState* state, NNPlanes & planes) {
     planes.resize(INPUT_CHANNELS);
     BoardPlane& black_to_move  = planes[16];
     BoardPlane& white_to_move  = planes[17];
@@ -669,9 +669,9 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
 
     const auto moves = std::min<int>(state->get_movenum() + 1, INPUT_MOVES);
     for (auto h = 0; h < moves; h++) {
-        const auto& test = state->get_boardplanes(h);
-        planes[black_offset + h] = test.first;
-        planes[white_offset + h] = test.second;
+        fill_input_plane_pair(state->get_past_state(h)->board,
+                              planes[black_offset + h],
+                              planes[white_offset + h]);
     }
 }
 

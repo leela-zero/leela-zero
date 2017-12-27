@@ -29,7 +29,7 @@
 #include <vector>
 
 #include "FastState.h"
-class GameState;
+#include "GameState.h"
 
 class Network {
 public:
@@ -37,12 +37,11 @@ public:
         DIRECT, RANDOM_ROTATION
     };
     using BoardPlane = std::bitset<19*19>;
-    using InputPlane = std::pair<BoardPlane, BoardPlane>;
     using NNPlanes = std::vector<BoardPlane>;
     using scored_node = std::pair<float, int>;
     using Netresult = std::pair<std::vector<scored_node>, float>;
 
-    static Netresult get_scored_moves(GameState * state,
+    static Netresult get_scored_moves(const GameState* state,
                                       Ensemble ensemble,
                                       int rotation = -1);
     // File format version
@@ -58,13 +57,13 @@ public:
                         std::vector<float>& output,
                         float temperature = 1.0f);
 
-    static void fill_input_plane(FastBoard& board, InputPlane& plane);
-    static void gather_features(GameState* state, NNPlanes & planes);
-
+    static void gather_features(const GameState* state, NNPlanes& planes);
 private:
     static void process_bn_var(std::vector<float>& weights, const float epsilon=1e-5f);
+    static void fill_input_plane_pair(
+      const FullBoard& board, BoardPlane& black, BoardPlane& white);
     static Netresult get_scored_moves_internal(
-      GameState * state, NNPlanes & planes, int rotation);
+      const FullBoard& board, NNPlanes & planes, int rotation);
     static int rotate_nn_idx(const int vertex, int symmetry);
 #if defined(USE_BLAS)
     static void forward_cpu(std::vector<float>& input,

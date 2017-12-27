@@ -20,8 +20,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cctype>
-#include <deque>
 #include <iterator>
 #include <memory>
 #include <sstream>
@@ -37,10 +37,7 @@ void GameState::init_game(int size, float komi) {
     KoState::init_game(size, komi);
 
     game_history.clear();
-    append_to_gamehistory();
-
-    m_boardplanes.clear();
-    update_boardplanes();
+    game_history.emplace_back(std::make_shared<KoState>(*this));
 
     m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
@@ -52,23 +49,15 @@ void GameState::reset_game() {
     KoState::reset_game();
 
     game_history.clear();
-    append_to_gamehistory();
-
-    m_boardplanes.clear();
-    update_boardplanes();
+    game_history.emplace_back(std::make_shared<KoState>(*this));
 
     m_timecontrol.reset_clocks();
 
     m_resigned = FastBoard::EMPTY;
 }
 
-void GameState::disable_history() {
-    m_history_enabled = false;
-    game_history.clear();
-}
-
 bool GameState::forward_move(void) {
-    if (m_history_enabled && game_history.size() > m_movenum + 1) {
+    if (game_history.size() > m_movenum + 1) {
         m_movenum++;
         *(static_cast<KoState*>(this)) = *game_history[m_movenum];
         return true;
@@ -78,7 +67,7 @@ bool GameState::forward_move(void) {
 }
 
 bool GameState::undo_move(void) {
-    if (m_history_enabled && m_movenum > 0) {
+    if (m_movenum > 0) {
         m_movenum--;
 
         // this is not so nice, but it should work
@@ -92,14 +81,12 @@ bool GameState::undo_move(void) {
 }
 
 void GameState::rewind(void) {
-    if (m_history_enabled) {
-        *(static_cast<KoState*>(this)) = *game_history[0];
-        m_movenum = 0;
-    }
+    *(static_cast<KoState*>(this)) = *game_history[0];
+    m_movenum = 0;
 }
 
 void GameState::play_move(int vertex) {
-    play_move(get_to_move(), vertex);
+    play_move(board.get_to_move(), vertex);
 }
 
 void GameState::play_pass() {
@@ -116,13 +103,8 @@ void GameState::play_move(int color, int vertex) {
     }
 
     // cut off any leftover moves from navigating
-    if (m_history_enabled) {
-        game_history.resize(m_movenum);
-        append_to_gamehistory();
-    }
-
-    m_boardplanes.resize(m_movenum);
-    update_boardplanes();
+    game_history.resize(m_movenum);
+    game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
 bool GameState::play_textmove(std::string color, std::string vertex) {
@@ -218,10 +200,7 @@ void GameState::anchor_game_history(void) {
     // handicap moves don't count in game history
     m_movenum = 0;
     game_history.clear();
-    append_to_gamehistory();
-
-    m_boardplanes.clear();
-    update_boardplanes();
+    game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
 bool GameState::set_fixed_handicap(int handicap) {
@@ -354,24 +333,9 @@ void GameState::place_free_handicap(int stones) {
     set_handicap(orgstones);
 }
 
-void GameState::append_to_gamehistory() {
-    if (m_history_enabled) {
-        game_history.emplace_back(std::make_shared<KoState>(*this));
-    }
-}
-
-void GameState::update_boardplanes() {
-    if (m_boardplanes.size() == Network::INPUT_MOVES) {
-        m_boardplanes.pop_back();
-    }
-
-    // create new InputPlane then fill from the current board
-    m_boardplanes.emplace_front();
-    Network::fill_input_plane(board, m_boardplanes.front());
-}
-
-const Network::InputPlane& GameState::get_boardplanes(int moves_ago) const {
-    assert(moves_ago < Network::INPUT_MOVES);
-    assert(moves_ago < m_boardplanes.size());
-    return m_boardplanes[moves_ago];
+const std::shared_ptr<KoState>& GameState::get_past_state(int moves_ago) const {
+    assert(moves_ago >= 0);
+    assert(moves_ago <= m_movenum);
+    assert(m_movenum == game_history.size());
+    return game_history[m_movenum - moves_ago];
 }

@@ -21,18 +21,15 @@
 
 #include <memory>
 #include <string>
-#include <deque>
 #include <vector>
 
 #include "FastState.h"
 #include "FullBoard.h"
 #include "KoState.h"
-#include "Network.h"
 #include "TimeControl.h"
 
 class GameState : public KoState {
 public:
-
     explicit GameState() = default;
     explicit GameState(const KoState* rhs) {
         // Copy in fields from base class.
@@ -46,11 +43,10 @@ public:
     void place_free_handicap(int stones);
     void anchor_game_history(void);
 
-    void disable_history();
+    void rewind(void); /* undo infinite */
     bool undo_move(void);
     bool forward_move(void);
-    void rewind(void); /* undo infinite */
-    const Network::InputPlane& get_boardplanes(int moves_ago) const;
+    const std::shared_ptr<KoState>& get_past_state(int moves_ago) const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
@@ -71,14 +67,9 @@ public:
 
 private:
     bool valid_handicap(int stones);
-    void update_boardplanes();
-    void append_to_gamehistory();
 
     std::vector<std::shared_ptr<KoState>> game_history;
-    std::deque<Network::InputPlane> m_boardplanes;
-
     TimeControl m_timecontrol;
-    bool m_history_enabled = true;
     int m_resigned{FastBoard::EMPTY};
 };
 
