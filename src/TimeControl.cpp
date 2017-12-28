@@ -63,17 +63,17 @@ void TimeControl::start(int color) {
 
 void TimeControl::stop(int color) {
     Time stop;
-    int elapsed_centis = Time::timediff_centis(m_times[color], stop);
+    int elapsed_ms = Time::timediff_ms(m_times[color], stop);
 
-    assert(elapsed_centis >= 0);
+    assert(elapsed_ms >= 0);
 
-    m_remaining_time[color] -= elapsed_centis;
+    m_remaining_time[color] -= elapsed_ms;
 
     if (m_inbyo[color]) {
         if (m_byostones) {
             m_stones_left[color]--;
         } else if (m_byoperiods) {
-            if (elapsed_centis > m_byotime) {
+            if (elapsed_ms > m_byotime) {
                 m_periods_left[color]--;
             }
         }
@@ -97,7 +97,7 @@ void TimeControl::stop(int color) {
 }
 
 void TimeControl::display_color_time(int color) {
-    auto rem = m_remaining_time[color] / 100;  /* centiseconds to seconds */
+    auto rem = m_remaining_time[color] / 1000;  /* milliseconds to seconds */
     auto minuteDiv = std::div(rem, 60);
     auto hourDiv = std::div(minuteDiv.quot, 60);
     auto seconds = minuteDiv.rem;
@@ -110,7 +110,7 @@ void TimeControl::display_color_time(int color) {
             myprintf(", %d stones left", m_stones_left[color]);
         } else if (m_byoperiods) {
             myprintf(", %d period(s) of %d seconds left",
-                     m_periods_left[color], m_byotime / 100);
+                     m_periods_left[color], m_byotime / 1000);
         }
     }
     myprintf("\n");
@@ -131,10 +131,10 @@ int TimeControl::max_time_for_move(int color) {
     if (m_byotime != 0) {
         /*
           no periods or stones set means
-          infinite time = 1 month
+          infinite time = 1 week
         */
         if (m_byostones == 0 && m_byoperiods == 0) {
-            return 31 * 24 * 60 * 60 * 100;
+            return 7 * 24 * 60 * 60 * 1000;
         }
 
         // byo yomi and in byo yomi
@@ -166,11 +166,11 @@ int TimeControl::max_time_for_move(int color) {
         }
     }
 
-    // always keep a cfg_lagbugger_cs centisecond margin
+    // always keep a cfg_lagbugger_ms millisecond margin
     // for network hiccups or GUI lag
-    auto base_time = std::max(time_remaining - cfg_lagbuffer_cs, 0) /
+    auto base_time = std::max(time_remaining - cfg_lagbuffer_ms, 0) /
                      std::max(moves_remaining, 1);
-    auto inc_time = std::max(extra_time_per_move - cfg_lagbuffer_cs, 0);
+    auto inc_time = std::max(extra_time_per_move - cfg_lagbuffer_ms, 0);
 
     return base_time + inc_time;
 }

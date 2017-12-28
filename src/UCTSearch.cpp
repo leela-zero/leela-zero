@@ -330,7 +330,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     m_rootstate.get_timecontrol().set_boardsize(m_rootstate.board.get_boardsize());
     auto time_for_move = m_rootstate.get_timecontrol().max_time_for_move(color);
 
-    myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
+    myprintf("Thinking at most %.1f seconds...\n", time_for_move/1000.0f);
 
     // create a sorted list off legal moves (make sure we
     // play something legal and decent even in time trouble)
@@ -351,8 +351,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
         tg.add_task(UCTWorker(m_rootstate, this, &m_root));
     }
 
-    bool keeprunning = true;
-    int last_update = 0;
+    auto keeprunning = true;
+    auto last_update = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
 
@@ -362,16 +362,16 @@ int UCTSearch::think(int color, passflag_t passflag) {
         }
 
         Time elapsed;
-        int elapsed_centis = Time::timediff_centis(start, elapsed);
+        int elapsed_ms = Time::timediff_ms(start, elapsed);
 
         // output some stats every few seconds
         // check if we should still search
-        if (elapsed_centis - last_update > 250) {
-            last_update = elapsed_centis;
+        if (elapsed_ms - last_update > 2500) {
+            last_update = elapsed_ms;
             dump_analysis(static_cast<int>(m_playouts));
         }
         keeprunning  = is_running();
-        keeprunning &= (elapsed_centis < time_for_move);
+        keeprunning &= (elapsed_ms < time_for_move);
         keeprunning &= !playout_limit_reached();
     } while(keeprunning);
 
@@ -390,13 +390,13 @@ int UCTSearch::think(int color, passflag_t passflag) {
     Training::record(m_rootstate, m_root);
 
     Time elapsed;
-    int elapsed_centis = Time::timediff_centis(start, elapsed);
-    if (elapsed_centis > 0) {
+    int elapsed_ms = Time::timediff_ms(start, elapsed);
+    if (elapsed_ms > 0) {
         myprintf("%d visits, %d nodes, %d playouts, %d n/s\n\n",
                  m_root.get_visits(),
                  static_cast<int>(m_nodes),
                  static_cast<int>(m_playouts),
-                 (m_playouts * 100) / (elapsed_centis+1));
+                 (m_playouts * 1000) / (elapsed_ms + 1));
     }
     int bestmove = get_best_move(passflag);
     return bestmove;
