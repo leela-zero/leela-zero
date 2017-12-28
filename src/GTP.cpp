@@ -348,7 +348,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
             if (cfg_allow_pondering) {
                 // now start pondering
-                if (game.get_last_move() != FastBoard::RESIGN) {
+                if (!game.has_resigned()) {
                     auto search = std::make_unique<UCTSearch>(game);
                     search->ponder();
                 }
@@ -386,7 +386,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
             if (cfg_allow_pondering) {
                 // now start pondering
-                if (game.get_last_move() != FastBoard::RESIGN) {
+                if (!game.has_resigned()) {
                     auto search = std::make_unique<UCTSearch>(game);
                     search->ponder();
                 }
@@ -481,7 +481,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             if (cfg_allow_pondering) {
                 // KGS sends this after our move
                 // now start pondering
-                if (game.get_last_move() != FastBoard::RESIGN) {
+                if (!game.has_resigned()) {
                     auto search = std::make_unique<UCTSearch>(game);
                     search->ponder();
                 }
@@ -498,8 +498,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             game.play_move(move);
             game.display_state();
 
-        } while (game.get_passes() < 2
-                 && game.get_last_move() != FastBoard::RESIGN);
+        } while (game.get_passes() < 2 && !game.has_resigned());
 
         return true;
     } else if (command.find("go") == 0) {
