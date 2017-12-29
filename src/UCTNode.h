@@ -50,12 +50,12 @@ public:
     void invalidate();
     bool valid() const;
     int get_move() const;
-    int get_visits() const;
+    uint64 get_visits() const;
     float get_score() const;
     void set_score(float score);
     float get_eval(int tomove) const;
     double get_blackevals() const;
-    void set_visits(int visits);
+    void set_visits(uint64 visits);
     void set_blackevals(double blacevals);
     void set_eval(float eval);
     void accumulate_eval(float eval);
@@ -88,7 +88,7 @@ private:
     // Move
     int m_move;
     // UCT
-    std::atomic<int> m_visits{0};
+    std::atomic<uint64> m_visits{0};
     std::atomic<int> m_virtual_loss{0};
     // UCT eval
     float m_score;

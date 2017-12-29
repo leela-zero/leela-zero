@@ -247,7 +247,7 @@ void UCTNode::randomize_first_proportionally() {
     auto accum_vector = std::vector<uint32>{};
 
     auto child = m_firstchild;
-    auto accum = uint32{0};
+    auto accum = uint64{0};
     while (child != nullptr) {
         accum += child->get_visits();
         accum_vector.emplace_back(accum);
@@ -313,7 +313,7 @@ bool UCTNode::has_children() const {
     return m_has_children;
 }
 
-void UCTNode::set_visits(int visits) {
+void UCTNode::set_visits(uint64 visits) {
     m_visits = visits;
 }
 
@@ -325,7 +325,7 @@ void UCTNode::set_score(float score) {
     m_score = score;
 }
 
-int UCTNode::get_visits() const {
+uint64 UCTNode::get_visits() const {
     return m_visits;
 }
 
@@ -377,7 +377,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
     // Count parentvisits.
     // We do this manually to avoid issues with transpositions.
-    int parentvisits = 0;
+    uint64 parentvisits = 0;
     // Make sure we are at a valid successor.
     while (child != nullptr && !child->valid()) {
         child = child->m_nextsibling;
