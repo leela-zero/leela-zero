@@ -29,7 +29,7 @@ public:
     TTEntry() = default;
 
     uint64 m_hash{0};
-    int m_visits;
+    uint64 m_visits;
     double m_eval_sum;
 };
 
