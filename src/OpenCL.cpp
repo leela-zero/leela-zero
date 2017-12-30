@@ -236,7 +236,7 @@ __kernel void out_transform_fused_bn(__global float *M,
         const float mean = vload_net_t(k, means);
         const float scale_stddiv = vload_net_t(k, stddivs);
 
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 4; i++) {
             o[i] = scale_stddiv * (o[i] - mean);
         }
 
