@@ -25,8 +25,8 @@
 NNCache::NNCache(int size) : m_size(size) {}
 
 NNCache* NNCache::get_NNCache(void) {
-  static NNCache* cache = new NNCache();
-  return cache;
+    static NNCache* cache = new NNCache();
+    return cache;
 }
 
 template <class T>
@@ -45,42 +45,41 @@ static size_t compute_hash(const Network::NNPlanes& features) {
 }
 
 const Network::Netresult* NNCache::lookup(const Network::NNPlanes& features) {
-  LOCK(m_mutex, lock);
-  ++m_lookups;
+    LOCK(m_mutex, lock);
+    ++m_lookups;
 
-  size_t hash = compute_hash(features);
-  auto iter = m_cache.find(hash);
-  if (iter == m_cache.end()) return nullptr;  // Not found.
+    size_t hash = compute_hash(features);
+    auto iter = m_cache.find(hash);
+    if (iter == m_cache.end()) return nullptr;  // Not found.
 
-  const auto& entry = iter->second;
-  if (entry->features != features) {
-      // Got a hash collision.
-      ++m_collisions;
-      return nullptr;
-  }
+    const auto& entry = iter->second;
+    if (entry->features != features) {
+        // Got a hash collision.
+        ++m_collisions;
+        return nullptr;
+    }
 
-  // Found it.
-  ++m_hits;
-  return &entry->result;
+    // Found it.
+    ++m_hits;
+    return &entry->result;
 }
 
 void NNCache::insert(const Network::NNPlanes& features, const Network::Netresult& result) {
-  LOCK(m_mutex, lock);
+    LOCK(m_mutex, lock);
 
-  size_t hash = compute_hash(features);
-  if (m_cache.count(hash)) return;  // Already in the cache.
+    size_t hash = compute_hash(features);
+    if (m_cache.count(hash)) return;  // Already in the cache.
 
-  m_cache.emplace(hash, std::make_unique<Entry>(features, result));
-  m_order.push_back(hash);
-  ++m_inserts;
+    m_cache.emplace(hash, std::make_unique<Entry>(features, result));
+    m_order.push_back(hash);
+    ++m_inserts;
 
 
-  // If the cache is too large, remove the oldest entry.
-  if (m_order.size() > m_size) {
-      m_cache.erase(m_order.front());
-      m_order.pop_front();
-  }
-
+    // If the cache is too large, remove the oldest entry.
+    if (m_order.size() > m_size) {
+        m_cache.erase(m_order.front());
+        m_order.pop_front();
+    }
 }
 
 void NNCache::dump_stats() {
