@@ -275,15 +275,33 @@ void Network::initialize(void) {
         linecount++;
     }
     wtfile.close();
-#ifdef USE_OPENCL
-    // input
+
     size_t weight_index = 0;
+
+    //Winograd transform convolution weights
     std::vector<float> U(16*18*channels);
 
+    //Input convolution
     winograd_transform_f(conv_weights[weight_index], U, channels, 18);
+    conv_weights[weight_index] = U;
+
+    weight_index++;
+
+    for (auto i = size_t{0}; i < residual_blocks; i++) {
+        std::vector<float> U1(16*channels*channels);
+        std::vector<float> U2(16*channels*channels);
+        winograd_transform_f(conv_weights[weight_index], U1, channels, channels);
+		conv_weights[weight_index] = U1;
+        winograd_transform_f(conv_weights[weight_index + 1], U2, channels, channels);
+		conv_weights[weight_index + 1] = U2;
+        weight_index += 2;
+    }
+
+#ifdef USE_OPENCL
+    weight_index = 0;
 
     //Winograd filter transformation changes filter size to 4x4
-    opencl_net.push_convolve(4, U,
+    opencl_net.push_convolve(4, conv_weights[weight_index],
                                 conv_biases[weight_index]);
     opencl_net.push_batchnorm(361, batchnorm_means[weight_index],
                                    batchnorm_stddivs[weight_index]);
@@ -291,16 +309,11 @@ void Network::initialize(void) {
 
     // residual blocks
     for (auto i = size_t{0}; i < residual_blocks; i++) {
-        std::vector<float> U1(16*channels*channels);
-        std::vector<float> U2(16*channels*channels);
-        winograd_transform_f(conv_weights[weight_index], U1, channels, channels);
-        winograd_transform_f(conv_weights[weight_index + 1], U2, channels, channels);
-
-        opencl_net.push_residual(4, U1,
+        opencl_net.push_residual(4, conv_weights[weight_index],
                                     conv_biases[weight_index],
                                     batchnorm_means[weight_index],
                                     batchnorm_stddivs[weight_index],
-                                    U2,
+                                    conv_weights[weight_index + 1],
                                     conv_biases[weight_index + 1],
                                     batchnorm_means[weight_index + 1],
                                     batchnorm_stddivs[weight_index + 1]);
@@ -326,6 +339,173 @@ void Network::initialize(void) {
 }
 
 #ifdef USE_BLAS
+void winograd_transform_in(const std::vector<float>& in, std::vector<float>& V,
+        const int C) {
+
+    constexpr auto W = 19;
+    constexpr auto H = 19;
+    constexpr auto wtiles = (W + 1) / 2;
+    constexpr auto P = wtiles*wtiles;
+
+    for (auto ch = 0; ch < C; ch++) {
+        for (auto block_y = 0; block_y < wtiles; block_y++) {
+            for (auto block_x = 0; block_x < wtiles; block_x++) {
+
+                //Tiles overlap by 2
+                const int yin = 2 * block_y - 1;
+                const int xin = 2 * block_x - 1;
+
+                //Cache input tile and handle zero padding
+                float x[4][4];
+                for (int i = 0; i < 4; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        if ((yin+i) >= 0 && (xin+j) >= 0 && (yin+i) < H && (xin+j) < W) {
+                            x[i][j] = in[ch*(W*H) + (yin+i)*W + (xin+j)];
+                        } else {
+                            x[i][j] = 0.0f;
+                        }
+                    }
+                }
+
+                const int offset = ch*P + block_y*wtiles + block_x;
+
+                float T1[4][4];
+                float T2[4][4];
+
+                T1[0][0] = x[0][0] - x[2][0];
+                T1[0][1] = x[0][1] - x[2][1];
+                T1[0][2] = x[0][2] - x[2][2];
+                T1[0][3] = x[0][3] - x[2][3];
+                T1[1][0] = x[1][0] + x[2][0];
+                T1[1][1] = x[1][1] + x[2][1];
+                T1[1][2] = x[1][2] + x[2][2];
+                T1[1][3] = x[1][3] + x[2][3];
+                T1[2][0] = x[2][0] - x[1][0];
+                T1[2][1] = x[2][1] - x[1][1];
+                T1[2][2] = x[2][2] - x[1][2];
+                T1[2][3] = x[2][3] - x[1][3];
+                T1[3][0] = x[1][0] - x[3][0];
+                T1[3][1] = x[1][1] - x[3][1];
+                T1[3][2] = x[1][2] - x[3][2];
+                T1[3][3] = x[1][3] - x[3][3];
+
+                T2[0][0] = T1[0][0] - T1[0][2];
+                T2[0][1] = T1[0][1] + T1[0][2];
+                T2[0][2] = T1[0][2] - T1[0][1];
+                T2[0][3] = T1[0][1] - T1[0][3];
+                T2[1][0] = T1[1][0] - T1[1][2];
+                T2[1][1] = T1[1][1] + T1[1][2];
+                T2[1][2] = T1[1][2] - T1[1][1];
+                T2[1][3] = T1[1][1] - T1[1][3];
+                T2[2][0] = T1[2][0] - T1[2][2];
+                T2[2][1] = T1[2][1] + T1[2][2];
+                T2[2][2] = T1[2][2] - T1[2][1];
+                T2[2][3] = T1[2][1] - T1[2][3];
+                T2[3][0] = T1[3][0] - T1[3][2];
+                T2[3][1] = T1[3][1] + T1[3][2];
+                T2[3][2] = T1[3][2] - T1[3][1];
+                T2[3][3] = T1[3][1] - T1[3][3];
+
+                for (int i = 0; i < 4; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        V[(i*4 + j)*C*P + offset] = T2[i][j];
+                    }
+                }
+            }
+        }
+    }
+}
+
+void winograd_sgemm(const std::vector<float>& U, std::vector<float>& V,
+        std::vector<float>& M, const int C, const int K) {
+
+    constexpr auto P = (19 + 1) * (19 + 1)/4;
+
+    for (auto b = 0; b < 16; b++) {
+
+        auto offset_u = b*K*C;
+        auto offset_v = b*C*P;
+        auto offset_m = b*K*P;
+
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                    K, P, C,
+                    1.0f,
+                    &U[offset_u], C,
+                    &V[offset_v], P,
+                    0.0f,
+                    &M[offset_m], P);
+    }
+}
+
+void winograd_transform_out(const std::vector<float>& M, std::vector<float>& Y,
+        const int K) {
+
+    constexpr auto W = 19;
+    constexpr auto H = 19;
+    constexpr auto wtiles = (W + 1) / 2;
+    constexpr auto P = wtiles*wtiles;
+
+    for (auto k = 0; k < K; k++) {
+        for (auto block_x = 0; block_x < wtiles; block_x++) {
+            for (auto block_y = 0; block_y < wtiles; block_y++) {
+
+                int x = 2*block_x;
+                int y = 2*block_y;
+
+                int b = block_y * wtiles + block_x;
+                float temp_m[16];
+                for (int xi = 0; xi < 4; xi++) {
+                    for (int nu = 0; nu < 4; nu++) {
+                        temp_m[xi*4 + nu] = M[xi*(4*K*P) + nu*(K*P)+ k*P + b];
+                    }
+                }
+
+                float o11 = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
+                            temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
+                            temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
+
+                float o12 = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
+                            temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
+                            temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
+
+                float o21 = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
+                            temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
+                            temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
+
+                float o22 = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
+                            temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
+                            temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
+
+                Y[k*(H*W) + (y)*W + (x)] = o11;
+                if (x+1 < W) {
+                    Y[k*(H*W) + (y)*W + (x+1)] = o12;
+                }
+                if (y+1 < H) {
+                    Y[k*(H*W) + (y+1)*W + (x)] = o21;
+                    if (x+1 < W) {
+                        Y[k*(H*W) + (y+1)*W + (x+1)] = o22;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void winograd_convolve3(const int outputs,
+              const std::vector<float>& input,
+              const std::vector<float>& U,
+              std::vector<float>& V,
+              std::vector<float>& M,
+              std::vector<float>& output) {
+
+    constexpr unsigned int filter_len = 4 * 4;
+    const auto input_channels = U.size() / (outputs * filter_len);
+
+    winograd_transform_in(input, V, input_channels);
+    winograd_sgemm(U, V, M, input_channels, outputs);
+    winograd_transform_out(M, output, outputs);
+}
+
 template<unsigned int filter_size>
 void convolve(size_t outputs,
               const std::vector<net_t>& input,
@@ -437,12 +617,19 @@ void Network::forward_cpu(std::vector<float>& input,
     // Input convolution
     constexpr int width = 19;
     constexpr int height = 19;
+    constexpr int tiles = (width + 1) * (height + 1) / 4;
     // Calculate output channels
     const auto output_channels = conv_biases[0].size();
+    //Assumes that residual blocks are identical and have same
+    //number of inputs and outputs
+
+    const auto input_channels = output_channels;
     auto conv_out = std::vector<float>(output_channels * width * height);
 
-    convolve<3>(output_channels, input,
-                conv_weights[0], conv_biases[0], conv_out);
+    auto V = std::vector<float>(16*input_channels*tiles);
+    auto M = std::vector<float>(16*output_channels*tiles);
+
+    winograd_convolve3(output_channels, input, conv_weights[0], V, M, conv_out);
     batchnorm<361>(output_channels, conv_out,
                    batchnorm_means[0].data(),
                    batchnorm_stddivs[0].data());
@@ -454,18 +641,16 @@ void Network::forward_cpu(std::vector<float>& input,
         auto output_channels = conv_biases[i].size();
         std::swap(conv_out, conv_in);
         std::copy(begin(conv_in), end(conv_in), begin(res));
-        convolve<3>(output_channels, conv_in,
-                    conv_weights[i], conv_biases[i],
-                    conv_out);
+        winograd_convolve3(output_channels, conv_in,
+	                   conv_weights[i], V, M, conv_out);
         batchnorm<361>(output_channels, conv_out,
                        batchnorm_means[i].data(),
                        batchnorm_stddivs[i].data());
 
         output_channels = conv_biases[i + 1].size();
         std::swap(conv_out, conv_in);
-        convolve<3>(output_channels, conv_in,
-                    conv_weights[i + 1], conv_biases[i + 1],
-                    conv_out);
+        winograd_convolve3(output_channels, conv_in,
+			   conv_weights[i + 1], V, M, conv_out);
         batchnorm<361>(output_channels, conv_out,
                        batchnorm_means[i + 1].data(),
                        batchnorm_stddivs[i + 1].data(),
