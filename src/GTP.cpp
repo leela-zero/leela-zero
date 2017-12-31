@@ -309,16 +309,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
             cmdstream >> vertex;
 
             if (!cmdstream.fail()) {
-				int c = game.parse_player(color);
-				int m = game.parse_move(vertex);
-                if (c==-1 || m==-1) {
+                if (!game.play_textmove(color, vertex)) {
                     gtp_fail_printf(id, "illegal move");
                 } else {
-					if (game.get_to_move() != c) {
-						gtp_printf(id, "player overridden, pass inserted");
-						game.play_pass();
-					}
-					game.play_move(c, m);
                     gtp_printf(id, "");
                 }
             } else {
@@ -348,15 +341,8 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
                 auto search = std::make_unique<UCTSearch>(game);
 
-				int move;
-				if (game.get_to_move() != who) {
-					gtp_printf(id, "player overridden, pass inserted");
-					game.play_pass();
-					move = search->think(who, UCTSearch::NOPASS);
-				}
-				else {
-					move = search->think(who);
-				}
+				game.set_to_move(who);
+				int move = search->think(who);
                 game.play_move(who, move);
 
                 std::string vertex = game.move_to_text(move);

@@ -93,6 +93,7 @@ void GameState::play_pass() {
 }
 
 void GameState::play_move(int color, int vertex) {
+	set_to_move(color);
     if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
         KoState::play_move(color, vertex);
     } else if (vertex == FastBoard::PASS) {
