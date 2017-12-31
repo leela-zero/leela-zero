@@ -652,8 +652,8 @@ void Network::fill_input_plane_pair(const FullBoard& board,
 
 void Network::gather_features(const GameState* state, NNPlanes & planes) {
     planes.resize(INPUT_CHANNELS);
-    BoardPlane& black_to_move  = planes[16];
-    BoardPlane& white_to_move  = planes[17];
+    BoardPlane& black_to_move  = planes[2 * INPUT_MOVES];
+    BoardPlane& white_to_move  = planes[2 * INPUT_MOVES + 1];
 
     const auto to_move = state->get_to_move();
     const auto blacks_move = to_move == FastBoard::BLACK;
@@ -667,14 +667,13 @@ void Network::gather_features(const GameState* state, NNPlanes & planes) {
         white_to_move.set();
     }
 
-    const auto moves = std::min<int>(state->get_movenum() + 1, INPUT_MOVES);
-    for (auto h = 0; h < moves; h++) {
+    const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_CHANNELS);
+    for (auto h = size_t{0}; h < moves; h++) {
         fill_input_plane_pair(state->get_past_state(h)->board,
                               planes[black_offset + h],
                               planes[white_offset + h]);
     }
 }
-
 
 int Network::rotate_nn_idx(const int vertex, int symmetry) {
     assert(vertex >= 0 && vertex < 19*19);

@@ -47,7 +47,6 @@ public:
     void set_passes(int val);
     void increment_passes();
 
-    int estimate_mc_score();
     float final_score();
 
     size_t get_movenum() const;

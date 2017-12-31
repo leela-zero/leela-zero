@@ -38,7 +38,6 @@ int FullBoard::remove_string(int i) {
 
         m_square[pos] = EMPTY;
         m_parent[pos] = MAXSQ;
-        m_totalstones[color]--;
 
         remove_neighbour(pos, color);
 
@@ -112,7 +111,6 @@ int FullBoard::update_board(const int color, const int i) {
     m_parent[i] = i;
     m_libs[i] = count_pliberties(i);
     m_stones[i] = 1;
-    m_totalstones[color]++;
 
     m_hash ^= Zobrist::zobrist[m_square[i]][i];
     m_ko_hash ^= Zobrist::zobrist[m_square[i]][i];
