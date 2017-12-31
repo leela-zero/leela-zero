@@ -61,7 +61,7 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("playouts,p", po::value<int>(),
                        "Weaken engine by limiting the number of playouts. "
                        "Requires --noponder.")
-        ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_ms),
+        ("lagbuffer_ms,b", po::value<int>()->default_value(cfg_lagbuffer_ms),
                         "Safety margin for time usage in milliseconds.")
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
                         "Resign when winrate is less than x%.")
@@ -203,11 +203,11 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         cfg_random_cnt = vm["randomcnt"].as<int>();
     }
 
-    if (vm.count("lagbuffer")) {
-        int lagbuffer = vm["lagbuffer"].as<int>();
-        if (lagbuffer != cfg_lagbuffer_ms) {
-            myprintf("Using per-move time margin of %.3fs.\n", lagbuffer/1000.0f);
-            cfg_lagbuffer_ms = lagbuffer;
+    if (vm.count("lagbuffer_ms")) {
+        int lagbuffer_ms = vm["lagbuffer_ms"].as<int>();
+        if (lagbuffer_ms != cfg_lagbuffer_ms) {
+            myprintf("Using per-move time margin of %.3fs.\n", lagbuffer_ms/1000.0f);
+            cfg_lagbuffer_ms = lagbuffer_ms;
         }
     }
 
