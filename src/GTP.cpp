@@ -30,6 +30,7 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "FastBoard.h"
@@ -37,7 +38,6 @@
 #include "GameState.h"
 #include "Network.h"
 #include "SGFTree.h"
-#include "SMP.h"
 #include "Training.h"
 #include "UCTSearch.h"
 #include "Utils.h"
@@ -67,7 +67,8 @@ bool cfg_quiet;
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
-    cfg_num_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
+    int num_cpus = std::thread::hardware_concurrency();
+    cfg_num_threads = std::max(1, std::min(num_cpus, MAX_CPUS));
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL

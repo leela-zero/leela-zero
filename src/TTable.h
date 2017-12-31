@@ -21,9 +21,9 @@
 
 #include "config.h"
 
+#include <mutex>
 #include <vector>
 
-#include "SMP.h"
 #include "UCTNode.h"
 
 class TTEntry {
@@ -55,7 +55,7 @@ public:
 private:
     TTable(int size = 500000);
 
-    SMP::Mutex m_mutex;
+    std::mutex m_mutex;
     std::vector<TTEntry> m_buckets;
     float m_komi;
 };
