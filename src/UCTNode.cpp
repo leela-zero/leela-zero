@@ -159,7 +159,7 @@ void UCTNode::kill_superkos(const KoState& state) {
 
 float UCTNode::eval_state(GameState& state) {
     auto raw_netlist = Network::get_scored_moves(
-        &state, Network::Ensemble::RANDOM_ROTATION, 0, true);
+        &state, Network::Ensemble::RANDOM_ROTATION, -1, true);
 
     // DCNN returns winrate as side to move
     auto net_eval = raw_netlist.second;

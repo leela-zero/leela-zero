@@ -98,7 +98,7 @@ void Network::benchmark(GameState * state, int iterations) {
         tg.add_task([iters_per_thread, state]() {
             GameState mystate = *state;
             for (int loop = 0; loop < iters_per_thread; loop++) {
-                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION, 0, true);
+                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION, -1, true);
             }
         });
     };
