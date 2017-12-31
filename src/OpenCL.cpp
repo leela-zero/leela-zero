@@ -600,8 +600,9 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
     // a null input pointer means we just want to test if the task runs
+    std::vector<net_t> interleaved_input;
     if(inputs != nullptr) {
-        std::vector<net_t> interleaved_input(inputs[0]->size() * batch_size);
+        interleaved_input.reserve(inputs[0]->size() * batch_size);
         for(unsigned int j=0; j<batch_size; j++) {
             if(inputs[j] != nullptr) {
                 for(size_t i=0; i<inputs[0]->size(); i++) {
