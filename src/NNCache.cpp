@@ -25,13 +25,12 @@
 NNCache::NNCache(int size) : m_size(size) {}
 
 NNCache* NNCache::get_NNCache(void) {
-    static NNCache* cache = new NNCache();
-    return cache;
+    static NNCache cache;
+    return &cache;
 }
 
 template <class T>
-inline size_t hash_combine(size_t seed, const T& v)
-{
+inline size_t hash_combine(size_t seed, const T& v) {
       std::hash<T> hasher;
       return seed ^ (hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2));
 }
@@ -45,7 +44,7 @@ static size_t compute_hash(const Network::NNPlanes& features) {
 }
 
 const Network::Netresult* NNCache::lookup(const Network::NNPlanes& features) {
-    LOCK(m_mutex, lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
     ++m_lookups;
 
     size_t hash = compute_hash(features);
@@ -65,10 +64,10 @@ const Network::Netresult* NNCache::lookup(const Network::NNPlanes& features) {
 }
 
 void NNCache::insert(const Network::NNPlanes& features, const Network::Netresult& result) {
-    LOCK(m_mutex, lock);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     size_t hash = compute_hash(features);
-    if (m_cache.count(hash)) return;  // Already in the cache.
+    if (m_cache.find(hash) != m_cache.end()) return;  // Already in the cache.
 
     m_cache.emplace(hash, std::make_unique<Entry>(features, result));
     m_order.push_back(hash);

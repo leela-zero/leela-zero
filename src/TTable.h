@@ -23,6 +23,7 @@
 
 #include <mutex>
 #include <vector>
+
 #include "UCTNode.h"
 
 class TTEntry {
