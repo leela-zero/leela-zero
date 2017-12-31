@@ -26,8 +26,8 @@ public:
     /* sets to current time */
     Time(void);
 
-    /* time difference in centiseconds */
-    static int timediff_centis(Time start, Time end);
+    /* time difference in milliseconds */
+    static int timediff_ms(Time start, Time end);
 
     /* time difference in seconds */
     static double timediff_seconds(Time start, Time end);

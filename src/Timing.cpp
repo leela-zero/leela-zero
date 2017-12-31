@@ -21,9 +21,9 @@
 #include <chrono>
 
 
-int Time::timediff_centis(Time start, Time end) {
+int Time::timediff_ms(Time start, Time end) {
     return std::chrono::duration_cast<std::chrono::milliseconds>
-        (end.m_time - start.m_time).count() / 10;
+        (end.m_time - start.m_time).count();
 }
 
 double Time::timediff_seconds(Time start, Time end) {

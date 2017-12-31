@@ -48,7 +48,7 @@ using namespace Utils;
 bool cfg_allow_pondering;
 int cfg_num_threads;
 int cfg_max_playouts;
-int cfg_lagbuffer_cs;
+int cfg_lagbuffer_ms;
 int cfg_resignpct;
 int cfg_noise;
 int cfg_random_cnt;
@@ -70,7 +70,7 @@ void GTP::setup_default_parameters() {
     int num_cpus = std::thread::hardware_concurrency();
     cfg_num_threads = std::max(1, std::min(num_cpus, MAX_CPUS));
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
-    cfg_lagbuffer_cs = 100;
+    cfg_lagbuffer_ms = 1000;
 #ifdef USE_OPENCL
     cfg_gpus = { };
     cfg_rowtiles = 5;
@@ -437,8 +437,8 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> tmp >> maintime >> byotime >> byostones;
 
         if (!cmdstream.fail()) {
-            // convert to centiseconds and set
-            game.set_timecontrol(maintime * 100, byotime * 100, byostones, 0);
+            // convert to milliseconds and set
+            game.set_timecontrol(maintime * 1000, byotime * 1000, byostones, 0);
 
             gtp_printf(id, "");
         } else {
@@ -464,7 +464,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 return 1;
             }
 
-            game.adjust_time(icolor, time * 100, stones);
+            game.adjust_time(icolor, time * 1000, stones);
 
             gtp_printf(id, "");
 
@@ -630,18 +630,18 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         if (tc_type.find("none") != std::string::npos) {
             // 30 mins
-            game.set_timecontrol(30 * 60 * 100, 0, 0, 0);
+            game.set_timecontrol(30 * 60 * 1000, 0, 0, 0);
         } else if (tc_type.find("absolute") != std::string::npos) {
             cmdstream >> maintime;
-            game.set_timecontrol(maintime * 100, 0, 0, 0);
+            game.set_timecontrol(maintime * 1000, 0, 0, 0);
         } else if (tc_type.find("canadian") != std::string::npos) {
             cmdstream >> maintime >> byotime >> byostones;
-            // convert to centiseconds and set
-            game.set_timecontrol(maintime * 100, byotime * 100, byostones, 0);
+            // convert to milliseconds and set
+            game.set_timecontrol(maintime * 1000, byotime * 1000, byostones, 0);
         } else if (tc_type.find("byoyomi") != std::string::npos) {
             // KGS style Fischer clock
             cmdstream >> maintime >> byotime >> byoperiods;
-            game.set_timecontrol(maintime * 100, byotime * 100, 0, byoperiods);
+            game.set_timecontrol(maintime * 1000, byotime * 1000, 0, byoperiods);
         } else {
             gtp_fail_printf(id, "syntax not understood");
             return true;
