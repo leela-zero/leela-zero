@@ -104,8 +104,6 @@ void FastBoard::reset_board(int size) {
     m_tomove = BLACK;
     m_prisoners[BLACK] = 0;
     m_prisoners[WHITE] = 0;
-    m_totalstones[BLACK] = 0;
-    m_totalstones[WHITE] = 0;
     m_empty_cnt = 0;
 
     m_dirs[0] = -m_squaresize;
@@ -298,40 +296,6 @@ float FastBoard::area_score(float komi) const {
     }
 
     return score;
-}
-
-int FastBoard::estimate_mc_score(float komi) const {
-    int wsc, bsc;
-
-    bsc = m_totalstones[BLACK];
-    wsc = m_totalstones[WHITE];
-
-    return bsc-wsc-((int)komi)+1;
-}
-
-float FastBoard::final_mc_score(float komi) const {
-    int wsc, bsc;
-    int maxempty = m_empty_cnt;
-
-    bsc = m_totalstones[BLACK];
-    wsc = m_totalstones[WHITE];
-
-    for (int v = 0; v < maxempty; v++) {
-        int i = m_empty[v];
-
-        assert(m_square[i] == EMPTY);
-
-        int allblack = ((m_neighbours[i] >> (NBR_SHIFT * BLACK)) & 7) == 4;
-        int allwhite = ((m_neighbours[i] >> (NBR_SHIFT * WHITE)) & 7) == 4;
-
-        if (allwhite) {
-            wsc++;
-        } else if (allblack) {
-            bsc++;
-        }
-    }
-
-    return (float)(bsc)-((float)(wsc)+komi);
 }
 
 void FastBoard::display_board(int lastmove) {
