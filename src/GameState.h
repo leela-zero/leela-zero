@@ -28,7 +28,6 @@
 #include "KoState.h"
 #include "TimeControl.h"
 
-// Class invariant: 
 class GameState : public KoState {
 public:
     explicit GameState() = default;
@@ -52,8 +51,6 @@ public:
     void play_move(int vertex);
     void play_pass();
     bool play_textmove(std::string color, std::string vertex);
-    int parse_player(std::string color);
-    int parse_move(std::string vertex);
 
     void start_clock(int color);
     void stop_clock(int color);

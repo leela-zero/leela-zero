@@ -106,39 +106,33 @@ void GameState::play_move(int color, int vertex) {
     game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
-int GameState::parse_player(std::string color) {
-    if (color == "w" || color == "white") {
-        return FullBoard::WHITE;
-    }
-    else if (color == "b" || color == "black") {
-        return FullBoard::BLACK;
-    }
-    else return -1;
-}
-
-int GameState::parse_move(std::string vertex) {
+bool GameState::play_textmove(std::string color, std::string vertex) {
+    int who;
     int column, row;
     int boardsize = board.get_boardsize();
 
-    if (vertex.size() < 2) return -1;
-    if (!std::isalpha(vertex[0])) return -1;
-    if (!std::isdigit(vertex[1])) return -1;
-    if (vertex[0] == 'i') return -1;
+    if (color == "w" || color == "white") {
+        who = FullBoard::WHITE;
+    } else if (color == "b" || color == "black") {
+        who = FullBoard::BLACK;
+    } else return false;
+
+    if (vertex.size() < 2) return 0;
+    if (!std::isalpha(vertex[0])) return 0;
+    if (!std::isdigit(vertex[1])) return 0;
+    if (vertex[0] == 'i') return 0;
 
     if (vertex[0] >= 'A' && vertex[0] <= 'Z') {
         if (vertex[0] < 'I') {
             column = 25 + vertex[0] - 'A';
+        } else {
+            column = 25 + (vertex[0] - 'A')-1;
         }
-        else {
-            column = 25 + (vertex[0] - 'A') - 1;
-        }
-    }
-    else {
+    } else {
         if (vertex[0] < 'i') {
             column = vertex[0] - 'a';
-        }
-        else {
-            column = (vertex[0] - 'a') - 1;
+        } else {
+            column = (vertex[0] - 'a')-1;
         }
     }
 
@@ -149,17 +143,10 @@ int GameState::parse_move(std::string vertex) {
     parsestream >> row;
     row--;
 
-    if (row >= boardsize) return -1;
-    if (column >= boardsize) return -1;
+    if (row >= boardsize) return false;
+    if (column >= boardsize) return false;
 
-    return board.get_vertex(column, row);
-}
-
-bool GameState::play_textmove(std::string color, std::string vertex) {
-    int who = parse_player(color);
-    if (who == -1) return false;
-    int move = parse_move(vertex);
-    if (move == -1) return false;
+    int move = board.get_vertex(column, row);
 
     set_to_move(who);
     play_move(who, move);
