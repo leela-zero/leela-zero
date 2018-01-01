@@ -70,12 +70,12 @@
  */
 // #define USE_TUNER
 /*
- * SGEMM_TUNERS: CLBlast xgemm_direct OpenCL kernel tuner values.
+ * SGEMM_TUNERS: CLBlast xgemm OpenCL kernel tuner values.
  * To tune SGEMM for your GPU download CLBlast, compile it with tuners enabled
- * and run "./clblast_tuner_xgemm_direct -m 128 -n 128 -k 128 -alpha 1 -beta 0".
+ * and run "./clblast_tuner_xgemm -m 128 -n 128 -k 128 -alpha 1 -beta 0".
  * After tuning is done copy the found parameters here.
  */
-#define SGEMM_TUNERS "KWID=16 MDIMAD=8 MDIMCD=8 NDIMBD=16 NDIMCD=16 PADA=1 PADB=1 PRECISION=32 VWMD=2 VWND=2 WGD=32"
+#define SGEMM_TUNERS "KWG=32 KWI=2 MDIMA=8 MDIMC=8 MWG=16 NDIMB=16 NDIMC=16 NWG=64 PRECISION=32 SA=1 SB=1 STRM=0 STRN=0 VWM=2 VWN=4"
 
 #define PROGRAM_NAME "Leela Zero"
 #define PROGRAM_VERSION "0.10.1"

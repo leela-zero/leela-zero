@@ -65,6 +65,9 @@ private:
       const FullBoard& board, BoardPlane& black, BoardPlane& white);
     static void winograd_transform_f(const std::vector<float>& f, std::vector<float>& U,
         const int outputs, const int channels);
+    static void zeropad_U(const std::vector<float>& U, std::vector<float>& Upad,
+        const int outputs, const int channels,
+        const int outputs_pad, const int channels_pad);
     static Netresult get_scored_moves_internal(
       const GameState* state, NNPlanes & planes, int rotation);
     static int rotate_nn_idx(const int vertex, int symmetry);
