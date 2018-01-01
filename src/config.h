@@ -75,7 +75,7 @@
  * and run "./clblast_tuner_xgemm_direct -m 128 -n 128 -k 128 -alpha 1 -beta 0".
  * After tuning is done copy the found parameters here.
  */
-#define SGEMM_TUNERS "KWID=16 MDIMAD=8 MDIMCD=8 NDIMBD=16 NDIMCD=16 PADA=1 PADB=1 PRECISION=32 VWMD=1 VWND=1 WGD=32"
+#define SGEMM_TUNERS "KWID=16 MDIMAD=8 MDIMCD=8 NDIMBD=16 NDIMCD=16 PADA=1 PADB=1 PRECISION=32 VWMD=2 VWND=2 WGD=32"
 
 #define PROGRAM_NAME "Leela Zero"
 #define PROGRAM_VERSION "0.9"

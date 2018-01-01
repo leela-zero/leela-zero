@@ -308,7 +308,7 @@ void OpenCL::ensure_thread_initialized() {
     if (!opencl_thread_data.m_is_initialized) {
         // Make kernels
         opencl_thread_data.m_in_transform_kernel = cl::Kernel(m_program, "in_transform");
-        opencl_thread_data.m_sgemm_kernel = cl::Kernel(m_program, "XgemmDirectBatchedTN");
+        opencl_thread_data.m_sgemm_kernel = cl::Kernel(m_program, "XgemmDirectBatchedNN");
         opencl_thread_data.m_out_transform_kernel = cl::Kernel(m_program, "out_transform");
         opencl_thread_data.m_out_transform_bn_kernel = cl::Kernel(m_program, "out_transform_fused_bn");
         opencl_thread_data.m_batchnorm_kernel = cl::Kernel(m_program, "batchnorm");
@@ -703,6 +703,7 @@ void OpenCL::initialize(void) {
                 best_version = opencl_version;
                 best_platform = p;
                 best_device = d;
+                best_vendor = this_vendor;
                 if (preferred) {
                     best_score = std::numeric_limits<decltype(best_score)>::max();
                 } else {
@@ -738,8 +739,18 @@ void OpenCL::initialize(void) {
     //std::string sourceCode(std::istreambuf_iterator<char>(sourceFile),
     //                       (std::istreambuf_iterator<char>()));
 
+    std::string header;
+    if (boost::icontains(best_vendor, "nvidia")) {
+        header = "#define USE_INLINE_KEYWORD\n";
+    }
+    else if (boost::icontains(best_vendor, "amd") ||
+        boost::icontains(best_vendor, "advanced micro devices")) {
+            header = "#define USE_STAGGERED_INDICES 1\n";
+    }
+
     // Make program of the source code in the context
-	std::string sourceCode_sgemm =
+	std::string sourceCode_sgemm = header;
+	sourceCode_sgemm +=
         #include "clblast_level3/common.opencl"
         #include "clblast_level3/level3.opencl"
         #include "clblast_level3/xgemm_direct_part1.opencl"
