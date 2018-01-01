@@ -149,7 +149,7 @@ void Network::winograd_transform_f(const std::vector<float>& f, std::vector<floa
                     for (int k = 0; k < 3; k++) {
                         acc += temp[xi*3 + k] * G[nu*3 + k];
                     }
-                    U[xi*(4*outputs*channels) + nu*(outputs*channels) + o*channels + c] = acc;
+                    U[xi*(4*outputs*channels) + nu*(outputs*channels) + c*outputs + o] = acc;
                 }
             }
         }
@@ -427,10 +427,10 @@ void winograd_sgemm(const std::vector<float>& U, std::vector<float>& V,
         auto offset_v = b*C*P;
         auto offset_m = b*K*P;
 
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+        cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
                     K, P, C,
                     1.0f,
-                    &U[offset_u], C,
+                    &U[offset_u], K,
                     &V[offset_v], P,
                     0.0f,
                     &M[offset_m], P);
