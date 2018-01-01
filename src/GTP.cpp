@@ -30,6 +30,7 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "FastBoard.h"
@@ -37,7 +38,6 @@
 #include "GameState.h"
 #include "Network.h"
 #include "SGFTree.h"
-#include "SMP.h"
 #include "Training.h"
 #include "UCTSearch.h"
 #include "Utils.h"
@@ -67,7 +67,8 @@ bool cfg_quiet;
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
-    cfg_num_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
+    int num_cpus = std::thread::hardware_concurrency();
+    cfg_num_threads = std::max(1, std::min(num_cpus, MAX_CPUS));
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL
@@ -407,17 +408,6 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("showboard") == 0) {
         gtp_printf(id, "");
         game.display_state();
-        return true;
-    } else if (command.find("mc_score") == 0) {
-        float ftmp = game.board.final_mc_score(game.get_komi());
-        /* white wins */
-        if (ftmp < -0.1) {
-            gtp_printf(id, "W+%3.1f", (float)fabs(ftmp));
-        } else if (ftmp > 0.1) {
-            gtp_printf(id, "B+%3.1f", ftmp);
-        } else {
-            gtp_printf(id, "0");
-        }
         return true;
     } else if (command.find("final_score") == 0) {
         float ftmp = game.final_score();
