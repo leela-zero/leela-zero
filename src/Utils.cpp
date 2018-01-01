@@ -167,3 +167,11 @@ void Utils::log_input(std::string input) {
         fprintf(cfg_logfile_handle, ">>%s\n", input.c_str());
     }
 }
+
+size_t Utils::lcm(size_t a, size_t b) {
+    if (a % b == 0) {
+        return a;
+    }
+    size_t ret = a + (b - a % b);
+    return ret;
+}

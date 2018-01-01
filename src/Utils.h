@@ -50,6 +50,8 @@ namespace Utils {
     inline bool is7bit(int c) {
         return c >= 0 && c <= 127;
     }
+
+    size_t lcm(size_t a, size_t b);
 }
 
 #endif
