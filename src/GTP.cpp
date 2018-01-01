@@ -338,12 +338,11 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
             // start thinking
             {
-
                 auto search = std::make_unique<UCTSearch>(game);
 
-				game.set_to_move(who);
-				int move = search->think(who);
-                game.play_move(who, move);
+                game.set_to_move(who);
+                int move = search->think(who);
+                game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
@@ -380,8 +379,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
             {
                 auto search = std::make_unique<UCTSearch>(game);
 
+				game.set_to_move(who);
                 int move = search->think(who, UCTSearch::NOPASS);
-                game.play_move(who, move);
+				game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
