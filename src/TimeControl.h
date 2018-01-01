@@ -20,6 +20,7 @@
 #define TIMECONTROL_H_INCLUDED
 
 #include <array>
+
 #include "Timing.h"
 
 class TimeControl {
@@ -42,6 +43,8 @@ public:
     void reset_clocks();
 
 private:
+    void display_color_time(int color);
+
     int m_maintime;
     int m_byotime;
     int m_byostones;

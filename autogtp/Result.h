@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,24 +16,31 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef TIMING_H_INCLUDED
-#define TIMING_H_INCLUDED
+#ifndef RESULT_H
+#define RESULT_H
 
-#include <chrono>
+#include <QString>
+#include <QMap>
 
-class Time {
+class Result {
 public:
-    /* sets to current time */
-    Time(void);
-
-    /* time difference in centiseconds */
-    static int timediff_centis(Time start, Time end);
-
-    /* time difference in seconds */
-    static double timediff_seconds(Time start, Time end);
-
+    enum Type {
+        File = 0,
+        Win,
+        Loss,
+        Error
+    };
+    Result() = default;
+    Result(int t, QMap<QString,QString> n = QMap<QString,QString>()) { m_type = t, m_parameters = n; }
+    ~Result() = default;
+    void type(int t) { m_type = t; }
+    int type() { return m_type; }
+    void add(const QString &name, const QString &value) { m_parameters[name] = value; }
+    QMap<QString,QString> parameters() { return m_parameters; }
+    void clear() { m_parameters.clear(); }
 private:
-    std::chrono::steady_clock::time_point m_time;
+    int m_type;
+    QMap<QString,QString> m_parameters;
 };
 
-#endif
+#endif // RESULT_H

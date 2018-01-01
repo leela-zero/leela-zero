@@ -642,10 +642,10 @@ namespace half_float
 			if(exp > 16)
 			{
 				if(R == std::round_toward_infinity)
-					return hbits | 0x7C00 - (hbits>>15);
+					return hbits | (0x7C00 - (hbits>>15));
 				else if(R == std::round_toward_neg_infinity)
-					return hbits | 0x7BFF + (hbits>>15);
-				return hbits | 0x7BFF + (R!=std::round_toward_zero);
+					return hbits | (0x7BFF + (hbits>>15));
+				return hbits | (0x7BFF + (R != std::round_toward_zero));
 			}
 			if(exp < -13)
 				value = std::ldexp(value, 24);

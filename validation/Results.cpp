@@ -17,7 +17,7 @@
 */
 
 #include "Results.h"
-#include "Game.h"
+#include "../autogtp/Game.h"
 #include "SPRT.h"
 #include <QString>
 #include <iostream>

@@ -20,10 +20,15 @@
 #define TRAINING_H_INCLUDED
 
 #include "config.h"
+
+#include <stddef.h>
 #include <string>
 #include <utility>
+#include <vector>
+
 #include "GameState.h"
 #include "Network.h"
+#include "UCTNode.h"
 
 class TimeStep {
 public:
@@ -59,7 +64,7 @@ public:
     static void clear_training();
     static void dump_training(int winner_color,
                               const std::string& out_filename);
-    static void dump_stats(const std::string& out_filename);
+    static void dump_debug(const std::string& out_filename);
     static void record(GameState& state, UCTNode& node);
 
     static void dump_supervised(const std::string& sgf_file,
@@ -74,7 +79,7 @@ private:
                              OutputChunker& outchunker);
     static void dump_training(int winner_color,
                               OutputChunker& outchunker);
-    static void dump_stats(OutputChunker& outchunker);
+    static void dump_debug(OutputChunker& outchunker);
     static std::vector<TimeStep> m_data;
 };
 

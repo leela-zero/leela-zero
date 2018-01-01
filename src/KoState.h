@@ -19,6 +19,8 @@
 #ifndef KOSTATE_H_INCLUDED
 #define KOSTATE_H_INCLUDED
 
+#include "config.h"
+
 #include <vector>
 
 #include "FastState.h"
@@ -28,7 +30,6 @@ class KoState : public FastState {
 public:
     void init_game(int size, float komi);
     bool superko(void) const;
-    bool superko(uint64 newhash) const;
     void reset_game();
 
     void play_pass(void);
@@ -36,8 +37,7 @@ public:
     void play_move(int vertex);
 
 private:
-    std::vector<uint64> m_ko_hash_history;
-    std::vector<uint64> m_hash_history;
+    std::vector<std::uint64_t> m_ko_hash_history;
 };
 
 #endif

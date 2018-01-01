@@ -31,6 +31,11 @@ a good network (which you can feed into this program, suddenly making it strong)
 You need a PC with a GPU, i.e. a discrete graphics card made by NVIDIA or AMD,
 preferably not too old, and with the most recent drivers installed.
 
+It is possible to run the program without a GPU, but performance will be much
+lower. If your CPU is not *very* recent (Haswell or newer, Ryzen or newer),
+performance will be outright bad, and it's probably of no use trying to join
+the distributed effort. But you can still play, especially if you are patient.
+
 ## Windows
 
 Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
@@ -53,10 +58,6 @@ It's not very strong right now (and it's trained from human games, boo!).
 It will clobber gnugo, but lose to any serious engine. Hey, you said you just
 wanted to play right now!
 
-I plan to update this network with more or better training when available - just
-feeding it into this program will make it stronger. Unzip it and specify the
-weights.txt file on the command line with the -w option.
-
 # Compiling
 
 ## Requirements
@@ -68,8 +69,10 @@ weights.txt file on the command line with the -w option.
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
 https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 * OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
-* An OpenCL capable device, preferably a very, very fast GPU, with drivers
-(OpenCL 1.2 support should be enough, even OpenCL 1.1 might work)
+* An OpenCL capable device, preferably a very, very fast GPU, with recent
+drivers is strongly recommended (OpenCL 1.2 support should be enough,
+even OpenCL 1.1 might work). If you do not have a GPU, modify config.h in the
+source and remove the line that says "#define USE_OPENCL".
 * The program has been tested on Windows, Linux and macOS.
 
 ## Example of compiling and running - Ubuntu
@@ -96,7 +99,7 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     make
     cd ..
     curl -O https://sjeng.org/zero/best_v1.txt.zip
-    unzip https://sjeng.org/zero/best_v1.txt.zip
+    unzip best_v1.txt.zip
     src/leelaz --weights weights.txt
 
 ## Example of compiling and running - Windows
@@ -252,7 +255,7 @@ If interrupted, training can be resumed with:
 - [ ] List of package names for more distros
 - [x] A real build system like CMake would nice
 - [x] Provide or link to self-play tooling
-- [ ] CPU support for Xeon Phi and for people without a GPU
+- [x] CPU support for Xeon Phi and for people without a GPU
 - [ ] Faster GPU usage via batching
 - [ ] Faster GPU usage via Winograd transforms
 - [ ] CUDA specific version using cuDNN
@@ -263,6 +266,8 @@ done with multiple processes each bound to a GPU)
 
 # Related links
 
+* Status page of the distributed effort:
+http://zero.sjeng.org
 * Watch Leela Zero's training games live in a GUI:
 https://github.com/fsparv/LeelaWatcher
 

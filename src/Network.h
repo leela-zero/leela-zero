@@ -20,16 +20,13 @@
 #define NETWORK_H_INCLUDED
 
 #include "config.h"
-#include <vector>
-#include <string>
+
+#include <array>
 #include <bitset>
 #include <memory>
-#include <array>
-
-#ifdef USE_OPENCL
-#include <atomic>
-class UCTNode;
-#endif
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "FastState.h"
 #include "GameState.h"
@@ -53,16 +50,22 @@ public:
 
     static void initialize();
     static void benchmark(GameState * state, int iterations = 1600);
-    static void show_heatmap(FastState * state, Netresult & netres, bool topmoves);
+    static void show_heatmap(FastState * state, Netresult & netres,
+                             bool topmoves);
     static void softmax(const std::vector<float>& input,
                         std::vector<float>& output,
                         float temperature = 1.0f);
     static void gather_features(GameState* state, NNPlanes & planes);
 
 private:
+    static void process_bn_var(std::vector<float>& weights, const float epsilon=1e-5f);
     static Netresult get_scored_moves_internal(
       GameState * state, NNPlanes & planes, int rotation);
     static int rotate_nn_idx(const int vertex, int symmetry);
+#if defined(USE_BLAS)
+    static void forward_cpu(std::vector<float>& input,
+                            std::vector<float>& output);
+#endif
 };
 
 #endif
