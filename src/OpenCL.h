@@ -76,6 +76,7 @@ public:
     }
 
     void push_convolve(unsigned int filter_size,
+                       unsigned int channels,
                        const std::vector<float>& weights,
                        const std::vector<float>& biases) {
         size_t layer = get_layer_count();
@@ -83,11 +84,11 @@ public:
         push_weights(layer, biases);
         m_layers[layer].outputs = biases.size();
         m_layers[layer].filter_size = filter_size;
-        m_layers[layer].channels = weights.size()
-            / (biases.size() * filter_size * filter_size);
+        m_layers[layer].channels = channels;
     }
 
     void push_residual(unsigned int filter_size,
+                       unsigned int channels,
                        const std::vector<float>& weights_1,
                        const std::vector<float>& biases_1,
                        const std::vector<float>& means_1,
@@ -108,8 +109,7 @@ public:
         m_layers[layer].is_residual_block = true;
         m_layers[layer].outputs = biases_1.size();
         m_layers[layer].filter_size = filter_size;
-        m_layers[layer].channels = weights_1.size()
-            / (biases_1.size() * filter_size * filter_size);
+        m_layers[layer].channels = channels;
     }
 
     size_t get_layer_count() const {
@@ -144,12 +144,16 @@ public:
     void ensure_thread_initialized(void);
     std::string get_device_name();
 
+    std::vector<size_t> get_sgemm_tuners(void);
+
 private:
     void process_tuners(std::string tuners);
 
     cl::Program m_program;
 
-    size_t m_sgemm_wgd, m_sgemm_mdimcd, m_sgemm_ndimcd;
+    size_t m_sgemm_mwg, m_sgemm_nwg, m_sgemm_kwg;
+    size_t m_sgemm_vwm, m_sgemm_vwn;
+    size_t m_sgemm_mdimc, m_sgemm_ndimc;
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};
     std::vector<size_t> m_max_workgroup_dims;

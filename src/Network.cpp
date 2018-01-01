@@ -122,7 +122,8 @@ void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
 void Network::winograd_transform_f(const std::vector<float>& f, std::vector<float>& U,
         const int outputs, const int channels) {
     //F(2x2, 3x3) Winograd filter transformation
-    //G.dot(f).dot(G.transpose())
+    //transpose(G.dot(f).dot(G.transpose()))
+    //U matrix is transposed for better memory layout in SGEMM
 
     const float G[16] = {1.0, 0.0, 0.0,
                         0.5, 0.5, 0.5,
@@ -150,6 +151,22 @@ void Network::winograd_transform_f(const std::vector<float>& f, std::vector<floa
                         acc += temp[xi*3 + k] * G[nu*3 + k];
                     }
                     U[xi*(4*outputs*channels) + nu*(outputs*channels) + c*outputs + o] = acc;
+                }
+            }
+        }
+    }
+}
+
+void Network::zeropad_U(const std::vector<float>& U, std::vector<float>& Upad,
+        const int outputs, const int channels,
+        const int outputs_pad, const int channels_pad) {
+
+    for(int o=0; o < outputs; o++) {
+        for(int c=0; c < channels; c++) {
+            for(int xi=0;xi < 4;xi++){
+                for(int nu=0;nu < 4;nu++) {
+                    float in = U[xi*(4*outputs*channels) + nu*(outputs*channels) + c*outputs + o];
+                    Upad[xi*(4*outputs_pad*channels_pad) + nu*(outputs_pad*channels_pad) + c*outputs_pad + o] = in;
                 }
             }
         }
@@ -298,10 +315,23 @@ void Network::initialize(void) {
     }
 
 #ifdef USE_OPENCL
+
+    auto tuners = opencl.get_sgemm_tuners();
+
+    auto mwg = tuners[0];
+    auto kwg = tuners[2];
+    auto vwm = tuners[3];
+
     weight_index = 0;
 
+    size_t m_ceil = lcm(lcm(channels, mwg), vwm);
+    size_t k_ceil = lcm(lcm(18, kwg), vwm);
+
+    std::vector<float> Upad(16*m_ceil*k_ceil);
+    zeropad_U(conv_weights[weight_index], Upad, channels, 18, m_ceil, k_ceil);
+
     //Winograd filter transformation changes filter size to 4x4
-    opencl_net.push_convolve(4, conv_weights[weight_index],
+    opencl_net.push_convolve(4, 18, Upad,
                                 conv_biases[weight_index]);
     opencl_net.push_batchnorm(361, batchnorm_means[weight_index],
                                    batchnorm_stddivs[weight_index]);
@@ -309,11 +339,16 @@ void Network::initialize(void) {
 
     // residual blocks
     for (auto i = size_t{0}; i < residual_blocks; i++) {
-        opencl_net.push_residual(4, conv_weights[weight_index],
+        std::vector<float> Upad1(16*m_ceil*m_ceil);
+        std::vector<float> Upad2(16*m_ceil*m_ceil);
+        zeropad_U(conv_weights[weight_index], Upad1, channels, channels, m_ceil, m_ceil);
+        zeropad_U(conv_weights[weight_index + 1], Upad2, channels, channels, m_ceil, m_ceil);
+
+        opencl_net.push_residual(4, channels, Upad1,
                                     conv_biases[weight_index],
                                     batchnorm_means[weight_index],
                                     batchnorm_stddivs[weight_index],
-                                    conv_weights[weight_index + 1],
+                                    Upad2,
                                     conv_biases[weight_index + 1],
                                     batchnorm_means[weight_index + 1],
                                     batchnorm_stddivs[weight_index + 1]);
