@@ -60,14 +60,6 @@
 #define USE_OPENCL
 
 /*
- * USE_OPENCL_BATCHING: When using OpenCL acceleration, try to group multiple
- * neural net evaluations in a single invocation.  This accelerates the performance
- * further more with large number of threads, typically 4~8.  On low thread counts,
- * there is a tiny overhead due to unnecessary inter-thread communication.
- */
-#define USE_OPENCL_BATCHING
-
-/*
  * USE_HALF: Use 16-bit floating point storage for network parameters.
  * Only works for OpenCL implementations. Gives a slight speedup on some
  * cards at the cost of some accuracy.

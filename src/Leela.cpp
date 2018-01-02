@@ -80,6 +80,7 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("rowtiles", po::value<int>()->default_value(cfg_rowtiles),
                      "Split up the board in # tiles.")
+        ("nn-batching", "If enabled, neural net evaluations will be attempted to be grouped into batches and processed for better efficiency.  This needs many (4~8) threads to be efficient enough.")
 #endif
 #ifdef USE_TUNER
         ("puct", po::value<float>())
@@ -224,6 +225,10 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
             myprintf("Splitting the board in %d tiles.\n", rowtiles);
             cfg_rowtiles = rowtiles;
         }
+    }
+   
+    if(vm.count("nn-batching")) {
+        cfg_nn_batching = true;
     }
 #endif
 }

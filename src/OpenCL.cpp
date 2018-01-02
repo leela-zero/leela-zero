@@ -459,14 +459,16 @@ void OpenCL_Network::add_weights(size_t layer,
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
                              std::vector<float>& output) {
-#ifndef USE_OPENCL_BATCHING
-    // we don't need workers to group workloads on a batch size of 1.
-    // directly call run_forward
-    const std::vector<net_t> * inptr = &input;
-    std::vector<float_t> * outptr = &output;
-    run_forward(&inptr, &outptr, 1);
+    if(!cfg_nn_batching) {
+        // we don't need workers to group workloads on a batch size of 1.
+        // directly call run_forward
+        const std::vector<net_t> * inptr = &input;
+        std::vector<float_t> * outptr = &output;
+        run_forward(&inptr, &outptr, 1);
 
-#else
+        return;
+    }
+
     bool expval = false;
     if(m_workers_launched.compare_exchange_strong(expval, true)) {
         // test run each batch size.  pick ones that successfully passed sanity check
@@ -553,7 +555,6 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
 
     // this method will return when worker thread finishes its job
     ret.get();
-#endif // USE_OPENCL_BATCHING
 }
 
 OpenCL_Network::OpenCL_Network() {
@@ -601,7 +602,9 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
 
     // a null input pointer means we just want to test if the task runs
     std::vector<net_t> interleaved_input;
-    if(inputs != nullptr) {
+    if(inputs != nullptr && batch_size > 1) {
+        // if batch size is larger than 1, we need to interleave input
+        // so that it can be fetched from the GPU as vectored floats
         interleaved_input.reserve(inputs[0]->size() * batch_size);
         for(unsigned int j=0; j<batch_size; j++) {
             if(inputs[j] != nullptr) {
@@ -613,6 +616,9 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
     
         const auto inSize = sizeof(net_t) * inputs[0]->size() * batch_size;
         queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, interleaved_input.data());
+    } else if(inputs != nullptr && batch_size == 1) {
+        const auto inSize = sizeof(net_t) * inputs[0]->size();
+        queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, inputs[0]->data());
     }
 
     for (const auto& layer : m_layers) {
@@ -684,7 +690,7 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
     }
 
     // a null output pointer means that we just want to test if the kernel runs.
-    if(outputs != nullptr) {
+    if(outputs != nullptr && batch_size > 1) {
         std::vector<net_t> interleaved_output(outputs[0]->size() * batch_size);
         const auto finalSize = m_layers.back().outputs * one_plane * batch_size;
         queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, interleaved_output.data());
@@ -697,6 +703,11 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
                 }
             }
         }
+
+    } else if(outputs != nullptr && batch_size == 1) {
+        const auto finalSize = m_layers.back().outputs * one_plane;
+        queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, outputs[0]->data());
+        queue.finish();
     } else {
         queue.finish();
     }
@@ -970,7 +981,14 @@ void OpenCL::initialize(void) {
 
     // Make program of the source code in the context
     cl::Error last_error(0);
-    for(size_t batch_size : {1,2,4,8}) {
+ 
+    std::vector<size_t> batch_sizes{1,2,4,8};
+
+    if(!cfg_nn_batching) {
+        // without batching, there is no point preparing for 2/4/8-batched evals
+        batch_sizes = {1};
+    }
+    for(size_t batch_size : batch_sizes) {
         cl::Program p;
         try {
             p = cl::Program(sourceCode_config

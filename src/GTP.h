@@ -39,6 +39,7 @@ extern bool cfg_dumbpass;
 #ifdef USE_OPENCL
 extern std::vector<int> cfg_gpus;
 extern int cfg_rowtiles;
+extern bool cfg_nn_batching;
 #endif
 extern float cfg_puct;
 extern float cfg_softmax_temp;
