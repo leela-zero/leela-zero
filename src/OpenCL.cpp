@@ -421,8 +421,11 @@ OpenCL opencl;
 OpenCL_Network opencl_net;
 thread_local ThreadData opencl_thread_data;
 
-void OpenCL::ensure_thread_initialized() {
+void OpenCL_GPU::ensure_thread_initialized() {
     if (!opencl_thread_data.m_is_initialized) {
+        opencl_thread_data.m_gpu = this;
+        opencl_thread_data.m_gpu_index = m_index;
+
         // Make kernels
         for(const auto & x : m_program) {
             opencl_thread_data.m_convolve1_kernel[x.first] = cl::Kernel(x.second, "convolve1");
@@ -430,11 +433,8 @@ void OpenCL::ensure_thread_initialized() {
             opencl_thread_data.m_merge_kernel[x.first] = cl::Kernel(x.second, "merge");
             opencl_thread_data.m_batchnorm_kernel[x.first] = cl::Kernel(x.second, "batchnorm");
         }
-        opencl_thread_data.m_commandqueue = cl::CommandQueue(cl::Context::getDefault(),
-                                                             cl::Device::getDefault());
+        opencl_thread_data.m_commandqueue = cl::CommandQueue(m_context, m_device);
         opencl_thread_data.m_is_initialized = true;
-
-
     }
 }
 
@@ -451,10 +451,14 @@ void OpenCL_Network::add_weights(size_t layer,
     }
 
     auto weightSize = size * sizeof(decltype(converted_weights)::value_type);
-    m_layers.back().weights.emplace_back(
-        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
-        weightSize,
-        const_cast<net_t*>(converted_weights.data()));
+    
+    for(auto & gpu : opencl.m_gpus) {
+        m_layers.back().weights[gpu.first].emplace_back(
+            gpu.second.m_context,
+            CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+            weightSize,
+            const_cast<net_t*>(converted_weights.data()));
+    }
 }
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
@@ -464,6 +468,11 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         // directly call run_forward
         const std::vector<net_t> * inptr = &input;
         std::vector<net_t> * outptr = &output;
+
+        // use the first GPU here.
+        assert(opencl.m_gpus.size() >= 1);
+        opencl.m_gpus.begin()->second.ensure_thread_initialized();
+
         run_forward(&inptr, &outptr, 1);
 
         return;
@@ -472,73 +481,65 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     bool expval = false;
     if(m_workers_launched.compare_exchange_strong(expval, true)) {
         // test run each batch size.  pick ones that successfully passed sanity check
-        std::list<unsigned int> valid_batches;
-        for(const auto & x : opencl.m_program) {
-            unsigned int batch_size = x.first;
-            try {
-                myprintf("OpenCL: testing batch size %d\n", batch_size);
-                run_forward(nullptr, nullptr, batch_size);
-                valid_batches.push_back(batch_size);
-            } catch(cl::Error &) {
-                myprintf("OpenCL: failed batch size %d and dropping\n", batch_size);
-            }
-        }
-
-        // launch the worker thread.  2 threads so that we can fully utilize GPU, since the 
-        // worker thread consists of some CPU work for task preparation.
-        constexpr int num_threads = 2;
-        for(int i=0; i<num_threads; i++) {
-            std::thread worker( [this, valid_batches]{
-                unsigned int wait_counter = valid_batches.back();
-                while(true) {
-                    std::unique_lock<std::mutex> lk(m_task_mutex);
-
-                    // the 10ms timeout is based on a wild guess, assuming we will not run out of evaluation operations
-                    // due to the sheer amount of concurrent threads. timeouts (hopefully) will only happen
-                    // on the final evaluations of the move.
-                    m_task_cond.wait_for(lk, std::chrono::milliseconds(10), [this,wait_counter]{
-                        return (m_task_queue.size() >= wait_counter); 
-                    });
-
-                    if(m_task_queue.empty()) {
-                        lk.unlock();
-                        continue;
-                    }
-
-                    unsigned int batch_size = 1;
-                    for(auto & x : valid_batches) {
-                        if(m_task_queue.size() < x) {
-                            break;
+   
+        for(auto & p : opencl.m_gpus) {
+            OpenCL_GPU & gpu = p.second;
+            // launch the worker thread.  2 threads so that we can fully utilize GPU, since the 
+            // worker thread consists of some CPU work for task preparation.
+            constexpr int num_threads = 2;
+            for(int i=0; i<num_threads; i++) {
+                std::thread worker( [this, &gpu]{
+                    gpu.ensure_thread_initialized();
+                    std::list<unsigned int> valid_batches;
+                    for(const auto & x : gpu.m_program) {
+                        unsigned int batch_size = x.first;
+                        try {
+                            myprintf("OpenCL: testing batch size %d\n", batch_size);
+                            run_forward(nullptr, nullptr, batch_size);
+                            valid_batches.push_back(batch_size);
+                        } catch(cl::Error &) {
+                            myprintf("OpenCL: failed batch size %d and dropping\n", batch_size);
                         }
-                        batch_size = x;
-                    } 
-
-                    unsigned int count = 0;
-                    ForwardTask tasks[batch_size];
-                    while(count < batch_size && !m_task_queue.empty()) {
-                        tasks[count++] = std::move(m_task_queue.front());
-                        m_task_queue.pop_front();
-                    }
-                    lk.unlock();
-    
-                    const std::vector<net_t> * inputs[batch_size];
-                    std::vector<net_t> * outputs[batch_size];
-                    for(unsigned int i=0; i<batch_size; i++) {
-                        inputs[i] = tasks[i].input;
-                        outputs[i] = tasks[i].output;
-                    }
-                    
-                    run_forward(inputs, outputs, batch_size);
-                    for(unsigned int i=0; i<count; i++) {
-                        tasks[i].prom.set_value();
                     }
 
-                    // on next iteration, try to wait for the same number
-                    wait_counter = batch_size;
-                }
-            });
+
+                    std::unique_lock<std::mutex> lk(m_task_mutex);
+                    while(true) {
+                        m_task_cond.wait(lk, [this]{ return (m_task_queue.size() != 0); });
+
+                        unsigned int batch_size = 1;
+                        for(auto & x : valid_batches) {
+                            if(m_task_queue.size() < x) {
+                                break;
+                            }
+                            batch_size = x;
+                        } 
     
-            worker.detach();
+                        unsigned int count = 0;
+                        ForwardTask tasks[batch_size];
+                        while(count < batch_size && !m_task_queue.empty()) {
+                            tasks[count++] = std::move(m_task_queue.front());
+                            m_task_queue.pop_front();
+                        }
+                        lk.unlock();
+        
+                        const std::vector<net_t> * inputs[batch_size];
+                        std::vector<net_t> * outputs[batch_size];
+                        for(unsigned int i=0; i<batch_size; i++) {
+                            inputs[i] = tasks[i].input;
+                            outputs[i] = tasks[i].output;
+                        }
+                        
+                        run_forward(inputs, outputs, batch_size);
+                        for(unsigned int i=0; i<count; i++) {
+                            tasks[i].prom.set_value();
+                        }
+                        lk.lock();
+                    }
+                });
+        
+                worker.detach();
+            }
         }
     }
 
@@ -566,8 +567,6 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
     constexpr auto height = 19;
     constexpr auto one_plane = width * height * sizeof(net_t);
 
-    opencl.ensure_thread_initialized();
-
     if (!opencl_thread_data.m_buffers_allocated) {
 	auto iter = opencl_thread_data.m_convolve1_kernel.end();
 	iter--;
@@ -584,12 +583,16 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
         const auto alloc_mergeSize = one_plane * maxMergeSize * maxBatchSize;
 
         opencl_thread_data.m_inBuffer = cl::Buffer(
+            opencl_thread_data.m_gpu->m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_tmpBuffer = cl::Buffer(
+            opencl_thread_data.m_gpu->m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_residualBuffer = cl::Buffer(
+            opencl_thread_data.m_gpu->m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_mergeBuffer = cl::Buffer(
+            opencl_thread_data.m_gpu->m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, alloc_mergeSize);
         opencl_thread_data.m_buffers_allocated = true;
     }
@@ -623,7 +626,7 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
 
     for (const auto& layer : m_layers) {
         if (layer.is_batchnorm) {
-            auto bn_weights = begin(layer.weights);
+            auto bn_weights = begin(layer.weights.at(opencl_thread_data.m_gpu_index));
             batchnorm(batch_size,
                       layer.outputs,
                       layer.filter_size,
@@ -634,10 +637,10 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
             std::swap(inBuffer, tmpBuffer);
         } else if (layer.is_residual_block) {
             assert(layer.channels == layer.outputs);
-            auto conv1_weights = begin(layer.weights);
-            auto bn1_weights   = begin(layer.weights) + 2;
-            auto conv2_weights = begin(layer.weights) + 4;
-            auto bn2_weights   = begin(layer.weights) + 6;
+            auto conv1_weights = begin(layer.weights.at(opencl_thread_data.m_gpu_index));
+            auto bn1_weights   = begin(layer.weights.at(opencl_thread_data.m_gpu_index)) + 2;
+            auto conv2_weights = begin(layer.weights.at(opencl_thread_data.m_gpu_index)) + 4;
+            auto bn2_weights   = begin(layer.weights.at(opencl_thread_data.m_gpu_index)) + 6;
             const auto inBufferSize = layer.channels * one_plane * batch_size;
             queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0, inBufferSize);
             convolve(batch_size,
@@ -675,7 +678,7 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
                       bn2_weights);
             std::swap(inBuffer, tmpBuffer);
         } else  {
-            auto conv_weights = begin(layer.weights);
+            auto conv_weights = begin(layer.weights.at(opencl_thread_data.m_gpu_index));
             // plain convolution
             convolve(batch_size,
                      layer.filter_size,
@@ -887,8 +890,13 @@ void OpenCL::initialize(void) {
     int best_score = 0;
     bool found_device = false;
     int id = 0;
+    int best_id = 0;
 
     myprintf("Detected %d OpenCL platforms\n", platforms.size());
+
+    std::vector<cl::Device> selected_devices;
+    std::vector<cl::Platform> selected_platforms;
+    std::vector<int> selected_id;
 
     for (const auto &p : platforms) {
         std::string platvers = p.getInfo<CL_PLATFORM_VERSION>();
@@ -940,15 +948,11 @@ void OpenCL::initialize(void) {
 
             bool preferred = std::find(cfg_gpus.cbegin(), cfg_gpus.cend(), id) != cfg_gpus.cend();
 
-            if ((this_score > best_score) || preferred) {
+            if ((this_score > 1000) || preferred) {
                 best_version = opencl_version;
-                best_platform = p;
-                best_device = d;
-                if (preferred) {
-                    best_score = std::numeric_limits<decltype(best_score)>::max();
-                } else {
-                    best_score = this_score;
-                }
+                selected_platforms.push_back(p);
+                selected_devices.push_back(d);
+                selected_id.push_back(id);
                 found_device = true;
             }
             id++;
@@ -959,29 +963,38 @@ void OpenCL::initialize(void) {
         throw std::runtime_error("No suitable OpenCL device found.");
     }
 
-    cl::Platform::setDefault(best_platform);
-    myprintf("Selected platform: %s\n", best_platform.getInfo<CL_PLATFORM_NAME>().c_str());
-    myprintf("Selected device: %s\n", trim(best_device.getInfo<CL_DEVICE_NAME>()).c_str());
-    myprintf("with OpenCL %2.1f capability\n", best_version);
-
-    cl::Context context;
-    try {
-        context = cl::Context(best_device);
-    } catch (const cl::Error &e) {
-        myprintf("Error creating OpenCL context: %s: %d", e.what(), e.err());
-        throw;
+    for(unsigned int idx=0; idx<selected_id.size(); idx++) {
+        int id = selected_id[idx];
+        myprintf("Selected platform: %s\n", selected_platforms[idx].getInfo<CL_PLATFORM_NAME>().c_str());
+        myprintf("Selected device: %s\n", trim(selected_devices[idx].getInfo<CL_DEVICE_NAME>()).c_str());
+//        myprintf("with OpenCL %2.1f capability\n", best_version);
+    
+        cl::Context context;
+        try {
+            context = cl::Context(selected_devices[idx]);
+        } catch (const cl::Error &e) {
+            myprintf("Error creating OpenCL context: %s: %d", e.what(), e.err());
+            throw;
+        }
+     
+        m_gpus[id].initialize(id, selected_platforms[idx], context, selected_devices[idx]);
     }
-    cl::Context::setDefault(context);
-    cl::Device::setDefault(best_device);
+}
 
-    // Read source file
-    //std::ifstream sourceFile("convolve_kernel.cl", std::ifstream::in);
-    //std::string sourceCode(std::istreambuf_iterator<char>(sourceFile),
-    //                       (std::istreambuf_iterator<char>()));
+void OpenCL_GPU::initialize(
+    int index,
+    cl::Platform platform,
+    cl::Context context,
+    cl::Device device
+)
+{
+    m_index = index;
+    m_platform = platform;
+    m_device = device;
+    m_context = context;
 
-    // Make program of the source code in the context
     cl::Error last_error(0);
- 
+
     std::vector<size_t> batch_sizes{1,2,4,8};
 
     if(!cfg_nn_batching) {
@@ -991,7 +1004,7 @@ void OpenCL::initialize(void) {
     for(size_t batch_size : batch_sizes) {
         cl::Program p;
         try {
-            p = cl::Program(sourceCode_config
+            p = cl::Program(m_context, sourceCode_config
                                     + sourceCode_convolve1
                                     + sourceCode_convolve3
                                     + sourceCode_utility);
@@ -1020,15 +1033,13 @@ void OpenCL::initialize(void) {
         throw last_error;
     }
 
-    ensure_thread_initialized();
-
+    cl::Kernel test_kernel = cl::Kernel(m_program[1], "convolve3");
     m_wavefront_size =
-        opencl_thread_data.m_convolve3_kernel[1].getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
-            best_device);
+        test_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(m_device);
     myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
 
-    m_max_workgroup_size = best_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-    m_max_workgroup_dims = best_device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
+    m_max_workgroup_size = m_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    m_max_workgroup_dims = m_device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
 
     myprintf("Max workgroup size: %d\n", m_max_workgroup_size);
     myprintf("Max workgroup dimensions: ");
@@ -1040,14 +1051,13 @@ void OpenCL::initialize(void) {
     m_init_ok = true;
 }
 
-std::string OpenCL::get_device_name() {
+std::string OpenCL_GPU::get_device_name() {
     std::stringstream ss;
 
-    cl::Device device = cl::Device::getDefault();
     ss << "OpenCL: ";
-    ss << device.getInfo<CL_DEVICE_VENDOR>() << " ";
-    ss << device.getInfo<CL_DEVICE_NAME>() << " @ ";
-    ss << device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << "MHz";
+    ss << m_device.getInfo<CL_DEVICE_VENDOR>() << " ";
+    ss << m_device.getInfo<CL_DEVICE_NAME>() << " @ ";
+    ss << m_device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << "MHz";
 
     return ss.str();
 }

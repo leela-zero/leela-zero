@@ -37,6 +37,8 @@
 #include <mutex>
 #include <future>
 
+class OpenCL_GPU;
+
 class Layer {
     friend class OpenCL_Network;
 private:
@@ -46,13 +48,18 @@ private:
     bool is_batchnorm{false};
     bool is_innerproduct{false};
     bool is_residual_block{false};
-    std::vector<cl::Buffer> weights;
+    
+    // map index : GPU index
+    // vector index : layer number
+    std::map<int,std::vector<cl::Buffer>> weights;
 };
 
 class ThreadData {
-    friend class OpenCL;
+    friend class OpenCL_GPU;
     friend class OpenCL_Network;
 private:
+    int m_gpu_index = 0;
+    OpenCL_GPU * m_gpu = nullptr;
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
     std::map<unsigned int,cl::Kernel> m_convolve1_kernel;
@@ -154,21 +161,43 @@ private:
     std::mutex m_task_mutex;
 };
 
-class OpenCL {
+class OpenCL_GPU {
     friend class OpenCL_Network;
 public:
-    void initialize();
+    void initialize(
+        int index,
+        cl::Platform platform,
+        cl::Context context,
+        cl::Device device
+    );
     void ensure_thread_initialized(void);
     std::string get_device_name();
-
+    std::mutex m_opencl_mutex;
 private:
+    int m_index;
+    cl::Platform m_platform;
+    cl::Device m_device;
+    cl::Context m_context;
+
     std::map<unsigned int,cl::Program> m_program;
 
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};
     std::vector<size_t> m_max_workgroup_dims;
     bool m_init_ok{false};
+
 };
+
+class OpenCL {
+    friend class OpenCL_Network;
+public:
+    std::map<int, OpenCL_GPU> m_gpus;
+    void initialize(void);
+    OpenCL_GPU & get(int gpu_index) {
+        return m_gpus[gpu_index];
+    }
+};
+
 
 extern OpenCL opencl;
 extern OpenCL_Network opencl_net;
