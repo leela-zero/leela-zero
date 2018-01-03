@@ -269,7 +269,7 @@ void Network::initialize(void) {
 #ifdef USE_BLAS
 template<unsigned int filter_size>
 void convolve(size_t outputs,
-              const std::vector<float>& input,
+              const std::vector<net_t>& input,
               const std::vector<float>& weights,
               const std::vector<float>& biases,
               std::vector<float>& output) {
@@ -374,6 +374,7 @@ void batchnorm(size_t channels,
 
 void Network::forward_cpu(std::vector<float>& input,
                           std::vector<float>& output) {
+#ifndef USE_HALF
     // Input convolution
     constexpr int width = 19;
     constexpr int height = 19;
@@ -412,6 +413,7 @@ void Network::forward_cpu(std::vector<float>& input,
                        res.data());
     }
     std::copy(begin(conv_out), end(conv_out), begin(output));
+#endif
 }
 
 template<typename T>
@@ -505,7 +507,7 @@ Network::Netresult Network::get_scored_moves_internal(
     constexpr int height = 19;
     const auto convolve_channels = conv_pol_w.size() / conv_pol_b.size();
     std::vector<net_t> input_data;
-    std::vector<float> output_data(convolve_channels * width * height);
+    std::vector<net_t> output_data(convolve_channels * width * height);
     std::vector<float> policy_data(2 * width * height);
     std::vector<float> value_data(1 * width * height);
     std::vector<float> policy_out((width * height) + 1);

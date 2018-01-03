@@ -458,12 +458,12 @@ void OpenCL_Network::add_weights(size_t layer,
 }
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
-                             std::vector<float>& output) {
+                             std::vector<net_t>& output) {
     if(!cfg_nn_batching) {
         // we don't need workers to group workloads on a batch size of 1.
         // directly call run_forward
         const std::vector<net_t> * inptr = &input;
-        std::vector<float_t> * outptr = &output;
+        std::vector<net_t> * outptr = &output;
         run_forward(&inptr, &outptr, 1);
 
         return;
@@ -522,7 +522,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                     lk.unlock();
     
                     const std::vector<net_t> * inputs[batch_size];
-                    std::vector<float> * outputs[batch_size];
+                    std::vector<net_t> * outputs[batch_size];
                     for(unsigned int i=0; i<batch_size; i++) {
                         inputs[i] = tasks[i].input;
                         outputs[i] = tasks[i].output;
@@ -560,7 +560,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
 OpenCL_Network::OpenCL_Network() {
 }
 void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
-                             std::vector<float> ** outputs,
+                             std::vector<net_t> ** outputs,
                              size_t batch_size) {
     constexpr auto width = 19;
     constexpr auto height = 19;

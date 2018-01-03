@@ -123,8 +123,8 @@ public:
         return m_layers.size();
     }
 
-    void forward(const std::vector<net_t>& input, std::vector<float>& output);
-    void run_forward(const std::vector<net_t> ** inputs, std::vector<float> ** outputs, size_t batch_size = 1);
+    void forward(const std::vector<net_t>& input, std::vector<net_t>& output);
+    void run_forward(const std::vector<net_t> ** inputs, std::vector<net_t> ** outputs, size_t batch_size = 1);
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
 
@@ -144,10 +144,10 @@ private:
     class ForwardTask {
     public:
         const std::vector<net_t> *input;
-        std::vector<float> * output;
+        std::vector<net_t> * output;
         std::promise<void> prom;
         ForwardTask() : input(nullptr), output(nullptr) {}
-        ForwardTask(const std::vector<net_t> * in, std::vector<float> * out) : input(in), output(out) {}
+        ForwardTask(const std::vector<net_t> * in, std::vector<net_t> * out) : input(in), output(out) {}
     };
     std::deque<ForwardTask> m_task_queue;
     std::condition_variable m_task_cond;
