@@ -80,6 +80,7 @@
     <ClCompile Include="..\..\src\KoState.cpp" />
     <ClCompile Include="..\..\src\Leela.cpp" />
     <ClCompile Include="..\..\src\Network.cpp" />
+    <ClCompile Include="..\..\src\NNCache.cpp" />
     <ClCompile Include="..\..\src\OpenCL.cpp" />
     <ClCompile Include="..\..\src\Random.cpp" />
     <ClCompile Include="..\..\src\SGFParser.cpp" />
@@ -107,7 +108,6 @@
     <ClInclude Include="..\..\src\Random.h" />
     <ClInclude Include="..\..\src\SGFParser.h" />
     <ClInclude Include="..\..\src\SGFTree.h" />
-    <ClInclude Include="..\..\src\SMP.h" />
     <ClInclude Include="..\..\src\ThreadPool.h" />
     <ClInclude Include="..\..\src\TimeControl.h" />
     <ClInclude Include="..\..\src\Timing.h" />
