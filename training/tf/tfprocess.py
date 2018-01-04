@@ -162,12 +162,12 @@ class TFProcess:
         self.avg_policy_loss.append(policy_loss)
         self.avg_mse_loss.append(mse_loss)
         self.avg_reg_term.append(reg_term)
-        if steps % 100 == 0:
+        if steps % 1000 == 0:
             time_end = time.time()
             speed = 0
             if self.time_start:
                 elapsed = time_end - self.time_start
-                speed = batch_size * (100.0 / elapsed)
+                speed = batch_size * (1000.0 / elapsed)
             avg_policy_loss = np.mean(self.avg_policy_loss or [0])
             avg_mse_loss = np.mean(self.avg_mse_loss or [0])
             avg_reg_term = np.mean(self.avg_reg_term or [0])
@@ -182,7 +182,7 @@ class TFProcess:
             self.time_start = time_end
             self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term = [], [], []
         # Ideally this would use a seperate dataset and so on...
-        if steps % 2000 == 0:
+        if steps % 8000 == 0:
             sum_accuracy = 0
             sum_mse = 0
             for _ in range(0, 10):
