@@ -46,6 +46,7 @@ public:
     void rewind(void); /* undo infinite */
     bool undo_move(void);
     bool forward_move(void);
+    const std::shared_ptr<KoState>& get_past_state(int moves_ago) const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);

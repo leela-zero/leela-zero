@@ -213,6 +213,7 @@ Order Management::getWorkInternal() {
         throw NetworkException("JSON parse error: " + errorString);
     }
 
+    QTextStream(stdout) << doc.toJson() << endl;
     QJsonObject ob = doc.object();
     QJsonObject opt = ob.value("options").toObject();
     QString options;
