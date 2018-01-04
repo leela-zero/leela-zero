@@ -60,6 +60,8 @@ public:
     */
     static constexpr int RESIGN = -2;
 
+    static constexpr int ROOT = -3;
+
     /*
         possible contents of a square
     */

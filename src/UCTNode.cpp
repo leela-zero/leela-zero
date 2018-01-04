@@ -57,6 +57,7 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
                               float & eval) {
     // check whether somebody beat us to it (atomic)
     if (has_children()) {
+        eval = static_cast<float>(m_blackevals / (double)m_visits);
         return false;
     }
     {
@@ -414,4 +415,41 @@ void UCTNode::invalidate() {
 
 bool UCTNode::valid() const {
     return m_valid;
+}
+
+UCTNode* UCTNode::remove_child(int move) {
+  UCTNode* subtree = nullptr;
+  auto subtreeIt = std::remove_if(begin(m_children), end(m_children),
+                                  [&](auto &child) {
+                                    if (move == child->get_move()) {
+                                      subtree = child.get();
+                                      child.release();
+                                      return true;
+                                    }
+                                    else
+                                      return false;
+                                    ; });
+  if ( std::distance(subtreeIt, end(m_children)) > 0) {
+    m_children.resize(std::distance(begin(m_children), subtreeIt));
+    return subtree;
+  }
+  else
+    return nullptr;
+}
+
+int UCTNode::calc_subtree_size() {
+  int count = 1;
+  for (const auto& next : m_children) {
+    count += next->calc_subtree_size();
+  }
+  return count;
+}
+
+void UCTNode::subtree_adjust_children() {
+  for (auto& child : m_children) {
+    if (child->m_visits > 1) {
+      child->m_blackevals = child->m_blackevals/child->m_visits;
+      child->m_visits = 1;
+    }
+  }
 }
