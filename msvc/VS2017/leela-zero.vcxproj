@@ -58,7 +58,6 @@
     <ClCompile Include="..\..\src\Random.cpp" />
     <ClCompile Include="..\..\src\SGFParser.cpp" />
     <ClCompile Include="..\..\src\SGFTree.cpp" />
-    <ClCompile Include="..\..\src\SMP.cpp" />
     <ClCompile Include="..\..\src\TimeControl.cpp" />
     <ClCompile Include="..\..\src\Timing.cpp" />
     <ClCompile Include="..\..\src\Training.cpp" />

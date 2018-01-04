@@ -125,9 +125,6 @@
     <ClCompile Include="..\..\src\SGFTree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\SMP.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\TimeControl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
