@@ -43,7 +43,8 @@ public:
 
     static Netresult get_scored_moves(const GameState* state,
                                       Ensemble ensemble,
-                                      int rotation = -1);
+                                      int rotation = -1,
+                                      bool skip_cache = false);
     // File format version
     static constexpr auto FORMAT_VERSION = 1;
     static constexpr auto INPUT_MOVES = 8;
