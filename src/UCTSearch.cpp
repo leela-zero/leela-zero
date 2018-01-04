@@ -297,7 +297,7 @@ bool UCTSearch::is_running() const {
 }
 
 bool UCTSearch::playout_limit_reached() const {
-    return m_playouts >= m_maxplayouts;
+    return m_root.get_visits() >= m_maxplayouts;
 }
 
 void UCTWorker::operator()() {
