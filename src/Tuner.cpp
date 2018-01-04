@@ -44,7 +44,7 @@
 #endif
 
 #define TUNER_FILE_LOCAL "leelaz_tuners"
-#define MAX_ERROR 2e-6
+#define MAX_ERROR 1e-5
 
 using namespace Utils;
 

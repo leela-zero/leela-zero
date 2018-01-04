@@ -833,7 +833,7 @@ void OpenCL::initialize(void) {
     m_cl_args = cl_args;
 
     auto t = Tuner();
-    auto sgemm_tuners = t.load_sgemm_tuners(64, 100, 64, 16);
+    auto sgemm_tuners = t.load_sgemm_tuners(128, 100, 128, 16);
 
     // Build program for these specific devices
     try {
