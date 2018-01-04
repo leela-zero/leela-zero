@@ -295,23 +295,30 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
         auto sum = 0.0;
         auto max_error = 0.0f;
         for (auto r = 0; r < runs; r++) {
-            queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
-                                        size_sgemm, local_sgemm,
-                                        nullptr, &event);
-            queue.finish();
-            event.wait();
 
-            queue.enqueueReadBuffer(cBuffer, CL_FALSE, 0, c_size*sizeof(float), c.data());
-            queue.finish();
+            try {
+                queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
+                                            size_sgemm, local_sgemm,
+                                            nullptr, &event);
+                queue.finish();
+                event.wait();
 
-            max_error = std::max(max_error, compare_ref(c, c_ref, n_ceil, m_ceil, batch_size));
+                queue.enqueueReadBuffer(cBuffer, CL_FALSE, 0, c_size*sizeof(float), c.data());
+                queue.finish();
 
-            auto elapsed = event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
-                        event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+                max_error = std::max(max_error, compare_ref(c, c_ref, n_ceil, m_ceil, batch_size));
 
-            sum += elapsed;
+                auto elapsed = event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
+                            event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+
+                sum += elapsed;
+            } catch (const cl::Error&) {
+                //Failed to enqueue kernel. Set error to max.
+                max_error = MAX_ERROR;
+                break;
+            }
         }
-        if (best_time == 0 || sum < best_time) {
+        if (max_error < MAX_ERROR && (best_time == 0 || sum < best_time)) {
             myprintf("%s : %.4f ms\n", defines.c_str(), 1e-6*sum/runs);
             best_time = sum;
             best_params = defines;
