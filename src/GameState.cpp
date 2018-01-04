@@ -149,7 +149,7 @@ bool GameState::play_textmove(std::string color, std::string vertex) {
     int move = board.get_vertex(column, row);
 
     set_to_move(who);
-    play_move(who, move);
+    play_move(move);
 
     return true;
 }
