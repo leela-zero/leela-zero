@@ -30,6 +30,8 @@
 #include <string>
 #include <vector>
 
+#include "Tuner.h"
+
 class Layer {
     friend class OpenCL_Network;
 private:
@@ -139,6 +141,7 @@ private:
 
 class OpenCL {
     friend class OpenCL_Network;
+    friend class Tuner;
 public:
     void initialize();
     void ensure_thread_initialized(void);
@@ -147,9 +150,11 @@ public:
     std::vector<size_t> get_sgemm_tuners(void);
 
 private:
+    void tune_sgemm(void);
     void process_tuners(std::string tuners);
 
     cl::Program m_program;
+    std::string m_cl_args;
 
     size_t m_sgemm_mwg, m_sgemm_nwg, m_sgemm_kwg;
     size_t m_sgemm_vwm, m_sgemm_vwn;
@@ -163,5 +168,6 @@ private:
 extern OpenCL opencl;
 extern OpenCL_Network opencl_net;
 extern thread_local ThreadData opencl_thread_data;
+extern std::string sourceCode_sgemm;
 
 #endif
