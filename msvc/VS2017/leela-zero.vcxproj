@@ -29,6 +29,7 @@
     <ClInclude Include="..\..\src\Im2Col.h" />
     <ClInclude Include="..\..\src\KoState.h" />
     <ClInclude Include="..\..\src\Network.h" />
+    <ClInclude Include="..\..\src\NNCache.h" />
     <ClInclude Include="..\..\src\OpenCL.h" />
     <ClInclude Include="..\..\src\Random.h" />
     <ClInclude Include="..\..\src\SGFParser.h" />
@@ -54,11 +55,11 @@
     <ClCompile Include="..\..\src\KoState.cpp" />
     <ClCompile Include="..\..\src\Leela.cpp" />
     <ClCompile Include="..\..\src\Network.cpp" />
+    <ClCompile Include="..\..\src\NNCache.cpp" />
     <ClCompile Include="..\..\src\OpenCL.cpp" />
     <ClCompile Include="..\..\src\Random.cpp" />
     <ClCompile Include="..\..\src\SGFParser.cpp" />
     <ClCompile Include="..\..\src\SGFTree.cpp" />
-    <ClCompile Include="..\..\src\SMP.cpp" />
     <ClCompile Include="..\..\src\TimeControl.cpp" />
     <ClCompile Include="..\..\src\Timing.cpp" />
     <ClCompile Include="..\..\src\Training.cpp" />

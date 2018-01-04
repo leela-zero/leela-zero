@@ -48,18 +48,8 @@ UCTNode::UCTNode(int vertex, float score, float init_eval)
     : m_move(vertex), m_score(score), m_init_eval(init_eval) {
 }
 
-UCTNode::~UCTNode() {
-    LOCK(get_mutex(), lock);
-    // Empty the children array while the lock is held
-    m_children.clear();
-}
-
 bool UCTNode::first_visit() const {
     return m_visits == 0;
-}
-
-SMP::Mutex& UCTNode::get_mutex() {
-    return m_nodemutex;
 }
 
 bool UCTNode::create_children(std::atomic<int> & nodecount,
@@ -69,23 +59,24 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
     if (has_children()) {
         return false;
     }
-    // acquire the lock
-    LOCK(get_mutex(), lock);
-    // no successors in final state
-    if (state.get_passes() >= 2) {
-        return false;
+    {
+      // acquire the lock
+      std::lock_guard<std::mutex> lock(m_nodemutex);
+      // no successors in final state
+      if (state.get_passes() >= 2) {
+          return false;
+      }
+      // check whether somebody beat us to it (after taking the lock)
+      if (has_children()) {
+          return false;
+      }
+      // Someone else is running the expansion
+      if (m_is_expanding) {
+          return false;
+      }
+      // We'll be the one queueing this node for expansion, stop others
+      m_is_expanding = true;
     }
-    // check whether somebody beat us to it (after taking the lock)
-    if (has_children()) {
-        return false;
-    }
-    // Someone else is running the expansion
-    if (m_is_expanding) {
-        return false;
-    }
-    // We'll be the one queueing this node for expansion, stop others
-    m_is_expanding = true;
-    lock.unlock();
 
     const auto raw_netlist = Network::get_scored_moves(
         &state, Network::Ensemble::RANDOM_ROTATION);
@@ -94,7 +85,7 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
     auto net_eval = raw_netlist.second;
     const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
-    if (to_move == FastBoard::WHITE) {
+    if (state.board.white_to_move()) {
         net_eval = 1.0f - net_eval;
     }
     eval = net_eval;
@@ -132,7 +123,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
     // Use best to worst order, so highest go first
     std::stable_sort(rbegin(nodelist), rend(nodelist));
 
-    LOCK(get_mutex(), lock);
+    std::lock_guard<std::mutex> lock(m_nodemutex);
 
     for (const auto& node : nodelist) {
         m_children.emplace_back(
@@ -168,13 +159,13 @@ void UCTNode::kill_superkos(const KoState& state) {
 
 float UCTNode::eval_state(GameState& state) {
     auto raw_netlist = Network::get_scored_moves(
-        &state, Network::Ensemble::RANDOM_ROTATION);
+        &state, Network::Ensemble::RANDOM_ROTATION, -1, true);
 
     // DCNN returns winrate as side to move
     auto net_eval = raw_netlist.second;
 
     // But we score from black's point of view
-    if (state.get_to_move() == FastBoard::WHITE) {
+    if (state.board.white_to_move()) {
         net_eval = 1.0f - net_eval;
     }
 
@@ -320,7 +311,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
     UCTNode* best = nullptr;
     auto best_value = -1000.0f;
 
-    LOCK(get_mutex(), lock);
+    std::lock_guard<std::mutex> lock(m_nodemutex);
 
     // Count parentvisits.
     // We do this manually to avoid issues with transpositions.
@@ -379,13 +370,13 @@ private:
 };
 
 void UCTNode::sort_root_children(int color) {
-    LOCK(get_mutex(), lock);
+    std::lock_guard<std::mutex> lock(m_nodemutex);
     std::stable_sort(begin(m_children), end(m_children), NodeComp(color));
     std::reverse(begin(m_children), end(m_children));
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
-    LOCK(get_mutex(), lock);
+    std::lock_guard<std::mutex> lock(m_nodemutex);
     assert(!m_children.empty());
 
     return *(std::max_element(begin(m_children), end(m_children),

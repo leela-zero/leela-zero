@@ -92,9 +92,9 @@ class TFProcess:
         correct_prediction = tf.cast(correct_prediction, tf.float32)
         self.accuracy = tf.reduce_mean(correct_prediction)
 
-        self.avg_policy_loss = None
-        self.avg_mse_loss = None
-        self.avg_reg_term = None
+        self.avg_policy_loss = []
+        self.avg_mse_loss = []
+        self.avg_reg_term = []
         self.time_start = None
 
         # Summary part
@@ -159,34 +159,30 @@ class TFProcess:
         # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
         # get comparable values.
         mse_loss = mse_loss / 4.0
-        decay = 0.999
-        if self.avg_policy_loss:
-            self.avg_policy_loss = decay * self.avg_policy_loss + (1 - decay) * policy_loss
-        else:
-            self.avg_policy_loss = policy_loss
-        if self.avg_mse_loss:
-            self.avg_mse_loss = decay * self.avg_mse_loss + (1 - decay) * mse_loss
-        else:
-            self.avg_mse_loss = mse_loss
-        if self.avg_reg_term:
-            self.avg_reg_term = decay * self.avg_reg_term + (1 - decay) * reg_term
-        else:
-            self.avg_reg_term = reg_term
-        if steps % 100 == 0:
+        self.avg_policy_loss.append(policy_loss)
+        self.avg_mse_loss.append(mse_loss)
+        self.avg_reg_term.append(reg_term)
+        if steps % 1000 == 0:
             time_end = time.time()
             speed = 0
             if self.time_start:
                 elapsed = time_end - self.time_start
-                speed = batch_size * (100.0 / elapsed)
-            print("step {}, policy loss={:g} mse={:g} reg={:g} ({:g} pos/s)".format(
-                steps, self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term, speed))
+                speed = batch_size * (1000.0 / elapsed)
+            avg_policy_loss = np.mean(self.avg_policy_loss or [0])
+            avg_mse_loss = np.mean(self.avg_mse_loss or [0])
+            avg_reg_term = np.mean(self.avg_reg_term or [0])
+            print("step {}, policy={:g} mse={:g} reg={:g} total={:g} ({:g} pos/s)".format(
+                steps, avg_policy_loss, avg_mse_loss, avg_reg_term,
+                avg_policy_loss + avg_mse_loss + avg_reg_term,
+                speed))
             train_summaries = tf.Summary(value=[
-                tf.Summary.Value(tag="Policy Loss", simple_value=self.avg_policy_loss),
-                tf.Summary.Value(tag="MSE Loss", simple_value=self.avg_mse_loss)])
+                tf.Summary.Value(tag="Policy Loss", simple_value=avg_policy_loss),
+                tf.Summary.Value(tag="MSE Loss", simple_value=avg_mse_loss)])
             self.train_writer.add_summary(train_summaries, steps)
             self.time_start = time_end
+            self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term = [], [], []
         # Ideally this would use a seperate dataset and so on...
-        if steps % 2000 == 0:
+        if steps % 8000 == 0:
             sum_accuracy = 0
             sum_mse = 0
             for _ in range(0, 10):

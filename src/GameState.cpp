@@ -85,7 +85,7 @@ void GameState::rewind(void) {
 }
 
 void GameState::play_move(int vertex) {
-    play_move(board.get_to_move(), vertex);
+    play_move(get_to_move(), vertex);
 }
 
 void GameState::play_pass() {
@@ -148,7 +148,8 @@ bool GameState::play_textmove(std::string color, std::string vertex) {
 
     int move = board.get_vertex(column, row);
 
-    play_move(who, move);
+    set_to_move(who);
+    play_move(move);
 
     return true;
 }
@@ -167,8 +168,12 @@ void GameState::display_state() {
     m_timecontrol.display_times();
 }
 
-int GameState::has_resigned() const {
+int GameState::who_resigned() const {
     return m_resigned;
+}
+
+bool GameState::has_resigned() const {
+    return m_resigned != FastBoard::EMPTY;
 }
 
 TimeControl& GameState::get_timecontrol() {

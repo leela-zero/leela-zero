@@ -87,13 +87,12 @@ public:
     int get_dir(int i) const;
     int get_extra_dir(int i) const;
 
-    int estimate_mc_score(float komi) const;
-    float final_mc_score(float komi) const;
     float area_score(float komi) const;
     std::vector<bool> calc_reach_color(int col) const;
 
     int get_prisoners(int side) const;
     bool black_to_move() const;
+    bool white_to_move() const;
     int get_to_move() const;
     void set_to_move(int color);
 
@@ -124,7 +123,6 @@ protected:
     std::array<int, 4>                     m_dirs;        /* movement directions 4 way */
     std::array<int, 8>                     m_extradirs;   /* movement directions 8 way */
     std::array<int, 2>                     m_prisoners;   /* prisoners per color */
-    std::array<int, 2>                     m_totalstones; /* stones per color */
     std::vector<int>                       m_critical;    /* queue of critical points */
     std::array<unsigned short, MAXSQ>      m_empty;       /* empty squares */
     std::array<unsigned short, MAXSQ>      m_empty_idx;   /* indexes of square */
@@ -134,6 +132,7 @@ protected:
     int m_maxsq;
 
     int m_boardsize;
+    int m_squaresize;
 
     int count_neighbours(const int color, const int i) const;
     void merge_strings(const int ip, const int aip);

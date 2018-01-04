@@ -32,7 +32,7 @@ public:
     void reset_game();
     void reset_board();
 
-    void play_pass(void);
+    void play_pass(int color);
     void play_move(int vertex);
 
     bool is_move_legal(int color, int vertex);
@@ -47,7 +47,6 @@ public:
     void set_passes(int val);
     void increment_passes();
 
-    int estimate_mc_score();
     float final_score();
 
     size_t get_movenum() const;

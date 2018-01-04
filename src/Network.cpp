@@ -49,9 +49,10 @@
 #include "FastBoard.h"
 #include "FastState.h"
 #include "FullBoard.h"
-#include "Im2Col.h"
-#include "GTP.h"
 #include "GameState.h"
+#include "GTP.h"
+#include "Im2Col.h"
+#include "NNCache.h"
 #include "Random.h"
 #include "ThreadPool.h"
 #include "Timing.h"
@@ -97,7 +98,7 @@ void Network::benchmark(GameState * state, int iterations) {
         tg.add_task([iters_per_thread, state]() {
             GameState mystate = *state;
             for (int loop = 0; loop < iters_per_thread; loop++) {
-                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION);
+                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION, -1, true);
             }
         });
     };
@@ -372,6 +373,7 @@ void batchnorm(size_t channels,
     }
 }
 
+#ifndef USE_HALF
 void Network::forward_cpu(std::vector<float>& input,
                           std::vector<float>& output) {
 #ifndef USE_HALF
@@ -415,6 +417,7 @@ void Network::forward_cpu(std::vector<float>& input,
     std::copy(begin(conv_out), end(conv_out), begin(output));
 #endif
 }
+#endif
 
 template<typename T>
 T relative_difference(T a, T b) {
@@ -477,7 +480,7 @@ void Network::softmax(const std::vector<float>& input,
 }
 
 Network::Netresult Network::get_scored_moves(
-    GameState * state, Ensemble ensemble, int rotation) {
+    GameState* state, Ensemble ensemble, int rotation, bool skip_cache) {
     Netresult result;
     if (state->board.get_boardsize() != 19) {
         return result;
@@ -485,6 +488,13 @@ Network::Netresult Network::get_scored_moves(
 
     NNPlanes planes;
     gather_features(state, planes);
+
+    // See if we already have this in the cache.
+    if (!skip_cache) {
+      if (auto r = NNCache::get_NNCache()->lookup(planes)) {
+        return *r;
+      }
+    }
 
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
@@ -495,6 +505,9 @@ Network::Netresult Network::get_scored_moves(
         auto rand_rot = Random::get_Rng().randfix<8>();
         result = get_scored_moves_internal(state, planes, rand_rot);
     }
+
+    // Insert result into cache.
+    NNCache::get_NNCache()->insert(planes, result);
 
     return result;
 }
@@ -638,14 +651,13 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
     BoardPlane& black_to_move  = planes[16];
     BoardPlane& white_to_move  = planes[17];
 
-    int to_move = state->get_to_move();
-    bool whites_move = to_move == FastBoard::WHITE;
-    if (whites_move) {
+    if (state->board.white_to_move()) {
         white_to_move.set();
     } else {
         black_to_move.set();
     }
 
+    auto to_move = state->get_to_move();
     // Go back in time, fill history boards
     size_t backtracks = 0;
     for (int h = 0; h < 8; h++) {

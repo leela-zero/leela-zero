@@ -70,14 +70,14 @@ bool FastState::is_move_legal(int color, int vertex) {
                 !board.is_suicide(vertex, color));
 }
 
-void FastState::play_pass(void) {
+void FastState::play_pass(int color) {
     m_movenum++;
 
     std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1, rend(m_lastmove));
     m_lastmove[0] = FastBoard::PASS;
 
     board.m_hash  ^= 0xABCDABCDABCDABCDULL;
-    board.m_tomove = !board.m_tomove;
+    board.m_tomove = !color;
 
     board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
     increment_passes();
@@ -109,16 +109,12 @@ void FastState::play_move(int color, int vertex) {
             board.m_hash ^= Zobrist::zobrist_pass[0];
         }
     } else if (vertex == FastBoard::PASS) {
-        play_pass();
+        play_pass(color);
     }
 }
 
 size_t FastState::get_movenum() const {
     return m_movenum;
-}
-
-int FastState::estimate_mc_score(void) {
-    return board.estimate_mc_score(m_komi + m_handicap);
 }
 
 int FastState::get_last_move(void) const {
