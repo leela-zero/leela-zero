@@ -451,7 +451,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         int move = state->get_last_move();
         assert(move != FastBoard::RESIGN);
         std::string movestr = state->board.move_to_text_sgf(move);
-        if (state->get_to_move() == FastBoard::BLACK) {
+        if (state->board.black_to_move()) {
             moves.append(";W[" + movestr + "]");
         } else {
             moves.append(";B[" + movestr + "]");

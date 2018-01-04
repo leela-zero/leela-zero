@@ -85,7 +85,7 @@ void GameState::rewind(void) {
 }
 
 void GameState::play_move(int vertex) {
-    play_move(board.get_to_move(), vertex);
+    play_move(get_to_move(), vertex);
 }
 
 void GameState::play_pass() {

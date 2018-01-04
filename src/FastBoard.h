@@ -92,6 +92,7 @@ public:
 
     int get_prisoners(int side) const;
     bool black_to_move() const;
+    bool white_to_move() const;
     int get_to_move() const;
     void set_to_move(int color);
 
@@ -131,6 +132,7 @@ protected:
     int m_maxsq;
 
     int m_boardsize;
+    int m_squaresize;
 
     int count_neighbours(const int color, const int i) const;
     void merge_strings(const int ip, const int aip);

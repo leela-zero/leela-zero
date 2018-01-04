@@ -55,7 +55,7 @@ int FastBoard::get_vertex(int x, int y) const {
     assert(x >= 0 && x < m_boardsize);
     assert(y >= 0 && y < m_boardsize);
 
-    int vertex = ((y + 1) * (get_boardsize() + 2)) + (x + 1);
+    int vertex = ((y + 1) * m_squaresize) + (x + 1);
 
     assert(vertex >= 0 && vertex < m_maxsq);
 
@@ -63,21 +63,15 @@ int FastBoard::get_vertex(int x, int y) const {
 }
 
 std::pair<int, int> FastBoard::get_xy(int vertex) const {
-    std::pair<int, int> xy;
-
     //int vertex = ((y + 1) * (get_boardsize() + 2)) + (x + 1);
-    int x = (vertex % (get_boardsize() + 2)) - 1;
-    int y = (vertex / (get_boardsize() + 2)) - 1;
+    int x = (vertex % m_squaresize) - 1;
+    int y = (vertex / m_squaresize) - 1;
 
-    assert(x >= 0 && x < get_boardsize());
-    assert(y >= 0 && y < get_boardsize());
-
-    xy.first  = x;
-    xy.second = y;
-
+    assert(x >= 0 && x < m_boardsize);
+    assert(y >= 0 && y < m_boardsize);
     assert(get_vertex(x, y) == vertex);
 
-    return xy;
+    return std::make_pair(x, y);
 }
 
 FastBoard::square_t FastBoard::get_square(int vertex) const {
@@ -105,25 +99,26 @@ void FastBoard::set_square(int x, int y, FastBoard::square_t content) {
 
 void FastBoard::reset_board(int size) {
     m_boardsize = size;
-    m_maxsq = (size + 2) * (size + 2);
+    m_squaresize = size + 2;
+    m_maxsq = m_squaresize * m_squaresize;
     m_tomove = BLACK;
     m_prisoners[BLACK] = 0;
     m_prisoners[WHITE] = 0;
     m_empty_cnt = 0;
 
-    m_dirs[0] = -size-2;
+    m_dirs[0] = -m_squaresize;
     m_dirs[1] = +1;
-    m_dirs[2] = +size+2;
+    m_dirs[2] = +m_squaresize;
     m_dirs[3] = -1;
 
-    m_extradirs[0] = -size-2-1;
-    m_extradirs[1] = -size-2;
-    m_extradirs[2] = -size-2+1;
+    m_extradirs[0] = -m_squaresize-1;
+    m_extradirs[1] = -m_squaresize;
+    m_extradirs[2] = -m_squaresize+1;
     m_extradirs[3] = -1;
     m_extradirs[4] = +1;
-    m_extradirs[5] = +size+2-1;
-    m_extradirs[6] = +size+2;
-    m_extradirs[7] = +size+2+1;
+    m_extradirs[5] = +m_squaresize-1;
+    m_extradirs[6] = +m_squaresize;
+    m_extradirs[7] = +m_squaresize+1;
 
     for (int i = 0; i < m_maxsq; i++) {
         m_square[i]     = INVAL;
@@ -410,10 +405,10 @@ bool FastBoard::is_eye(const int color, const int i) const {
     colorcount[WHITE] = 0;
     colorcount[INVAL] = 0;
 
-    colorcount[m_square[i - 1 - m_boardsize - 2]]++;
-    colorcount[m_square[i + 1 - m_boardsize - 2]]++;
-    colorcount[m_square[i - 1 + m_boardsize + 2]]++;
-    colorcount[m_square[i + 1 + m_boardsize + 2]]++;
+    colorcount[m_square[i - 1 - m_squaresize]]++;
+    colorcount[m_square[i + 1 - m_squaresize]]++;
+    colorcount[m_square[i - 1 + m_squaresize]]++;
+    colorcount[m_square[i + 1 + m_squaresize]]++;
 
     if (colorcount[INVAL] == 0) {
         if (colorcount[!color] > 1) {
@@ -431,8 +426,8 @@ bool FastBoard::is_eye(const int color, const int i) const {
 std::string FastBoard::move_to_text(int move) const {
     std::ostringstream result;
 
-    int column = move % (m_boardsize + 2);
-    int row = move / (m_boardsize + 2);
+    int column = move % m_squaresize;
+    int row = move / m_squaresize;
 
     column--;
     row--;
@@ -457,8 +452,8 @@ std::string FastBoard::move_to_text(int move) const {
 std::string FastBoard::move_to_text_sgf(int move) const {
     std::ostringstream result;
 
-    int column = move % (m_boardsize + 2);
-    int row = move / (m_boardsize + 2);
+    int column = move % m_squaresize;
+    int row = move / m_squaresize;
 
     column--;
     row--;
@@ -528,12 +523,16 @@ int FastBoard::get_prisoners(int side)  const {
     return m_prisoners[side];
 }
 
+int FastBoard::get_to_move() const {
+    return m_tomove;
+}
+
 bool FastBoard::black_to_move() const {
     return m_tomove == BLACK;
 }
 
-int FastBoard::get_to_move() const {
-    return m_tomove;
+bool FastBoard::white_to_move() const {
+    return m_tomove == WHITE;
 }
 
 void FastBoard::set_to_move(int tomove) {
