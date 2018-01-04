@@ -38,8 +38,12 @@
 #include "Network.h"
 #include "GTP.h"
 #include "Utils.h"
+#include "Tuner.h"
 
 using namespace Utils;
+
+
+static std::string cl_args = "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
 
 static std::string sourceCode_config = R"(
     #ifdef USE_HALF
@@ -289,6 +293,16 @@ static std::string sourceCode_utility = R"(
         vstore_net_t(sum > 0 ? sum : 0.0f, o * channel_size + b, out);
     }
 )";
+
+std::string sourceCode_sgemm =
+    #include "clblast_level3/common.opencl"
+    #include "clblast_level3/level3.opencl"
+    #include "clblast_level3/xgemm_part1.opencl"
+    #include "clblast_level3/xgemm_part2.opencl"
+    #include "clblast_level3/xgemm_part3.opencl"
+    #include "clblast_level3/xgemm_part4.opencl"
+    #include "clblast_level3/xgemm_batched.opencl"
+;
 
 
 
@@ -624,31 +638,31 @@ void OpenCL::process_tuners(std::string tuners) {
         }
         std::string name = buf.substr(0, found);
         auto value = std::stoi(buf.substr(found+1, std::string::npos));
-        if (name == "MWG") {
+        if (name == "-DMWG") {
             m_sgemm_mwg = value;
             mwg = true;
         }
-        if (name == "NWG") {
+        if (name == "-DNWG") {
             m_sgemm_nwg = value;
             nwg = true;
         }
-        if (name == "KWG") {
+        if (name == "-DKWG") {
             m_sgemm_kwg = value;
             kwg = true;
         }
-        if (name == "MDIMC") {
+        if (name == "-DMDIMC") {
             m_sgemm_mdimc = value;
             mdimc = true;
         }
-        if (name == "NDIMC") {
+        if (name == "-DNDIMC") {
             m_sgemm_ndimc = value;
             ndimc = true;
         }
-        if (name == "VWM") {
+        if (name == "-DVWM") {
             m_sgemm_vwm = value;
             vwm = true;
         }
-        if (name == "VWN") {
+        if (name == "-DVWN") {
             m_sgemm_vwn = value;
             vwn = true;
         }
@@ -804,27 +818,8 @@ void OpenCL::initialize(void) {
     //std::string sourceCode(std::istreambuf_iterator<char>(sourceFile),
     //                       (std::istreambuf_iterator<char>()));
 
-    std::string header;
-    if (boost::icontains(best_vendor, "nvidia")) {
-        header = "#define USE_INLINE_KEYWORD 1\n";
-    }
-    else if (boost::icontains(best_vendor, "amd") ||
-        boost::icontains(best_vendor, "advanced micro devices")) {
-            header = "#define USE_STAGGERED_INDICES 1\n";
-    }
 
     // Make program of the source code in the context
-	std::string sourceCode_sgemm = header;
-	sourceCode_sgemm +=
-        #include "clblast_level3/common.opencl"
-        #include "clblast_level3/level3.opencl"
-        #include "clblast_level3/xgemm_part1.opencl"
-        #include "clblast_level3/xgemm_part2.opencl"
-        #include "clblast_level3/xgemm_part3.opencl"
-        #include "clblast_level3/xgemm_part4.opencl"
-        #include "clblast_level3/xgemm_batched.opencl"
-	;
-
     try {
         m_program = cl::Program(sourceCode_config
                                 + sourceCode_convolve3
@@ -834,16 +829,17 @@ void OpenCL::initialize(void) {
         myprintf("Error getting kernels: %s: %d", e.what(), e.err());
         throw;
     }
+
+    m_cl_args = cl_args;
+
+    auto t = Tuner();
+    auto sgemm_tuners = t.load_sgemm_tuners(64, 100, 64, 16);
+
     // Build program for these specific devices
     try {
-	    std::string args = "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
+	    std::string args = cl_args;
 
-        std::string buf;
-        std::stringstream ss(SGEMM_TUNERS);
-
-        while (ss >> buf) {
-            args += " -D" + buf;
-        }
+        args += sgemm_tuners;
 
 #ifdef USE_HALF
         args += " -DUSE_HALF";
@@ -857,7 +853,7 @@ void OpenCL::initialize(void) {
 
     ensure_thread_initialized();
 
-    process_tuners(SGEMM_TUNERS);
+    process_tuners(sgemm_tuners);
 
     m_wavefront_size =
         opencl_thread_data.m_batchnorm_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
