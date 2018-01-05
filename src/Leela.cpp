@@ -32,6 +32,7 @@
 #include "GTP.h"
 #include "GameState.h"
 #include "Network.h"
+#include "NNCache.h"
 #include "Random.h"
 #include "ThreadPool.h"
 #include "Utils.h"
@@ -264,6 +265,15 @@ int main (int argc, char *argv[]) {
 
     // Initialize network
     Network::initialize();
+
+    // Initialize cache if playouts is set
+    if (cfg_max_playouts) {
+        // cache hits are generally from last several moves so setting cache
+        // size based on playouts increases the hit rate while balancing memory
+        // usage for low playout instances. 100'000 cache entries is ~500 MB
+        auto max_size = std::min(100'000, std::max(6'000, 3*cfg_max_playouts));
+        NNCache::get_NNCache()->resize(max_size);
+    }
 
     auto maingame = std::make_unique<GameState>();
 

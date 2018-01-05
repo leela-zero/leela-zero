@@ -32,6 +32,9 @@ public:
     // return the global NNCache
     static NNCache* get_NNCache(void);
 
+    // Resize NNCache
+    void resize(int size);
+
     // Try and find an existing entry.
     const Network::Netresult* lookup(const Network::NNPlanes& features);
 

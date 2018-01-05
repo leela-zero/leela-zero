@@ -81,6 +81,14 @@ void NNCache::insert(const Network::NNPlanes& features, const Network::Netresult
     }
 }
 
+void NNCache::resize(int size) {
+    m_size = size;
+    while (m_order.size() > m_size) {
+        m_cache.erase(m_order.front());
+        m_order.pop_front();
+    }
+}
+
 void NNCache::dump_stats() {
     Utils::myprintf("NNCache: %d/%d hits/lookups = %.1f%% hitrate, %d inserts, %d size, %d collisions\n",
         m_hits, m_lookups, 100. * m_hits / (m_lookups + 1), m_inserts, m_cache.size(), m_collisions);
