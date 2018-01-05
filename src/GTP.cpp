@@ -341,9 +341,13 @@ bool GTP::execute(GameState & game, std::string xinput) {
             {
                 auto search = std::make_unique<UCTSearch>(game);
 
-                game.set_to_move(who);
+				//If played a black after a black, 
+				//this is not a normal game move and the history
+				//no longer makes sense. Clear the history for analysis purpose.
+				if (game.get_to_move() != who) 
+					game.anchor_game_history();
                 int move = search->think(who);
-                game.play_move(move);
+                game.play_move(who, move);
 
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
@@ -380,9 +384,13 @@ bool GTP::execute(GameState & game, std::string xinput) {
             {
                 auto search = std::make_unique<UCTSearch>(game);
 
-                game.set_to_move(who);
+				//If played a black after a black, 
+				//this is not a normal game move and the history
+				//no longer makes sense. Clear the history for analysis purpose.
+				if (game.get_to_move() != who)
+					game.anchor_game_history();
                 int move = search->think(who, UCTSearch::NOPASS);
-                game.play_move(move);
+                game.play_move(who, move);
 
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
