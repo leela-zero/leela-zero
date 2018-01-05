@@ -67,8 +67,8 @@ public:
     static constexpr passflag_t NORESIGN = 1 << 1;
 
     /*
-        Maximum size of the tree in memory. Nodes are about
-        40 bytes, so limit to ~1.6G.
+        Maximum size of the tree in memory. Nodes are 56 bytes
+        so limit to roughly 2GB-ish.
     */
     static constexpr auto MAX_TREE_SIZE = 40'000'000;
 
