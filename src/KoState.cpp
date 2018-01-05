@@ -16,17 +16,16 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string>
-#include <algorithm>
-
 #include "config.h"
+#include "KoState.h"
 
+#include <assert.h>
+#include <algorithm>
+#include <iterator>
+
+#include "FastBoard.h"
 #include "FastState.h"
 #include "FullBoard.h"
-#include "KoState.h"
 
 void KoState::init_game(int size, float komi) {
     assert(size <= FastBoard::MAXBOARDSIZE);
@@ -64,9 +63,8 @@ void KoState::play_move(int vertex) {
 void KoState::play_move(int color, int vertex) {
     if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
         FastState::play_move(color, vertex);
-
-    } else {
-        FastState::play_pass();
+    } else if (vertex == FastBoard::PASS) {
+        FastState::play_pass(color);
     }
     m_ko_hash_history.push_back(board.get_ko_hash());
 }

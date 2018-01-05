@@ -19,16 +19,18 @@
 #ifndef TTABLE_H_INCLUDED
 #define TTABLE_H_INCLUDED
 
+#include "config.h"
+
+#include <mutex>
 #include <vector>
 
 #include "UCTNode.h"
-#include "SMP.h"
 
 class TTEntry {
 public:
     TTEntry() = default;
 
-    uint64 m_hash{0};
+    std::uint64_t m_hash{0};
     int m_visits;
     double m_eval_sum;
 };
@@ -43,17 +45,17 @@ public:
     /*
         update corresponding entry
     */
-    void update(uint64 hash, const float komi, const UCTNode * node);
+    void update(std::uint64_t hash, const float komi, const UCTNode * node);
 
     /*
         sync given node with TT
     */
-    void sync(uint64 hash, const float komi, UCTNode * node);
+    void sync(std::uint64_t hash, const float komi, UCTNode * node);
 
 private:
     TTable(int size = 500000);
 
-    SMP::Mutex m_mutex;
+    std::mutex m_mutex;
     std::vector<TTEntry> m_buckets;
     float m_komi;
 };

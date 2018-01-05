@@ -16,22 +16,22 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #include "config.h"
+#include "Network.h"
+
 #include <algorithm>
-#include <functional>
+#include <array>
 #include <cassert>
-#include <iostream>
+#include <cmath>
 #include <fstream>
 #include <iterator>
-#include <string>
 #include <memory>
-#include <cmath>
-#include <array>
-#include <thread>
+#include <sstream>
+#include <string>
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 
-#include "Im2Col.h"
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
 #endif
@@ -46,13 +46,16 @@
 #include "UCTNode.h"
 #endif
 
-#include "SGFTree.h"
-#include "SGFParser.h"
-#include "Utils.h"
 #include "FastBoard.h"
-#include "Random.h"
-#include "Network.h"
+#include "FastState.h"
+#include "FullBoard.h"
+#include "GameState.h"
 #include "GTP.h"
+#include "Im2Col.h"
+#include "NNCache.h"
+#include "Random.h"
+#include "ThreadPool.h"
+#include "Timing.h"
 #include "Utils.h"
 
 using namespace Utils;
@@ -61,7 +64,7 @@ using namespace Utils;
 static std::vector<std::vector<float>> conv_weights;
 static std::vector<std::vector<float>> conv_biases;
 static std::vector<std::vector<float>> batchnorm_means;
-static std::vector<std::vector<float>> batchnorm_variances;
+static std::vector<std::vector<float>> batchnorm_stddivs;
 
 // Policy head
 static std::vector<float> conv_pol_w;
@@ -95,7 +98,7 @@ void Network::benchmark(GameState * state, int iterations) {
         tg.add_task([iters_per_thread, state]() {
             GameState mystate = *state;
             for (int loop = 0; loop < iters_per_thread; loop++) {
-                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION);
+                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION, -1, true);
             }
         });
     };
@@ -105,6 +108,12 @@ void Network::benchmark(GameState * state, int iterations) {
     auto elapsed = Time::timediff_seconds(start,end);
     myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
              iterations, elapsed, (int)(iterations / elapsed));
+}
+
+void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
+    for(auto&& w : weights) {
+        w = 1.0f / std::sqrt(w + epsilon);
+    }
 }
 
 void Network::initialize(void) {
@@ -181,7 +190,8 @@ void Network::initialize(void) {
             } else if (linecount % 4 == 2) {
                 batchnorm_means.emplace_back(weights);
             } else if (linecount % 4 == 3) {
-                batchnorm_variances.emplace_back(weights);
+                process_bn_var(weights);
+                batchnorm_stddivs.emplace_back(weights);
             }
         } else if (linecount == plain_conv_wts) {
             conv_pol_w = std::move(weights);
@@ -190,6 +200,7 @@ void Network::initialize(void) {
         } else if (linecount == plain_conv_wts + 2) {
             std::copy(begin(weights), end(weights), begin(bn_pol_w1));
         } else if (linecount == plain_conv_wts + 3) {
+            process_bn_var(weights);
             std::copy(begin(weights), end(weights), begin(bn_pol_w2));
         } else if (linecount == plain_conv_wts + 4) {
             std::copy(begin(weights), end(weights), begin(ip_pol_w));
@@ -202,6 +213,7 @@ void Network::initialize(void) {
         } else if (linecount == plain_conv_wts + 8) {
             std::copy(begin(weights), end(weights), begin(bn_val_w1));
         } else if (linecount == plain_conv_wts + 9) {
+            process_bn_var(weights);
             std::copy(begin(weights), end(weights), begin(bn_val_w2));
         } else if (linecount == plain_conv_wts + 10) {
             std::copy(begin(weights), end(weights), begin(ip1_val_w));
@@ -221,7 +233,7 @@ void Network::initialize(void) {
     opencl_net.push_convolve(3, conv_weights[weight_index],
                                 conv_biases[weight_index]);
     opencl_net.push_batchnorm(361, batchnorm_means[weight_index],
-                                   batchnorm_variances[weight_index]);
+                                   batchnorm_stddivs[weight_index]);
     weight_index++;
 
     // residual blocks
@@ -229,11 +241,11 @@ void Network::initialize(void) {
         opencl_net.push_residual(3, conv_weights[weight_index],
                                     conv_biases[weight_index],
                                     batchnorm_means[weight_index],
-                                    batchnorm_variances[weight_index],
+                                    batchnorm_stddivs[weight_index],
                                     conv_weights[weight_index + 1],
                                     conv_biases[weight_index + 1],
                                     batchnorm_means[weight_index + 1],
-                                    batchnorm_variances[weight_index + 1]);
+                                    batchnorm_stddivs[weight_index + 1]);
         weight_index += 2;
     }
     myprintf("done\n");
@@ -333,18 +345,15 @@ template <size_t spatial_size>
 void batchnorm(size_t channels,
                std::vector<float>& data,
                const float* means,
-               const float* variances,
+               const float* stddivs,
                const float* eltwise = nullptr)
 {
-    constexpr auto epsilon = 1e-5f;
-
     auto lambda_ReLU = [](float val) { return (val > 0.0f) ?
                                        val : 0.0f; };
 
     for (auto c = size_t{0}; c < channels; ++c) {
         auto mean = means[c];
-        auto variance = variances[c] + epsilon;
-        auto scale_stddiv = 1.0f / std::sqrt(variance);
+        auto scale_stddiv = stddivs[c];
 
         if (eltwise == nullptr) {
             // Classical BN
@@ -364,9 +373,9 @@ void batchnorm(size_t channels,
     }
 }
 
-#if defined(USE_BLAS) && !defined(USE_OPENCL)
-void Network::forward(std::vector<float>& input,
-                      std::vector<float>& output) {
+#ifndef USE_HALF
+void Network::forward_cpu(std::vector<float>& input,
+                          std::vector<float>& output) {
     // Input convolution
     constexpr int width = 19;
     constexpr int height = 19;
@@ -378,12 +387,12 @@ void Network::forward(std::vector<float>& input,
                 conv_weights[0], conv_biases[0], conv_out);
     batchnorm<361>(output_channels, conv_out,
                    batchnorm_means[0].data(),
-                   batchnorm_variances[0].data());
+                   batchnorm_stddivs[0].data());
 
     // Residual tower
     auto conv_in = std::vector<float>(output_channels * width * height);
     auto res = std::vector<float>(output_channels * width * height);
-    for (auto i = size_t{1}; i < conv_weights.size(); i++) {
+    for (auto i = size_t{1}; i < conv_weights.size(); i += 2) {
         auto output_channels = conv_biases[i].size();
         std::swap(conv_out, conv_in);
         std::copy(begin(conv_in), end(conv_in), begin(res));
@@ -392,21 +401,59 @@ void Network::forward(std::vector<float>& input,
                     conv_out);
         batchnorm<361>(output_channels, conv_out,
                        batchnorm_means[i].data(),
-                       batchnorm_variances[i].data());
+                       batchnorm_stddivs[i].data());
+
+        output_channels = conv_biases[i + 1].size();
         std::swap(conv_out, conv_in);
-        i++;
-        output_channels = conv_biases[i].size();
         convolve<3>(output_channels, conv_in,
-                    conv_weights[i], conv_biases[i],
+                    conv_weights[i + 1], conv_biases[i + 1],
                     conv_out);
         batchnorm<361>(output_channels, conv_out,
-                       batchnorm_means[i].data(),
-                       batchnorm_variances[i].data(),
+                       batchnorm_means[i + 1].data(),
+                       batchnorm_stddivs[i + 1].data(),
                        res.data());
     }
     std::copy(begin(conv_out), end(conv_out), begin(output));
 }
 #endif
+
+template<typename T>
+T relative_difference(T a, T b) {
+    // Handle NaN
+    if (std::isnan(a) || std::isnan(b)) {
+        return std::numeric_limits<T>::max();
+    }
+    // Handle sign difference
+    if (((a < 0) != (b < 0)) && (a != 0) && (b != 0)) {
+        return std::numeric_limits<T>::max();
+    }
+    a = std::fabs(a);
+    b = std::fabs(b);
+
+    // Handle underflow
+    constexpr float small_number = 1e-3;
+    a = std::max(a, small_number);
+    b = std::max(b, small_number);
+
+    return std::max(fabs((a - b) / a), fabs((a - b) / b));
+}
+
+void compare_net_outputs(std::vector<float>& data,
+                         std::vector<float>& ref) {
+    // We accept an error up to 5%, but output values
+    // smaller than 1/1000th are "rounded up" for the comparison.
+    constexpr float relative_error = 5e-2;
+    for (auto idx = size_t{0}; idx < data.size(); ++idx) {
+        auto err = relative_difference(data[idx], ref[idx]);
+        if (err > relative_error) {
+            myprintf("Error in OpenCL calculation: expected %f got %f "
+                     "(error=%f%%)\n", ref[idx], data[idx], err * 100.0);
+            myprintf("Update your GPU drivers or reduce the amount of games "
+                     "played simultaneously.\n");
+            throw std::runtime_error("OpenCL self-check mismatch.");
+        }
+    }
+}
 #endif
 
 void Network::softmax(const std::vector<float>& input,
@@ -431,7 +478,7 @@ void Network::softmax(const std::vector<float>& input,
 }
 
 Network::Netresult Network::get_scored_moves(
-    GameState * state, Ensemble ensemble, int rotation) {
+    GameState* state, Ensemble ensemble, int rotation, bool skip_cache) {
     Netresult result;
     if (state->board.get_boardsize() != 19) {
         return result;
@@ -439,6 +486,13 @@ Network::Netresult Network::get_scored_moves(
 
     NNPlanes planes;
     gather_features(state, planes);
+
+    // See if we already have this in the cache.
+    if (!skip_cache) {
+      if (auto r = NNCache::get_NNCache()->lookup(planes)) {
+        return *r;
+      }
+    }
 
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
@@ -449,6 +503,9 @@ Network::Netresult Network::get_scored_moves(
         auto rand_rot = Random::get_Rng().randfix<8>();
         result = get_scored_moves_internal(state, planes, rand_rot);
     }
+
+    // Insert result into cache.
+    NNCache::get_NNCache()->insert(planes, result);
 
     return result;
 }
@@ -481,7 +538,16 @@ Network::Netresult Network::get_scored_moves_internal(
 #ifdef USE_OPENCL
     opencl_net.forward(input_data, output_data);
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
-    forward(input_data, output_data);
+    forward_cpu(input_data, output_data);
+#endif
+#ifdef USE_OPENCL_SELFCHECK
+    // Both implementations are available, self-check the OpenCL driver by
+    // running both with a probability of 1/2000.
+    if (Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
+        auto cpu_output_data = std::vector<float>(output_data.size());
+        forward_cpu(input_data, cpu_output_data);
+        compare_net_outputs(output_data, cpu_output_data);
+    }
 #endif
     // We calculate both network heads on the CPU. They are irregular
     // and have a much lower compute densitity than the residual layers,
@@ -505,7 +571,7 @@ Network::Netresult Network::get_scored_moves_internal(
     float winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
 
     std::vector<scored_node> result;
-    for (size_t idx = 0; idx < outputs.size(); idx++) {
+    for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
         if (idx < 19*19) {
             auto val = outputs[idx];
             auto rot_idx = rotate_nn_idx(idx, rotation);
@@ -583,14 +649,13 @@ void Network::gather_features(GameState * state, NNPlanes & planes) {
     BoardPlane& black_to_move  = planes[16];
     BoardPlane& white_to_move  = planes[17];
 
-    int to_move = state->get_to_move();
-    bool whites_move = to_move == FastBoard::WHITE;
-    if (whites_move) {
+    if (state->board.white_to_move()) {
         white_to_move.set();
     } else {
         black_to_move.set();
     }
 
+    auto to_move = state->get_to_move();
     // Go back in time, fill history boards
     size_t backtracks = 0;
     for (int h = 0; h < 8; h++) {

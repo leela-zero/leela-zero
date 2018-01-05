@@ -20,16 +20,13 @@
 #define NETWORK_H_INCLUDED
 
 #include "config.h"
-#include <vector>
-#include <string>
+
+#include <array>
 #include <bitset>
 #include <memory>
-#include <array>
-
-#ifdef USE_OPENCL
-#include <atomic>
-class UCTNode;
-#endif
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "FastState.h"
 #include "GameState.h"
@@ -46,7 +43,8 @@ public:
 
     static Netresult get_scored_moves(GameState * state,
                                       Ensemble ensemble,
-                                      int rotation = -1);
+                                      int rotation = -1,
+                                      bool skip_cache = false);
     // File format version
     static constexpr int FORMAT_VERSION = 1;
     static constexpr int INPUT_CHANNELS = 18;
@@ -61,12 +59,13 @@ public:
     static void gather_features(GameState* state, NNPlanes & planes);
 
 private:
+    static void process_bn_var(std::vector<float>& weights, const float epsilon=1e-5f);
     static Netresult get_scored_moves_internal(
       GameState * state, NNPlanes & planes, int rotation);
     static int rotate_nn_idx(const int vertex, int symmetry);
-#if defined(USE_BLAS) && !defined(USE_OPENCL)
-    static void forward(std::vector<float>& input,
-                        std::vector<float>& output);
+#if defined(USE_BLAS)
+    static void forward_cpu(std::vector<float>& input,
+                            std::vector<float>& output);
 #endif
 };
 

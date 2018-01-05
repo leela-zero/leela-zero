@@ -16,14 +16,14 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
-#include <algorithm>
-
 #include "config.h"
 
+#include <array>
+#include <cassert>
+
 #include "FullBoard.h"
-#include "Zobrist.h"
 #include "Utils.h"
+#include "Zobrist.h"
 
 using namespace Utils;
 
@@ -38,7 +38,6 @@ int FullBoard::remove_string(int i) {
 
         m_square[pos] = EMPTY;
         m_parent[pos] = MAXSQ;
-        m_totalstones[color]--;
 
         remove_neighbour(pos, color);
 
@@ -56,8 +55,8 @@ int FullBoard::remove_string(int i) {
     return removed;
 }
 
-uint64 FullBoard::calc_ko_hash(void) {
-    auto res = uint64{0x1234567887654321ULL};
+std::uint64_t FullBoard::calc_ko_hash(void) {
+    auto res = std::uint64_t{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
@@ -71,8 +70,8 @@ uint64 FullBoard::calc_ko_hash(void) {
     return res;
 }
 
-uint64 FullBoard::calc_hash(void) {
-    auto res = uint64{0x1234567887654321ULL};
+std::uint64_t FullBoard::calc_hash(void) {
+    auto res = std::uint64_t{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
@@ -93,15 +92,15 @@ uint64 FullBoard::calc_hash(void) {
     return res;
 }
 
-uint64 FullBoard::get_hash(void) const {
+std::uint64_t FullBoard::get_hash(void) const {
     return m_hash;
 }
 
-uint64 FullBoard::get_ko_hash(void) const {
+std::uint64_t FullBoard::get_ko_hash(void) const {
     return m_ko_hash;
 }
 
-int FullBoard::update_board(const int color, const int i, bool &capture) {
+int FullBoard::update_board(const int color, const int i) {
     assert(m_square[i] == EMPTY);
 
     m_hash ^= Zobrist::zobrist[m_square[i]][i];
@@ -112,7 +111,6 @@ int FullBoard::update_board(const int color, const int i, bool &capture) {
     m_parent[i] = i;
     m_libs[i] = count_pliberties(i);
     m_stones[i] = 1;
-    m_totalstones[color]++;
 
     m_hash ^= Zobrist::zobrist[m_square[i]][i];
     m_ko_hash ^= Zobrist::zobrist[m_square[i]][i];
@@ -161,15 +159,12 @@ int FullBoard::update_board(const int color, const int i, bool &capture) {
     /* check whether we still live (i.e. detect suicide) */
     if (m_libs[m_parent[i]] == 0) {
         assert(captured_stones == 0);
-        remove_string_fast(i);
+        remove_string(i);
     }
 
-    if (captured_stones) {
-        capture = true;
-        /* check for possible simple ko */
-        if (captured_stones == 1 && eyeplay) {
-            return captured_sq;
-        }
+    /* check for possible simple ko */
+    if (captured_stones == 1 && eyeplay) {
+        return captured_sq;
     }
 
     return -1;

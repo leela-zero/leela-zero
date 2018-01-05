@@ -19,12 +19,15 @@
 #ifndef SGFTREE_H_INCLUDED
 #define SGFTREE_H_INCLUDED
 
-#include <vector>
+#include <stddef.h>
 #include <map>
-#include <string>
 #include <sstream>
-#include "KoState.h"
+#include <string>
+#include <vector>
+
+#include "FastBoard.h"
 #include "GameState.h"
+#include "KoState.h"
 
 class SGFTree {
 public:
@@ -48,7 +51,7 @@ public:
     bool is_initialized() const {
         return m_initialized;
     }
-    FastBoard::square_t get_winner();
+    FastBoard::square_t get_winner() const;
 
     static std::string state_to_string(GameState& state, int compcolor);
 

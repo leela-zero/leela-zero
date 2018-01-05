@@ -24,9 +24,9 @@
 #include <atomic>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <vector>
 
-#include "SMP.h"
 #include "GameState.h"
 #include "Network.h"
 
@@ -41,7 +41,6 @@ public:
 
     explicit UCTNode(int vertex, float score, float init_eval);
     UCTNode() = delete;
-    ~UCTNode();
     bool first_visit() const;
     bool has_children() const;
     bool create_children(std::atomic<int>& nodecount,
@@ -73,7 +72,6 @@ public:
 
     void sort_root_children(int color);
     UCTNode& get_best_root_child(int color);
-    SMP::Mutex& get_mutex();
 
 private:
     void link_nodelist(std::atomic<int>& nodecount,
@@ -98,7 +96,7 @@ private:
     // Is someone adding scores to this node?
     // We don't need to unset this.
     bool m_is_expanding{false};
-    SMP::Mutex m_nodemutex;
+    std::mutex m_nodemutex;
 };
 
 #endif
