@@ -44,7 +44,7 @@
 #endif
 
 #define TUNER_FILE_LOCAL "leelaz_tuners"
-#define MAX_ERROR 1e-5
+#define MAX_ERROR 1e-4
 
 using namespace Utils;
 
@@ -164,18 +164,18 @@ static void sgemm_generate_data(std::vector<float> &x, const int m, const int n,
 static float compare_ref(std::vector<float> &x, std::vector<float> &ref,
         const int m, const int n, const int batch_size) {
 
-    auto max_error = 0.0f;
+    auto sum = 0.0f;
     for (auto batch = 0; batch < batch_size; batch++) {
         for (auto i = 0; i < n; i++) {
             for (auto j = 0; j < m; j++) {
                 auto r = ref[batch*n*m + i*m + j];
                 auto y = x[batch*n*m + j*n + i];
 
-                max_error = std::max(max_error, std::abs(r-y));
+                sum += (r - y) * (r - y);
             }
         }
     }
-    return max_error;
+    return sum/(m*n);
 }
 
 std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int batch_size, const int runs) {
