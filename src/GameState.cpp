@@ -148,11 +148,11 @@ bool GameState::play_textmove(std::string color, std::string vertex) {
 
     int move = board.get_vertex(column, row);
 
-	//If played a black after a black, 
-	//this is not a normal game move and the history
-	//no longer makes sense. Clear the history for analysis purpose.
-	if (get_to_move() != who)
-		anchor_game_history();
+    //If played a black after a black, 
+    //this is not a normal game move and the history
+    //no longer makes sense. Clear the history for analysis purpose.
+    if (get_to_move() != who)
+        anchor_game_history();
     play_move(who, move);
 
     return true;

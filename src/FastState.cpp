@@ -76,7 +76,9 @@ void FastState::play_pass(int color) {
     std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1, rend(m_lastmove));
     m_lastmove[0] = FastBoard::PASS;
 
-    board.m_hash  ^= 0xABCDABCDABCDABCDULL;
+    if (board.m_tomove == color) {
+        board.m_hash ^= 0xABCDABCDABCDABCDULL;
+    }
     board.m_tomove = !color;
 
     board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
