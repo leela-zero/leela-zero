@@ -74,29 +74,44 @@ public:
     UCTNode& get_best_root_child(int color);
 
 private:
+    // BEWARE : this instance is very size-sensitive as we generate tens of millions of these.
+    // Think twice before adding a field here, and see how you can reduce instance footprint.
+
+    // instead of placing mutex instances per instance (40 bytes on Linux 64-bit),
+    // we will create a pool of mutex instances and then use mutexes based on the
+    // hash of the this pointer.  This will create some false locks but it should
+    // be better than creating tens of millions of 40-byte instances.
+    static constexpr auto MUTEX_TABLE_SIZE = 128;
+    static std::mutex s_nodemutex[MUTEX_TABLE_SIZE];
+    std::mutex & get_mutex() {
+        auto ptr_to_int = std::hash<UCTNode *>{}(this);
+        return s_nodemutex[ ptr_to_int % MUTEX_TABLE_SIZE ];
+    }
+
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist,
                        float init_eval);
-
     // Tree data
-    std::atomic<bool> m_has_children{false};
     std::vector<node_ptr_t> m_children;
+    std::atomic<bool> m_has_children{false};
+
+    // Is someone adding scores to this node?
+    // We don't need to unset this.
+    bool m_is_expanding{false};
+
+    // node alive (not superko)
+    std::atomic<bool> m_valid{true};
 
     // Move
     int m_move;
     // UCT
     std::atomic<int> m_visits{0};
     std::atomic<int> m_virtual_loss{0};
+
     // UCT eval
     float m_score;
     float m_init_eval;
     std::atomic<double> m_blackevals{0};
-    // node alive (not superko)
-    std::atomic<bool> m_valid{true};
-    // Is someone adding scores to this node?
-    // We don't need to unset this.
-    bool m_is_expanding{false};
-    std::mutex m_nodemutex;
 };
 
 #endif

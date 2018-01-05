@@ -44,6 +44,8 @@
 
 using namespace Utils;
 
+std::mutex UCTNode::s_nodemutex[UCTNode::MUTEX_TABLE_SIZE];
+
 UCTNode::UCTNode(int vertex, float score, float init_eval)
     : m_move(vertex), m_score(score), m_init_eval(init_eval) {
 }
@@ -61,7 +63,7 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
     }
     {
       // acquire the lock
-      std::lock_guard<std::mutex> lock(m_nodemutex);
+      std::lock_guard<std::mutex> lock(get_mutex());
       // no successors in final state
       if (state.get_passes() >= 2) {
           return false;
@@ -123,7 +125,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
     // Use best to worst order, so highest go first
     std::stable_sort(rbegin(nodelist), rend(nodelist));
 
-    std::lock_guard<std::mutex> lock(m_nodemutex);
+    std::lock_guard<std::mutex> lock(get_mutex());
 
     for (const auto& node : nodelist) {
         m_children.emplace_back(
@@ -311,7 +313,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
     UCTNode* best = nullptr;
     auto best_value = -1000.0f;
 
-    std::lock_guard<std::mutex> lock(m_nodemutex);
+    std::lock_guard<std::mutex> lock(get_mutex());
 
     // Count parentvisits.
     // We do this manually to avoid issues with transpositions.
@@ -370,13 +372,13 @@ private:
 };
 
 void UCTNode::sort_root_children(int color) {
-    std::lock_guard<std::mutex> lock(m_nodemutex);
+    std::lock_guard<std::mutex> lock(get_mutex());
     std::stable_sort(begin(m_children), end(m_children), NodeComp(color));
     std::reverse(begin(m_children), end(m_children));
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
-    std::lock_guard<std::mutex> lock(m_nodemutex);
+    std::lock_guard<std::mutex> lock(get_mutex());
     assert(!m_children.empty());
 
     return *(std::max_element(begin(m_children), end(m_children),
