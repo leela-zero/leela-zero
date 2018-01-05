@@ -87,7 +87,7 @@ static std::array<float, 256> ip1_val_b;
 static std::array<float, 256> ip2_val_w;
 static std::array<float, 1> ip2_val_b;
 
-void Network::benchmark(GameState * state, int iterations) {
+void Network::benchmark(const GameState * state, int iterations) {
     int cpus = cfg_num_threads;
     int iters_per_thread = (iterations + (cpus - 1)) / cpus;
 
@@ -96,9 +96,8 @@ void Network::benchmark(GameState * state, int iterations) {
     ThreadGroup tg(thread_pool);
     for (int i = 0; i < cpus; i++) {
         tg.add_task([iters_per_thread, state]() {
-            GameState mystate = *state;
             for (int loop = 0; loop < iters_per_thread; loop++) {
-                auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION, -1, true);
+                auto vec = get_scored_moves(state, Ensemble::RANDOM_ROTATION, -1, true);
             }
         });
     };
@@ -478,7 +477,7 @@ void Network::softmax(const std::vector<float>& input,
 }
 
 Network::Netresult Network::get_scored_moves(
-    GameState* state, Ensemble ensemble, int rotation, bool skip_cache) {
+    const GameState* state, Ensemble ensemble, int rotation, bool skip_cache) {
     Netresult result;
     if (state->board.get_boardsize() != 19) {
         return result;
@@ -511,7 +510,7 @@ Network::Netresult Network::get_scored_moves(
 }
 
 Network::Netresult Network::get_scored_moves_internal(
-    GameState * state, NNPlanes & planes, int rotation) {
+    const GameState* state, NNPlanes & planes, int rotation) {
     assert(rotation >= 0 && rotation <= 7);
     assert(INPUT_CHANNELS == planes.size());
     constexpr int width = 19;
@@ -589,7 +588,7 @@ Network::Netresult Network::get_scored_moves_internal(
     return std::make_pair(result, winrate_sig);
 }
 
-void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) {
+void Network::show_heatmap(const FastState * state, Netresult& result, bool topmoves) {
     auto moves = result.first;
     std::vector<std::string> display_map;
     std::string line;
@@ -642,49 +641,49 @@ void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) 
     }
 }
 
-void Network::gather_features(GameState * state, NNPlanes & planes) {
-    planes.resize(18);
-    constexpr size_t our_offset   = 0;
-    constexpr size_t their_offset = 8;
-    BoardPlane& black_to_move  = planes[16];
-    BoardPlane& white_to_move  = planes[17];
-
-    if (state->board.white_to_move()) {
-        white_to_move.set();
-    } else {
-        black_to_move.set();
-    }
-
-    auto to_move = state->get_to_move();
-    // Go back in time, fill history boards
-    size_t backtracks = 0;
-    for (int h = 0; h < 8; h++) {
-        // collect white, black occupation planes
-        for (int j = 0; j < 19; j++) {
-            for(int i = 0; i < 19; i++) {
-                int vtx = state->board.get_vertex(i, j);
-                FastBoard::square_t color =
-                    state->board.get_square(vtx);
-                int idx = j * 19 + i;
-                if (color != FastBoard::EMPTY) {
-                    if (color == to_move) {
-                        planes[our_offset + h][idx] = true;
-                    } else {
-                        planes[their_offset + h][idx] = true;
-                    }
+void Network::fill_input_plane_pair(const FullBoard& board,
+                                    BoardPlane& black, BoardPlane& white) {
+    auto idx = 0;
+    for (int j = 0; j < 19; j++) {
+        for(int i = 0; i < 19; i++) {
+            int vtx = board.get_vertex(i, j);
+            auto color = board.get_square(vtx);
+            if (color != FastBoard::EMPTY) {
+                if (color == FastBoard::BLACK) {
+                    black[idx] = true;
+                } else {
+                    white[idx] = true;
                 }
             }
-        }
-        if (!state->undo_move()) {
-            break;
-        } else {
-            backtracks++;
+            idx++;
         }
     }
+}
 
-    // Now go back to present day
-    for (size_t h = 0; h < backtracks; h++) {
-        state->forward_move();
+void Network::gather_features(const GameState* state, NNPlanes & planes) {
+    planes.resize(INPUT_CHANNELS);
+    BoardPlane& black_to_move  = planes[2 * INPUT_MOVES];
+    BoardPlane& white_to_move  = planes[2 * INPUT_MOVES + 1];
+
+    const auto to_move = state->get_to_move();
+    const auto blacks_move = to_move == FastBoard::BLACK;
+
+    const auto black_offset = blacks_move ? 0 : INPUT_MOVES;
+    const auto white_offset = blacks_move ? INPUT_MOVES : 0;
+
+    if (blacks_move) {
+        black_to_move.set();
+    } else {
+        white_to_move.set();
+    }
+
+    const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
+    // Go back in time, fill history boards
+    for (auto h = size_t{0}; h < moves; h++) {
+        // collect white, black occupation planes
+        fill_input_plane_pair(state->get_past_board(h),
+                              planes[black_offset + h],
+                              planes[white_offset + h]);
     }
 }
 
