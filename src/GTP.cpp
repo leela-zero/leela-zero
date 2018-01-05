@@ -65,6 +65,34 @@ std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
 
+UCTNode * root_subtree;
+
+void cull_tree(UCTNode ** root, int move, bool reset=false) {
+  if (reset || (move == FastBoard::RESIGN) || (*root == nullptr)) {
+    delete *root; *root = nullptr;
+  }
+  else {
+    //advance root to subtree of move
+    UCTNode * subtree = (*root)->remove_child(move);
+    if (subtree != nullptr) {
+      UCTNode * oldRoot = *root;
+      subtree->subtree_adjust_children();
+      *root = subtree;
+      myprintf("[SUBTREE REUSE] nodes: deleted[%d] preserved[%d]\n",
+	       oldRoot->calc_subtree_size(),
+	       subtree->calc_subtree_size());
+      delete oldRoot;
+      //deletes all old history except subtree of move
+    }
+    else {
+      myprintf("[SUBTREE REUSE] nodes: deleted all[%d] no subtree for move[%d]\n",
+	       (*root)->calc_subtree_size(),
+               move);
+      delete *root; *root = nullptr;
+    }
+  }
+}
+
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
     cfg_num_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
@@ -271,6 +299,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("clear_board") == 0) {
         Training::clear_training();
         game.reset_game();
+        cull_tree(&root_subtree,0,true);
         gtp_printf(id, "");
         return true;
     } else if (command.find("komi") == 0) {
@@ -298,6 +327,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             gtp_printf(id, "");
         } else if (command.find("pass") != std::string::npos) {
             game.play_pass();
+            cull_tree(&root_subtree, FastBoard::PASS);
             gtp_printf(id, "");
         } else {
             std::istringstream cmdstream(command);
@@ -313,6 +343,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                     gtp_fail_printf(id, "illegal move");
                 } else {
                     gtp_printf(id, "");
+                    cull_tree(&root_subtree, game.get_last_move());
                 }
             } else {
                 gtp_fail_printf(id, "syntax not understood");
@@ -338,11 +369,12 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
             // start thinking
             {
-                auto search = std::make_unique<UCTSearch>(game);
+                auto search = std::make_unique<UCTSearch>(game, &root_subtree);
 
                 game.set_to_move(who);
                 int move = search->think(who);
                 game.play_move(move);
+                cull_tree(&root_subtree, move);
 
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
@@ -350,7 +382,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             if (cfg_allow_pondering) {
                 // now start pondering
                 if (!game.has_resigned()) {
-                    auto search = std::make_unique<UCTSearch>(game);
+                    auto search = std::make_unique<UCTSearch>(game, &root_subtree);
                     search->ponder();
                 }
             }
@@ -382,6 +414,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 game.set_to_move(who);
                 int move = search->think(who, UCTSearch::NOPASS);
                 game.play_move(move);
+                cull_tree(&root_subtree, move);
 
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
@@ -389,7 +422,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             if (cfg_allow_pondering) {
                 // now start pondering
                 if (!game.has_resigned()) {
-                    auto search = std::make_unique<UCTSearch>(game);
+                    auto search = std::make_unique<UCTSearch>(game, &root_subtree);
                     search->ponder();
                 }
             }
@@ -400,6 +433,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("undo") == 0) {
         if (game.undo_move()) {
             gtp_printf(id, "");
+            cull_tree(&root_subtree, 0, true);
         } else {
             gtp_fail_printf(id, "cannot undo");
         }
@@ -473,7 +507,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 // KGS sends this after our move
                 // now start pondering
                 if (!game.has_resigned()) {
-                    auto search = std::make_unique<UCTSearch>(game);
+                    auto search = std::make_unique<UCTSearch>(game, &root_subtree);
                     search->ponder();
                 }
             }
@@ -483,20 +517,22 @@ bool GTP::execute(GameState & game, std::string xinput) {
         return true;
     } else if (command.find("auto") == 0) {
         do {
-            auto search = std::make_unique<UCTSearch>(game);
+            auto search = std::make_unique<UCTSearch>(game, &root_subtree);
 
             int move = search->think(game.get_to_move(), UCTSearch::NORMAL);
             game.play_move(move);
+            cull_tree(&root_subtree, move);
             game.display_state();
 
         } while (game.get_passes() < 2 && !game.has_resigned());
 
         return true;
     } else if (command.find("go") == 0) {
-        auto search = std::make_unique<UCTSearch>(game);
+        auto search = std::make_unique<UCTSearch>(game, &root_subtree);
 
         int move = search->think(game.get_to_move());
         game.play_move(move);
+        cull_tree(&root_subtree, move);
 
         std::string vertex = game.move_to_text(move);
         myprintf("%s\n", vertex.c_str());

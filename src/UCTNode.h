@@ -69,11 +69,15 @@ public:
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
+    UCTNode* remove_child(int move);
     const std::vector<node_ptr_t>& get_children() const;
 
     void sort_root_children(int color);
     UCTNode& get_best_root_child(int color);
     SMP::Mutex& get_mutex();
+
+    int calc_subtree_size();
+    void subtree_adjust_children();
 
 private:
     void link_nodelist(std::atomic<int>& nodecount,
