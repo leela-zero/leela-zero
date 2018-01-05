@@ -16,48 +16,38 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef TTABLE_H_INCLUDED
-#define TTABLE_H_INCLUDED
+#ifndef SMP_H_INCLUDED
+#define SMP_H_INCLUDED
 
 #include "config.h"
 
-#include <vector>
+#include <atomic>
 
-#include "SMP.h"
-#include "UCTNode.h"
+namespace SMP {
+    int get_num_cpus();
 
-class TTEntry {
-public:
-    TTEntry() = default;
+    class Mutex {
+    public:
+        Mutex();
+        ~Mutex() = default;
+        bool is_held();
+        friend class Lock;
+    private:
+        std::atomic<bool> m_lock;
+    };
 
-    std::uint64_t m_hash{0};
-    int m_visits;
-    double m_eval_sum;
-};
+    class Lock {
+    public:
+        explicit Lock(Mutex & m);
+        ~Lock();
+        void lock();
+        void unlock();
+    private:
+        Mutex * m_mutex;
+    };
+}
 
-class TTable {
-public:
-    /*
-        return the global TT
-    */
-    static TTable* get_TT(void);
-
-    /*
-        update corresponding entry
-    */
-    void update(std::uint64_t hash, const float komi, const UCTNode * node);
-
-    /*
-        sync given node with TT
-    */
-    void sync(std::uint64_t hash, const float komi, UCTNode * node);
-
-private:
-    TTable(int size = 500000);
-
-    SMP::Mutex m_mutex;
-    std::vector<TTEntry> m_buckets;
-    float m_komi;
-};
+// Avoids accidentally creating a temporary
+#define LOCK(mutex, lock) SMP::Lock lock((mutex))
 
 #endif
