@@ -48,12 +48,6 @@ UCTNode::UCTNode(int vertex, float score, float init_eval)
     : m_move(vertex), m_score(score), m_init_eval(init_eval) {
 }
 
-UCTNode::~UCTNode() {
-    LOCK(get_mutex(), lock);
-    // Empty the children array while the lock is held
-    m_children.clear();
-}
-
 bool UCTNode::first_visit() const {
     return m_visits == 0;
 }
