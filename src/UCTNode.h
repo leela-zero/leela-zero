@@ -75,14 +75,21 @@ public:
     UCTNode& get_best_root_child(int color);
     SMP::Mutex& get_mutex();
 
+    // Expand out all child nodes.
+    void expand_all();
+
 private:
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist,
                        float init_eval);
+    UCTNode* expand(size_t child);
 
     // Tree data
     std::atomic<bool> m_has_children{false};
-    std::vector<node_ptr_t> m_children;
+    // (move, score) pairs.
+    std::vector<std::pair<int, float>> m_child_scores;
+    // pointers to expanded nodes.
+    std::vector<node_ptr_t> m_expanded;
 
     // Move
     int m_move;
@@ -92,6 +99,7 @@ private:
     // UCT eval
     float m_score;
     float m_init_eval;
+    float m_child_init_eval;
     std::atomic<double> m_blackevals{0};
     // node alive (not superko)
     std::atomic<bool> m_valid{true};
