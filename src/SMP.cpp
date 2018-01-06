@@ -24,10 +24,6 @@ SMP::Mutex::Mutex() {
     m_lock = false;
 }
 
-bool SMP::Mutex::is_held() {
-    return m_lock.load(std::memory_order_acquire);
-}
-
 SMP::Lock::Lock(Mutex & m) {
     m_mutex = &m;
     lock();

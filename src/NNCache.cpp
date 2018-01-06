@@ -73,13 +73,29 @@ void NNCache::insert(const Network::NNPlanes& features, const Network::Netresult
     m_order.push_back(hash);
     ++m_inserts;
 
-
     // If the cache is too large, remove the oldest entry.
     if (m_order.size() > m_size) {
         m_cache.erase(m_order.front());
         m_order.pop_front();
     }
 }
+
+void NNCache::resize(int size) {
+    m_size = size;
+    while (m_order.size() > m_size) {
+        m_cache.erase(m_order.front());
+        m_order.pop_front();
+    }
+}
+
+void NNCache::set_size_from_playouts(int max_playouts) {
+    // cache hits are generally from last several moves so setting cache
+    // size based on playouts increases the hit rate while balancing memory
+    // usage for low playout instances. 100'000 cache entries is ~500 MB
+    auto max_size = std::min(100'000, std::max(6'000, 3 * max_playouts));
+    NNCache::get_NNCache()->resize(max_size);
+}
+
 
 void NNCache::dump_stats() {
     Utils::myprintf("NNCache: %d/%d hits/lookups = %.1f%% hitrate, %d inserts, %d size, %d collisions\n",

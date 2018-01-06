@@ -32,6 +32,12 @@ public:
     // return the global NNCache
     static NNCache* get_NNCache(void);
 
+    // Set a reasonable size gives max number of playouts
+    void set_size_from_playouts(int max_playouts);
+
+    // Resize NNCache
+    void resize(int size);
+
     // Try and find an existing entry.
     const Network::Netresult* lookup(const Network::NNPlanes& features);
 
