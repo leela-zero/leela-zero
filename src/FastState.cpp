@@ -35,7 +35,7 @@ void FastState::init_game(int size, float komi) {
     m_movenum = 0;
 
     m_komove = 0;
-    std::fill(begin(m_lastmove), end(m_lastmove), 0);
+    m_lastmove = 0;
     m_komi = komi;
     m_handicap = 0;
     m_passes = 0;
@@ -54,8 +54,7 @@ void FastState::reset_game(void) {
     m_passes = 0;
     m_handicap = 0;
     m_komove = 0;
-
-    std::fill(begin(m_lastmove), end(m_lastmove), 0);
+    m_lastmove = 0;
 }
 
 void FastState::reset_board(void) {
@@ -73,8 +72,7 @@ bool FastState::is_move_legal(int color, int vertex) {
 void FastState::play_pass(int color) {
     m_movenum++;
 
-    std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1, rend(m_lastmove));
-    m_lastmove[0] = FastBoard::PASS;
+    m_lastmove = FastBoard::PASS;
 
     if (board.m_tomove == color) {
         board.m_hash ^= 0xABCDABCDABCDABCDULL;
@@ -95,9 +93,7 @@ void FastState::play_move(int color, int vertex) {
         int kosq = board.update_board(color, vertex);
 
         m_komove = kosq;
-        std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1,
-                    rend(m_lastmove));
-        m_lastmove[0] = vertex;
+        m_lastmove = vertex;
         m_movenum++;
 
         if (board.m_tomove == color) {
@@ -120,11 +116,7 @@ size_t FastState::get_movenum() const {
 }
 
 int FastState::get_last_move(void) const {
-    return m_lastmove.front();
-}
-
-int FastState::get_prevlast_move() const {
-    return m_lastmove[1];
+    return m_lastmove;
 }
 
 int FastState::get_passes() const {
@@ -181,8 +173,4 @@ void FastState::set_handicap(int hcap) {
 
 int FastState::get_handicap() const {
     return m_handicap;
-}
-
-int FastState::get_komove() const {
-    return m_komove;
 }

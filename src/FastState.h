@@ -51,8 +51,6 @@ public:
 
     size_t get_movenum() const;
     int get_last_move() const;
-    int get_prevlast_move() const;
-    int get_komove() const;
     void display_state();
     std::string move_to_text(int move);
 
@@ -63,7 +61,7 @@ public:
     int m_passes;
     int m_komove;
     size_t m_movenum;
-    std::array<int, 2> m_lastmove;
+    int m_lastmove;
 
 protected:
     void play_move(int color, int vertex);
