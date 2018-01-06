@@ -58,7 +58,6 @@ public:
     double get_blackevals() const;
     void set_visits(int visits);
     void set_blackevals(double blacevals);
-    void set_eval(float eval);
     void accumulate_eval(float eval);
     void virtual_loss(void);
     void virtual_loss_undo(void);
