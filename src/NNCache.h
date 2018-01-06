@@ -42,15 +42,18 @@ public:
     const Network::Netresult* lookup(const Network::NNPlanes& features);
 
     // Insert a new entry.
-    void insert(const Network::NNPlanes& features, const Network::Netresult& result);
+    void insert(const Network::NNPlanes& features,
+                const Network::Netresult& result);
 
     // Return the hit rate ratio.
-    std::pair<int, int> hit_rate() const { return {m_hits, m_lookups}; }
+    std::pair<int, int> hit_rate() const {
+        return {m_hits, m_lookups};
+    }
 
     void dump_stats();
 
 private:
-    NNCache(int size = 50000);  // ~ 200MB
+    NNCache(int size = 50000);  // ~ 250MB
 
     std::mutex m_mutex;
 
@@ -63,7 +66,8 @@ private:
     int m_collisions{0};
 
     struct Entry {
-        Entry(const Network::NNPlanes& f, const Network::Netresult& r) : features(f), result(r) {}
+        Entry(const Network::NNPlanes& f, const Network::Netresult& r)
+            : features(f), result(r) {}
         Network::NNPlanes features; // ~ 1KB
         Network::Netresult result;  // ~ 3KB
     };
