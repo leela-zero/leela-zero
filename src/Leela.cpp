@@ -242,7 +242,7 @@ void init_global_objects() {
     // improves reproducibility across platforms.
     Random::get_Rng().seedrandom(cfg_rng_seed);
 
-    NNCache::get_NNCache()->set_size_from_playouts(cfg_max_playouts);
+    NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
 
     // Initialize network
     Network::initialize();

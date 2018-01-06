@@ -40,7 +40,7 @@ public:
     /*
         return the global TT
     */
-    static TTable* get_TT(void);
+    static TTable& get_TT(void);
 
     /*
         update corresponding entry

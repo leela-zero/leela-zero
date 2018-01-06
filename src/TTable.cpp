@@ -26,9 +26,9 @@
 
 #include "UCTNode.h"
 
-TTable* TTable::get_TT(void) {
+TTable& TTable::get_TT(void) {
     static TTable s_ttable;
-    return &s_ttable;
+    return s_ttable;
 }
 
 TTable::TTable(int size) {

@@ -430,7 +430,7 @@ T relative_difference(T a, T b) {
     b = std::fabs(b);
 
     // Handle underflow
-    constexpr float small_number = 1e-3;
+    constexpr float small_number = 1e-3f;
     a = std::max(a, small_number);
     b = std::max(b, small_number);
 
@@ -441,7 +441,7 @@ void compare_net_outputs(std::vector<float>& data,
                          std::vector<float>& ref) {
     // We accept an error up to 5%, but output values
     // smaller than 1/1000th are "rounded up" for the comparison.
-    constexpr float relative_error = 5e-2;
+    constexpr float relative_error = 5e-2f;
     for (auto idx = size_t{0}; idx < data.size(); ++idx) {
         auto err = relative_difference(data[idx], ref[idx]);
         if (err > relative_error) {
@@ -488,7 +488,7 @@ Network::Netresult Network::get_scored_moves(
 
     // See if we already have this in the cache.
     if (!skip_cache) {
-      if (auto r = NNCache::get_NNCache()->lookup(planes)) {
+      if (auto r = NNCache::get_NNCache().lookup(planes)) {
         return *r;
       }
     }
@@ -504,7 +504,7 @@ Network::Netresult Network::get_scored_moves(
     }
 
     // Insert result into cache.
-    NNCache::get_NNCache()->insert(planes, result);
+    NNCache::get_NNCache().insert(planes, result);
 
     return result;
 }
