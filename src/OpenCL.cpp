@@ -463,8 +463,9 @@ void OpenCL_Network::add_weights(size_t layer,
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
                              std::vector<net_t>& output) {
-    if(!cfg_nn_batching) {
-        // we don't need workers to group workloads on a batch size of 1.
+    if(!cfg_nn_batching && opencl.m_gpus.size() == 1) {
+        // we need worker threads only when we have multi-gpu or batching.
+
         // directly call run_forward
         const std::vector<net_t> * inptr = &input;
         std::vector<net_t> * outptr = &output;
@@ -948,8 +949,16 @@ void OpenCL::initialize(void) {
 
             bool preferred = std::find(cfg_gpus.cbegin(), cfg_gpus.cend(), id) != cfg_gpus.cend();
 
-            if ((this_score > 1000) || preferred) {
+            if ((cfg_gpus.empty() && this_score > best_score) || preferred) {
+                // if cfg_gpus is empty, then this means autodetect one gpu.
+                // get the one with best score.
+                if(cfg_gpus.empty()) {
+                    selected_platforms.clear();
+                    selected_devices.clear();
+                    selected_id.clear();
+                }
                 best_version = opencl_version;
+                best_score = this_score;
                 selected_platforms.push_back(p);
                 selected_devices.push_back(d);
                 selected_id.push_back(id);
