@@ -229,6 +229,25 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
 #endif
 }
 
+// Setup global objects after command line has been parsed
+void init_global_objects() {
+    thread_pool.initialize(cfg_num_threads);
+
+    // Use deterministic random numbers for hashing
+    auto rng = std::make_unique<Random>(5489);
+    Zobrist::init_zobrist(*rng);
+
+    // Initialize the main thread RNG.
+    // Doing this here avoids mixing in the thread_id, which
+    // improves reproducibility across platforms.
+    Random::get_Rng().seedrandom(cfg_rng_seed);
+
+    NNCache::get_NNCache()->set_size_from_playouts(cfg_max_playouts);
+
+    // Initialize network
+    Network::initialize();
+}
+
 int main (int argc, char *argv[]) {
     bool gtp_mode = false;
     std::string input;
@@ -252,28 +271,7 @@ int main (int argc, char *argv[]) {
         license_blurb();
     }
 
-    thread_pool.initialize(cfg_num_threads);
-
-    // Use deterministic random numbers for hashing
-    auto rng = std::make_unique<Random>(5489);
-    Zobrist::init_zobrist(*rng);
-
-    // Initialize the main thread RNG.
-    // Doing this here avoids mixing in the thread_id, which
-    // improves reproducibility across platforms.
-    Random::get_Rng().seedrandom(cfg_rng_seed);
-
-    // Initialize network
-    Network::initialize();
-
-    // Initialize cache if playouts is set
-    if (cfg_max_playouts) {
-        // cache hits are generally from last several moves so setting cache
-        // size based on playouts increases the hit rate while balancing memory
-        // usage for low playout instances. 100'000 cache entries is ~500 MB
-        auto max_size = std::min(100'000, std::max(6'000, 3*cfg_max_playouts));
-        NNCache::get_NNCache()->resize(max_size);
-    }
+    init_global_objects();
 
     auto maingame = std::make_unique<GameState>();
 
