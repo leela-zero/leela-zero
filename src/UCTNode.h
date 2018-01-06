@@ -78,16 +78,15 @@ private:
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist,
                        float init_eval);
-
-    // Tree data
-    std::atomic<bool> m_has_children{false};
-    std::vector<node_ptr_t> m_children;
+    // Note : This class is very size-sensitive as we are going to create
+    // tens of millions of instances of these.  Please put extra caution
+    // if you want to add/remove/reorder any variables here.
 
     // Move
-    int m_move;
+    std::int16_t m_move;
     // UCT
+    std::atomic<std::int16_t> m_virtual_loss{0};
     std::atomic<int> m_visits{0};
-    std::atomic<int> m_virtual_loss{0};
     // UCT eval
     float m_score;
     float m_init_eval;
@@ -98,6 +97,10 @@ private:
     // We don't need to unset this.
     bool m_is_expanding{false};
     SMP::Mutex m_nodemutex;
+
+    // Tree data
+    std::atomic<bool> m_has_children{false};
+    std::vector<node_ptr_t> m_children;
 };
 
 #endif
