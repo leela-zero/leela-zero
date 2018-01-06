@@ -340,6 +340,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     if (cfg_noise) {
         m_root.dirichlet_noise(0.25f, 0.03f);
     }
+    m_root.expand_all();
 
     myprintf("NN eval=%f\n",
              (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval));
