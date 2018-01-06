@@ -123,10 +123,6 @@ int FastState::get_last_move(void) const {
     return m_lastmove.front();
 }
 
-int FastState::get_prevlast_move() const {
-    return m_lastmove[1];
-}
-
 int FastState::get_passes() const {
     return m_passes;
 }
@@ -181,8 +177,4 @@ void FastState::set_handicap(int hcap) {
 
 int FastState::get_handicap() const {
     return m_handicap;
-}
-
-int FastState::get_komove() const {
-    return m_komove;
 }

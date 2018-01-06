@@ -51,8 +51,6 @@ public:
 
     size_t get_movenum() const;
     int get_last_move() const;
-    int get_prevlast_move() const;
-    int get_komove() const;
     void display_state();
     std::string move_to_text(int move);
 

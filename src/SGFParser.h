@@ -39,7 +39,6 @@ public:
     static std::vector<std::string> chop_stream(std::istream& ins,
                                                 size_t stopat = SIZE_MAX);
     static void parse(std::istringstream & strm, SGFTree * node);
-    static int count_games_in_file(std::string filename);
 };
 
 

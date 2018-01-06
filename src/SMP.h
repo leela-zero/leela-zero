@@ -30,7 +30,6 @@ namespace SMP {
     public:
         Mutex();
         ~Mutex() = default;
-        bool is_held();
         friend class Lock;
     private:
         std::atomic<bool> m_lock;
