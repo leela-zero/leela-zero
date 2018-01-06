@@ -44,6 +44,18 @@ UCTSearch::UCTSearch(GameState & g)
     set_playout_limit(cfg_max_playouts);
 }
 
+// Iterate through all children and sync their TTable results.
+void UCTSearch::ttable_sync_all_children(GameState & currstate, UCTNode* const node) {
+    const auto komi = currstate.get_komi();
+    for (auto& child : node->get_children()) {
+        auto move = child->get_move();
+        currstate.play_move(move);
+        const auto hash = currstate.board.get_hash();
+        TTable::get_TT()->sync(hash, komi, child.get());
+        currstate.undo_move();
+    }
+}
+
 SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
     const auto color = currstate.get_to_move();
     const auto hash = currstate.board.get_hash();
@@ -386,6 +398,10 @@ int UCTSearch::think(int color, passflag_t passflag) {
     // display search info
     myprintf("\n");
 
+    // Conservative way to pick up playouts from the TTable
+    // that we haven't already. This method does not change
+    // the way the search works.
+    ttable_sync_all_children(m_rootstate, &m_root);
     dump_stats(m_rootstate, m_root);
     Training::record(m_rootstate, m_root);
 
