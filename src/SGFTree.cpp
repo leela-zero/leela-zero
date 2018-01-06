@@ -87,19 +87,6 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) {
     return result;
 }
 
-// the number of states is one more than the number of moves
-int SGFTree::count_mainline_moves(void) {
-    SGFTree * link = this;
-    int count = -1;
-
-    while (link != nullptr) {
-        link = link->get_child(0);
-        count++;
-    }
-
-    return count;
-}
-
 void SGFTree::load_from_string(std::string gamebuff) {
     std::istringstream pstream(gamebuff);
 

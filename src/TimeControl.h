@@ -39,7 +39,6 @@ public:
     void adjust_time(int color, int time, int stones);
     void set_boardsize(int boardsize);
     void display_times();
-    int get_remaining_time(int color);
     void reset_clocks();
 
 private:

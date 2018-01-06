@@ -84,8 +84,6 @@ public:
     bool is_suicide(int i, int color) const;
     int count_pliberties(const int i) const;
     bool is_eye(const int color, const int vtx) const;
-    int get_dir(int i) const;
-    int get_extra_dir(int i) const;
 
     float area_score(float komi) const;
     std::vector<bool> calc_reach_color(int col) const;

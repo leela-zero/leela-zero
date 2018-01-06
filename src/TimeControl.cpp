@@ -205,7 +205,3 @@ void TimeControl::set_boardsize(int boardsize) {
     // to underestimate quite a bit.
     m_moves_expected = (boardsize * boardsize) / 5;
 }
-
-int TimeControl::get_remaining_time(int color) {
-    return m_remaining_time[color];
-}
