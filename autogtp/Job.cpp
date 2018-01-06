@@ -33,7 +33,7 @@ Job::Job(QString gpu, Management *parent) :
 }
 
 void Job::init(const Order &o) {
-    m_option = o.parameters()["options"] + m_gpu + " -g -q -w ";
+    m_option = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
     QStringList version_list = o.parameters()["leelazVer"].split(".");
     if (version_list.size() < 2) {
         QTextStream(stdout)
@@ -66,6 +66,7 @@ Job(gpu, parent)
 
 Result ProductionJob::execute(){
     Result res(Result::Error);
+    QTextStream(stdout) << m_network << " " << m_option << endl;
     Game game(m_network, m_option);
     if (!game.gameStart(m_leelazMinVersion)) {
         return res;
@@ -129,6 +130,7 @@ void ProductionJob::init(const Order &o) {
 
 Result ValidationJob::execute(){
     Result res(Result::Error);
+    QTextStream(stdout) << m_firstNet << " " << m_option << endl;
     Game first(m_firstNet,  m_option);
     if (!first.gameStart(m_leelazMinVersion)) {
         return res;

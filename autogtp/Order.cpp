@@ -7,21 +7,24 @@ void Order::save(const QString &file) {
     if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return;
     }
+    QTextStream(stdout) << "Writing Order" << endl;
     QTextStream out(&f);
     out << m_type << endl;
     out << m_parameters.size() << endl;
     for(QString key : m_parameters.keys())
     {
-  	out << key << " " << m_parameters.value(key) << endl;
+        out << key << " " << m_parameters.value(key) << endl;
     }
+    out.flush();
     f.close();       
 }
 
 void Order::load(const QString &file) {
     QFile f(file);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return;
     }
+    QTextStream(stdout) << "Reading Order" << endl;
     QTextStream in(&f);
     in >>  m_type;
     int count;
@@ -29,7 +32,11 @@ void Order::load(const QString &file) {
     QString key;
     for(int i = 0; i < count; i++) {
         in >> key;
-        in >> m_parameters[key];        
+        if(key == "options") {
+           m_parameters[key] = in.readLine();
+        } else {
+            in >> m_parameters[key];
+        }
     }
     f.close();
 }
