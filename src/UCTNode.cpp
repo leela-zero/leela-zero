@@ -128,6 +128,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
 
     LOCK(get_mutex(), lock);
 
+    m_children.reserve(nodelist.size());
     for (const auto& node : nodelist) {
         m_children.emplace_back(
             std::make_unique<UCTNode>(node.second, node.first, init_eval)
