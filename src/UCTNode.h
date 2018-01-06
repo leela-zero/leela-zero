@@ -24,11 +24,11 @@
 #include <atomic>
 #include <limits>
 #include <memory>
-#include <mutex>
 #include <vector>
 
 #include "GameState.h"
 #include "Network.h"
+#include "SMP.h"
 
 class UCTNode {
 public:
@@ -41,6 +41,7 @@ public:
 
     explicit UCTNode(int vertex, float score, float init_eval);
     UCTNode() = delete;
+    ~UCTNode() = default;
     bool first_visit() const;
     bool has_children() const;
     bool create_children(std::atomic<int>& nodecount,
@@ -57,7 +58,6 @@ public:
     double get_blackevals() const;
     void set_visits(int visits);
     void set_blackevals(double blacevals);
-    void set_eval(float eval);
     void accumulate_eval(float eval);
     void virtual_loss(void);
     void virtual_loss_undo(void);
@@ -72,21 +72,21 @@ public:
 
     void sort_root_children(int color);
     UCTNode& get_best_root_child(int color);
+    SMP::Mutex& get_mutex();
 
 private:
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist,
                        float init_eval);
-
-    // Tree data
-    std::atomic<bool> m_has_children{false};
-    std::vector<node_ptr_t> m_children;
+    // Note : This class is very size-sensitive as we are going to create
+    // tens of millions of instances of these.  Please put extra caution
+    // if you want to add/remove/reorder any variables here.
 
     // Move
-    int m_move;
+    std::int16_t m_move;
     // UCT
+    std::atomic<std::int16_t> m_virtual_loss{0};
     std::atomic<int> m_visits{0};
-    std::atomic<int> m_virtual_loss{0};
     // UCT eval
     float m_score;
     float m_init_eval;
@@ -96,7 +96,11 @@ private:
     // Is someone adding scores to this node?
     // We don't need to unset this.
     bool m_is_expanding{false};
-    std::mutex m_nodemutex;
+    SMP::Mutex m_nodemutex;
+
+    // Tree data
+    std::atomic<bool> m_has_children{false};
+    std::vector<node_ptr_t> m_children;
 };
 
 #endif

@@ -26,18 +26,18 @@
 
 #include "UCTNode.h"
 
-TTable* TTable::get_TT(void) {
+TTable& TTable::get_TT(void) {
     static TTable s_ttable;
-    return &s_ttable;
+    return s_ttable;
 }
 
 TTable::TTable(int size) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    LOCK(m_mutex, lock);
     m_buckets.resize(size);
 }
 
 void TTable::update(std::uint64_t hash, const float komi, const UCTNode * node) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    LOCK(m_mutex, lock);
 
     unsigned int index = (unsigned int)hash;
     index %= m_buckets.size();
@@ -56,7 +56,7 @@ void TTable::update(std::uint64_t hash, const float komi, const UCTNode * node) 
 }
 
 void TTable::sync(std::uint64_t hash, const float komi, UCTNode * node) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    LOCK(m_mutex, lock);
 
     unsigned int index = (unsigned int)hash;
     index %= m_buckets.size();
