@@ -68,9 +68,11 @@ public:
 
     /*
         Maximum size of the tree in memory. Nodes are about
-        40 bytes, so limit to ~1.6G.
+        48 bytes, so limit to ~1.2G on 32-bits and about 5.5G
+        on 64-bits.
     */
-    static constexpr auto MAX_TREE_SIZE = 40'000'000;
+    static constexpr auto MAX_TREE_SIZE =
+        (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
 
     UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
