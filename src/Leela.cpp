@@ -62,6 +62,9 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("playouts,p", po::value<int>(),
                        "Weaken engine by limiting the number of playouts. "
                        "Requires --noponder.")
+        ("visits,v", po::value<int>(),
+                       "Weaken engine by limiting the number of visits. "
+                       "Requires --noponder.")
         ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
                         "Safety margin for time usage in centiseconds.")
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
@@ -190,6 +193,16 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         cfg_max_playouts = vm["playouts"].as<int>();
         if (!vm.count("noponder")) {
             myprintf("Nonsensical options: Playouts are restricted but "
+                     "thinking on the opponent's time is still allowed. "
+                     "Add --noponder if you want a weakened engine.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (vm.count("visits")) {
+        cfg_max_visits = vm["visits"].as<int>();
+        if (!vm.count("noponder")) {
+            myprintf("Nonsensical options: Visits are restricted but "
                      "thinking on the opponent's time is still allowed. "
                      "Add --noponder if you want a weakened engine.\n");
             exit(EXIT_FAILURE);

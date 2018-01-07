@@ -77,9 +77,10 @@ public:
     UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
+    void set_visit_limit(int visits);
     void ponder();
     bool is_running() const;
-    bool playout_limit_reached() const;
+    bool playout_or_visit_limit_reached() const;
     void increment_playouts();
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
@@ -88,6 +89,7 @@ private:
     std::string get_pv(KoState& state, UCTNode& parent);
     void dump_analysis(int playouts);
     int get_best_move(passflag_t passflag);
+    void ttable_sync_all_children(GameState & currstate, UCTNode* const node);
 
     GameState & m_rootstate;
     UCTNode m_root{FastBoard::PASS, 0.0f, 0.5f};
@@ -95,6 +97,8 @@ private:
     std::atomic<int> m_playouts{0};
     std::atomic<bool> m_run{false};
     int m_maxplayouts;
+    int m_maxvisits;
+    int m_initial_sum_child_visits;
 };
 
 class UCTWorker {
