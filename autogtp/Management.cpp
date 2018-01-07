@@ -740,5 +740,6 @@ void Management::checkStoredGames() {
         Order o;
         o.load(fileInfo.fileName());
         m_storedOrders.push_back(o);
+        QFile::remove(fileInfo.fileName());
     }
 }

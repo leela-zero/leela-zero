@@ -22,6 +22,7 @@
 #include <QTextStream>
 #include <chrono>
 
+#include <QFile>
 #include <QThread>
 
 Job::Job(QString gpu, Management *parent) :
@@ -74,6 +75,7 @@ Result ProductionJob::execute(){
     if(!m_sgf.isEmpty()) {
         game.loadSgf(m_sgf);
         game.setMovesCount(m_moves);
+        QFile::remove(m_sgf);
     }
     do {
         game.move();
@@ -138,6 +140,7 @@ Result ValidationJob::execute(){
     if(!m_sgfFirst.isEmpty()) {
         first.loadSgf(m_sgfFirst);
         first.setMovesCount(m_moves);
+        QFile::remove(m_sgfFirst);
     }
     Game second(m_secondNet, m_option);
     if (!second.gameStart(m_leelazMinVersion)) {
@@ -146,6 +149,7 @@ Result ValidationJob::execute(){
     if(!m_sgfSecond.isEmpty()) {
         second.loadSgf(m_sgfSecond);
         second.setMovesCount(m_moves);
+        QFile::remove(m_sgfSecond);
     }
 
     QString wmove = "play white ";
