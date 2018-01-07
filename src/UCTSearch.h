@@ -98,7 +98,6 @@ private:
     std::atomic<bool> m_run{false};
     int m_maxplayouts;
     int m_maxvisits;
-    int m_initial_sum_child_visits;
 };
 
 class UCTWorker {

@@ -45,19 +45,6 @@ UCTSearch::UCTSearch(GameState & g)
     set_visit_limit(cfg_max_visits);
 }
 
-// Iterate recursively through all children and sync their TTable results.
-void UCTSearch::ttable_sync_all_children(GameState & currstate, UCTNode* const node) {
-    const auto komi = currstate.get_komi();
-    for (auto& child : node->get_children()) {
-        auto move = child->get_move();
-        currstate.play_move(move);
-        const auto hash = currstate.board.get_hash();
-        TTable::get_TT().sync(hash, komi, child.get());
-        ttable_sync_all_children(currstate, child.get());
-        currstate.undo_move();
-    }
-}
-
 SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
     const auto color = currstate.get_to_move();
     const auto hash = currstate.board.get_hash();
@@ -314,8 +301,7 @@ bool UCTSearch::is_running() const {
 }
 
 bool UCTSearch::playout_or_visit_limit_reached() const {
-    return m_playouts >= m_maxplayouts
-        || m_playouts + m_initial_sum_child_visits >= m_maxvisits;
+    return m_playouts >= m_maxplayouts || m_root.get_visits() >= m_maxvisits;
 }
 
 void UCTWorker::operator()() {
@@ -357,16 +343,6 @@ int UCTSearch::think(int color, passflag_t passflag) {
     m_root.kill_superkos(m_rootstate);
     if (cfg_noise) {
         m_root.dirichlet_noise(0.25f, 0.03f);
-    }
-
-    m_initial_sum_child_visits = 0;
-    if (m_maxvisits < std::numeric_limits<decltype(m_maxvisits)>::max()) {
-        // Pick up playouts from the TTable, and count
-        // how many visits each child has already.
-        ttable_sync_all_children(m_rootstate, &m_root);
-        for (const auto& child : m_root.get_children()) {
-            m_initial_sum_child_visits += child->get_visits();
-        }
     }
 
     myprintf("NN eval=%f\n",
