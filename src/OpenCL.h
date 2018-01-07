@@ -58,14 +58,17 @@ class ThreadData {
     friend class OpenCL_GPU;
     friend class OpenCL_Network;
 private:
+    OpenCL_GPU & getGPU();
     int m_gpu_index = 0;
-    OpenCL_GPU * m_gpu = nullptr;
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
+
+    // the kernels.  key : batch size
     std::map<unsigned int,cl::Kernel> m_convolve1_kernel;
     std::map<unsigned int,cl::Kernel> m_convolve3_kernel;
     std::map<unsigned int,cl::Kernel> m_merge_kernel;
     std::map<unsigned int,cl::Kernel> m_batchnorm_kernel;
+
     cl::Buffer m_inBuffer;
     cl::Buffer m_tmpBuffer;
     cl::Buffer m_mergeBuffer;
@@ -172,20 +175,19 @@ public:
     );
     void ensure_thread_initialized(void);
     std::string get_device_name();
-    std::mutex m_opencl_mutex;
 private:
     int m_index;
     cl::Platform m_platform;
     cl::Device m_device;
     cl::Context m_context;
 
+    // key : batch size
     std::map<unsigned int,cl::Program> m_program;
 
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};
     std::vector<size_t> m_max_workgroup_dims;
     bool m_init_ok{false};
-
 };
 
 class OpenCL {

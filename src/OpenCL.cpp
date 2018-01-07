@@ -421,9 +421,12 @@ OpenCL opencl;
 OpenCL_Network opencl_net;
 thread_local ThreadData opencl_thread_data;
 
+OpenCL_GPU & ThreadData::getGPU() {
+    return opencl.get(m_gpu_index);
+}
+
 void OpenCL_GPU::ensure_thread_initialized() {
     if (!opencl_thread_data.m_is_initialized) {
-        opencl_thread_data.m_gpu = this;
         opencl_thread_data.m_gpu_index = m_index;
 
         // Make kernels
@@ -583,17 +586,18 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
         const auto alloc_inSize = one_plane *  maxInBufferSize * maxBatchSize;
         const auto alloc_mergeSize = one_plane * maxMergeSize * maxBatchSize;
 
+        auto & gpu = opencl_thread_data.getGPU();
         opencl_thread_data.m_inBuffer = cl::Buffer(
-            opencl_thread_data.m_gpu->m_context,
+            gpu.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_tmpBuffer = cl::Buffer(
-            opencl_thread_data.m_gpu->m_context,
+            gpu.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_residualBuffer = cl::Buffer(
-            opencl_thread_data.m_gpu->m_context,
+            gpu.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_mergeBuffer = cl::Buffer(
-            opencl_thread_data.m_gpu->m_context,
+            gpu.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, alloc_mergeSize);
         opencl_thread_data.m_buffers_allocated = true;
     }
@@ -626,8 +630,9 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
     }
 
     for (const auto& layer : m_layers) {
+        auto & weights = layer.weights.at(opencl_thread_data.m_gpu_index);
         if (layer.is_batchnorm) {
-            auto bn_weights = begin(layer.weights.at(opencl_thread_data.m_gpu_index));
+            auto bn_weights = begin(weights);
             batchnorm(batch_size,
                       layer.outputs,
                       layer.filter_size,
@@ -638,10 +643,10 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
             std::swap(inBuffer, tmpBuffer);
         } else if (layer.is_residual_block) {
             assert(layer.channels == layer.outputs);
-            auto conv1_weights = begin(layer.weights.at(opencl_thread_data.m_gpu_index));
-            auto bn1_weights   = begin(layer.weights.at(opencl_thread_data.m_gpu_index)) + 2;
-            auto conv2_weights = begin(layer.weights.at(opencl_thread_data.m_gpu_index)) + 4;
-            auto bn2_weights   = begin(layer.weights.at(opencl_thread_data.m_gpu_index)) + 6;
+            auto conv1_weights = begin(weights);
+            auto bn1_weights   = begin(weights) + 2;
+            auto conv2_weights = begin(weights) + 4;
+            auto bn2_weights   = begin(weights) + 6;
             const auto inBufferSize = layer.channels * one_plane * batch_size;
             queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0, inBufferSize);
             convolve(batch_size,
@@ -679,7 +684,7 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
                       bn2_weights);
             std::swap(inBuffer, tmpBuffer);
         } else  {
-            auto conv_weights = begin(layer.weights.at(opencl_thread_data.m_gpu_index));
+            auto conv_weights = begin(weights);
             // plain convolution
             convolve(batch_size,
                      layer.filter_size,
@@ -884,20 +889,16 @@ void OpenCL::initialize(void) {
         throw;
     }
 
-    float best_version = 0.0f;
-    cl::Platform best_platform;
-    cl::Device best_device;
-    std::string best_vendor;
     int best_score = 0;
     bool found_device = false;
     int id = 0;
-    int best_id = 0;
 
     myprintf("Detected %d OpenCL platforms\n", platforms.size());
 
     std::vector<cl::Device> selected_devices;
     std::vector<cl::Platform> selected_platforms;
     std::vector<int> selected_id;
+    std::vector<float> selected_version;
 
     for (const auto &p : platforms) {
         std::string platvers = p.getInfo<CL_PLATFORM_VERSION>();
@@ -957,11 +958,11 @@ void OpenCL::initialize(void) {
                     selected_devices.clear();
                     selected_id.clear();
                 }
-                best_version = opencl_version;
                 best_score = this_score;
                 selected_platforms.push_back(p);
                 selected_devices.push_back(d);
                 selected_id.push_back(id);
+                selected_version.push_back(opencl_version);
                 found_device = true;
             }
             id++;
@@ -976,7 +977,7 @@ void OpenCL::initialize(void) {
         int id = selected_id[idx];
         myprintf("Selected platform: %s\n", selected_platforms[idx].getInfo<CL_PLATFORM_NAME>().c_str());
         myprintf("Selected device: %s\n", trim(selected_devices[idx].getInfo<CL_DEVICE_NAME>()).c_str());
-//        myprintf("with OpenCL %2.1f capability\n", best_version);
+        myprintf("with OpenCL %2.1f capability\n", selected_version[idx]);
     
         cl::Context context;
         try {
