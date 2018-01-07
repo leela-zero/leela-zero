@@ -196,7 +196,7 @@ void Game::move() {
 
 void Game::setMovesCount(int moves) {
     m_moveNum = moves;
-    m_blackToMove = (moves % 2);
+    m_blackToMove = (moves % 2) == 0;
 }
 
 bool Game::waitReady() {
