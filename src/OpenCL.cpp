@@ -571,6 +571,7 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
     constexpr auto height = 19;
     constexpr auto one_plane = width * height * sizeof(net_t);
 
+    auto & gpu = opencl_thread_data.getGPU();
     if (!opencl_thread_data.m_buffers_allocated) {
 	auto iter = opencl_thread_data.m_convolve1_kernel.end();
 	iter--;
@@ -586,7 +587,6 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
         const auto alloc_inSize = one_plane *  maxInBufferSize * maxBatchSize;
         const auto alloc_mergeSize = one_plane * maxMergeSize * maxBatchSize;
 
-        auto & gpu = opencl_thread_data.getGPU();
         opencl_thread_data.m_inBuffer = cl::Buffer(
             gpu.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
@@ -703,7 +703,10 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
         std::vector<net_t> interleaved_output(outputs[0]->size() * batch_size);
         const auto finalSize = m_layers.back().outputs * one_plane * batch_size;
         queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, interleaved_output.data());
+        queue.flush();
+        std::unique_lock<std::mutex> lk(gpu.m_fwd_lock);
         queue.finish();
+        lk.unlock();
 
         for(unsigned int j=0; j<batch_size; j++) {
             if(outputs[j] != nullptr) {
@@ -716,7 +719,10 @@ void OpenCL_Network::run_forward(const std::vector<net_t> ** inputs,
     } else if(outputs != nullptr && batch_size == 1) {
         const auto finalSize = m_layers.back().outputs * one_plane;
         queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, outputs[0]->data());
+        queue.flush();
+        std::unique_lock<std::mutex> lk(gpu.m_fwd_lock);
         queue.finish();
+        lk.unlock();
     } else {
         queue.finish();
     }

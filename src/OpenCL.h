@@ -176,6 +176,14 @@ public:
     void ensure_thread_initialized(void);
     std::string get_device_name();
 private:
+    // The problem is that queue.finish() is a busy wait in many OpenCL implementations.
+    // When there are a lot of threads trying to push tasks into the GPU, it turns into 
+    // a colossal waste of CPU power so that we should rather wait on a mutex
+    // (which isn't a busy wait).  This lock enforces that only one thing is able to wait on a
+    // queue.finish() statement, and has nothing to do with functional correctness.  If
+    // all vendors decide not to do a busy wait then this lock can simply go away.
+    std::mutex m_fwd_lock;
+
     int m_index;
     cl::Platform m_platform;
     cl::Device m_device;
