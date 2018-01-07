@@ -117,7 +117,7 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
 
     int movecount = 0;
     for (const auto& node : parent.get_children()) {
-        if (++movecount > 2 && !node->get_visits()) break;
+        if (!node->get_visits()) break;
 
         std::string tmp = state.move_to_text(node->get_move());
         std::string pvstring(tmp);
@@ -266,6 +266,9 @@ std::string UCTSearch::get_pv(KoState & state, UCTNode& parent) {
     }
 
     auto& best_child = parent.get_best_root_child(state.get_to_move());
+    if (best_child.first_visit()) {
+        return std::string();
+    }
     auto best_move = best_child.get_move();
     auto res = state.move_to_text(best_move);
 
@@ -391,7 +394,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     Time elapsed;
     int elapsed_centis = Time::timediff_centis(start, elapsed);
-    if (elapsed_centis > 0) {
+    if (elapsed_centis+1 > 0) {
         myprintf("%d visits, %d nodes, %d playouts, %d n/s\n\n",
                  m_root.get_visits(),
                  static_cast<int>(m_nodes),
