@@ -488,8 +488,8 @@ Network::Netresult Network::get_scored_moves(
 
     // See if we already have this in the cache.
     if (!skip_cache) {
-      if (auto r = NNCache::get_NNCache().lookup(planes)) {
-        return *r;
+      if (NNCache::get_NNCache().lookup(planes, result)) {
+        return result;
       }
     }
 

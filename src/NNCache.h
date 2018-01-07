@@ -39,7 +39,7 @@ public:
     void resize(int size);
 
     // Try and find an existing entry.
-    const Network::Netresult* lookup(const Network::NNPlanes& features);
+    bool lookup(const Network::NNPlanes& features, Network::Netresult & result);
 
     // Insert a new entry.
     void insert(const Network::NNPlanes& features,

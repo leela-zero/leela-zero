@@ -43,26 +43,28 @@ static size_t compute_hash(const Network::NNPlanes& features) {
     return hash;
 }
 
-const Network::Netresult* NNCache::lookup(const Network::NNPlanes& features) {
+bool NNCache::lookup(const Network::NNPlanes& features, Network::Netresult & result) {
+    auto hash = compute_hash(features);
+
     std::lock_guard<std::mutex> lock(m_mutex);
     ++m_lookups;
 
-    auto hash = compute_hash(features);
     auto iter = m_cache.find(hash);
     if (iter == m_cache.end()) {
-        return nullptr;  // Not found.
+        return false;  // Not found.
     }
 
     const auto& entry = iter->second;
     if (entry->features != features) {
         // Got a hash collision.
         ++m_collisions;
-        return nullptr;
+        return false;
     }
 
     // Found it.
     ++m_hits;
-    return &entry->result;
+    result = entry->result;
+    return true;
 }
 
 void NNCache::insert(const Network::NNPlanes& features,
