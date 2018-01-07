@@ -162,9 +162,8 @@ std::string FastState::move_to_text(int move) {
     return board.move_to_text(move);
 }
 
-float FastState::final_score() {
-    FastState workstate(*this);
-    return workstate.board.area_score(get_komi() + get_handicap());
+float FastState::final_score() const {
+    return board.area_score(get_komi() + get_handicap());
 }
 
 float FastState::get_komi() const {

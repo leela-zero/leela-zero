@@ -126,10 +126,10 @@ const std::string GTP::s_commands[] = {
     ""
 };
 
-std::string GTP::get_life_list(GameState & game, bool live) {
+std::string GTP::get_life_list(const GameState & game, bool live) {
     std::vector<std::string> stringlist;
     std::string result;
-    FastBoard & board = game.board;
+    const auto& board = game.board;
 
     if (live) {
         for (int i = 0; i < board.get_boardsize(); i++) {
