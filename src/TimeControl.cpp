@@ -38,6 +38,24 @@ TimeControl::TimeControl(int boardsize, int maintime, int byotime,
     set_boardsize(boardsize);
 }
 
+std::string TimeControl::to_text_sgf() {
+    if (m_byotime != 0 && m_byostones == 0 && m_byoperiods == 0) {
+        return ""; // infinite
+    }
+    auto s = "TM[" + std::to_string(m_maintime/100) + "]";
+    if (m_byotime) {
+        if (m_byostones) {
+            s += "OT[" + std::to_string(m_byostones) + "/";
+            s += std::to_string(m_byotime/100) + " Canadian]";
+        } else {
+            assert(m_byoperiods);
+            s += "OT[" + std::to_string(m_byoperiods) + "x";
+            s += std::to_string(m_byotime/100) + " byo-yomi]";
+        }
+    }
+    return s;
+}
+
 void TimeControl::reset_clocks() {
     m_remaining_time[0] = m_maintime;
     m_remaining_time[1] = m_maintime;

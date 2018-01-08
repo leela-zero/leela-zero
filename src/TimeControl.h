@@ -40,6 +40,7 @@ public:
     void set_boardsize(int boardsize);
     void display_times();
     void reset_clocks();
+    std::string to_text_sgf();
 
 private:
     void display_color_time(int color);

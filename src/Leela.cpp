@@ -227,6 +227,15 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         }
     }
 #endif
+
+    auto out = std::stringstream{};
+    for (auto i = 1; i < argc; i++) {
+        out << " " << argv[i];
+    }
+    if (!vm.count("seed")) {
+        out << " --seed " << cfg_rng_seed;
+    }
+    cfg_options_str = out.str();
 }
 
 // Setup global objects after command line has been parsed

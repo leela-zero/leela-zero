@@ -64,6 +64,7 @@ std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
+std::string cfg_options_str;
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;

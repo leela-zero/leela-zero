@@ -392,6 +392,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     header.append("DT[" + std::string(timestr) + "]");
     header.append("SZ[" + std::to_string(size) + "]");
     header.append("KM[" + str(boost::format("%.1f") % komi) + "]");
+    header.append(state->get_timecontrol().to_text_sgf());
 
     auto leela_name = std::string{PROGRAM_NAME};
     leela_name.append(" " + std::string(PROGRAM_VERSION));
@@ -463,6 +464,8 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
             header.append("RE[W+Resign]");
         }
     }
+
+    header.append("\nC[" + std::string{PROGRAM_NAME} + " options:" + cfg_options_str + "]");
 
     std::string result(header);
     result.append("\n");
