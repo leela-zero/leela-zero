@@ -52,6 +52,7 @@ int cfg_lagbuffer_cs;
 int cfg_resignpct;
 int cfg_noise;
 int cfg_random_cnt;
+extern std::string cfg_weightsfile;
 std::uint64_t cfg_rng_seed;
 bool cfg_dumbpass;
 #ifdef USE_OPENCL
@@ -219,7 +220,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
         gtp_printf(id, PROGRAM_NAME);
         return true;
     } else if (command == "version") {
-        gtp_printf(id, PROGRAM_VERSION);
+        size_t filename_start = cfg_weightsfile.find_last_of("/\\") + 1;
+        filename_start = filename_start % cfg_weightsfile.length();
+        gtp_printf(id, "%s with weightfile %s", PROGRAM_VERSION, cfg_weightsfile.substr(filename_start, 8).c_str());
         return true;
     } else if (command == "quit") {
         gtp_printf(id, "");
