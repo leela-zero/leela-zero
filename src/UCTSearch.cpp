@@ -403,8 +403,12 @@ int UCTSearch::think(int color, passflag_t passflag) {
 }
 
 void UCTSearch::ponder() {
-    assert(m_playouts == 0);
     assert(m_nodes == 0);
+
+    // set up timing info
+    Time start;
+
+    myprintf("Pondering...\n");
 
     m_run = true;
     int cpus = cfg_num_threads;
@@ -412,13 +416,29 @@ void UCTSearch::ponder() {
     for (int i = 1; i < cpus; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, &m_root));
     }
+
+    bool keeprunning = true;
+    int last_update = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = play_simulation(*currstate, &m_root);
         if (result.valid()) {
             increment_playouts();
         }
-    } while(!Utils::input_pending() && is_running());
+
+        Time elapsed;
+        int elapsed_centis = Time::timediff_centis(start, elapsed);
+
+        // output some stats every few seconds
+        // check if we should still search
+        if (elapsed_centis - last_update > 250) {
+            last_update = elapsed_centis;
+            dump_analysis(static_cast<int>(m_playouts));
+        }
+        keeprunning = is_running();
+        keeprunning &= !Utils::input_pending();
+        keeprunning &= !playout_limit_reached();
+    } while (keeprunning);
 
     // stop the search
     m_run = false;
@@ -440,3 +460,11 @@ void UCTSearch::set_playout_limit(int playouts) {
         m_maxplayouts = playouts;
     }
 }
+
+void UCTSearch::set_playout(int playouts) {
+    m_playouts = playouts;
+};
+
+int UCTSearch::get_playout() {
+    return m_playouts;
+};
