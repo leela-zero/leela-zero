@@ -77,6 +77,8 @@ public:
     UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
+    void set_playout(int playouts);
+    int get_playout();
     void ponder();
     bool is_running() const;
     bool playout_limit_reached() const;
