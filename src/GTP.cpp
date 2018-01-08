@@ -337,11 +337,13 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 return 1;
             }
             // start thinking
+			int playout = 0;
             {
                 auto search = std::make_unique<UCTSearch>(game);
 
                 game.set_to_move(who);
                 int move = search->think(who);
+				playout = search->get_playout();
                 game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
@@ -351,6 +353,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 // now start pondering
                 if (!game.has_resigned()) {
                     auto search = std::make_unique<UCTSearch>(game);
+					search->set_playout(playout);
                     search->ponder();
                 }
             }
@@ -376,11 +379,13 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 return 1;
             }
             game.set_passes(0);
+            int playout = 0;
             {
                 auto search = std::make_unique<UCTSearch>(game);
 
                 game.set_to_move(who);
                 int move = search->think(who, UCTSearch::NOPASS);
+                playout = search->get_playout();
                 game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
@@ -390,6 +395,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 // now start pondering
                 if (!game.has_resigned()) {
                     auto search = std::make_unique<UCTSearch>(game);
+                    search->set_playout(playout);
                     search->ponder();
                 }
             }
