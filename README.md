@@ -102,6 +102,17 @@ source and remove the line that says "#define USE_OPENCL".
     unzip best_v1.txt.zip
     src/leelaz --weights weights.txt
 
+    # If you use macports instead of brew
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero/src
+    sudo port install boost
+    CXXFLAGS=-I/opt/local/include LDFLAGS=-L/opt/local/lib make DYNAMIC_LIBS="-lboost_program_options-mt -lpthread -lz"
+    cd ..
+    curl -O https://sjeng.org/zero/best_v1.txt.zip
+    unzip best_v1.txt.zip
+    src/leelaz --weights weights.txt
+
 ## Example of compiling and running - Windows
 
     # Clone github repo
