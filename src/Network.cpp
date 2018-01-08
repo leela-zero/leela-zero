@@ -784,7 +784,7 @@ Network::Netresult Network::get_scored_moves_internal(
     for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
         if (idx < 19*19) {
             auto val = outputs[idx];
-            auto rot_idx = rotate_nn_idx_table[idx][rotation];
+            auto rot_idx = rotate_nn_idx_table[rotation][idx];
             int x = rot_idx % 19;
             int y = rot_idx / 19;
             int rot_vtx = state->board.get_vertex(x, y);
