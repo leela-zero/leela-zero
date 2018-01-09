@@ -33,7 +33,7 @@ namespace Utils {
     void myprintf(const char *fmt, ...);
     void gtp_printf(int id, const char *fmt, ...);
     void gtp_fail_printf(int id, const char *fmt, ...);
-    void log_input(std::string input);
+    void log_input(const std::string& input);
     bool input_pending();
 
     template<class T>

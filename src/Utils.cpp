@@ -78,7 +78,9 @@ bool Utils::input_pending(void) {
 static std::mutex IOmutex;
 
 void Utils::myprintf(const char *fmt, ...) {
-    if (cfg_quiet) return;
+    if (cfg_quiet) {
+        return;
+    }
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
@@ -92,13 +94,15 @@ void Utils::myprintf(const char *fmt, ...) {
     }
 }
 
-void gtp_fprintf(FILE* file, std::string prefix, const char *fmt, va_list ap) {
+static void gtp_fprintf(FILE* file, const std::string& prefix,
+                        const char *fmt, va_list ap) {
     fprintf(file, "%s ", prefix.c_str());
     vfprintf(file, fmt, ap);
     fprintf(file, "\n\n");
 }
 
-void gtp_base_printf(int id, std::string prefix, const char *fmt, va_list ap) {
+static void gtp_base_printf(int id, std::string prefix,
+                            const char *fmt, va_list ap) {
     if (id != -1) {
         prefix += std::to_string(id);
     }
@@ -125,7 +129,7 @@ void Utils::gtp_fail_printf(int id, const char *fmt, ...) {
     va_end(ap);
 }
 
-void Utils::log_input(std::string input) {
+void Utils::log_input(const std::string& input) {
     if (cfg_logfile_handle) {
         std::lock_guard<std::mutex> lock(IOmutex);
         fprintf(cfg_logfile_handle, ">>%s\n", input.c_str());
