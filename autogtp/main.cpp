@@ -36,7 +36,7 @@
 #include "Game.h"
 #include "Management.h"
 
-constexpr int AUTOGTP_VERSION = 10;
+constexpr int AUTOGTP_VERSION = 11;
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);

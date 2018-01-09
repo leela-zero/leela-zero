@@ -16,48 +16,31 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef TTABLE_H_INCLUDED
-#define TTABLE_H_INCLUDED
-
-#include "config.h"
-
-#include <vector>
-
 #include "SMP.h"
-#include "UCTNode.h"
 
-class TTEntry {
-public:
-    TTEntry() = default;
+#include <thread>
 
-    std::uint64_t m_hash{0};
-    int m_visits;
-    double m_eval_sum;
-};
+SMP::Mutex::Mutex() {
+    m_lock = false;
+}
 
-class TTable {
-public:
-    /*
-        return the global TT
-    */
-    static TTable& get_TT(void);
+SMP::Lock::Lock(Mutex & m) {
+    m_mutex = &m;
+    lock();
+}
 
-    /*
-        update corresponding entry
-    */
-    void update(std::uint64_t hash, const float komi, const UCTNode * node);
+void SMP::Lock::lock() {
+    while (m_mutex->m_lock.exchange(true, std::memory_order_acquire) == true);
+}
 
-    /*
-        sync given node with TT
-    */
-    void sync(std::uint64_t hash, const float komi, UCTNode * node);
+void SMP::Lock::unlock() {
+    m_mutex->m_lock.store(false, std::memory_order_release);
+}
 
-private:
-    TTable(int size = 500000);
+SMP::Lock::~Lock() {
+    unlock();
+}
 
-    SMP::Mutex m_mutex;
-    std::vector<TTEntry> m_buckets;
-    float m_komi;
-};
-
-#endif
+int SMP::get_num_cpus() {
+    return std::thread::hardware_concurrency();
+}

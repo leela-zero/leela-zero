@@ -68,12 +68,19 @@ std::uint32_t Random::randuint32() {
     return gen() >> 32;
 }
 
+static std::uint64_t splitmix64(std::uint64_t z) {
+    z += 0x9e3779b97f4a7c15;
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+    return z ^ (z >> 31);
+}
+
 void Random::seedrandom(std::uint64_t seed) {
-    // Magic values from Pierre L'Ecuyer,
-    // "Tables of Linear Congruental Generators of different sizes and
-    // good lattice structure"
-    m_s[0] = (1181783497276652981ULL * seed);
-    m_s[1] = (1181783497276652981ULL * m_s[0]);
+    // Initialize state of xoroshiro128+ by transforming the seed
+    // with the splitmix64 algorithm.
+    // As suggested by http://xoroshiro.di.unimi.it/xoroshiro128plus.c
+    m_s[0] = splitmix64(seed);
+    m_s[1] = splitmix64(m_s[0]);
 }
 
 float Random::randflt(void) {

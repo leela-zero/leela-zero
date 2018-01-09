@@ -41,23 +41,24 @@ public:
     using scored_node = std::pair<float, int>;
     using Netresult = std::pair<std::vector<scored_node>, float>;
 
-    static Netresult get_scored_moves(GameState * state,
+    static Netresult get_scored_moves(const GameState* state,
                                       Ensemble ensemble,
                                       int rotation = -1,
                                       bool skip_cache = false);
     // File format version
-    static constexpr int FORMAT_VERSION = 1;
-    static constexpr int INPUT_CHANNELS = 18;
+    static constexpr auto FORMAT_VERSION = 1;
+    static constexpr auto INPUT_MOVES = 8;
+    static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
 
     static void initialize();
-    static void benchmark(GameState * state, int iterations = 1600);
-    static void show_heatmap(FastState * state, Netresult & netres,
+    static void benchmark(const GameState * state, int iterations = 1600);
+    static void show_heatmap(const FastState * state, Netresult & netres,
                              bool topmoves);
     static void softmax(const std::vector<float>& input,
                         std::vector<float>& output,
                         float temperature = 1.0f);
-    static void gather_features(GameState* state, NNPlanes & planes);
 
+    static void gather_features(const GameState* state, NNPlanes& planes);
 private:
     static void process_bn_var(std::vector<float>& weights, const float epsilon=1e-5f);
     static void winograd_transform_f(const std::vector<float>& f, std::vector<float>& U,
@@ -65,8 +66,10 @@ private:
     static void zeropad_U(const std::vector<float>& U, std::vector<float>& Upad,
         const int outputs, const int channels,
         const int outputs_pad, const int channels_pad);
+    static void fill_input_plane_pair(
+      const FullBoard& board, BoardPlane& black, BoardPlane& white);
     static Netresult get_scored_moves_internal(
-      GameState * state, NNPlanes & planes, int rotation);
+      const GameState* state, NNPlanes & planes, int rotation);
     static int rotate_nn_idx(const int vertex, int symmetry);
 #if defined(USE_BLAS)
     static void forward_cpu(std::vector<float>& input,

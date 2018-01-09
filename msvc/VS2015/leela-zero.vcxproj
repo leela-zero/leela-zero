@@ -85,6 +85,7 @@
     <ClCompile Include="..\..\src\Random.cpp" />
     <ClCompile Include="..\..\src\SGFParser.cpp" />
     <ClCompile Include="..\..\src\SGFTree.cpp" />
+    <ClCompile Include="..\..\src\SMP.cpp" />
     <ClCompile Include="..\..\src\TimeControl.cpp" />
     <ClCompile Include="..\..\src\Timing.cpp" />
     <ClCompile Include="..\..\src\Training.cpp" />
@@ -109,6 +110,7 @@
     <ClInclude Include="..\..\src\Random.h" />
     <ClInclude Include="..\..\src\SGFParser.h" />
     <ClInclude Include="..\..\src\SGFTree.h" />
+    <ClInclude Include="..\..\src\SMP.h" />
     <ClInclude Include="..\..\src\ThreadPool.h" />
     <ClInclude Include="..\..\src\TimeControl.h" />
     <ClInclude Include="..\..\src\Timing.h" />

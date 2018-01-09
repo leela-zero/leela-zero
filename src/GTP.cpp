@@ -30,7 +30,6 @@
 #include <memory>
 #include <random>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "FastBoard.h"
@@ -38,6 +37,7 @@
 #include "GameState.h"
 #include "Network.h"
 #include "SGFTree.h"
+#include "SMP.h"
 #include "Training.h"
 #include "UCTSearch.h"
 #include "Utils.h"
@@ -64,11 +64,11 @@ std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
+std::string cfg_options_str;
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
-    int num_cpus = std::thread::hardware_concurrency();
-    cfg_num_threads = std::max(1, std::min(num_cpus, MAX_CPUS));
+    cfg_num_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL
@@ -127,10 +127,10 @@ const std::string GTP::s_commands[] = {
     ""
 };
 
-std::string GTP::get_life_list(GameState & game, bool live) {
+std::string GTP::get_life_list(const GameState & game, bool live) {
     std::vector<std::string> stringlist;
     std::string result;
-    FastBoard & board = game.board;
+    const auto& board = game.board;
 
     if (live) {
         for (int i = 0; i < board.get_boardsize(); i++) {
