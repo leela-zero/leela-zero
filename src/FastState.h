@@ -61,7 +61,7 @@ public:
     int m_passes;
     int m_komove;
     size_t m_movenum;
-    std::array<int, 2> m_lastmove;
+    int m_lastmove;
 
 protected:
     void play_move(int color, int vertex);
