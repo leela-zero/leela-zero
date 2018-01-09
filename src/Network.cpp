@@ -375,6 +375,7 @@ void batchnorm(size_t channels,
 #ifndef USE_HALF
 void Network::forward_cpu(std::vector<float>& input,
                           std::vector<float>& output) {
+#ifndef USE_HALF
     // Input convolution
     constexpr int width = 19;
     constexpr int height = 19;
@@ -413,6 +414,7 @@ void Network::forward_cpu(std::vector<float>& input,
                        res.data());
     }
     std::copy(begin(conv_out), end(conv_out), begin(output));
+#endif
 }
 #endif
 

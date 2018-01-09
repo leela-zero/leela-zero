@@ -57,6 +57,7 @@ bool cfg_dumbpass;
 #ifdef USE_OPENCL
 std::vector<int> cfg_gpus;
 int cfg_rowtiles;
+bool cfg_nn_batching;
 #endif
 float cfg_puct;
 float cfg_softmax_temp;
@@ -74,6 +75,7 @@ void GTP::setup_default_parameters() {
 #ifdef USE_OPENCL
     cfg_gpus = { };
     cfg_rowtiles = 5;
+    cfg_nn_batching = false;
 #endif
     cfg_puct = 0.85f;
     cfg_softmax_temp = 1.0f;
