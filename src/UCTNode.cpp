@@ -398,6 +398,50 @@ const std::vector<UCTNode::node_ptr_t>& UCTNode::get_children() const {
     return m_children;
 }
 
+int UCTNode::count_nodes() const {
+    auto nodecount = 0;
+    if (m_has_children) {
+        nodecount += m_children.size();
+        for (auto& child : m_children) {
+            nodecount += child->count_nodes();
+        }
+    }
+    return nodecount;
+}
+
+// Use this version if you know the child is directly under the parent.
+UCTNode::node_ptr_t UCTNode::find_and_take_ownership(const int move) {
+    if (m_has_children) {
+        // TODO: I couldn't get the find_if version to work.
+        // auto& child = std::find_if(begin(m_children), end(m_children),
+        //     [&move](auto &child) { return child->get_move == move; });
+        for (auto& child : m_children) {
+            if (child->get_move() == move) {
+                return std::move(child);
+            }
+        }
+    }
+    return nullptr;
+}
+
+// Use this version if the child could be anywhere.
+// Gives up after searching the direct children.
+UCTNode::node_ptr_t UCTNode::find_and_take_ownership(const GameState& g_new, GameState& g_curr) {
+    if (m_has_children) {
+        for (auto& child : m_children) {
+            auto move = child->get_move();
+            if (g_new.get_last_move() == move) {
+                g_curr.play_move(move);
+                if (g_curr.board.get_hash() == g_new.board.get_hash()) {
+                    return std::move(child);
+                }
+                g_curr.undo_move();
+            }
+        }
+    }
+    return nullptr;
+}
+
 UCTNode* UCTNode::get_nopass_child(FastState& state) const {
     for (const auto& child : m_children) {
         /* If we prevent the engine from passing, we must bail out when

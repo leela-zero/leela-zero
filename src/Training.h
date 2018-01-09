@@ -35,7 +35,6 @@ public:
     Network::NNPlanes planes;
     std::vector<float> probabilities;
     int to_move;
-    float net_winrate;
     float root_uct_winrate;
     float child_uct_winrate;
     int bestmove_visits;

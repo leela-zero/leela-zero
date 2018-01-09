@@ -74,7 +74,8 @@ public:
     static constexpr auto MAX_TREE_SIZE =
         (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
 
-    UCTSearch(GameState& g);
+    UCTSearch();
+    void set_gamestate(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
@@ -90,8 +91,8 @@ private:
     void dump_analysis(int playouts);
     int get_best_move(passflag_t passflag);
 
-    GameState & m_rootstate;
-    UCTNode m_root{FastBoard::PASS, 0.0f, 0.5f};
+    std::unique_ptr<GameState> m_rootstate{nullptr};
+    std::unique_ptr<UCTNode> m_root{nullptr};
     std::atomic<int> m_nodes{0};
     std::atomic<int> m_playouts{0};
     std::atomic<bool> m_run{false};

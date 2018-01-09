@@ -105,10 +105,6 @@ void Training::record(GameState& state, UCTNode& root) {
     step.planes = Network::NNPlanes{};
     Network::gather_features(&state, step.planes);
 
-    auto result =
-        Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
-    step.net_winrate = result.second;
-
     const auto& best_node = root.get_best_root_child(step.to_move);
     step.root_uct_winrate = root.get_eval(step.to_move);
     step.child_uct_winrate = best_node.get_eval(step.to_move);
@@ -200,14 +196,13 @@ void Training::dump_debug(const std::string& filename) {
 void Training::dump_debug(OutputChunker& outchunk) {
     {
         auto out = std::stringstream{};
-        out << "2" << std::endl; // File format version
+        out << "3" << std::endl; // File format version
         out << cfg_resignpct << " " << cfg_weightsfile << std::endl;
         outchunk.append(out.str());
     }
     for (const auto& step : m_data) {
         auto out = std::stringstream{};
-        out << step.net_winrate
-            << " " << step.root_uct_winrate
+        out << " " << step.root_uct_winrate
             << " " << step.child_uct_winrate
             << " " << step.bestmove_visits << std::endl;
         outchunk.append(out.str());
