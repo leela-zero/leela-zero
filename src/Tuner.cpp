@@ -162,14 +162,15 @@ static void sgemm_generate_data(std::vector<float> &x, const int m, const int n,
 }
 
 static float compare_ref(std::vector<float> &x, std::vector<float> &ref,
-        const int m, const int n, const int batch_size) {
+        const int m, const int n, const int batch_size,
+        const int m_ceil, const int n_ceil) {
 
     auto sum = 0.0f;
     for (auto batch = 0; batch < batch_size; batch++) {
         for (auto i = 0; i < n; i++) {
             for (auto j = 0; j < m; j++) {
                 auto r = ref[batch*n*m + i*m + j];
-                auto y = x[batch*n*m + j*n + i];
+                auto y = x[batch*n_ceil*m_ceil + j*n_ceil + i];
 
                 sum += (r - y) * (r - y);
             }
@@ -205,6 +206,12 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
     std::vector<float> b(b_size);
     std::vector<float> c(c_size);
     std::vector<float> c_ref(c_size);
+
+
+	sgemm_generate_data(at, k, m, batch_size, k, m);
+	sgemm_generate_data(b, n, k, batch_size, n, k);
+
+	sgemmBatched_ref(at, b, c_ref, m, n, k, batch_size);
 
     auto aBuffer = cl::Buffer(
         CL_MEM_READ_WRITE, sizeof(float)*at_size, nullptr, nullptr);
@@ -270,9 +277,8 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
             k_ceil_prev = k_ceil;
 
             sgemm_generate_data(at, k, m, batch_size, k_ceil, m_ceil);
-            sgemm_generate_data(b, k, n, batch_size, k_ceil, n_ceil);
+            sgemm_generate_data(b, n, k, batch_size, n_ceil, k_ceil);
 
-            sgemmBatched_ref(at, b, c_ref, m_ceil, n_ceil, k_ceil, batch_size);
             queue.enqueueWriteBuffer(aBuffer, CL_FALSE, 0, at_size*sizeof(float), at.data());
             queue.enqueueWriteBuffer(bBuffer, CL_FALSE, 0, b_size*sizeof(float), b.data());
             queue.finish();
@@ -306,7 +312,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
                 queue.enqueueReadBuffer(cBuffer, CL_FALSE, 0, c_size*sizeof(float), c.data());
                 queue.finish();
 
-                max_error = std::max(max_error, compare_ref(c, c_ref, n_ceil, m_ceil, batch_size));
+                max_error = std::max(max_error, compare_ref(c, c_ref, n, m, batch_size, n_ceil, m_ceil));
 
                 auto elapsed = event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
                             event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
