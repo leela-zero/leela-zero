@@ -32,6 +32,9 @@
 
 #include "Tuner.h"
 
+static constexpr auto WINOGRAD_P = (19 + 1) * (19 + 1) / 4;
+static constexpr auto WINOGRAD_TILE = 4 * 4;
+
 class Layer {
     friend class OpenCL_Network;
 private:
@@ -79,37 +82,33 @@ public:
 
     void push_convolve(unsigned int filter_size,
                        unsigned int channels,
-                       const std::vector<float>& weights,
-                       const std::vector<float>& biases) {
+                       unsigned int outputs,
+                       const std::vector<float>& weights) {
         size_t layer = get_layer_count();
         push_weights(layer, weights);
-        push_weights(layer, biases);
-        m_layers[layer].outputs = biases.size();
+        m_layers[layer].outputs = outputs;
         m_layers[layer].filter_size = filter_size;
         m_layers[layer].channels = channels;
     }
 
     void push_residual(unsigned int filter_size,
                        unsigned int channels,
+                       unsigned int outputs,
                        const std::vector<float>& weights_1,
-                       const std::vector<float>& biases_1,
                        const std::vector<float>& means_1,
                        const std::vector<float>& variances_1,
                        const std::vector<float>& weights_2,
-                       const std::vector<float>& biases_2,
                        const std::vector<float>& means_2,
                        const std::vector<float>& variances_2) {
         size_t layer = get_layer_count();
         push_weights(layer, weights_1);
-        push_weights(layer, biases_1);
         push_weights(layer, means_1);
         push_weights(layer, variances_1);
         push_weights(layer, weights_2);
-        push_weights(layer, biases_2);
         push_weights(layer, means_2);
         push_weights(layer, variances_2);
         m_layers[layer].is_residual_block = true;
-        m_layers[layer].outputs = biases_1.size();
+        m_layers[layer].outputs = outputs;
         m_layers[layer].filter_size = filter_size;
         m_layers[layer].channels = channels;
     }
@@ -143,7 +142,7 @@ class OpenCL {
     friend class OpenCL_Network;
     friend class Tuner;
 public:
-    void initialize();
+    void initialize(const int channels);
     void ensure_thread_initialized(void);
     std::string get_device_name();
 
@@ -156,9 +155,12 @@ private:
     cl::Program m_program;
     std::string m_cl_args;
 
-    size_t m_sgemm_mwg, m_sgemm_nwg, m_sgemm_kwg;
-    size_t m_sgemm_vwm, m_sgemm_vwn;
-    size_t m_sgemm_mdimc, m_sgemm_ndimc;
+	struct sgemm_tuners {
+		size_t mwg, nwg, kwg;
+		size_t vwm, vwn;
+		size_t mdimc, ndimc;
+	};
+	sgemm_tuners m_sgemm_tuners;
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};
     std::vector<size_t> m_max_workgroup_dims;

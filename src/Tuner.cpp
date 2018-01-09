@@ -43,8 +43,8 @@
 #include <cblas.h>
 #endif
 
-#define TUNER_FILE_LOCAL "leelaz_tuners"
-#define MAX_ERROR 1e-4
+const auto TUNER_FILE_LOCAL = std::string("leelaz_tuners");
+constexpr auto MAX_ERROR = 1e-4;
 
 using namespace Utils;
 
@@ -70,7 +70,7 @@ static void sgemmBatched_ref(const std::vector<float>& a, const std::vector<floa
 
 
 bool IsMultiple(const size_t a, const size_t b) {
-    return ((a/b)*b == a);
+    return (a % b == 0);
 };
 
 bool Tuner::valid_config_sgemm(Parameters p) {
@@ -106,7 +106,7 @@ bool Tuner::valid_config_sgemm(Parameters p) {
 }
 
 
-Parameters Tuner::get_parameters_by_int(const std::vector<Configurations> opts, const int n) {
+Parameters Tuner::get_parameters_by_int(const std::vector<Configurations>& opts, const int n) {
 
         Parameters param;
         std::vector<size_t> choices(opts.size());
@@ -129,7 +129,7 @@ Parameters Tuner::get_parameters_by_int(const std::vector<Configurations> opts, 
         return param;
 }
 
-std::string Tuner::parameters_to_string(const Parameters p) {
+std::string Tuner::parameters_to_string(const Parameters& p) {
     std::string s;
     for (auto const& x : p) {
         s += " -D" + x.first + "=" + std::to_string(x.second);
@@ -137,7 +137,7 @@ std::string Tuner::parameters_to_string(const Parameters p) {
     return s;
 }
 
-size_t next_power_of_two(const size_t x) {
+static size_t next_power_of_two(const size_t x) {
     return 2 << (size_t)(std::ceil(std::log2(x)) - 1);
 }
 
@@ -326,8 +326,8 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
 
     }
     if (best_time == 0) {
-        myprintf("Failed to find a working configuration.\nCheck your OpenCL drivers.\n");
-        std::exit(-1);
+        printf("Failed to find a working configuration.\nCheck your OpenCL drivers.\n");
+		throw std::runtime_error("Tuner failed to find working configuration.");
     }
     return best_params;
 }
