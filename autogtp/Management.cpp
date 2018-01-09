@@ -32,7 +32,7 @@
 constexpr int RETRY_DELAY_MIN_SEC = 30;
 constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 3;           // Stop retrying after 3 times
-const QString Leelaz_min_version = "0.9";
+const QString Leelaz_min_version = "0.10";
 
 Management::Management(const int gpus,
                        const int games,
@@ -69,6 +69,8 @@ void Management::giveAssignments() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
+            QTextStream(stdout) << "Starting thread " << game + 1 ;
+            QTextStream(stdout) << " on GPU " << gpu << endl;
             m_gamesThreads[thread_index] = new Worker(thread_index, myGpu, this);
             connect(m_gamesThreads[thread_index],
                     &Worker::resultReady,
@@ -192,9 +194,7 @@ Order Management::getWorkInternal() {
     prog_cmdline.append(".exe");
 #endif
     prog_cmdline.append(" -s -J");
-    prog_cmdline.append(" http://zero-test.sjeng.org/get-task/7");
-
-    QTextStream(stdout) << prog_cmdline << endl;
+    prog_cmdline.append(" http://zero.sjeng.org/get-task/7");
 
     QProcess curl;
     curl.start(prog_cmdline);
@@ -220,8 +220,8 @@ Order Management::getWorkInternal() {
     QString optionsHash =  ob.value("options_hash").toString();
 
     if (ob.contains("required_client_version")) {
-        QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
         if (ob.value("required_client_version").toString().toInt() > m_version) {
+            QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
             QTextStream(stdout) << ' ' <<  endl;
             QTextStream(stdout)
                 << "Server requires client version " << ob.value("required_client_version").toString()
@@ -247,13 +247,13 @@ Order Management::getWorkInternal() {
     if (ob.contains("random_seed"))
          rndSeed = ob.value("random_seed").toString();
     QMap<QString,QString> parameters;
-    QTextStream(stdout) << options << endl;
     parameters["leelazVer"] = leelazVersion;
     parameters["options"] = options;
     parameters["optHash"] = optionsHash;
     parameters["rndSeed"] = rndSeed;
     parameters["debug"] = !m_debugPath.isEmpty() ? "true" : "false";
 
+    QTextStream(stdout) << "Got new job: " << ob.value("cmd").toString() << endl;
     if (ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
@@ -261,6 +261,7 @@ Order Management::getWorkInternal() {
         parameters["network"] = net;
         o.parameters(parameters);
         m_fallBack = o;
+        QTextStream(stdout) << "net: " << net << "." << endl;
     }
     if (ob.value("cmd").toString() == "match") {
         o.type(Order::Validation);
@@ -271,6 +272,8 @@ Order Management::getWorkInternal() {
         parameters["firstNet"] = net1;
         parameters["secondNet"] = net2;
         o.parameters(parameters);
+        QTextStream(stdout) << "first network: " << net1 << "." << endl;
+        QTextStream(stdout) << "second network " << net2 << "." << endl;
     }
     return o;
 }
@@ -339,7 +342,6 @@ bool Management::networkExists(const QString &name) {
 
 void Management::fetchNetwork(const QString &name) {
     if (networkExists(name)) {
-        QTextStream(stdout) << "Already downloaded network." << endl;
         return;
     }
     if (QFileInfo::exists(name + ".gz")) {
@@ -359,8 +361,6 @@ void Management::fetchNetwork(const QString &name) {
     prog_cmdline.append(" -w %{filename_effective}");
     prog_cmdline.append(" http://zero.sjeng.org/networks/" + name + ".gz");
 
-    QTextStream(stdout) << prog_cmdline << endl;
-
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
@@ -374,7 +374,6 @@ void Management::fetchNetwork(const QString &name) {
     QString outstr(output);
     QStringList outlst = outstr.split("\n");
     QString outfile = outlst[0];
-    QTextStream(stdout) << "Curl filename: " << outfile << endl;
 #ifdef WIN32
     QProcess::execute("gzip.exe -d -q " + outfile);
 #else
@@ -418,7 +417,6 @@ void Management::cleanupFiles(const QString &fileName) {
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
     QFileInfoList list = dir.entryInfoList();
     for (int i = 0; i < list.size(); ++i) {
-        QTextStream(stdout) << "deleting " << list.at(i).fileName() << endl;
         QFile(list.at(i).fileName()).remove();
     }
 }
@@ -508,7 +506,6 @@ bool Management::sendCurl(const QStringList &lines) {
         prog_cmdline.append(" " + *it);
         ++it;
     }
-    QTextStream(stdout) << prog_cmdline << endl;
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
@@ -534,11 +531,12 @@ bool Management::sendCurl(const QStringList &lines) {
 -F options_hash=c2e3
 -F random_seed=0
 -F sgf=@file
-http://zero-test.sjeng.org/submit-match
+http://zero.sjeng.org/submit-match
 */
 
 void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString,QString> &l) {
-
+    QTextStream(stdout) << "Uploading match: " << r["file"] << ".sgf for networks ";
+    QTextStream(stdout) << l["firstNet"] << " and " << l["secondNet"] << endl;
     archiveFiles(r["file"]);
     gzipFile(r["file"] + ".sgf");
     QStringList prog_cmdline;
@@ -556,7 +554,7 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
     prog_cmdline.append("-F options_hash="+ l["optHash"]);
     prog_cmdline.append("-F random_seed="+ l["rndSeed"]);
     prog_cmdline.append("-F sgf=@"+ r["file"] + ".sgf.gz");
-    prog_cmdline.append("http://zero-test.sjeng.org/submit-match");
+    prog_cmdline.append("http://zero.sjeng.org/submit-match");
 
     bool sent = false;
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
@@ -592,21 +590,23 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
 -F random_seed=1
 -F sgf=@file
 -F trainingdata=@data_file
-http://zero-test.sjeng.org/submit
+http://zero.sjeng.org/submit
 */
 
 void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l) { 
-    QTextStream(stdout) << "Upload game: " << r["file"] << " for network " << r["network"] << endl;
+    QTextStream(stdout) << "Uploading game: " << r["file"] << ".sgf for network " << l["network"] << endl;
     archiveFiles(r["file"]);
     gzipFile(r["file"] + ".sgf");
     QStringList prog_cmdline;
     prog_cmdline.append("-F networkhash=" + l["network"]);
     prog_cmdline.append("-F clientversion=" + QString::number(m_version));
     prog_cmdline.append("-F options_hash="+ l["optHash"]);
+    prog_cmdline.append("-F movescount="+ r["moves"]);
+    prog_cmdline.append("-F winnercolor="+ r["winner"]);
     prog_cmdline.append("-F random_seed="+ l["rndSeed"]);
     prog_cmdline.append("-F sgf=@" + r["file"] + ".sgf.gz");
     prog_cmdline.append("-F trainingdata=@" + r["file"] + ".txt.0.gz");
-    prog_cmdline.append("http://zero-test.sjeng.org/submit");
+    prog_cmdline.append("http://zero.sjeng.org/submit");
 
     bool sent = false;
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {

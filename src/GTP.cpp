@@ -64,6 +64,7 @@ std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
+std::string cfg_options_str;
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
@@ -126,10 +127,10 @@ const std::string GTP::s_commands[] = {
     ""
 };
 
-std::string GTP::get_life_list(GameState & game, bool live) {
+std::string GTP::get_life_list(const GameState & game, bool live) {
     std::vector<std::string> stringlist;
     std::string result;
-    FastBoard & board = game.board;
+    const auto& board = game.board;
 
     if (live) {
         for (int i = 0; i < board.get_boardsize(); i++) {
@@ -293,8 +294,10 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         return true;
     } else if (command.find("play") == 0) {
-        if (command.find("pass") != std::string::npos
-            || command.find("resign") != std::string::npos) {
+        if (command.find("resign") != std::string::npos) {
+            game.play_move(FastBoard::RESIGN);
+            gtp_printf(id, "");
+        } else if (command.find("pass") != std::string::npos) {
             game.play_pass();
             gtp_printf(id, "");
         } else {
@@ -338,15 +341,16 @@ bool GTP::execute(GameState & game, std::string xinput) {
             {
                 auto search = std::make_unique<UCTSearch>(game);
 
+                game.set_to_move(who);
                 int move = search->think(who);
-                game.play_move(who, move);
+                game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
             }
             if (cfg_allow_pondering) {
                 // now start pondering
-                if (game.get_last_move() != FastBoard::RESIGN) {
+                if (!game.has_resigned()) {
                     auto search = std::make_unique<UCTSearch>(game);
                     search->ponder();
                 }
@@ -376,15 +380,16 @@ bool GTP::execute(GameState & game, std::string xinput) {
             {
                 auto search = std::make_unique<UCTSearch>(game);
 
+                game.set_to_move(who);
                 int move = search->think(who, UCTSearch::NOPASS);
-                game.play_move(who, move);
+                game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
             }
             if (cfg_allow_pondering) {
                 // now start pondering
-                if (game.get_last_move() != FastBoard::RESIGN) {
+                if (!game.has_resigned()) {
                     auto search = std::make_unique<UCTSearch>(game);
                     search->ponder();
                 }
@@ -403,17 +408,6 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("showboard") == 0) {
         gtp_printf(id, "");
         game.display_state();
-        return true;
-    } else if (command.find("mc_score") == 0) {
-        float ftmp = game.board.final_mc_score(game.get_komi());
-        /* white wins */
-        if (ftmp < -0.1) {
-            gtp_printf(id, "W+%3.1f", (float)fabs(ftmp));
-        } else if (ftmp > 0.1) {
-            gtp_printf(id, "B+%3.1f", ftmp);
-        } else {
-            gtp_printf(id, "0");
-        }
         return true;
     } else if (command.find("final_score") == 0) {
         float ftmp = game.final_score();
@@ -479,7 +473,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             if (cfg_allow_pondering) {
                 // KGS sends this after our move
                 // now start pondering
-                if (game.get_last_move() != FastBoard::RESIGN) {
+                if (!game.has_resigned()) {
                     auto search = std::make_unique<UCTSearch>(game);
                     search->ponder();
                 }
@@ -496,8 +490,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             game.play_move(move);
             game.display_state();
 
-        } while (game.get_passes() < 2
-                 && game.get_last_move() != FastBoard::RESIGN);
+        } while (game.get_passes() < 2 && !game.has_resigned());
 
         return true;
     } else if (command.find("go") == 0) {

@@ -36,7 +36,7 @@
 #include "Game.h"
 #include "Management.h"
 
-constexpr int AUTOGTP_VERSION = 10;
+constexpr int AUTOGTP_VERSION = 11;
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
-    cerr << "Using " << gamesNum << " thread(s)." << endl;
+    cerr << "Using " << gamesNum << " thread(s) for GPU(s)." << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"

@@ -18,8 +18,9 @@
 
 #include "TimeControl.h"
 
-#include <algorithm>
 #include <cassert>
+#include <cstdlib>
+#include <algorithm>
 
 #include "GTP.h"
 #include "Timing.h"
@@ -36,6 +37,24 @@ TimeControl::TimeControl(int boardsize, int maintime, int byotime,
 
     reset_clocks();
     set_boardsize(boardsize);
+}
+
+std::string TimeControl::to_text_sgf() {
+    if (m_byotime != 0 && m_byostones == 0 && m_byoperiods == 0) {
+        return ""; // infinite
+    }
+    auto s = "TM[" + std::to_string(m_maintime/100) + "]";
+    if (m_byotime) {
+        if (m_byostones) {
+            s += "OT[" + std::to_string(m_byostones) + "/";
+            s += std::to_string(m_byotime/100) + " Canadian]";
+        } else {
+            assert(m_byoperiods);
+            s += "OT[" + std::to_string(m_byoperiods) + "x";
+            s += std::to_string(m_byotime/100) + " byo-yomi]";
+        }
+    }
+    return s;
 }
 
 void TimeControl::reset_clocks() {
@@ -204,8 +223,4 @@ void TimeControl::set_boardsize(int boardsize) {
     // Note this is constant as we play, so it's fair
     // to underestimate quite a bit.
     m_moves_expected = (boardsize * boardsize) / 5;
-}
-
-int TimeControl::get_remaining_time(int color) {
-    return m_remaining_time[color];
 }

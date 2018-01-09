@@ -48,12 +48,6 @@ UCTNode::UCTNode(int vertex, float score, float init_eval)
     : m_move(vertex), m_score(score), m_init_eval(init_eval) {
 }
 
-UCTNode::~UCTNode() {
-    LOCK(get_mutex(), lock);
-    // Empty the children array while the lock is held
-    m_children.clear();
-}
-
 bool UCTNode::first_visit() const {
     return m_visits == 0;
 }
@@ -87,31 +81,24 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
     m_is_expanding = true;
     lock.unlock();
 
-    auto raw_netlist = Network::get_scored_moves(
+    const auto raw_netlist = Network::get_scored_moves(
         &state, Network::Ensemble::RANDOM_ROTATION);
 
     // DCNN returns winrate as side to move
     auto net_eval = raw_netlist.second;
-    auto to_move = state.board.get_to_move();
+    const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
-    if (to_move == FastBoard::WHITE) {
+    if (state.board.white_to_move()) {
         net_eval = 1.0f - net_eval;
     }
     eval = net_eval;
 
-    FastBoard & board = state.board;
     std::vector<Network::scored_node> nodelist;
 
     auto legal_sum = 0.0f;
     for (const auto& node : raw_netlist.first) {
         auto vertex = node.second;
-        if (vertex != FastBoard::PASS) {
-            if (vertex != state.m_komove
-                && !board.is_suicide(vertex, board.get_to_move())) {
-                nodelist.emplace_back(node);
-                legal_sum += node.first;
-            }
-        } else {
+        if (state.is_move_legal(to_move, vertex)) {
             nodelist.emplace_back(node);
             legal_sum += node.first;
         }
@@ -141,6 +128,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
 
     LOCK(get_mutex(), lock);
 
+    m_children.reserve(nodelist.size());
     for (const auto& node : nodelist) {
         m_children.emplace_back(
             std::make_unique<UCTNode>(node.second, node.first, init_eval)
@@ -175,13 +163,13 @@ void UCTNode::kill_superkos(const KoState& state) {
 
 float UCTNode::eval_state(GameState& state) {
     auto raw_netlist = Network::get_scored_moves(
-        &state, Network::Ensemble::RANDOM_ROTATION);
+        &state, Network::Ensemble::RANDOM_ROTATION, -1, true);
 
     // DCNN returns winrate as side to move
     auto net_eval = raw_netlist.second;
 
     // But we score from black's point of view
-    if (state.get_to_move() == FastBoard::WHITE) {
+    if (state.board.white_to_move()) {
         net_eval = 1.0f - net_eval;
     }
 
