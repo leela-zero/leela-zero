@@ -18,8 +18,9 @@
 
 #include "TimeControl.h"
 
-#include <algorithm>
 #include <cassert>
+#include <cstdlib>
+#include <algorithm>
 
 #include "GTP.h"
 #include "Timing.h"
