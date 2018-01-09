@@ -55,7 +55,7 @@ public:
 private:
     static constexpr int GTP_VERSION = 2;
 
-    static std::string get_life_list(GameState & game, bool live);
+    static std::string get_life_list(const GameState & game, bool live);
     static const std::string s_commands[];
 };
 

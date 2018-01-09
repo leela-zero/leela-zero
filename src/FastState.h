@@ -47,7 +47,7 @@ public:
     void set_passes(int val);
     void increment_passes();
 
-    float final_score();
+    float final_score() const;
 
     size_t get_movenum() const;
     int get_last_move() const;
