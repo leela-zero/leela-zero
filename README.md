@@ -119,18 +119,18 @@ source and remove the line that says "#define USE_OPENCL".
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
     cd leela-zero
+    git submodule update --init --recursive
+
     # Use stand alone directory to keep source dir clean
     mkdir build && cd build
     cmake ..
     make leelaz
+    make tests
+    ./tests
     curl -O https://sjeng.org/zero/best_v1.txt.zip
     unzip best_v1.txt.zip
     ./leelaz --weights weights.txt
 
-    # If you want to run unit tests too
-    git submodule update --init --recursive
-    make tests
-    ./tests
 
 # Usage
 
