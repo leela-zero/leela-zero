@@ -155,7 +155,6 @@ class TFProcess:
             feed_dict={self.training: True})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
-        # XXX: use built-in support like tf.moving_average_variables?
         # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
         # get comparable values.
         mse_loss = mse_loss / 4.0
@@ -173,7 +172,9 @@ class TFProcess:
             avg_reg_term = np.mean(self.avg_reg_term or [0])
             print("step {}, policy={:g} mse={:g} reg={:g} total={:g} ({:g} pos/s)".format(
                 steps, avg_policy_loss, avg_mse_loss, avg_reg_term,
-                avg_policy_loss + avg_mse_loss + avg_reg_term,
+                # Scale mse_loss back to the original to reflect the actual
+                # value being optimized
+                avg_policy_loss + 4.0 * avg_mse_loss + avg_reg_term,
                 speed))
             train_summaries = tf.Summary(value=[
                 tf.Summary.Value(tag="Policy Loss", simple_value=avg_policy_loss),
