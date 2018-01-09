@@ -22,9 +22,10 @@
 #include <QRegularExpression>
 #include "Game.h"
 
-Game::Game(const QString& weights, const QString& opt) :
+Game::Game(const QString& weights, const QString& opt, const QString& binary = "./leelaz") :
     QProcess(),
-    m_cmdLine("./leelaz"),
+    m_cmdLine(""),
+    m_binary(binary),
     m_timeSettings("time_settings 0 1 0"),
     m_resignation(false),
     m_blackToMove(true),
@@ -33,10 +34,9 @@ Game::Game(const QString& weights, const QString& opt) :
     m_moveNum(0)
 {
 #ifdef WIN32
-    m_cmdLine.append(".exe");
+    m_binary.append(".exe");
 #endif
-    m_cmdLine.append(opt);
-    m_cmdLine.append(weights);
+    m_cmdLine = m_binary + opt + weights;
     m_fileName = QUuid::createUuid().toRfc4122().toHex();
 }
 

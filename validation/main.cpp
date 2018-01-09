@@ -49,6 +49,14 @@ int main(int argc, char *argv[]) {
         {"n", "network"},
             "Networks to use as players in competition mode (two are needed).",
             "filename");
+    QCommandLineOption binaryOption(
+        {"b", "binary"},
+            "Binary to execute for the game (default ./leelaz)",
+            "filename");
+    QCommandLineOption optionsOption(
+        {"o", "options"},
+            "Options for the binary given by -b (default '-g -p 1600 --noponder -t 1 -q -d -r 0 -w')",
+            "opt_string");
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
             "Play 'gamesNum' games on one GPU at the same time.",
@@ -65,6 +73,8 @@ int main(int argc, char *argv[]) {
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(networkOption);
+    parser.addOption(binaryOption);
+    parser.addOption(optionsOption);
     parser.addOption(keepSgfOption);
 
     // Process the actual command line arguments given by the user
@@ -73,6 +83,18 @@ int main(int argc, char *argv[]) {
     if(netList.count() != 2) {
         parser.showHelp();
     }
+
+    QStringList binList = parser.values(binaryOption);
+    while(binList.count() != 2) {
+        binList << "./leelaz";
+    }
+    
+    QStringList optsList = parser.values(optionsOption);
+    while(optsList.count() != 2) {
+        optsList << " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ";
+    }
+   
+
     int gamesNum = parser.value(gamesNumOption).toInt();
     QStringList gpusList = parser.values(gpusOption);
     int gpusNum = gpusList.count();
@@ -94,7 +116,10 @@ int main(int argc, char *argv[]) {
     QMutex mutex;
     Validation validate(gpusNum, gamesNum, gpusList,
                         netList.at(0), netList.at(1),
-                        parser.value(keepSgfOption), &mutex);
+                        parser.value(keepSgfOption), &mutex,
+                        binList.at(0), binList.at(1),
+                        optsList.at(0), optsList.at(1)                       
+                        );
     validate.startGames();
     mutex.lock();
     cerr.flush();

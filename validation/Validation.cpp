@@ -26,16 +26,21 @@ const VersionTuple min_leelaz_version{0, 10, 0};
 
 void ValidationWorker::run() {
     do {
-        Game first(m_firstNet,  m_option);
+        Game first(m_firstNet,  m_firstOpts, m_firstBin);
         if (!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
-        Game second(m_secondNet, m_option);
+        Game second(m_secondNet, m_secondOpts, m_secondBin);
         if (!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
+        QTextStream(stdout) << "starting:" << endl <<
+            first.getCmdLine() << endl <<
+            "vs" << endl <<
+            second.getCmdLine() << endl;
+            
         QString wmove = "play white ";
         QString bmove = "play black ";
         do {
@@ -87,6 +92,8 @@ void ValidationWorker::run() {
             }
             // Change color and play again
             m_firstNet.swap(m_secondNet);
+            m_firstBin.swap(m_secondBin);
+            m_firstOpts.swap(m_secondOpts);
             if (m_expected == Game::BLACK) {
                 m_expected = Game::WHITE;
             } else {
@@ -99,14 +106,22 @@ void ValidationWorker::run() {
 void ValidationWorker::init(const QString& gpuIndex,
                             const QString& firstNet,
                             const QString& secondNet,
+                            const QString& firstBin,
+                            const QString& secondBin,
+                            const QString& firstOpts,
+                            const QString& secondOpts,
                             const QString& keep,
-                            const int expected) {
-    m_option = " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ";
+                            int expected) {
+    m_firstOpts = firstOpts;
+    m_secondOpts = secondOpts;
     if (!gpuIndex.isEmpty()) {
-        m_option.prepend(" --gpu=" + gpuIndex + " ");
+        m_firstOpts.prepend(" --gpu=" + gpuIndex + " ");
+        m_secondOpts.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_firstNet = firstNet;
     m_secondNet = secondNet;
+    m_firstBin = firstBin;
+    m_secondBin = secondBin;
     m_expected = expected;
     m_keepPath = keep;
     m_state.store(RUNNING);
@@ -118,7 +133,11 @@ Validation::Validation(const int gpus,
                        const QString& firstNet,
                        const QString& secondNet,
                        const QString& keep,
-                       QMutex* mutex) :
+                       QMutex* mutex,
+                       const QString& firstBin,
+                       const QString& secondBin,
+                       const QString& firstOpts,
+                       const QString& secondOpts) :
     m_mainMutex(mutex),
     m_syncMutex(),
     m_gamesThreads(gpus*games),
@@ -127,6 +146,10 @@ Validation::Validation(const int gpus,
     m_gpusList(gpuslist),
     m_firstNet(firstNet),
     m_secondNet(secondNet),
+    m_firstBin(firstBin),
+    m_secondBin(secondBin),
+    m_firstOpts(firstOpts),
+    m_secondOpts(secondOpts),
     m_keepPath(keep) {
     m_statistic.initialize(0.0, 35.0, 0.05, 0.05);
     m_statistic.addGameResult(Sprt::Draw);
@@ -159,7 +182,18 @@ void Validation::startGames() {
             } else {
                 myGpu = m_gpusList.at(gpu);
             }
-            m_gamesThreads[thread_index].init(myGpu, n1, n2, m_keepPath, expected);
+
+    void init(const QString& gpuIndex,
+              const QString& firstNet,
+              const QString& secondNet,
+              const QString& firstBin,
+              const QString& secondBin,
+              const QString& firstOpts,
+              const QString& secondOpts,
+              const QString& keep,
+              int expected);
+
+            m_gamesThreads[thread_index].init(myGpu, n1, n2, m_firstBin, m_secondBin, m_firstOpts, m_secondOpts, m_keepPath, expected);
             m_gamesThreads[thread_index].start();
         }
     }
