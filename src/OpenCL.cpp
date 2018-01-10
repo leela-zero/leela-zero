@@ -46,15 +46,9 @@ static std::string cl_args =
     "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
 
 static std::string sourceCode_config = R"(
-    #ifdef USE_HALF
-    typedef half net_t;
-    #define vload_net_t(offset,p) vload_half(offset,p)
-    #define vstore_net_t(data,offset,p) vstore_half(data,offset,p)
-    #else
     typedef float net_t;
     #define vload_net_t(offset,p) ((p)[(offset)])
     #define vstore_net_t(data,offset,p) (((p)[(offset)])=(data))
-    #endif
 )";
 
 static std::string sourceCode_convolve3 = R"(
@@ -831,10 +825,6 @@ void OpenCL::initialize(const int channels) {
     try {
         std::string args = cl_args;
         args += sgemm_tuners;
-
-#ifdef USE_HALF
-        args += " -DUSE_HALF";
-#endif
         m_program.build(args.c_str());
     } catch (const cl::Error&) {
         myprintf("Error building kernels: %s\n",

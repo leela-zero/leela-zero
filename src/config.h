@@ -59,12 +59,6 @@
  */
 #define USE_OPENCL
 /*
- * USE_HALF: Use 16-bit floating point storage for network parameters.
- * Only works for OpenCL implementations. Gives a slight speedup on some
- * cards at the cost of some accuracy.
- */
-// #define USE_HALF
-/*
  * USE_TUNER: Expose some extra command line parameters that allow tuning the
  * search algorithm.
  */
@@ -83,15 +77,7 @@
 #define MAX_CPUS 128
 #endif
 
-#ifdef USE_HALF
-#ifndef USE_OPENCL
-#error "Half-precision not supported without OpenCL"
-#endif
-#include "half/half.hpp"
-using net_t = half_float::half;
-#else
 using net_t = float;
-#endif
 
 #if defined(USE_BLAS) && defined(USE_OPENCL) && !defined(USE_HALF)
 // If both BLAS and OpenCL are fully usable, then check the OpenCL

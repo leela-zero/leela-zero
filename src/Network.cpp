@@ -673,7 +673,6 @@ void batchnorm(size_t channels,
     }
 }
 
-#ifndef USE_HALF
 void Network::forward_cpu(std::vector<float>& input,
                           std::vector<float>& output) {
     // Input convolution
@@ -719,7 +718,6 @@ void Network::forward_cpu(std::vector<float>& input,
     }
     std::copy(begin(conv_out), end(conv_out), begin(output));
 }
-#endif
 
 template<typename T>
 T relative_difference(T a, T b) {
