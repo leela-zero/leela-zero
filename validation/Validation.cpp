@@ -157,7 +157,7 @@ Validation::Validation(const int gpus,
 
 void Validation::startGames() {
     m_mainMutex->lock();
-    QString n1, n2;
+    QString n1, n2, b1 ,b2 ,o1, o2;
     int expected;
     QString myGpu;
     for(int gpu = 0; gpu < m_gpus; ++gpu) {
@@ -171,10 +171,18 @@ void Validation::startGames() {
             if (game % 2) {
                 n1 = m_firstNet;
                 n2 = m_secondNet;
+                b1 = m_firstBin;
+                b2 = m_secondBin;
+                o1 = m_firstOpts;
+                o2 = m_secondOpts;
                 expected = Game::BLACK;
             } else {
                 n1 = m_secondNet;
                 n2 = m_firstNet;
+                b1 = m_secondBin;
+                b2 = m_firstBin;
+                o1 = m_secondOpts;
+                o2 = m_firstOpts;
                 expected = Game::WHITE;
             }
             if (m_gpusList.isEmpty()) {
@@ -183,17 +191,7 @@ void Validation::startGames() {
                 myGpu = m_gpusList.at(gpu);
             }
 
-    void init(const QString& gpuIndex,
-              const QString& firstNet,
-              const QString& secondNet,
-              const QString& firstBin,
-              const QString& secondBin,
-              const QString& firstOpts,
-              const QString& secondOpts,
-              const QString& keep,
-              int expected);
-
-            m_gamesThreads[thread_index].init(myGpu, n1, n2, m_firstBin, m_secondBin, m_firstOpts, m_secondOpts, m_keepPath, expected);
+            m_gamesThreads[thread_index].init(myGpu, n1, n2, b1, b2, o1, o2, m_keepPath, expected);
             m_gamesThreads[thread_index].start();
         }
     }
