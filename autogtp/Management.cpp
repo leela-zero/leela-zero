@@ -77,13 +77,13 @@ void Management::giveAssignments() {
                     this,
                     &Management::getResult,
                     Qt::DirectConnection);
-            m_gamesThreads[thread_index]->order(getWork());
+            m_gamesThreads[thread_index]->order(getWork(0));
             m_gamesThreads[thread_index]->start();
         }
     }
 }
 
-void Management::getResult(Order ord, Result res, int index, int duration) {
+void Management::getResult(Order ord, Result res, int index, int duration, int timexgame) {
     if (res.type() == Result::Error) {
         exit(1);
     }
@@ -102,7 +102,7 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     }
     sendAllGames();
     printTimingInfo(duration);
-    m_gamesThreads[index]->order(getWork());
+    m_gamesThreads[index]->order(getWork(timexgame));
     m_syncMutex.unlock();
 
 }
@@ -153,7 +153,7 @@ QString Management::getBoolOption(const QJsonObject &ob, const QString &key, con
 }
 
 
-Order Management::getWorkInternal() {
+Order Management::getWorkInternal(int timexgame) {
     Order o(Order::Error);
 
     /*
@@ -195,6 +195,10 @@ Order Management::getWorkInternal() {
 #endif
     prog_cmdline.append(" -s -J");
     prog_cmdline.append(" http://zero.sjeng.org/get-task/7");
+    if (timexgame > 0) {
+        prog_cmdline.append("?timexgame=" + QString::number(timexgame));
+    }
+    QTextStream(stdout) << prog_cmdline << endl;
 
     QProcess curl;
     curl.start(prog_cmdline);
@@ -278,10 +282,10 @@ Order Management::getWorkInternal() {
     return o;
 }
 
-Order Management::getWork() {
+Order Management::getWork(int timexgame) {
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
         try {
-            return getWorkInternal();
+            return getWorkInternal(timexgame);
         } catch (NetworkException ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;

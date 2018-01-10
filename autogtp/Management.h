@@ -42,7 +42,7 @@ public:
     void giveAssignments();
     void incMoves() { m_movesMade++; }
 public slots:
-    void getResult(Order ord, Result res, int index, int duration);
+    void getResult(Order ord, Result res, int index, int duration, int timexgame);
 
 private:
 
@@ -67,8 +67,8 @@ private:
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
     Order m_fallBack;
-    Order getWorkInternal();
-    Order getWork();
+    Order getWorkInternal(int timexgame);
+    Order getWork(int timexgame);
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
     void sendAllGames();

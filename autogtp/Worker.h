@@ -40,7 +40,7 @@ public:
     void doFinish() { m_job->finish(); m_state.store(FINISHING); }
     void run() override;
 signals:
-    void resultReady(Order o, Result r, int index, int duration);
+    void resultReady(Order o, Result r, int index, int duration, int timexgame);
 private:
     int m_index;
     QAtomicInt m_state;
@@ -48,6 +48,8 @@ private:
     Order m_todo;
     Job *m_job;
     Management *m_boss;
+    int m_gamesNum;
+    int m_gamesTime;
     void createJob(int type);
 };
 

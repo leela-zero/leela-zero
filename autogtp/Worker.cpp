@@ -27,7 +27,9 @@ Worker::Worker(int index, const QString& gpuIndex, Management *parent) :
     m_state(),
     m_gpu(""),
     m_job(nullptr),
-    m_boss(parent)
+    m_boss(parent),
+    m_gamesNum(0),
+    m_gamesTime(0)
 {
     if (!gpuIndex.isEmpty()) {
         m_gpu = " --gpu=" + gpuIndex + " ";
@@ -73,7 +75,9 @@ void Worker::run() {
         auto end = std::chrono::high_resolution_clock::now();
         auto gameDuration =
         std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-        emit resultReady(m_todo, res, m_index, gameDuration);
+        ++m_gamesNum;
+        m_gamesTime += gameDuration;
+        emit resultReady(m_todo, res, m_index, gameDuration, (m_gamesTime/m_gamesNum));
     } while (m_state != FINISHING);
     QTextStream(stdout) << "Program ends: exiting." << endl;
 }
