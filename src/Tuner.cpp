@@ -44,7 +44,7 @@
 #endif
 
 const auto TUNER_FILE_LOCAL = std::string("leelaz_tuners");
-constexpr auto MAX_ERROR = 1e-4;
+constexpr auto MAX_ERROR = 1e-4f;
 
 using namespace Utils;
 
@@ -298,7 +298,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
                                   (n_ceil * p["NDIMC"]) / p["NWG"],
                                   (size_t)batch_size};
 
-        auto sum = 0.0;
+        auto sum = 0.0f;
         auto max_error = 0.0f;
         for (auto r = 0; r < runs; r++) {
             try {
@@ -314,7 +314,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
 
                 auto this_error = compare_ref(c, c_ref, n, m, batch_size,
                                               n_ceil, m_ceil);
-                max_error = std::max(max_error,this_error);
+                max_error = std::max(max_error, this_error);
 
                 auto elapsed =
                     event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
