@@ -137,7 +137,9 @@ Validation::Validation(const int gpus,
                        const QString& firstBin,
                        const QString& secondBin,
                        const QString& firstOpts,
-                       const QString& secondOpts) :
+                       const QString& secondOpts,
+                       const float& h0,
+                       const float& h1) :
     m_mainMutex(mutex),
     m_syncMutex(),
     m_gamesThreads(gpus*games),
@@ -151,7 +153,7 @@ Validation::Validation(const int gpus,
     m_firstOpts(firstOpts),
     m_secondOpts(secondOpts),
     m_keepPath(keep) {
-    m_statistic.initialize(0.0, 35.0, 0.05, 0.05);
+    m_statistic.initialize(h0, h1, 0.05, 0.05);
     m_statistic.addGameResult(Sprt::Draw);
 }
 

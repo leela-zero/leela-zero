@@ -77,7 +77,9 @@ public:
                const QString& firstBin,
                const QString& secondBin,
                const QString& firstOpts,
-               const QString& secondOpts);
+               const QString& secondOpts,
+               const float& h0,
+               const float& h1);
     ~Validation() = default;
     void startGames();
     void wait();
