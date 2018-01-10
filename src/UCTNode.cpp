@@ -373,7 +373,7 @@ private:
     int m_color;
 };
 
-void UCTNode::sort_root_children(int color) {
+void UCTNode::sort_children(int color) {
     LOCK(get_mutex(), lock);
     std::stable_sort(begin(m_children), end(m_children), NodeComp(color));
     std::reverse(begin(m_children), end(m_children));
