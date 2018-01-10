@@ -49,6 +49,9 @@ public:
     static constexpr auto FORMAT_VERSION = 1;
     static constexpr auto INPUT_MOVES = 8;
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
+    //Winograd filter transformation changes 3x3 filters to 4x4
+    static constexpr auto WINOGRAD_ALPHA = 4;
+    static constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 
     static void initialize();
     static void benchmark(const GameState * state, int iterations = 1600);
@@ -61,6 +64,11 @@ public:
     static void gather_features(const GameState* state, NNPlanes& planes);
 private:
     static void process_bn_var(std::vector<float>& weights, const float epsilon=1e-5f);
+    static std::vector<float> winograd_transform_f(const std::vector<float>& f,
+        const int outputs, const int channels);
+    static std::vector<float> zeropad_U(const std::vector<float>& U,
+        const int outputs, const int channels,
+        const int outputs_pad, const int channels_pad);
     static void fill_input_plane_pair(
       const FullBoard& board, BoardPlane& black, BoardPlane& white);
     static void winograd_transform_f(const std::vector<float>& f, std::vector<float>& U,

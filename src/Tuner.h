@@ -27,18 +27,19 @@
 using Configurations = std::pair<std::string, std::vector<size_t>>;
 using Parameters = std::map<std::string, size_t>;
 
-#define TUNER_VERSION 0
 
 class Tuner {
 public:
     std::string tune_sgemm(const int m, const int n, const int k, const int batch_size, const int runs=4);
     std::string load_sgemm_tuners(const int m, const int n, const int k, const int batch_size);
 
+	static constexpr auto TUNER_VERSION = 0;
+
 private:
     void store_sgemm_tuners(const int m, const int n, const int k, const int batch_size, std::string tuners);
     bool valid_config_sgemm(Parameters p);
-    std::string parameters_to_string(const Parameters p);
-    Parameters get_parameters_by_int(const std::vector<Configurations> cfg, const int n);
+    std::string parameters_to_string(const Parameters& p);
+    Parameters get_parameters_by_int(const std::vector<Configurations>& opts, const int n);
     std::string sgemm_tuners_from_line(std::string line, const int m, const int n, const int k, const int batch_size);
 };
 
