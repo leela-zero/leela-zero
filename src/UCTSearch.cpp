@@ -21,6 +21,7 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -245,13 +246,25 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     if (bestmove != FastBoard::PASS) {
         // resigning allowed
         if ((passflag & UCTSearch::NORESIGN) == 0) {
-            size_t movetresh = (m_rootstate.board.get_boardsize()
-                                * m_rootstate.board.get_boardsize()) / 4;
+            size_t board_squares = m_rootstate.board.get_boardsize()
+                                 * m_rootstate.board.get_boardsize();
+            auto move_threshold = board_squares / 4;
+            auto resign_threshold = 0.01 * cfg_resignpct;
+            if (m_rootstate.get_handicap() > 0) {
+                auto handicap_resign_threshold =
+                    resign_threshold / std::sqrt(1 + m_rootstate.get_handicap());
+                // blend the thresholds for the first ~180 moves.
+                auto blend_ratio = std::max(1.0, m_rootstate.get_movenum() /
+                                                 (0.5 * board_squares));
+                resign_threshold = handicap_resign_threshold +
+                    blend_ratio * (resign_threshold - handicap_resign_threshold);
+            }
+
             // bad score and visited enough
-            if (bestscore < ((float)cfg_resignpct / 100.0f)
+            if (bestscore < resign_threshold
                 && visits > 500
-                && m_rootstate.m_movenum > movetresh) {
-                myprintf("Score looks bad. Resigning.\n");
+                && m_rootstate.get_movenum() > move_threshold) {
+                myprintf("Eval (%.3f) looks bad. Resigning.\n", bestscore);
                 bestmove = FastBoard::RESIGN;
             }
         }
