@@ -48,15 +48,15 @@ constexpr auto MAX_ERROR = 1e-4;
 
 using namespace Utils;
 
-static void sgemmBatched_ref(const std::vector<float>& a, const std::vector<float>& b,
-        std::vector<float>& c, const int m, const int n, const int k,
-        const int batch_size) {
-
+static void sgemmBatched_ref(const std::vector<float>& a,
+                             const std::vector<float>& b,
+                             std::vector<float>& c,
+                             const int m, const int n, const int k,
+                             const int batch_size) {
     for (auto batch = 0; batch < batch_size; batch++) {
-
-        auto offset_u = batch*m*k;
-        auto offset_v = batch*n*k;
-        auto offset_m = batch*m*n;
+        auto offset_u = batch * m * k;
+        auto offset_v = batch * n * k;
+        auto offset_m = batch * m * n;
 
         cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
                     m, n, k,
@@ -69,12 +69,11 @@ static void sgemmBatched_ref(const std::vector<float>& a, const std::vector<floa
 }
 
 
-bool IsMultiple(const size_t a, const size_t b) {
+static bool IsMultiple(const size_t a, const size_t b) {
     return (a % b == 0);
-};
+}
 
 bool Tuner::valid_config_sgemm(Parameters p) {
-
     if (!IsMultiple(p["MWG"], p["MDIMC"]*p["VWM"])) {
         return false;
     }
@@ -105,28 +104,27 @@ bool Tuner::valid_config_sgemm(Parameters p) {
     return true;
 }
 
+Parameters Tuner::get_parameters_by_int(const std::vector<Configurations>& opts,
+                                        const int n) {
+    Parameters param;
+    std::vector<size_t> choices(opts.size());
 
-Parameters Tuner::get_parameters_by_int(const std::vector<Configurations>& opts, const int n) {
+    auto cfgs = 1;
+    for (auto c = size_t{0}; c < opts.size(); c++) {
+        choices[c] = opts[c].second.size();
+        cfgs *= choices[c];
+    }
+    auto j = n;
 
-        Parameters param;
-        std::vector<size_t> choices(opts.size());
+    for (auto c = size_t{0}; c < opts.size(); c++) {
+        auto o = opts[c];
+        auto s = o.first;
+        auto v = o.second[j % choices[c]];
+        j /= choices[c];
+        param[s] = v;
+    }
 
-        auto cfgs = 1;
-        for (auto c = size_t{0}; c < opts.size(); c++) {
-            choices[c] = opts[c].second.size();
-            cfgs *= choices[c];
-        }
-        int j = n;
-
-        for (auto c = size_t{0}; c < opts.size(); c++) {
-            auto o = opts[c];
-            auto s = o.first;
-            auto v = o.second[j % choices[c]];
-            j /= choices[c];
-            param[s] = v;
-        }
-
-        return param;
+    return param;
 }
 
 std::string Tuner::parameters_to_string(const Parameters& p) {
@@ -141,13 +139,16 @@ static size_t next_power_of_two(const size_t x) {
     return 2 << (size_t)(std::ceil(std::log2(x)) - 1);
 }
 
-static void sgemm_generate_data(std::vector<float> &x, const int m, const int n,
-        const int batch_size, const int m_ceil, const int n_ceil) {
+static void sgemm_generate_data(std::vector<float> &x,
+                                const int m, const int n,
+                                const int batch_size,
+                                const int m_ceil, const int n_ceil) {
     for (auto batch = 0; batch < batch_size; batch++) {
         for (auto i = 0; i < n_ceil; i++) {
             if (i < n) {
                 for (auto j = 0; j < m; j++) {
-                    x[batch*n_ceil*m_ceil + i*m_ceil + j] = 0.01f*(((i ^ j) + batch - 50) % 100);
+                    x[batch*n_ceil*m_ceil + i*m_ceil + j] =
+                        0.01f*(((i ^ j) + batch - 50) % 100);
                 }
                 for (auto j = m; j < m_ceil; j++) {
                     x[batch*n_ceil*m_ceil + i*m_ceil + j] = 0.0f;
@@ -162,9 +163,8 @@ static void sgemm_generate_data(std::vector<float> &x, const int m, const int n,
 }
 
 static float compare_ref(std::vector<float> &x, std::vector<float> &ref,
-        const int m, const int n, const int batch_size,
-        const int m_ceil, const int n_ceil) {
-
+                         const int m, const int n, const int batch_size,
+                         const int m_ceil, const int n_ceil) {
     auto sum = 0.0f;
     for (auto batch = 0; batch < batch_size; batch++) {
         for (auto i = 0; i < n; i++) {
@@ -176,12 +176,12 @@ static float compare_ref(std::vector<float> &x, std::vector<float> &ref,
             }
         }
     }
-    return sum/(m*n);
+    return sum / (m*n);
 }
 
-std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int batch_size, const int runs) {
-
-    std::vector<Configurations> opts = {
+std::string Tuner::tune_sgemm(const int m, const int n, const int k,
+                              const int batch_size, const int runs) {
+    auto opts = std::vector<Configurations>{
       {"MWG", {16, 32, 64}},
       {"NWG", {16, 32, 64}},
       {"KWG", {32}},
@@ -198,32 +198,30 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
       {"SB", {0, 1}},
     };
 
-    size_t at_size = batch_size*next_power_of_two(k*m);
-    size_t b_size = batch_size*next_power_of_two(k*n);
-    size_t c_size = batch_size*next_power_of_two(m*n);
+    auto at_size = batch_size * next_power_of_two(k * m);
+    auto b_size = batch_size * next_power_of_two(k * n);
+    auto c_size = batch_size * next_power_of_two(m * n);
 
-    std::vector<float> at(at_size);
-    std::vector<float> b(b_size);
-    std::vector<float> c(c_size);
-    std::vector<float> c_ref(c_size);
+    auto at = std::vector<float>(at_size);
+    auto b = std::vector<float>(b_size);
+    auto c = std::vector<float>(c_size);
+    auto c_ref = std::vector<float>(c_size);
 
+    sgemm_generate_data(at, k, m, batch_size, k, m);
+    sgemm_generate_data(b, n, k, batch_size, n, k);
 
-	sgemm_generate_data(at, k, m, batch_size, k, m);
-	sgemm_generate_data(b, n, k, batch_size, n, k);
-
-	sgemmBatched_ref(at, b, c_ref, m, n, k, batch_size);
+    sgemmBatched_ref(at, b, c_ref, m, n, k, batch_size);
 
     auto aBuffer = cl::Buffer(
-        CL_MEM_READ_WRITE, sizeof(float)*at_size, nullptr, nullptr);
+        CL_MEM_READ_WRITE, sizeof(float) * at_size, nullptr, nullptr);
     auto bBuffer = cl::Buffer(
-        CL_MEM_READ_WRITE, sizeof(float)*b_size, nullptr, nullptr);
+        CL_MEM_READ_WRITE, sizeof(float) * b_size, nullptr, nullptr);
     auto cBuffer = cl::Buffer(
-        CL_MEM_READ_WRITE, sizeof(float)*c_size, nullptr, nullptr);
+        CL_MEM_READ_WRITE, sizeof(float) * c_size, nullptr, nullptr);
 
-    myprintf("\nStarted OpenCL SGEMM tuner\n");
+    myprintf("\nStarted OpenCL SGEMM tuner.\n");
 
-    std::vector<int> valid_params;
-
+    auto valid_params = std::vector<int>{};
     auto cfgs = 1;
     for (auto c = size_t{0}; c < opts.size(); c++) {
         cfgs *= opts[c].second.size();
@@ -235,43 +233,43 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
             valid_params.emplace_back(i);
         }
     }
-    myprintf("Found %zu valid configurations\n", valid_params.size());
+    myprintf("Found %zu valid configurations.\n", valid_params.size());
 
     std::string best_params;
     auto best_time = unsigned{0};
 
-    auto queue = cl::CommandQueue(cl::Context::getDefault(), cl::Device::getDefault(), CL_QUEUE_PROFILING_ENABLE);
-
+    auto queue = cl::CommandQueue(cl::Context::getDefault(),
+                                  cl::Device::getDefault(),
+                                  CL_QUEUE_PROFILING_ENABLE);
     auto event = cl::Event();
-
     auto program = cl::Program(sourceCode_sgemm);
 
     auto m_ceil_prev = 0;
     auto n_ceil_prev = 0;
     auto k_ceil_prev = 0;
 
-    for (auto i : valid_params) {
-        Parameters p = get_parameters_by_int(opts, i);
-        std::string defines = parameters_to_string(p);
+    for (const auto& i : valid_params) {
+        auto p = get_parameters_by_int(opts, i);
+        auto defines = parameters_to_string(p);
 
         try {
-            std::string args = opencl.m_cl_args;
-
+            auto args = opencl.m_cl_args;
             args += defines;
-
             program.build(args.c_str());
         } catch (const cl::Error&) {
-            //Failed to compile, get next parameter
+            // Failed to compile, get next parameter
             continue;
         }
 
         auto sgemm_kernel = cl::Kernel(program, "XgemmBatched");
 
-        int m_ceil = (int)lcm(lcm(m, p["MWG"]), p["VWM"]);
-        int n_ceil = (int)lcm(lcm(n, p["NWG"]), p["VWN"]);
-        int k_ceil = (int)lcm(lcm(k, p["KWG"]), p["VWM"]);
+        auto m_ceil = (int)lcm(lcm(m, p["MWG"]), p["VWM"]);
+        auto n_ceil = (int)lcm(lcm(n, p["NWG"]), p["VWN"]);
+        auto k_ceil = (int)lcm(lcm(k, p["KWG"]), p["VWM"]);
 
-        if (m_ceil != m_ceil_prev || n_ceil != n_ceil_prev || k_ceil != k_ceil_prev) {
+        if (m_ceil != m_ceil_prev
+            || n_ceil != n_ceil_prev
+            || k_ceil != k_ceil_prev) {
             m_ceil_prev = m_ceil;
             n_ceil_prev = n_ceil;
             k_ceil_prev = k_ceil;
@@ -279,8 +277,10 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
             sgemm_generate_data(at, k, m, batch_size, k_ceil, m_ceil);
             sgemm_generate_data(b, n, k, batch_size, n_ceil, k_ceil);
 
-            queue.enqueueWriteBuffer(aBuffer, CL_FALSE, 0, at_size*sizeof(float), at.data());
-            queue.enqueueWriteBuffer(bBuffer, CL_FALSE, 0, b_size*sizeof(float), b.data());
+            queue.enqueueWriteBuffer(aBuffer, CL_FALSE, 0,
+                                     at_size * sizeof(float), at.data());
+            queue.enqueueWriteBuffer(bBuffer, CL_FALSE, 0,
+                                     b_size * sizeof(float), b.data());
             queue.finish();
         }
 
@@ -301,25 +301,28 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
         auto sum = 0.0;
         auto max_error = 0.0f;
         for (auto r = 0; r < runs; r++) {
-
             try {
                 queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
-                                            size_sgemm, local_sgemm,
-                                            nullptr, &event);
+                                           size_sgemm, local_sgemm,
+                                           nullptr, &event);
                 queue.finish();
                 event.wait();
 
-                queue.enqueueReadBuffer(cBuffer, CL_FALSE, 0, c_size*sizeof(float), c.data());
+                queue.enqueueReadBuffer(cBuffer, CL_FALSE, 0,
+                                        c_size * sizeof(float), c.data());
                 queue.finish();
 
-                max_error = std::max(max_error, compare_ref(c, c_ref, n, m, batch_size, n_ceil, m_ceil));
+                auto this_error = compare_ref(c, c_ref, n, m, batch_size,
+                                              n_ceil, m_ceil);
+                max_error = std::max(max_error,this_error);
 
-                auto elapsed = event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
-                            event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+                auto elapsed =
+                    event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
+                    event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 
                 sum += elapsed;
             } catch (const cl::Error&) {
-                //Failed to enqueue kernel. Set error to max.
+                // Failed to enqueue kernel. Set error to max.
                 max_error = MAX_ERROR;
                 break;
             }
@@ -329,23 +332,23 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k, const int b
             best_time = sum;
             best_params = defines;
         }
-
     }
     if (best_time == 0) {
         printf("Failed to find a working configuration.\nCheck your OpenCL drivers.\n");
-		throw std::runtime_error("Tuner failed to find working configuration.");
+        throw std::runtime_error("Tuner failed to find working configuration.");
     }
     return best_params;
 }
 
-void Tuner::store_sgemm_tuners(const int m, const int n, const int k, const int batch_size, std::string tuners) {
+void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
+                               const int batch_size, std::string tuners) {
     std::string file_contents;
     {
         std::ifstream file(TUNER_FILE_LOCAL);
         if (file.good()) {
-            //Read the previous contents to string
+            // Read the previous contents to string
             file_contents = std::string((std::istreambuf_iterator<char>(file)),
-                         std::istreambuf_iterator<char>());
+                                        std::istreambuf_iterator<char>());
         }
     }
     std::ofstream file(TUNER_FILE_LOCAL);
@@ -357,13 +360,15 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k, const int 
     std::stringstream tuning_params;
     tuning_params << m << ";" << n << ";" << k << ";" << batch_size;
 
-    std::string line = std::to_string(TUNER_VERSION) + ";XgemmBatched;" + tuning_params.str() + ";" + tuners + ";" + device_name + "\n";
+    std::string line = std::to_string(TUNER_VERSION) + ";XgemmBatched;"
+        + tuning_params.str() + ";" + tuners + ";" + device_name + "\n";
 
     file << line;
 }
 
-
-std::string Tuner::sgemm_tuners_from_line(std::string line, const int m, const int n, const int k, const int batch_size) {
+std::string Tuner::sgemm_tuners_from_line(std::string line,
+                                          const int m, const int n, const int k,
+                                          const int batch_size) {
     std::vector<std::string> s;
 
     std::stringstream ss(line);
@@ -408,16 +413,16 @@ std::string Tuner::sgemm_tuners_from_line(std::string line, const int m, const i
     return s[6];
 }
 
-std::string Tuner::load_sgemm_tuners(const int m, const int n, const int k, const int batch_size) {
+std::string Tuner::load_sgemm_tuners(const int m, const int n, const int k,
+                                     const int batch_size) {
     std::ifstream file(TUNER_FILE_LOCAL);
     if (file.good()) {
         std::string line;
-        while (std::getline(file, line))
-        {
+        while (std::getline(file, line)) {
             std::istringstream iss(line);
             auto tuners = sgemm_tuners_from_line(line, m, n, k, batch_size);
             if (tuners.size() != 0) {
-                myprintf("Loaded existing SGEMM tuners\n");
+                myprintf("Loaded existing SGEMM tuning.\n");
                 return tuners;
             }
         }
