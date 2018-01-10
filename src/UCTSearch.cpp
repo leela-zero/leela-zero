@@ -250,12 +250,13 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                                  * m_rootstate.board.get_boardsize();
             auto move_threshold = board_squares / 4;
             auto resign_threshold = 0.01 * cfg_resignpct;
+            // TODO add something to disable if -r is user set.
             if (m_rootstate.get_handicap() > 0) {
                 auto handicap_resign_threshold =
-                    resign_threshold / std::sqrt(1 + m_rootstate.get_handicap());
-                // blend the thresholds for the first ~180 moves.
+                    resign_threshold / (1 + m_rootstate.get_handicap());
+                // blend the thresholds for the first ~215 moves.
                 auto blend_ratio = std::max(1.0, m_rootstate.get_movenum() /
-                                                 (0.5 * board_squares));
+                                                 (0.6 * board_squares));
                 resign_threshold = handicap_resign_threshold +
                     blend_ratio * (resign_threshold - handicap_resign_threshold);
             }
