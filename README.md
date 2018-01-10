@@ -275,7 +275,7 @@ If interrupted, training can be resumed with:
 - [x] Provide or link to self-play tooling
 - [x] CPU support for Xeon Phi and for people without a GPU
 - [ ] Faster GPU usage via batching
-- [ ] Faster GPU usage via Winograd transforms
+- [x] Faster GPU usage via Winograd transforms
 - [ ] CUDA specific version using cuDNN
 - [ ] AMD specific version using MIOpen
 - [ ] Faster GPU usage via supporting multiple GPU
