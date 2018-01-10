@@ -42,8 +42,8 @@
 
 using namespace Utils;
 
-
-static std::string cl_args = "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
+static std::string cl_args =
+    "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
 
 static std::string sourceCode_config = R"(
     #ifdef USE_HALF
@@ -58,8 +58,9 @@ static std::string sourceCode_config = R"(
 )";
 
 static std::string sourceCode_convolve3 = R"(
-__kernel void in_transform(__global net_t *in, __global float *V, const int C, const int Cpad, const int Ppad) {
-
+__kernel void in_transform(__global net_t *in, __global float *V,
+                           const int C, const int Cpad,
+                           const int Ppad) {
     const int W = 19;
     const int H = 19;
     const int WTILES = (W + 1) / 2;
@@ -71,13 +72,13 @@ __kernel void in_transform(__global net_t *in, __global float *V, const int C, c
     const int block_x = block % WTILES;
     const int block_y = block / WTILES;
 
-    //Tiles overlap by 2
+    // Tiles overlap by 2
     const int yin = 2 * block_y - 1;
     const int xin = 2 * block_x - 1;
 
     if (block < P && ch < C) {
 
-        //Cache input tile and handle zero padding
+        // Cache input tile and handle zero padding
         float x[4][4];
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
@@ -91,53 +92,53 @@ __kernel void in_transform(__global net_t *in, __global float *V, const int C, c
 
         const int offset = ch*Ppad + block;
 
-		float T1[4][4];
-		float T2[4][4];
+        float T1[4][4];
+        float T2[4][4];
 
-		T1[0][0] = x[0][0] - x[2][0];
-		T1[0][1] = x[0][1] - x[2][1];
-		T1[0][2] = x[0][2] - x[2][2];
-		T1[0][3] = x[0][3] - x[2][3];
-		T1[1][0] = x[1][0] + x[2][0];
-		T1[1][1] = x[1][1] + x[2][1];
-		T1[1][2] = x[1][2] + x[2][2];
-		T1[1][3] = x[1][3] + x[2][3];
-		T1[2][0] = x[2][0] - x[1][0];
-		T1[2][1] = x[2][1] - x[1][1];
-		T1[2][2] = x[2][2] - x[1][2];
-		T1[2][3] = x[2][3] - x[1][3];
-		T1[3][0] = x[1][0] - x[3][0];
-		T1[3][1] = x[1][1] - x[3][1];
-		T1[3][2] = x[1][2] - x[3][2];
-		T1[3][3] = x[1][3] - x[3][3];
+        T1[0][0] = x[0][0] - x[2][0];
+        T1[0][1] = x[0][1] - x[2][1];
+        T1[0][2] = x[0][2] - x[2][2];
+        T1[0][3] = x[0][3] - x[2][3];
+        T1[1][0] = x[1][0] + x[2][0];
+        T1[1][1] = x[1][1] + x[2][1];
+        T1[1][2] = x[1][2] + x[2][2];
+        T1[1][3] = x[1][3] + x[2][3];
+        T1[2][0] = x[2][0] - x[1][0];
+        T1[2][1] = x[2][1] - x[1][1];
+        T1[2][2] = x[2][2] - x[1][2];
+        T1[2][3] = x[2][3] - x[1][3];
+        T1[3][0] = x[1][0] - x[3][0];
+        T1[3][1] = x[1][1] - x[3][1];
+        T1[3][2] = x[1][2] - x[3][2];
+        T1[3][3] = x[1][3] - x[3][3];
 
-		T2[0][0] = T1[0][0] - T1[0][2];
-		T2[0][1] = T1[0][1] + T1[0][2];
-		T2[0][2] = T1[0][2] - T1[0][1];
-		T2[0][3] = T1[0][1] - T1[0][3];
-		T2[1][0] = T1[1][0] - T1[1][2];
-		T2[1][1] = T1[1][1] + T1[1][2];
-		T2[1][2] = T1[1][2] - T1[1][1];
-		T2[1][3] = T1[1][1] - T1[1][3];
-		T2[2][0] = T1[2][0] - T1[2][2];
-		T2[2][1] = T1[2][1] + T1[2][2];
-		T2[2][2] = T1[2][2] - T1[2][1];
-		T2[2][3] = T1[2][1] - T1[2][3];
-		T2[3][0] = T1[3][0] - T1[3][2];
-		T2[3][1] = T1[3][1] + T1[3][2];
-		T2[3][2] = T1[3][2] - T1[3][1];
-		T2[3][3] = T1[3][1] - T1[3][3];
+        T2[0][0] = T1[0][0] - T1[0][2];
+        T2[0][1] = T1[0][1] + T1[0][2];
+        T2[0][2] = T1[0][2] - T1[0][1];
+        T2[0][3] = T1[0][1] - T1[0][3];
+        T2[1][0] = T1[1][0] - T1[1][2];
+        T2[1][1] = T1[1][1] + T1[1][2];
+        T2[1][2] = T1[1][2] - T1[1][1];
+        T2[1][3] = T1[1][1] - T1[1][3];
+        T2[2][0] = T1[2][0] - T1[2][2];
+        T2[2][1] = T1[2][1] + T1[2][2];
+        T2[2][2] = T1[2][2] - T1[2][1];
+        T2[2][3] = T1[2][1] - T1[2][3];
+        T2[3][0] = T1[3][0] - T1[3][2];
+        T2[3][1] = T1[3][1] + T1[3][2];
+        T2[3][2] = T1[3][2] - T1[3][1];
+        T2[3][3] = T1[3][1] - T1[3][3];
 
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 4; j++) {
-				V[(i*4 + j)*Cpad*Ppad + offset] = T2[i][j];
-			}
-		}
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                V[(i*4 + j)*Cpad*Ppad + offset] = T2[i][j];
+            }
+        }
     }
 }
 
-__kernel void out_transform(__global float *M, __global net_t *Y, const int K, const int Kpad, const int Ppad) {
-
+__kernel void out_transform(__global float *M, __global net_t *Y,
+                            const int K, const int Kpad, const int Ppad) {
     const int W = 19;
     const int H = 19;
     const int WTILES = (W + 1) / 2;
@@ -191,12 +192,12 @@ __kernel void out_transform(__global float *M, __global net_t *Y, const int K, c
 }
 
 __kernel void out_transform_fused_bn(__global float *M,
-                __global net_t *Y,
-                const int K, const int Kpad, const int Ppad,
-                __global const net_t * residual,
-                __constant const net_t * means,
-                __constant const net_t * stddivs) {
-
+                                     __global net_t *Y,
+                                     const int K,
+                                     const int Kpad, const int Ppad,
+                                     __global const net_t * residual,
+                                     __constant const net_t * means,
+                                     __constant const net_t * stddivs) {
     const int W = 19;
     const int H = 19;
     const int WTILES = (W + 1) / 2;
@@ -222,20 +223,20 @@ __kernel void out_transform_fused_bn(__global float *M,
 
         float o[4];
         o[0] = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
-                    temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
-                    temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
+               temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
+               temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
 
         o[1] = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
-                    temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
-                    temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
+               temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
+               temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
 
         o[2] = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
-                    temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
-                    temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
+               temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
+               temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
 
         o[3] = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
-                    temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
-                    temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
+               temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
+               temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
 
         const float mean = vload_net_t(k, means);
         const float scale_stddiv = vload_net_t(k, stddivs);
@@ -259,13 +260,11 @@ __kernel void out_transform_fused_bn(__global float *M,
 )";
 
 static std::string sourceCode_utility = R"(
-    __kernel void batchnorm(
-                        __global const net_t * in,
-                        __global net_t * out,
-                        __global const net_t * residual,
-                        __constant const net_t * means,
-                        __constant const net_t * stddivs) {
-
+    __kernel void batchnorm(__global const net_t * in,
+                            __global net_t * out,
+                            __global const net_t * residual,
+                            __constant const net_t * means,
+                            __constant const net_t * stddivs) {
         // cl::NDRange global(outputs, 19*19);
         const int gx = get_global_id(0);
         const int gy = get_global_id(1);
@@ -301,8 +300,6 @@ std::string sourceCode_sgemm =
     #include "clblast_level3/xgemm_batched.opencl"
 ;
 
-
-
 OpenCL opencl;
 OpenCL_Network opencl_net;
 thread_local ThreadData opencl_thread_data;
@@ -310,13 +307,19 @@ thread_local ThreadData opencl_thread_data;
 void OpenCL::ensure_thread_initialized() {
     if (!opencl_thread_data.m_is_initialized) {
         // Make kernels
-        opencl_thread_data.m_in_transform_kernel = cl::Kernel(m_program, "in_transform");
-        opencl_thread_data.m_sgemm_kernel = cl::Kernel(m_program, "XgemmBatched");
-        opencl_thread_data.m_out_transform_kernel = cl::Kernel(m_program, "out_transform");
-        opencl_thread_data.m_out_transform_bn_kernel = cl::Kernel(m_program, "out_transform_fused_bn");
-        opencl_thread_data.m_batchnorm_kernel = cl::Kernel(m_program, "batchnorm");
-        opencl_thread_data.m_commandqueue = cl::CommandQueue(cl::Context::getDefault(),
-                                                             cl::Device::getDefault());
+        opencl_thread_data.m_in_transform_kernel =
+            cl::Kernel(m_program, "in_transform");
+        opencl_thread_data.m_sgemm_kernel =
+            cl::Kernel(m_program, "XgemmBatched");
+        opencl_thread_data.m_out_transform_kernel =
+            cl::Kernel(m_program, "out_transform");
+        opencl_thread_data.m_out_transform_bn_kernel =
+            cl::Kernel(m_program, "out_transform_fused_bn");
+        opencl_thread_data.m_batchnorm_kernel =
+            cl::Kernel(m_program, "batchnorm");
+        opencl_thread_data.m_commandqueue =
+            cl::CommandQueue(cl::Context::getDefault(),
+                             cl::Device::getDefault());
         opencl_thread_data.m_is_initialized = true;
     }
 }
@@ -344,7 +347,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                              std::vector<net_t>& output) {
     constexpr auto width = 19;
     constexpr auto height = 19;
-    constexpr auto tiles = (width + 1)*(height + 1) / 4;
+    constexpr auto tiles = WINOGRAD_P;
     constexpr auto one_plane = width * height * sizeof(net_t);
 
     opencl.ensure_thread_initialized();
@@ -353,7 +356,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         unsigned int max_channels = 0;
         for (const auto& layer : m_layers) {
             max_channels = std::max(max_channels,
-                    std::max(layer.channels, layer.outputs));
+                                    std::max(layer.channels, layer.outputs));
         }
 
         const auto mwg = opencl.m_sgemm_tuners.mwg;
@@ -376,7 +379,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         opencl_thread_data.m_residualBuffer = cl::Buffer(
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_VBuffer = cl::Buffer(
-            CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, alloc_vm_size, v_zeros.data(), nullptr);
+            CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR,
+            alloc_vm_size, v_zeros.data(), nullptr);
         opencl_thread_data.m_MBuffer = cl::Buffer(
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, alloc_vm_size);
         opencl_thread_data.m_buffers_allocated = true;
@@ -411,21 +415,21 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             const auto inBufferSize = layer.channels * one_plane;
             queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0, inBufferSize);
             convolve3(layer.channels,
-                     layer.outputs,
-                     inBuffer,
-                     VBuffer,
-                     MBuffer,
-                     conv1_weights,
-                     nullptr,
-                     &bn1_weights);
+                      layer.outputs,
+                      inBuffer,
+                      VBuffer,
+                      MBuffer,
+                      conv1_weights,
+                      nullptr,
+                      &bn1_weights);
             convolve3(layer.channels,
-                     layer.outputs,
-                     inBuffer,
-                     VBuffer,
-                     MBuffer,
-                     conv2_weights,
-                     &residualBuffer,
-                     &bn2_weights);
+                      layer.outputs,
+                      inBuffer,
+                      VBuffer,
+                      MBuffer,
+                      conv2_weights,
+                      &residualBuffer,
+                      &bn2_weights);
         } else  {
             auto conv_weights = begin(layer.weights);
             // plain convolution
@@ -454,10 +458,10 @@ void OpenCL_Network::convolve3(int channels, int outputs,
                               cl::Buffer* bufferResidual,
                               weight_slice_t* bn_weights) {
 
-    cl::Kernel in_transform_kernel = opencl_thread_data.m_in_transform_kernel;
-    cl::Kernel sgemm_kernel = opencl_thread_data.m_sgemm_kernel;
-    cl::Kernel out_transform_kernel = opencl_thread_data.m_out_transform_kernel;
-    cl::Kernel out_transform_bn_kernel = opencl_thread_data.m_out_transform_bn_kernel;
+    cl::Kernel & in_transform_kernel = opencl_thread_data.m_in_transform_kernel;
+    cl::Kernel & sgemm_kernel = opencl_thread_data.m_sgemm_kernel;
+    cl::Kernel & out_transform_kernel = opencl_thread_data.m_out_transform_kernel;
+    cl::Kernel & out_transform_bn_kernel = opencl_thread_data.m_out_transform_bn_kernel;
 
     auto mwg = opencl.m_sgemm_tuners.mwg;
     auto nwg = opencl.m_sgemm_tuners.nwg;
@@ -477,13 +481,12 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     assert(vwn != 0);
     assert(wavefront_size != 0);
 
-    constexpr int tiles = (19 + 1) * (19 + 1) / 4;
+    constexpr auto tiles = WINOGRAD_P;
 
     auto wgs = lcm(tiles, wavefront_size);
-
-    int m_ceil = (int)lcm(lcm(outputs, mwg), vwm);
-    int n_ceil = (int)lcm(lcm(tiles, nwg), vwn);
-    int k_ceil = (int)lcm(lcm(channels, kwg), vwm);
+    auto m_ceil = int(lcm(lcm(outputs, mwg), vwm));
+    auto n_ceil = int(lcm(lcm(tiles, nwg), vwn));
+    auto k_ceil = int(lcm(lcm(channels, kwg), vwm));
 
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
@@ -498,7 +501,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
                                    cl::NDRange(wgs, channels));
     } catch (const cl::Error &e) {
         std::cerr << "Error in convolve3: " << e.what() << ": "
-	        << e.err() << std::endl;
+            << e.err() << std::endl;
         throw;
     }
 
@@ -510,19 +513,17 @@ void OpenCL_Network::convolve3(int channels, int outputs,
         sgemm_kernel.setArg(4, bufferV);
         sgemm_kernel.setArg(5, bufferM);
 
-
         cl::NDRange local_sgemm = {mdimc, ndimc, 1};
-
 
         cl::NDRange size_sgemm = {(m_ceil * mdimc) / mwg,
                                   (n_ceil * ndimc) / nwg,
                                   WINOGRAD_TILE};
 
         queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
-                                    size_sgemm, local_sgemm);
+                                   size_sgemm, local_sgemm);
     } catch (const cl::Error &e) {
         std::cerr << "Error in convolve3: " << e.what() << ": "
-	        << e.err() << std::endl;
+            << e.err() << std::endl;
         throw;
     }
 
@@ -555,10 +556,9 @@ void OpenCL_Network::convolve3(int channels, int outputs,
         }
     } catch (const cl::Error &e) {
         std::cerr << "Error in convolve3: " << e.what() << ": "
-	        << e.err() << std::endl;
+            << e.err() << std::endl;
         throw;
     }
-
 }
 
 void OpenCL_Network::batchnorm(int outputs,
@@ -620,13 +620,13 @@ void OpenCL::process_tuners(std::string tuners) {
     std::stringstream ss(tuners);
     std::size_t found;
 
-    bool mwg = false;
-    bool nwg = false;
-    bool kwg = false;
-    bool ndimc = false;
-    bool mdimc = false;
-    bool vwm = false;
-    bool vwn = false;
+    auto mwg = false;
+    auto nwg = false;
+    auto kwg = false;
+    auto ndimc = false;
+    auto mdimc = false;
+    auto vwm = false;
+    auto vwn = false;
     while (ss >> buf) {
         found = buf.find("=");
         if (found == std::string::npos) {
@@ -634,7 +634,7 @@ void OpenCL::process_tuners(std::string tuners) {
             std::exit(-1);
         }
         std::string name = buf.substr(0, found);
-        auto value = std::stoi(buf.substr(found+1, std::string::npos));
+        auto value = std::stoi(buf.substr(found + 1, std::string::npos));
         if (name == "-DMWG") {
             m_sgemm_tuners.mwg = value;
             mwg = true;
@@ -715,15 +715,15 @@ void OpenCL::initialize(const int channels) {
         throw;
     }
 
-    float best_version = 0.0f;
+    auto best_version = 0.0f;
     cl::Platform best_platform;
     cl::Device best_device;
     std::string best_vendor;
-    int best_score = 0;
-    bool found_device = false;
-    int id = 0;
+    auto best_score = 0;
+    auto found_device = false;
+    auto id = 0;
 
-    myprintf("Detected %d OpenCL platforms\n", platforms.size());
+    myprintf("Detected %d OpenCL platforms.\n", platforms.size());
 
     for (const auto &p : platforms) {
         std::string platvers = p.getInfo<CL_PLATFORM_VERSION>();
@@ -798,14 +798,14 @@ void OpenCL::initialize(const int channels) {
     cl::Platform::setDefault(best_platform);
     myprintf("Selected platform: %s\n", best_platform.getInfo<CL_PLATFORM_NAME>().c_str());
     myprintf("Selected device: %s\n", trim(best_device.getInfo<CL_DEVICE_NAME>()).c_str());
-    myprintf("with OpenCL %2.1f capability\n", best_version);
+    myprintf("with OpenCL %2.1f capability.\n", best_version);
 
     cl::Context context;
     try {
         context = cl::Context(best_device);
     } catch (const cl::Error &e) {
         myprintf("Error creating OpenCL context: %s: %d", e.what(), e.err());
-        throw;
+        throw std::runtime_error("Error creating OpenCL context.");
     }
     cl::Context::setDefault(context);
     cl::Device::setDefault(best_device);
@@ -818,18 +818,18 @@ void OpenCL::initialize(const int channels) {
                                 + sourceCode_sgemm);
     } catch (const cl::Error &e) {
         myprintf("Error getting kernels: %s: %d", e.what(), e.err());
-        throw;
+        throw std::runtime_error("Error getting OpenCL kernels.");
     }
 
     m_cl_args = cl_args;
 
     auto t = Tuner();
-    auto sgemm_tuners = t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
+    auto sgemm_tuners =
+        t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
 
     // Build program for these specific devices
     try {
-	    std::string args = cl_args;
-
+        std::string args = cl_args;
         args += sgemm_tuners;
 
 #ifdef USE_HALF
@@ -838,12 +838,11 @@ void OpenCL::initialize(const int channels) {
         m_program.build(args.c_str());
     } catch (const cl::Error&) {
         myprintf("Error building kernels: %s\n",
-                    m_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl::Device::getDefault()).c_str());
-        throw;
+                 m_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl::Device::getDefault()).c_str());
+        throw std::runtime_error("Error building OpenCL kernels.");
     }
 
     ensure_thread_initialized();
-
     process_tuners(sgemm_tuners);
 
     m_wavefront_size =

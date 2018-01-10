@@ -130,7 +130,7 @@ private:
     void convolve3(int channels, int outputs,
                     cl::Buffer& bufferInOut, cl::Buffer& bufferV,
                     cl::Buffer& bufferM, weight_slice_t weights,
-					cl::Buffer* bufferResidual,
+                    cl::Buffer* bufferResidual,
                     weight_slice_t* bn_weights);
     void batchnorm(int outputs, int channel_size, cl::Buffer& input,
                    cl::Buffer& output, cl::Buffer* residual,
@@ -155,12 +155,12 @@ private:
     cl::Program m_program;
     std::string m_cl_args;
 
-	struct sgemm_tuners {
-		size_t mwg, nwg, kwg;
-		size_t vwm, vwn;
-		size_t mdimc, ndimc;
-	};
-	sgemm_tuners m_sgemm_tuners;
+    struct sgemm_tuners {
+        size_t mwg, nwg, kwg;
+        size_t vwm, vwn;
+        size_t mdimc, ndimc;
+    };
+    sgemm_tuners m_sgemm_tuners;
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};
     std::vector<size_t> m_max_workgroup_dims;
