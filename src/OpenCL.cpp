@@ -240,16 +240,13 @@ __kernel void out_transform_fused_bn(__global float *M,
         const float mean = vload_net_t(k, means);
         const float scale_stddiv = vload_net_t(k, stddivs);
 
-        for (int i = 0; i < 4; i++) {
-            o[i] = scale_stddiv * (o[i] - mean);
-        }
-
         const bool pred[4] = { 1, x+1 < W, y+1 < H, x+1 < W & y+1 < H};
 
         const int a[4] = {(y)*W + (x), (y)*W + (x+1), (y+1)*W + (x), (y+1)*W + (x+1)};
 
         for (int i = 0; i < 4; i++) {
             if (pred[i]) {
+                o[i] = scale_stddiv * (o[i] - mean);
                 if (residual) {
                     o[i] += vload_net_t(k*(H*W) + a[i], residual);
                 }
@@ -359,16 +356,16 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                     std::max(layer.channels, layer.outputs));
         }
 
-        const auto mwg = opencl.m_sgemm_mwg;
-        const auto nwg = opencl.m_sgemm_nwg;
-        const auto vwm = opencl.m_sgemm_vwm;
-        const auto vwn = opencl.m_sgemm_vwn;
+        const auto mwg = opencl.m_sgemm_tuners.mwg;
+        const auto nwg = opencl.m_sgemm_tuners.nwg;
+        const auto vwm = opencl.m_sgemm_tuners.vwm;
+        const auto vwn = opencl.m_sgemm_tuners.vwn;
 
         const auto m_ceil = lcm(lcm(max_channels, mwg), vwm);
         const auto n_ceil = lcm(lcm(tiles, nwg), vwn);
 
         const auto alloc_inSize = m_ceil * m_ceil *  max_channels * sizeof(net_t);
-        const auto alloc_vm_size = 16 * m_ceil * n_ceil * sizeof(net_t);
+        const auto alloc_vm_size = WINOGRAD_TILE * m_ceil * n_ceil * sizeof(net_t);
 
         auto v_zeros = std::vector<float>(alloc_vm_size);
 
@@ -408,9 +405,9 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         } else if (layer.is_residual_block) {
             assert(layer.channels == layer.outputs);
             auto conv1_weights = begin(layer.weights);
-            auto bn1_weights   = begin(layer.weights) + 2;
-            auto conv2_weights = begin(layer.weights) + 4;
-            auto bn2_weights   = begin(layer.weights) + 6;
+            auto bn1_weights   = begin(layer.weights) + 1;
+            auto conv2_weights = begin(layer.weights) + 3;
+            auto bn2_weights   = begin(layer.weights) + 4;
             const auto inBufferSize = layer.channels * one_plane;
             queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0, inBufferSize);
             convolve3(layer.channels,
@@ -462,13 +459,13 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     cl::Kernel out_transform_kernel = opencl_thread_data.m_out_transform_kernel;
     cl::Kernel out_transform_bn_kernel = opencl_thread_data.m_out_transform_bn_kernel;
 
-    auto mwg = opencl.m_sgemm_mwg;
-    auto nwg = opencl.m_sgemm_nwg;
-    auto kwg = opencl.m_sgemm_kwg;
-    auto vwm = opencl.m_sgemm_vwm;
-    auto vwn = opencl.m_sgemm_vwn;
-    auto mdimc = opencl.m_sgemm_mdimc;
-    auto ndimc = opencl.m_sgemm_ndimc;
+    auto mwg = opencl.m_sgemm_tuners.mwg;
+    auto nwg = opencl.m_sgemm_tuners.nwg;
+    auto kwg = opencl.m_sgemm_tuners.kwg;
+    auto vwm = opencl.m_sgemm_tuners.vwm;
+    auto vwn = opencl.m_sgemm_tuners.vwn;
+    auto mdimc = opencl.m_sgemm_tuners.mdimc;
+    auto ndimc = opencl.m_sgemm_tuners.ndimc;
     auto wavefront_size = opencl.m_wavefront_size;
 
     assert(mwg != 0);
@@ -519,7 +516,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
 
         cl::NDRange size_sgemm = {(m_ceil * mdimc) / mwg,
                                   (n_ceil * ndimc) / nwg,
-                                  16};
+                                  WINOGRAD_TILE};
 
         queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
                                     size_sgemm, local_sgemm);
@@ -639,31 +636,31 @@ void OpenCL::process_tuners(std::string tuners) {
         std::string name = buf.substr(0, found);
         auto value = std::stoi(buf.substr(found+1, std::string::npos));
         if (name == "-DMWG") {
-            m_sgemm_mwg = value;
+            m_sgemm_tuners.mwg = value;
             mwg = true;
         }
         if (name == "-DNWG") {
-            m_sgemm_nwg = value;
+            m_sgemm_tuners.nwg = value;
             nwg = true;
         }
         if (name == "-DKWG") {
-            m_sgemm_kwg = value;
+            m_sgemm_tuners.kwg = value;
             kwg = true;
         }
         if (name == "-DMDIMC") {
-            m_sgemm_mdimc = value;
+            m_sgemm_tuners.mdimc = value;
             mdimc = true;
         }
         if (name == "-DNDIMC") {
-            m_sgemm_ndimc = value;
+            m_sgemm_tuners.ndimc = value;
             ndimc = true;
         }
         if (name == "-DVWM") {
-            m_sgemm_vwm = value;
+            m_sgemm_tuners.vwm = value;
             vwm = true;
         }
         if (name == "-DVWN") {
-            m_sgemm_vwn = value;
+            m_sgemm_tuners.vwn = value;
             vwn = true;
         }
     }
@@ -696,20 +693,20 @@ void OpenCL::process_tuners(std::string tuners) {
 }
 
 std::vector<size_t> OpenCL::get_sgemm_tuners(void) {
-    auto tuners = std::vector<size_t>(7);
+    std::vector<size_t> tuners;
 
-    tuners[0] = m_sgemm_mwg;
-    tuners[1] = m_sgemm_nwg;
-    tuners[2] = m_sgemm_kwg;
-    tuners[3] = m_sgemm_vwm;
-    tuners[4] = m_sgemm_vwn;
-    tuners[5] = m_sgemm_mdimc;
-    tuners[6] = m_sgemm_ndimc;
+    tuners.emplace_back(m_sgemm_tuners.mwg);
+    tuners.emplace_back(m_sgemm_tuners.nwg);
+    tuners.emplace_back(m_sgemm_tuners.kwg);
+    tuners.emplace_back(m_sgemm_tuners.vwm);
+    tuners.emplace_back(m_sgemm_tuners.vwn);
+    tuners.emplace_back(m_sgemm_tuners.mdimc);
+    tuners.emplace_back(m_sgemm_tuners.ndimc);
 
     return tuners;
 }
 
-void OpenCL::initialize(void) {
+void OpenCL::initialize(const int channels) {
     std::vector<cl::Platform> platforms;
     try {
         cl::Platform::get(&platforms);
@@ -813,12 +810,6 @@ void OpenCL::initialize(void) {
     cl::Context::setDefault(context);
     cl::Device::setDefault(best_device);
 
-    // Read source file
-    //std::ifstream sourceFile("convolve_kernel.cl", std::ifstream::in);
-    //std::string sourceCode(std::istreambuf_iterator<char>(sourceFile),
-    //                       (std::istreambuf_iterator<char>()));
-
-
     // Make program of the source code in the context
     try {
         m_program = cl::Program(sourceCode_config
@@ -833,7 +824,7 @@ void OpenCL::initialize(void) {
     m_cl_args = cl_args;
 
     auto t = Tuner();
-    auto sgemm_tuners = t.load_sgemm_tuners(128, 100, 128, 16);
+    auto sgemm_tuners = t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
 
     // Build program for these specific devices
     try {

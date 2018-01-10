@@ -119,24 +119,25 @@ void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
 }
 
 
-void Network::winograd_transform_f(const std::vector<float>& f, std::vector<float>& U,
-        const int outputs, const int channels) {
+std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
+                                   const int outputs, const int channels) {
     //F(2x2, 3x3) Winograd filter transformation
     //transpose(G.dot(f).dot(G.transpose()))
     //U matrix is transposed for better memory layout in SGEMM
 
-    const float G[16] = {1.0, 0.0, 0.0,
-                        0.5, 0.5, 0.5,
-                        0.5, -0.5, 0.5,
-                        0.0, 0.0, 1.0};
-    float temp[12];
-    float acc;
+    std::vector<float> U(WINOGRAD_TILE*outputs*channels);
+
+    std::array<float, WINOGRAD_TILE> G = {1.0, 0.0, 0.0,
+                                          0.5, 0.5, 0.5,
+                                          0.5, -0.5, 0.5,
+                                          0.0, 0.0, 1.0};
+    std::array<float, 12> temp;
 
     for (auto o = 0; o < outputs; o++) {
         for (auto c = 0; c < channels; c++) {
             for (auto i = 0; i < 4; i++){
                 for (auto j = 0; j < 3; j++) {
-                    acc = 0;
+                    auto acc = 0.0f;
                     for (auto k = 0; k < 3; k++) {
                         acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j];
                     }
@@ -146,7 +147,7 @@ void Network::winograd_transform_f(const std::vector<float>& f, std::vector<floa
 
             for (auto xi = 0; xi < 4; xi++) {
                 for (auto nu = 0; nu < 4; nu++) {
-                    acc = 0;
+                    auto acc = 0.0f;
                     for (int k = 0; k < 3; k++) {
                         acc += temp[xi*3 + k] * G[nu*3 + k];
                     }
@@ -155,11 +156,14 @@ void Network::winograd_transform_f(const std::vector<float>& f, std::vector<floa
             }
         }
     }
+    return U;
 }
 
-void Network::zeropad_U(const std::vector<float>& U, std::vector<float>& Upad,
-        const int outputs, const int channels,
-        const int outputs_pad, const int channels_pad) {
+std::vector<float> Network::zeropad_U(const std::vector<float>& U,
+                        const int outputs, const int channels,
+                        const int outputs_pad, const int channels_pad) {
+
+    std::vector<float> Upad(WINOGRAD_TILE*outputs_pad*channels_pad);
 
     for(int o=0; o < outputs; o++) {
         for(int c=0; c < channels; c++) {
@@ -171,6 +175,7 @@ void Network::zeropad_U(const std::vector<float>& U, std::vector<float>& Upad,
             }
         }
     }
+    return Upad;
 }
 
 void Network::initialize(void) {
@@ -180,10 +185,6 @@ void Network::initialize(void) {
             rotate_nn_idx_table[s][v] = rotate_nn_idx(v, s);
         }
     }
-#ifdef USE_OPENCL
-    myprintf("Initializing OpenCL\n");
-    opencl.initialize();
-#endif
     // Count size of the network
     myprintf("Detecting residual layers...");
     std::ifstream wtfile(cfg_weightsfile);
@@ -227,9 +228,7 @@ void Network::initialize(void) {
     }
     residual_blocks /= 8;
     myprintf("%d blocks\n", residual_blocks);
-#ifdef USE_OPENCL
-    myprintf("Transferring weights to GPU...");
-#endif
+
     // Re-read file and process
     wtfile.clear();
     wtfile.seekg(0, std::ios::beg);
@@ -295,26 +294,26 @@ void Network::initialize(void) {
 
     size_t weight_index = 0;
 
-    //Winograd transform convolution weights
-    std::vector<float> U(16*18*channels);
-
     //Input convolution
-    winograd_transform_f(conv_weights[weight_index], U, channels, 18);
+
+    //Winograd transform convolution weights
+    auto U = winograd_transform_f(conv_weights[weight_index], channels, INPUT_CHANNELS);
     conv_weights[weight_index] = U;
 
     weight_index++;
 
     for (auto i = size_t{0}; i < residual_blocks; i++) {
-        std::vector<float> U1(16*channels*channels);
-        std::vector<float> U2(16*channels*channels);
-        winograd_transform_f(conv_weights[weight_index], U1, channels, channels);
+        auto U1 = winograd_transform_f(conv_weights[weight_index], channels, channels);
 		conv_weights[weight_index] = U1;
-        winograd_transform_f(conv_weights[weight_index + 1], U2, channels, channels);
+        auto U2 = winograd_transform_f(conv_weights[weight_index + 1], channels, channels);
 		conv_weights[weight_index + 1] = U2;
         weight_index += 2;
     }
 
 #ifdef USE_OPENCL
+
+    myprintf("Initializing OpenCL\n");
+    opencl.initialize(channels);
 
     auto tuners = opencl.get_sgemm_tuners();
 
@@ -325,36 +324,29 @@ void Network::initialize(void) {
     weight_index = 0;
 
     size_t m_ceil = lcm(lcm(channels, mwg), vwm);
-    size_t k_ceil = lcm(lcm(18, kwg), vwm);
+    size_t k_ceil = lcm(lcm(INPUT_CHANNELS, kwg), vwm);
 
-    std::vector<float> Upad(16*m_ceil*k_ceil);
-    zeropad_U(conv_weights[weight_index], Upad, channels, 18, m_ceil, k_ceil);
+    auto Upad = zeropad_U(conv_weights[weight_index], channels, INPUT_CHANNELS, m_ceil, k_ceil);
 
     //Winograd filter transformation changes filter size to 4x4
-    opencl_net.push_convolve(4, 18, Upad,
-                                conv_biases[weight_index]);
+    opencl_net.push_convolve(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, Upad);
     opencl_net.push_batchnorm(361, batchnorm_means[weight_index],
                                    batchnorm_stddivs[weight_index]);
     weight_index++;
 
     // residual blocks
     for (auto i = size_t{0}; i < residual_blocks; i++) {
-        std::vector<float> Upad1(16*m_ceil*m_ceil);
-        std::vector<float> Upad2(16*m_ceil*m_ceil);
-        zeropad_U(conv_weights[weight_index], Upad1, channels, channels, m_ceil, m_ceil);
-        zeropad_U(conv_weights[weight_index + 1], Upad2, channels, channels, m_ceil, m_ceil);
+        auto Upad1 = zeropad_U(conv_weights[weight_index], channels, channels, m_ceil, m_ceil);
+        auto Upad2 = zeropad_U(conv_weights[weight_index + 1], channels, channels, m_ceil, m_ceil);
 
-        opencl_net.push_residual(4, channels, Upad1,
-                                    conv_biases[weight_index],
+        opencl_net.push_residual(WINOGRAD_ALPHA, channels, channels, Upad1,
                                     batchnorm_means[weight_index],
                                     batchnorm_stddivs[weight_index],
                                     Upad2,
-                                    conv_biases[weight_index + 1],
                                     batchnorm_means[weight_index + 1],
                                     batchnorm_stddivs[weight_index + 1]);
         weight_index += 2;
     }
-    myprintf("done\n");
 #endif
 #ifdef USE_BLAS
 #ifndef __APPLE__
@@ -374,8 +366,8 @@ void Network::initialize(void) {
 }
 
 #ifdef USE_BLAS
-void winograd_transform_in(const std::vector<float>& in, std::vector<float>& V,
-        const int C) {
+static void winograd_transform_in(const std::vector<float>& in, std::vector<float>& V,
+                           const int C) {
 
     constexpr auto W = 19;
     constexpr auto H = 19;
@@ -387,8 +379,8 @@ void winograd_transform_in(const std::vector<float>& in, std::vector<float>& V,
             for (auto block_x = 0; block_x < wtiles; block_x++) {
 
                 //Tiles overlap by 2
-                const int yin = 2 * block_y - 1;
-                const int xin = 2 * block_x - 1;
+                const auto yin = 2 * block_y - 1;
+                const auto xin = 2 * block_x - 1;
 
                 //Cache input tile and handle zero padding
                 float x[4][4];
@@ -402,10 +394,16 @@ void winograd_transform_in(const std::vector<float>& in, std::vector<float>& V,
                     }
                 }
 
-                const int offset = ch*P + block_y*wtiles + block_x;
+                const auto offset = ch*P + block_y*wtiles + block_x;
 
                 float T1[4][4];
                 float T2[4][4];
+
+                //Calculates transpose(B).x.B
+                //B = [[1.0, 0.0, 0.0, 0.0],
+                //     [0.0, 1.0, -1.0, 1.0],
+                //     [-1.0, 1.0, 1.0, 0.0],
+                //     [0.0, 0.0, 0.0, -1.0]]
 
                 T1[0][0] = x[0][0] - x[2][0];
                 T1[0][1] = x[0][1] - x[2][1];
@@ -451,8 +449,8 @@ void winograd_transform_in(const std::vector<float>& in, std::vector<float>& V,
     }
 }
 
-void winograd_sgemm(const std::vector<float>& U, std::vector<float>& V,
-        std::vector<float>& M, const int C, const int K) {
+static void winograd_sgemm(const std::vector<float>& U, std::vector<float>& V,
+                    std::vector<float>& M, const int C, const int K) {
 
     constexpr auto P = (19 + 1) * (19 + 1)/4;
 
@@ -472,8 +470,8 @@ void winograd_sgemm(const std::vector<float>& U, std::vector<float>& V,
     }
 }
 
-void winograd_transform_out(const std::vector<float>& M, std::vector<float>& Y,
-        const int K) {
+static void winograd_transform_out(const std::vector<float>& M, std::vector<float>& Y,
+                            const int K) {
 
     constexpr auto W = 19;
     constexpr auto H = 19;
@@ -484,16 +482,22 @@ void winograd_transform_out(const std::vector<float>& M, std::vector<float>& Y,
         for (auto block_x = 0; block_x < wtiles; block_x++) {
             for (auto block_y = 0; block_y < wtiles; block_y++) {
 
-                int x = 2*block_x;
-                int y = 2*block_y;
+                auto x = 2*block_x;
+                auto y = 2*block_y;
 
-                int b = block_y * wtiles + block_x;
+                auto b = block_y * wtiles + block_x;
                 float temp_m[16];
                 for (int xi = 0; xi < 4; xi++) {
                     for (int nu = 0; nu < 4; nu++) {
                         temp_m[xi*4 + nu] = M[xi*(4*K*P) + nu*(K*P)+ k*P + b];
                     }
                 }
+
+                //Calculates transpose(A).temp_m.A
+                //    A = [1.0, 0.0],
+                //        [1.0, 1.0],
+                //        [1.0, -1.0],
+                //        [0.0, -1.0]]
 
                 float o11 = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
                             temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
@@ -527,11 +531,11 @@ void winograd_transform_out(const std::vector<float>& M, std::vector<float>& Y,
 }
 
 void winograd_convolve3(const int outputs,
-              const std::vector<float>& input,
-              const std::vector<float>& U,
-              std::vector<float>& V,
-              std::vector<float>& M,
-              std::vector<float>& output) {
+                        const std::vector<float>& input,
+                        const std::vector<float>& U,
+                        std::vector<float>& V,
+                        std::vector<float>& M,
+                        std::vector<float>& output) {
 
     constexpr unsigned int filter_len = 4 * 4;
     const auto input_channels = U.size() / (outputs * filter_len);
@@ -661,8 +665,8 @@ void Network::forward_cpu(std::vector<float>& input,
     const auto input_channels = output_channels;
     auto conv_out = std::vector<float>(output_channels * width * height);
 
-    auto V = std::vector<float>(16*input_channels*tiles);
-    auto M = std::vector<float>(16*output_channels*tiles);
+    auto V = std::vector<float>(WINOGRAD_TILE*input_channels*tiles);
+    auto M = std::vector<float>(WINOGRAD_TILE*output_channels*tiles);
 
     winograd_convolve3(output_channels, input, conv_weights[0], V, M, conv_out);
     batchnorm<361>(output_channels, conv_out,
