@@ -21,7 +21,6 @@
 
 #include <assert.h>
 #include <stddef.h>
-#include <cmath>
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -138,6 +137,54 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
     }
 }
 
+bool UCTSearch::should_resign(passflag_t passflag) {
+    if (passflag & UCTSearch::NORESIGN) {
+        // resign not allowed
+        return false;
+    }
+
+    const auto visits = m_root.get_visits();
+    if (visits < 500)  {
+        // low visits
+        return false;
+    }
+
+    const size_t board_squares = m_rootstate.board.get_boardsize()
+                               * m_rootstate.board.get_boardsize();
+    const auto move_threshold = board_squares / 4;
+    const auto movenum = m_rootstate.get_movenum();
+    if (movenum <= move_threshold) {
+        // to early in game to resign
+        return false;
+    }
+
+    const auto color = m_rootstate.board.get_to_move();
+    const auto best_eval = m_root.get_first_child()->get_eval(color);
+    auto resign_threshold = 0.01 * cfg_resignpct;
+    if (best_eval > resign_threshold) {
+        // eval > cfg_resign
+        return false;
+    }
+
+    const auto is_default_cfg_resign = (cfg_resignpct == 10);
+    if ((m_rootstate.get_handicap() > 0)
+            && (color == FastBoard::WHITE)
+            && is_default_cfg_resign) {
+        const auto handicap_resign_threshold =
+            resign_threshold / (1 + m_rootstate.get_handicap());
+
+        // blend the thresholds for the first ~215 moves.
+        auto blend_ratio = std::min(1.0, movenum / (0.6 * board_squares));
+        auto blended_resign_threshold = blend_ratio * resign_threshold
+                         + (1 - blend_ratio) * handicap_resign_threshold;
+        if (best_eval > blended_resign_threshold) {
+            // allow lower eval for white in handicap games where opp may fumble
+            return false;
+        }
+    }
+    return true;
+}
+
 int UCTSearch::get_best_move(passflag_t passflag) {
     int color = m_rootstate.board.get_to_move();
 
@@ -240,34 +287,11 @@ int UCTSearch::get_best_move(passflag_t passflag) {
         }
     }
 
-    int visits = m_root.get_visits();
-
     // if we aren't passing, should we consider resigning?
     if (bestmove != FastBoard::PASS) {
-        // resigning allowed
-        if ((passflag & UCTSearch::NORESIGN) == 0) {
-            size_t board_squares = m_rootstate.board.get_boardsize()
-                                 * m_rootstate.board.get_boardsize();
-            auto move_threshold = board_squares / 4;
-            auto resign_threshold = 0.01 * cfg_resignpct;
-            // TODO add something to disable if -r is user set.
-            if (m_rootstate.get_handicap() > 0) {
-                auto handicap_resign_threshold =
-                    resign_threshold / (1 + m_rootstate.get_handicap());
-                // blend the thresholds for the first ~215 moves.
-                auto blend_ratio = std::max(1.0, m_rootstate.get_movenum() /
-                                                 (0.6 * board_squares));
-                resign_threshold = handicap_resign_threshold +
-                    blend_ratio * (resign_threshold - handicap_resign_threshold);
-            }
-
-            // bad score and visited enough
-            if (bestscore < resign_threshold
-                && visits > 500
-                && m_rootstate.get_movenum() > move_threshold) {
-                myprintf("Eval (%.3f) looks bad. Resigning.\n", bestscore);
-                bestmove = FastBoard::RESIGN;
-            }
+        if (should_resign(passflag)) {
+            myprintf("Eval (%.3f) looks bad. Resigning.\n", bestscore);
+            bestmove = FastBoard::RESIGN;
         }
     }
 
