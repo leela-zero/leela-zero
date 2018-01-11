@@ -288,6 +288,8 @@ done with multiple processes each bound to a GPU)
 http://zero.sjeng.org
 * Watch Leela Zero's training games live in a GUI:
 https://github.com/fsparv/LeelaWatcher
+* Stockfish chess engine ported to Leela Zero framework:
+https://github.com/glinscott/leela-chess
 
 # License
 
