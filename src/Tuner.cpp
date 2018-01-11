@@ -29,9 +29,11 @@
 #include <cmath>
 #include <fstream>
 
+#include "GTP.h"
 #include "OpenCL.h"
 #include "Tuner.h"
 #include "Utils.h"
+#include "Random.h"
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -43,7 +45,7 @@
 #include <cblas.h>
 #endif
 
-const auto TUNER_FILE_LOCAL = std::string("leelaz_tuners");
+const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
 constexpr auto MAX_ERROR = 1e-4f;
 
 using namespace Utils;
@@ -73,7 +75,7 @@ static bool IsMultiple(const size_t a, const size_t b) {
     return (a % b == 0);
 }
 
-bool Tuner::valid_config_sgemm(Parameters p) {
+bool Tuner::valid_config_sgemm(Parameters p, bool exhaustive) {
     if (!IsMultiple(p["MWG"], p["MDIMC"]*p["VWM"])) {
         return false;
     }
@@ -92,14 +94,17 @@ bool Tuner::valid_config_sgemm(Parameters p) {
     if (!IsMultiple(p["KWG"], p["MDIMC"]*p["NDIMC"]/p["NDIMB"])) {
         return false;
     }
-    if (p["MDIMC"] != p["MDIMA"]) {
-        return false;
-    }
-    if (p["NDIMC"] != p["NDIMB"]) {
-        return false;
-    }
-    if (p["SA"] != p["SB"]) {
-        return false;
+    // Extra restrictions for a fast tuning run
+    if (!exhaustive) {
+        if (p["MDIMC"] != p["MDIMA"]) {
+            return false;
+        }
+        if (p["NDIMC"] != p["NDIMB"]) {
+            return false;
+        }
+        if (p["SA"] != p["SB"]) {
+            return false;
+        }
     }
     return true;
 }
@@ -127,10 +132,21 @@ Parameters Tuner::get_parameters_by_int(const std::vector<Configurations>& opts,
     return param;
 }
 
-std::string Tuner::parameters_to_string(const Parameters& p) {
+std::string Tuner::parameters_to_defines(const Parameters& p) {
     std::string s;
     for (auto const& x : p) {
         s += " -D" + x.first + "=" + std::to_string(x.second);
+    }
+    return s;
+}
+
+std::string Tuner::parameters_to_string(const Parameters& p) {
+    std::string s;
+    for (auto const& x : p) {
+        s += x.first + "=" + std::to_string(x.second) + " ";
+    }
+    if (s.size() > 0) {
+        s.resize(s.size() - 1);
     }
     return s;
 }
@@ -181,26 +197,56 @@ static float compare_ref(std::vector<float> &x, std::vector<float> &ref,
 
 std::string Tuner::tune_sgemm(const int m, const int n, const int k,
                               const int batch_size, const int runs) {
-    auto opts = std::vector<Configurations>{
-      {"MWG", {16, 32, 64}},
-      {"NWG", {16, 32, 64}},
-      {"KWG", {32}},
-      {"MDIMC", {8, 16, 32}},
-      {"NDIMC", {8, 16, 32}},
-      {"MDIMA", {8, 16, 32}},
-      {"NDIMB", {8, 16, 32}},
-      {"KWI", {2}},
-      {"VWM", {1, 2, 4}},
-      {"VWN", {1, 2, 4}},
-      {"STRM", {0}},
-      {"STRN", {0}},
-      {"SA", {0, 1}},
-      {"SB", {0, 1}},
-    };
+    auto opts = std::vector<Configurations>();
+    if (cfg_sgemm_exhaustive) {
+        opts = {
+            {"MWG", {16, 32, 64}},
+            {"NWG", {16, 32, 64}},
+            {"KWG", {16, 32}},
+            {"MDIMC", {8, 16, 32}},
+            {"NDIMC", {8, 16, 32}},
+            {"MDIMA", {8, 16, 32}},
+            {"NDIMB", {8, 16, 32}},
+            {"KWI", {2, 8}},
+            {"VWM", {1, 2, 4, 8}},
+            {"VWN", {1, 2, 4, 8}},
+            {"STRM", {0, 1}},
+            {"STRN", {0, 1}},
+            {"SA", {0, 1}},
+            {"SB", {0, 1}},
+        };
+    } else {
+        opts = {
+            {"MWG", {16, 32, 64}},
+            {"NWG", {16, 32, 64}},
+            {"KWG", {32}},
+            {"MDIMC", {8, 16, 32}},
+            {"NDIMC", {8, 16, 32}},
+            {"MDIMA", {8, 16, 32}},
+            {"NDIMB", {8, 16, 32}},
+            {"KWI", {2}},
+            {"VWM", {1, 2, 4}},
+            {"VWN", {1, 2, 4}},
+            {"STRM", {0}},
+            {"STRN", {0}},
+            {"SA", {0, 1}},
+            {"SB", {0, 1}},
+        };
+    }
 
-    auto at_size = batch_size * next_power_of_two(k * m);
-    auto b_size = batch_size * next_power_of_two(k * n);
-    auto c_size = batch_size * next_power_of_two(m * n);
+    // This needs to be at minimum the maximum (MNK/WG) values above.
+    auto m_max = std::max(64, m);
+    auto n_max = std::max(64, n);
+    auto k_max = std::max(32, k);
+
+    auto at_size = batch_size
+        * next_power_of_two(k_max) * next_power_of_two(m_max);
+    auto b_size = batch_size
+        * next_power_of_two(k_max) * next_power_of_two(n_max);
+    auto c_size = batch_size
+        * next_power_of_two(m_max) * next_power_of_two(n_max);
+
+    auto total_flops = batch_size * 2.0 * m * n * k;
 
     auto at = std::vector<float>(at_size);
     auto b = std::vector<float>(b_size);
@@ -219,7 +265,11 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
     auto cBuffer = cl::Buffer(
         CL_MEM_READ_WRITE, sizeof(float) * c_size, nullptr, nullptr);
 
-    myprintf("\nStarted OpenCL SGEMM tuner.\n");
+    if (cfg_gtp_mode) {
+        printf("# Started OpenCL SGEMM tuner.\n");
+    } else {
+        myprintf("\nStarted OpenCL SGEMM tuner.\n");
+    }
 
     auto valid_params = std::vector<int>{};
     auto cfgs = 1;
@@ -227,13 +277,21 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
         cfgs *= opts[c].second.size();
     }
 
+    auto rng = Random{0};
+
     for (auto i = 0; i < cfgs; i++) {
         Parameters param = get_parameters_by_int(opts, i);
-        if (valid_config_sgemm(param)) {
+        if (valid_config_sgemm(param, cfg_sgemm_exhaustive)) {
+            if (cfg_sgemm_exhaustive) {
+                auto pick = rng.randflt();
+                if (pick > (1.0f / 16.0f)) {
+                    continue;
+                }
+            }
             valid_params.emplace_back(i);
         }
     }
-    myprintf("Found %zu valid configurations.\n", valid_params.size());
+    myprintf("Will try %zu valid configurations.\n", valid_params.size());
 
     std::string best_params;
     auto best_time = unsigned{0};
@@ -247,14 +305,16 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
     auto m_ceil_prev = 0;
     auto n_ceil_prev = 0;
     auto k_ceil_prev = 0;
+    auto param_counter = size_t{0};
 
     for (const auto& i : valid_params) {
+        param_counter++;
+
         auto p = get_parameters_by_int(opts, i);
-        auto defines = parameters_to_string(p);
+        auto defines = parameters_to_defines(p);
 
         try {
-            auto args = opencl.m_cl_args;
-            args += defines;
+            auto args = opencl.m_cl_args + " " + defines;
             program.build(args.c_str());
         } catch (const cl::Error&) {
             // Failed to compile, get next parameter
@@ -328,7 +388,13 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
             }
         }
         if (max_error < MAX_ERROR && (best_time == 0 || sum < best_time)) {
-            myprintf("%s : %.4f ms\n", defines.c_str(), 1e-6*sum/runs);
+            auto param_str = parameters_to_string(p);
+            auto kernel_ms = 1e-6f * (sum / runs);
+            // Timing is in nanoseconds (10^-9), Giga = 10^9, so this works out
+            auto kernel_gflops = total_flops / (sum / runs);
+            myprintf("(%u/%u) %s %.4f ms (%.1f GFLOPS)\n",
+               param_counter, valid_params.size(), param_str.c_str(),
+               kernel_ms, kernel_gflops);
             best_time = sum;
             best_params = defines;
         }
@@ -342,37 +408,43 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
 
 void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
                                const int batch_size, std::string tuners) {
-    std::string file_contents;
+    auto file_contents = std::vector<std::string>();
     {
-        std::ifstream file(TUNER_FILE_LOCAL);
+        // Read the previous contents to string
+        auto file = std::ifstream{TUNER_FILE_LOCAL};
         if (file.good()) {
-            // Read the previous contents to string
-            file_contents = std::string((std::istreambuf_iterator<char>(file)),
-                                        std::istreambuf_iterator<char>());
+            auto line = std::string{};
+            while (std::getline(file, line)) {
+                file_contents.emplace_back(line);
+            }
         }
     }
-    std::ofstream file(TUNER_FILE_LOCAL);
-
-    //Write back previous data
-    file << file_contents;
+    auto file = std::ofstream{TUNER_FILE_LOCAL};
 
     auto device_name = opencl.get_device_name();
-    std::stringstream tuning_params;
+    auto tuning_params = std::stringstream{};
     tuning_params << m << ";" << n << ";" << k << ";" << batch_size;
 
-    std::string line = std::to_string(TUNER_VERSION) + ";XgemmBatched;"
+    auto tuning_line = std::to_string(TUNER_VERSION) + ";XgemmBatched;"
         + tuning_params.str() + ";" + tuners + ";" + device_name + "\n";
 
-    file << line;
+    // Write back previous data as long as it's not the device we just tuned
+    for (const auto& line: file_contents) {
+        if (line.find(device_name) == std::string::npos) {
+            file << line;
+        }
+    }
+
+    // Write new tuning
+    file << tuning_line;
 }
 
 std::string Tuner::sgemm_tuners_from_line(std::string line,
                                           const int m, const int n, const int k,
                                           const int batch_size) {
-    std::vector<std::string> s;
-
-    std::stringstream ss(line);
-    std::string item;
+    auto s = std::vector<std::string>{};
+    auto ss = std::stringstream{line};
+    auto item = std::string{};
 
     while (std::getline(ss, item, ';')) {
         s.emplace_back(item);
@@ -415,11 +487,10 @@ std::string Tuner::sgemm_tuners_from_line(std::string line,
 
 std::string Tuner::load_sgemm_tuners(const int m, const int n, const int k,
                                      const int batch_size) {
-    std::ifstream file(TUNER_FILE_LOCAL);
-    if (file.good()) {
-        std::string line;
+    auto file = std::ifstream{TUNER_FILE_LOCAL};
+    if (!cfg_sgemm_exhaustive && file.good()) {
+        auto line = std::string{};
         while (std::getline(file, line)) {
-            std::istringstream iss(line);
             auto tuners = sgemm_tuners_from_line(line, m, n, k, batch_size);
             if (tuners.size() != 0) {
                 myprintf("Loaded existing SGEMM tuning.\n");

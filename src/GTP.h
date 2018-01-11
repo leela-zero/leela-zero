@@ -27,6 +27,7 @@
 
 #include "GameState.h"
 
+extern bool cfg_gtp_mode;
 extern bool cfg_allow_pondering;
 extern int cfg_num_threads;
 extern int cfg_max_playouts;
@@ -38,7 +39,7 @@ extern std::uint64_t cfg_rng_seed;
 extern bool cfg_dumbpass;
 #ifdef USE_OPENCL
 extern std::vector<int> cfg_gpus;
-extern int cfg_rowtiles;
+extern bool cfg_sgemm_exhaustive;
 #endif
 extern float cfg_puct;
 extern float cfg_softmax_temp;

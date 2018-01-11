@@ -45,6 +45,7 @@
 using namespace Utils;
 
 // Configuration flags
+bool cfg_gtp_mode;
 bool cfg_allow_pondering;
 int cfg_num_threads;
 int cfg_max_playouts;
@@ -56,7 +57,7 @@ std::uint64_t cfg_rng_seed;
 bool cfg_dumbpass;
 #ifdef USE_OPENCL
 std::vector<int> cfg_gpus;
-int cfg_rowtiles;
+bool cfg_sgemm_exhaustive;
 #endif
 float cfg_puct;
 float cfg_softmax_temp;
@@ -67,13 +68,14 @@ bool cfg_quiet;
 std::string cfg_options_str;
 
 void GTP::setup_default_parameters() {
+    cfg_gtp_mode = false;
     cfg_allow_pondering = true;
     cfg_num_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL
     cfg_gpus = { };
-    cfg_rowtiles = 5;
+    cfg_sgemm_exhaustive = false;
 #endif
     cfg_puct = 0.85f;
     cfg_softmax_temp = 1.0f;
