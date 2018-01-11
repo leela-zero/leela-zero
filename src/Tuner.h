@@ -39,7 +39,8 @@ public:
 private:
     void store_sgemm_tuners(const int m, const int n, const int k,
                             const int batch_size, std::string tuners);
-    bool valid_config_sgemm(Parameters p);
+    bool valid_config_sgemm(Parameters p, bool exhaustive);
+    std::string parameters_to_defines(const Parameters& p);
     std::string parameters_to_string(const Parameters& p);
     Parameters get_parameters_by_int(const std::vector<Configurations>& opts,
                                      const int n);

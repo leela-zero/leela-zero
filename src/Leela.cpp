@@ -42,14 +42,14 @@ using namespace Utils;
 
 static void license_blurb() {
     printf(
-        "Leela Zero  Copyright (C) 2017  Gian-Carlo Pascutto\n"
+        "Leela Zero  Copyright (C) 2017-2018  Gian-Carlo Pascutto and contributors\n"
         "This program comes with ABSOLUTELY NO WARRANTY.\n"
         "This is free software, and you are welcome to redistribute it\n"
         "under certain conditions; see the COPYING file for details.\n\n"
     );
 }
 
-static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
+static void parse_commandline(int argc, char *argv[]) {
     namespace po = boost::program_options;
     // Declare the supported options.
     po::options_description v_desc("Allowed options");
@@ -81,8 +81,7 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
 #ifdef USE_OPENCL
         ("gpu",  po::value<std::vector<int> >(),
                 "ID of the OpenCL device(s) to use (disables autodetection).")
-        ("rowtiles", po::value<int>()->default_value(cfg_rowtiles),
-                     "Split up the board in # tiles.")
+        ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
 #endif
 #ifdef USE_TUNER
         ("puct", po::value<float>())
@@ -154,7 +153,7 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
     }
 
     if (vm.count("gtp")) {
-        gtp_mode = true;
+        cfg_gtp_mode = true;
     }
 
     if (vm.count("threads")) {
@@ -223,14 +222,8 @@ static void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         cfg_gpus = vm["gpu"].as<std::vector<int> >();
     }
 
-    if (vm.count("rowtiles")) {
-        int rowtiles = vm["rowtiles"].as<int>();
-        rowtiles = std::min(19, rowtiles);
-        rowtiles = std::max(1, rowtiles);
-        if (rowtiles != cfg_rowtiles) {
-            myprintf("Splitting the board in %d tiles.\n", rowtiles);
-            cfg_rowtiles = rowtiles;
-        }
+    if (vm.count("full-tuner")) {
+        cfg_sgemm_exhaustive = true;
     }
 #endif
 
@@ -264,12 +257,11 @@ void init_global_objects() {
 }
 
 int main (int argc, char *argv[]) {
-    bool gtp_mode = false;
-    std::string input;
+    auto input = std::string{};
 
     // Set up engine parameters
     GTP::setup_default_parameters();
-    parse_commandline(argc, argv, gtp_mode);
+    parse_commandline(argc, argv);
 
     // Disable IO buffering as much as possible
     std::cout.setf(std::ios::unitbuf);
@@ -282,7 +274,7 @@ int main (int argc, char *argv[]) {
     setbuf(stdin, nullptr);
 #endif
 
-    if (!gtp_mode) {
+    if (!cfg_gtp_mode) {
         license_blurb();
     }
 
@@ -291,11 +283,11 @@ int main (int argc, char *argv[]) {
     auto maingame = std::make_unique<GameState>();
 
     /* set board limits */
-    float komi = 7.5;
+    auto komi = 7.5f;
     maingame->init_game(19, komi);
 
     for(;;) {
-        if (!gtp_mode) {
+        if (!cfg_gtp_mode) {
             maingame->display_state();
             std::cout << "Leela: ";
         }
