@@ -117,6 +117,17 @@ void Game::checkVersion(const VersionTuple &min_version) {
     }
     char readBuffer[256];
     int readCount = readLine(readBuffer, 256);
+    //If it is a GTP comment just print it and wait for the real answer
+    //this happens with the winogard tuning
+    if (readBuffer[0] == '#') {
+        readBuffer[readCount-1] = 0;
+        QTextStream(stdout) << readBuffer << endl;
+        if (!waitReady()) {
+            error(Game::PROCESS_DIED);
+            exit(EXIT_FAILURE);
+        }
+        readCount = readLine(readBuffer, 256);
+    }
     // We expect to read at last "=, space, something"
     if (readCount <= 3 || readBuffer[0] != '=') {
         QTextStream(stdout) << "GTP: " << readBuffer << endl;
