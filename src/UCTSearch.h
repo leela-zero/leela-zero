@@ -89,7 +89,6 @@ private:
     std::string get_pv(KoState& state, UCTNode& parent);
     void dump_analysis(int playouts);
     int get_best_move(passflag_t passflag);
-    void ttable_sync_all_children(GameState & currstate, UCTNode* const node);
 
     GameState & m_rootstate;
     UCTNode m_root{FastBoard::PASS, 0.0f, 0.5f};
