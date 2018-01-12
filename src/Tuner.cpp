@@ -426,17 +426,17 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
     tuning_params << m << ";" << n << ";" << k << ";" << batch_size;
 
     auto tuning_line = std::to_string(TUNER_VERSION) + ";XgemmBatched;"
-        + tuning_params.str() + ";" + tuners + ";" + device_name + "\n";
+        + tuning_params.str() + ";" + tuners + ";" + device_name ;
 
     // Write back previous data as long as it's not the device we just tuned
     for (const auto& line: file_contents) {
         if (line.find(device_name) == std::string::npos) {
-            file << line;
+            file << line << std::endl;
         }
     }
 
     // Write new tuning
-    file << tuning_line;
+    file << tuning_line << std::endl;
 }
 
 std::string Tuner::sgemm_tuners_from_line(std::string line,
