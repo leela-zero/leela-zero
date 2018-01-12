@@ -48,6 +48,7 @@ using namespace Utils;
 bool cfg_allow_pondering;
 int cfg_num_threads;
 int cfg_max_playouts;
+int cfg_max_visits;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
 int cfg_noise;
@@ -70,6 +71,7 @@ void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
     cfg_num_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
+    cfg_max_visits = std::numeric_limits<decltype(cfg_max_visits)>::max();
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL
     cfg_gpus = { };

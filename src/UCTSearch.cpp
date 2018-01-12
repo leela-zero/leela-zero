@@ -42,6 +42,7 @@ using namespace Utils;
 UCTSearch::UCTSearch(GameState & g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
+    set_visit_limit(cfg_max_visits);
 }
 
 SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
@@ -301,8 +302,8 @@ bool UCTSearch::is_running() const {
     return m_run;
 }
 
-bool UCTSearch::playout_limit_reached() const {
-    return m_playouts >= m_maxplayouts;
+bool UCTSearch::playout_or_visit_limit_reached() const {
+    return m_playouts >= m_maxplayouts || m_root.get_visits() >= m_maxvisits;
 }
 
 void UCTWorker::operator()() {
@@ -312,7 +313,7 @@ void UCTWorker::operator()() {
         if (result.valid()) {
             m_search->increment_playouts();
         }
-    } while(m_search->is_running() && !m_search->playout_limit_reached());
+    } while(m_search->is_running() && !m_search->playout_or_visit_limit_reached());
 }
 
 void UCTSearch::increment_playouts() {
@@ -377,7 +378,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         }
         keeprunning  = is_running();
         keeprunning &= (elapsed_centis < time_for_move);
-        keeprunning &= !playout_limit_reached();
+        keeprunning &= !playout_or_visit_limit_reached();
     } while(keeprunning);
 
     // stop the search
@@ -443,5 +444,16 @@ void UCTSearch::set_playout_limit(int playouts) {
         m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max();
     } else {
         m_maxplayouts = playouts;
+    }
+}
+
+void UCTSearch::set_visit_limit(int visits) {
+    static_assert(std::is_convertible<decltype(visits),
+                                      decltype(m_maxvisits)>::value,
+                  "Inconsistent types for visits amount.");
+    if (visits == 0) {
+        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max();
+    } else {
+        m_maxvisits = visits;
     }
 }
