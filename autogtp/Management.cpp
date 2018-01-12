@@ -53,7 +53,8 @@ Management::Management(const int gpus,
     m_keepPath(keep),
     m_debugPath(debug),
     m_version(ver),
-    m_fallBack(Order::Error) {
+    m_fallBack(Order::Error),
+    m_id(QUuid::createUuid().toRfc4122().toHex()) {
 }
 
 void Management::giveAssignments() {
@@ -77,7 +78,7 @@ void Management::giveAssignments() {
                     this,
                     &Management::getResult,
                     Qt::DirectConnection);
-            m_gamesThreads[thread_index]->order(getWork(0));
+            m_gamesThreads[thread_index]->order(getWork(0, thread_index));
             m_gamesThreads[thread_index]->start();
         }
     }
@@ -102,7 +103,7 @@ void Management::getResult(Order ord, Result res, int index, int duration, int t
     }
     sendAllGames();
     printTimingInfo(duration);
-    m_gamesThreads[index]->order(getWork(timexgame));
+    m_gamesThreads[index]->order(getWork(timexgame, index));
     m_syncMutex.unlock();
 
 }
@@ -153,7 +154,7 @@ QString Management::getBoolOption(const QJsonObject &ob, const QString &key, con
 }
 
 
-Order Management::getWorkInternal(int timexgame) {
+Order Management::getWorkInternal(int timexgame, int index) {
     Order o(Order::Error);
 
     /*
@@ -197,6 +198,7 @@ Order Management::getWorkInternal(int timexgame) {
     prog_cmdline.append(" http://zero.sjeng.org/get-task/7");
     if (timexgame > 0) {
         prog_cmdline.append("?timexgame=" + QString::number(timexgame));
+        prog_cmdline.append("?myid=" + m_id + QString::number(index));
     }
     QTextStream(stdout) << prog_cmdline << endl;
 
@@ -282,10 +284,10 @@ Order Management::getWorkInternal(int timexgame) {
     return o;
 }
 
-Order Management::getWork(int timexgame) {
+Order Management::getWork(int timexgame, int index) {
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
         try {
-            return getWorkInternal(timexgame);
+            return getWorkInternal(timexgame, index);
         } catch (NetworkException ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;

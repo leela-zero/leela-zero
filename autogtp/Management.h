@@ -67,8 +67,10 @@ private:
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
     Order m_fallBack;
-    Order getWorkInternal(int timexgame);
-    Order getWork(int timexgame);
+    QString m_id;
+    
+    Order getWorkInternal(int timexgame, int index);
+    Order getWork(int timexgame, int index);
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
     void sendAllGames();
