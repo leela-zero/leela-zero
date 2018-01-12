@@ -87,6 +87,9 @@ static std::array<float, 256> ip1_val_b;
 static std::array<float, 256> ip2_val_w;
 static std::array<float, 1> ip2_val_b;
 
+// Rotation helper
+static std::array<std::array<int, 361>, 8> rotate_nn_idx_table;
+
 void Network::benchmark(const GameState * state, int iterations) {
     int cpus = cfg_num_threads;
     int iters_per_thread = (iterations + (cpus - 1)) / cpus;
@@ -116,6 +119,12 @@ void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
 }
 
 void Network::initialize(void) {
+    // Prepare rotation table
+    for(auto s = 0; s < 8; s++) {
+        for(auto v = 0; v < 19 * 19; v++) {
+            rotate_nn_idx_table[s][v] = rotate_nn_idx(v, s);
+        }
+    }
 #ifdef USE_OPENCL
     myprintf("Initializing OpenCL\n");
     opencl.initialize();
@@ -529,7 +538,7 @@ Network::Netresult Network::get_scored_moves_internal(
     for (int c = 0; c < INPUT_CHANNELS; ++c) {
         for (int h = 0; h < height; ++h) {
             for (int w = 0; w < width; ++w) {
-                auto rot_idx = rotate_nn_idx(h * 19 + w, rotation);
+                auto rot_idx = rotate_nn_idx_table[rotation][h * 19 + w];
                 input_data.emplace_back(net_t(planes[c][rot_idx]));
             }
         }
@@ -573,7 +582,7 @@ Network::Netresult Network::get_scored_moves_internal(
     for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
         if (idx < 19*19) {
             auto val = outputs[idx];
-            auto rot_idx = rotate_nn_idx(idx, rotation);
+            auto rot_idx = rotate_nn_idx_table[rotation][idx];
             int x = rot_idx % 19;
             int y = rot_idx / 19;
             int rot_vtx = state->board.get_vertex(x, y);
