@@ -326,6 +326,9 @@ void Network::initialize(void) {
     opencl.initialize(channels);
 
     auto tuners = opencl.get_sgemm_tuners();
+    if (cfg_tune_only) {
+        exit(EXIT_SUCCESS);
+    }
     auto mwg = tuners[0];
     auto kwg = tuners[2];
     auto vwm = tuners[3];

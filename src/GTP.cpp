@@ -59,6 +59,7 @@ bool cfg_dumbpass;
 #ifdef USE_OPENCL
 std::vector<int> cfg_gpus;
 bool cfg_sgemm_exhaustive;
+bool cfg_tune_only;
 #endif
 float cfg_puct;
 float cfg_softmax_temp;
@@ -78,6 +79,7 @@ void GTP::setup_default_parameters() {
 #ifdef USE_OPENCL
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;
+    cfg_tune_only = false;
 #endif
     cfg_puct = 0.85f;
     cfg_softmax_temp = 1.0f;
