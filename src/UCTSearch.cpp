@@ -137,14 +137,14 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
     }
 }
 
-bool UCTSearch::should_resign(passflag_t passflag) {
+bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
     if (passflag & UCTSearch::NORESIGN) {
         // resign not allowed
         return false;
     }
 
     const auto visits = m_root.get_visits();
-    if (visits < 500)  {
+    if (visits < std::min(500, cfg_max_playouts))  {
         // low visits
         return false;
     }
@@ -154,19 +154,19 @@ bool UCTSearch::should_resign(passflag_t passflag) {
     const auto move_threshold = board_squares / 4;
     const auto movenum = m_rootstate.get_movenum();
     if (movenum <= move_threshold) {
-        // to early in game to resign
+        // too early in game to resign
         return false;
     }
 
     const auto color = m_rootstate.board.get_to_move();
-    const auto best_eval = m_root.get_first_child()->get_eval(color);
-    auto resign_threshold = 0.01 * cfg_resignpct;
-    if (best_eval > resign_threshold) {
+
+    const auto is_default_cfg_resign = cfg_resignpct < 0;
+    auto resign_threshold = 0.01 * (is_default_cfg_resign ? 10 : cfg_resignpct);
+    if (bestscore > resign_threshold) {
         // eval > cfg_resign
         return false;
     }
 
-    const auto is_default_cfg_resign = (cfg_resignpct == 10);
     if ((m_rootstate.get_handicap() > 0)
             && (color == FastBoard::WHITE)
             && is_default_cfg_resign) {
@@ -176,8 +176,8 @@ bool UCTSearch::should_resign(passflag_t passflag) {
         // blend the thresholds for the first ~215 moves.
         auto blend_ratio = std::min(1.0, movenum / (0.6 * board_squares));
         auto blended_resign_threshold = blend_ratio * resign_threshold
-                         + (1 - blend_ratio) * handicap_resign_threshold;
-        if (best_eval > blended_resign_threshold) {
+            + (1 - blend_ratio) * handicap_resign_threshold;
+        if (bestscore > blended_resign_threshold) {
             // allow lower eval for white in handicap games where opp may fumble
             return false;
         }
@@ -289,8 +289,8 @@ int UCTSearch::get_best_move(passflag_t passflag) {
 
     // if we aren't passing, should we consider resigning?
     if (bestmove != FastBoard::PASS) {
-        if (should_resign(passflag)) {
-            myprintf("Eval (%.3f) looks bad. Resigning.\n", bestscore);
+        if (should_resign(passflag, bestscore)) {
+            myprintf("Eval (%.2f%%) looks bad. Resigning.\n", 100 * bestscore);
             bestmove = FastBoard::RESIGN;
         }
     }
