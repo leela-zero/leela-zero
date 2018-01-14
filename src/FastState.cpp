@@ -34,7 +34,7 @@ void FastState::init_game(int size, float komi) {
 
     m_movenum = 0;
 
-    m_komove = 0;
+    m_komove = FastBoard::PASS;
     m_lastmove = 0;
     m_komi = komi;
     m_handicap = 0;
@@ -53,7 +53,7 @@ void FastState::reset_game(void) {
     m_movenum = 0;
     m_passes = 0;
     m_handicap = 0;
-    m_komove = 0;
+    m_komove = FastBoard::PASS;
     m_lastmove = 0;
 }
 
@@ -74,6 +74,10 @@ void FastState::play_pass(int color) {
 
     m_lastmove = FastBoard::PASS;
 
+    board.m_hash ^= Zobrist::zobrist_ko[m_komove];
+    m_komove = FastBoard::PASS;
+    board.m_hash ^= Zobrist::zobrist_ko[m_komove];
+
     if (board.m_tomove == color) {
         board.m_hash ^= 0xABCDABCDABCDABCDULL;
     }
@@ -90,9 +94,16 @@ void FastState::play_move(int vertex) {
 
 void FastState::play_move(int color, int vertex) {
     if (vertex != FastBoard::PASS) {
+        board.m_hash ^= Zobrist::zobrist_ko[m_komove];
         int kosq = board.update_board(color, vertex);
+        if ( board.get_square(kosq) == FastBoard::EMPTY &&
+            !board.is_suicide(kosq, !color)) {
+            m_komove = kosq;
+        } else {
+            m_komove = FastBoard::PASS;
+        }
+        board.m_hash ^= Zobrist::zobrist_ko[m_komove];
 
-        m_komove = kosq;
         m_lastmove = vertex;
         m_movenum++;
 

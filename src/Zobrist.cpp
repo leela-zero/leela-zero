@@ -21,6 +21,7 @@
 #include "Random.h"
 
 std::array<std::array<std::uint64_t, FastBoard::MAXSQ>,     4> Zobrist::zobrist;
+std::array<std::uint64_t, FastBoard::MAXSQ>                    Zobrist::zobrist_ko;
 std::array<std::array<std::uint64_t, FastBoard::MAXSQ * 2>, 2> Zobrist::zobrist_pris;
 std::array<std::uint64_t, 5>                                   Zobrist::zobrist_pass;
 
@@ -30,6 +31,11 @@ void Zobrist::init_zobrist(Random& rng) {
             Zobrist::zobrist[i][j]  = ((std::uint64_t)rng.randuint32()) << 32;
             Zobrist::zobrist[i][j] ^= (std::uint64_t)rng.randuint32();
         }
+    }
+
+    for (int j = 0; j < FastBoard::MAXSQ; j++) {
+        Zobrist::zobrist_ko[j]  = ((std::uint64_t)rng.randuint32()) << 32;
+        Zobrist::zobrist_ko[j] ^= (std::uint64_t)rng.randuint32();
     }
 
     for (int i = 0; i < 2; i++) {

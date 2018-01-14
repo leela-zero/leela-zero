@@ -70,7 +70,7 @@ std::uint64_t FullBoard::calc_ko_hash(void) {
     return res;
 }
 
-std::uint64_t FullBoard::calc_hash(void) {
+std::uint64_t FullBoard::calc_hash(int komove) {
     auto res = std::uint64_t{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
@@ -86,6 +86,8 @@ std::uint64_t FullBoard::calc_hash(void) {
     if (m_tomove == BLACK) {
         res ^= 0xABCDABCDABCDABCDULL;
     }
+
+    m_hash ^= Zobrist::zobrist_ko[komove];
 
     m_hash = res;
 
@@ -179,6 +181,6 @@ void FullBoard::display_board(int lastmove) {
 void FullBoard::reset_board(int size) {
     FastBoard::reset_board(size);
 
-    calc_hash();
+    calc_hash(FastBoard::PASS);
     calc_ko_hash();
 }
