@@ -28,6 +28,7 @@
 #include <stdexcept>
 #include "Worker.h"
 
+constexpr int AUTOGTP_VERSION = 12;
 class Management : public QObject {
     Q_OBJECT
 public:
