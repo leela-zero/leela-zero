@@ -84,7 +84,7 @@ std::uint64_t FullBoard::calc_hash(int komove) {
     res ^= Zobrist::zobrist_pris[1][m_prisoners[1]];
 
     if (m_tomove == BLACK) {
-        res ^= 0xABCDABCDABCDABCDULL;
+        res ^= Zobrist::zobrist_blacktomove;
     }
 
     m_hash ^= Zobrist::zobrist_ko[komove];
@@ -100,6 +100,13 @@ std::uint64_t FullBoard::get_hash(void) const {
 
 std::uint64_t FullBoard::get_ko_hash(void) const {
     return m_ko_hash;
+}
+
+void FullBoard::set_to_move(int tomove) {
+    if (m_tomove != tomove) {
+        m_hash ^= Zobrist::zobrist_blacktomove;
+    }
+    FastBoard::set_to_move(tomove);
 }
 
 int FullBoard::update_board(const int color, const int i) {

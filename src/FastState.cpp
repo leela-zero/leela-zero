@@ -148,7 +148,7 @@ int FastState::get_to_move() const {
 }
 
 void FastState::set_to_move(int tom) {
-    board.m_tomove = tom;
+    board.set_to_move(tom);
 }
 
 void FastState::display_state() {
