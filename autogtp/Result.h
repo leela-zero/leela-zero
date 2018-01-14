@@ -28,6 +28,7 @@ public:
         File = 0,
         Win,
         Loss,
+        Waited,
         Error
     };
     Result() = default;

@@ -27,7 +27,8 @@ public:
     enum {
         Error = 0,
         Production,
-        Validation
+        Validation,
+        Wait
     };
     Order() = default;
     Order(int t, QMap<QString,QString> p = QMap<QString,QString>()) { m_type = t; m_parameters = p; }
@@ -38,7 +39,7 @@ public:
     int type() { return m_type; }
     QMap<QString,QString> parameters() { return m_parameters; }
     void parameters(const QMap<QString,QString> &l) { m_parameters = l; }
-    bool isValid() { return (m_type == Production || m_type == Validation); }
+    bool isValid() { return (m_type == Production || m_type == Validation || m_type == Wait); }
 private:
     int m_type;
     QMap<QString,QString> m_parameters;

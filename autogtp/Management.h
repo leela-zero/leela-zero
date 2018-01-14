@@ -71,6 +71,7 @@ private:
     Order getWork();
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
+    QString getOptionsString(const QJsonObject &opt, const QString &rnd);
     void sendAllGames();
     bool networkExists(const QString &name);
     void fetchNetwork(const QString &name);
