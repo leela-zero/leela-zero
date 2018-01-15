@@ -18,7 +18,7 @@
 
 #include "FastBoard.h"
 
-#include <assert.h>
+#include <cassert>
 #include <array>
 #include <iostream>
 #include <queue>

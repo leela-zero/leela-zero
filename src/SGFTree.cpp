@@ -19,7 +19,7 @@
 #include "config.h"
 #include "SGFTree.h"
 
-#include <assert.h>
+#include <cassert>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include <ctime>

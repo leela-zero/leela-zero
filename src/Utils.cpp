@@ -20,8 +20,8 @@
 #include "Utils.h"
 
 #include <mutex>
-#include <stdarg.h>
-#include <stdio.h>
+#include <cstdarg>
+#include <cstdio>
 
 #ifdef _WIN32
 #include <windows.h>
