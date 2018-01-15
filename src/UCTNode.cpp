@@ -18,8 +18,8 @@
 
 #include "config.h"
 
-#include <assert.h>
-#include <stdio.h>
+#include <cassert>
+#include <cstdio>
 #include <cstdint>
 #include <algorithm>
 #include <cmath>

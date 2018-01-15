@@ -19,7 +19,7 @@
 #ifndef SGFTREE_H_INCLUDED
 #define SGFTREE_H_INCLUDED
 
-#include <stddef.h>
+#include <cstddef>
 #include <map>
 #include <sstream>
 #include <string>

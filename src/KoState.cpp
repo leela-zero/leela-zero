@@ -19,7 +19,7 @@
 #include "config.h"
 #include "KoState.h"
 
-#include <assert.h>
+#include <cassert>
 #include <algorithm>
 #include <iterator>
 

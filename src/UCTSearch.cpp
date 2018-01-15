@@ -19,8 +19,8 @@
 #include "config.h"
 #include "UCTSearch.h"
 
-#include <assert.h>
-#include <stddef.h>
+#include <cassert>
+#include <cstddef>
 #include <limits>
 #include <memory>
 #include <type_traits>

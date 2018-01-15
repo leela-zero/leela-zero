@@ -19,8 +19,8 @@
 #ifndef SGFPARSER_H_INCLUDED
 #define SGFPARSER_H_INCLUDED
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 #include <climits>
 #include <sstream>
 #include <string>

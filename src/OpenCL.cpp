@@ -21,7 +21,7 @@
 #ifdef USE_OPENCL
 #include "OpenCL.h"
 
-#include <assert.h>
+#include <cassert>
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>

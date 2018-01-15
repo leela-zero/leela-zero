@@ -19,7 +19,7 @@
 #ifndef FASTSTATE_H_INCLUDED
 #define FASTSTATE_H_INCLUDED
 
-#include <stddef.h>
+#include <cstddef>
 #include <array>
 #include <string>
 #include <vector>
