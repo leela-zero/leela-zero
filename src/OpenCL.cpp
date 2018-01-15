@@ -286,7 +286,6 @@ static std::string sourceCode_utility = R"(
 
 std::string sourceCode_sgemm =
     #include "clblast_level3/common.opencl"
-    #include "clblast_level3/level3.opencl"
     #include "clblast_level3/xgemm_part1.opencl"
     #include "clblast_level3/xgemm_part2.opencl"
     #include "clblast_level3/xgemm_part3.opencl"
