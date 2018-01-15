@@ -265,11 +265,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
     auto cBuffer = cl::Buffer(
         CL_MEM_READ_WRITE, sizeof(float) * c_size, nullptr, nullptr);
 
-    if (cfg_gtp_mode) {
-        printf("# Started OpenCL SGEMM tuner.\n");
-    } else {
-        myprintf("\nStarted OpenCL SGEMM tuner.\n");
-    }
+    myprintf("\nStarted OpenCL SGEMM tuner.\n");
 
     auto valid_params = std::vector<int>{};
     auto cfgs = 1;
