@@ -531,8 +531,8 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> tmp;   // eat fixed_handicap
         cmdstream >> stones;
 
-        if (game.set_fixed_handicap(stones)) {
-            std::string stonestring = game.board.get_stone_list();
+        if (!cmdstream.fail() && game.set_fixed_handicap(stones)) {
+            auto stonestring = game.board.get_stone_list();
             gtp_printf(id, "%s", stonestring.c_str());
         } else {
             gtp_fail_printf(id, "Not a valid number of handicap stones");
@@ -546,10 +546,13 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> tmp;   // eat place_free_handicap
         cmdstream >> stones;
 
-        game.place_free_handicap(stones);
-
-        std::string stonestring = game.board.get_stone_list();
-        gtp_printf(id, "%s", stonestring.c_str());
+        if (!cmdstream.fail()) {
+            game.place_free_handicap(stones);
+            auto stonestring = game.board.get_stone_list();
+            gtp_printf(id, "%s", stonestring.c_str());
+        } else {
+            gtp_fail_printf(id, "Not a valid number of handicap stones");
+        }
 
         return true;
     } else if (command.find("set_free_handicap") == 0) {
