@@ -40,8 +40,13 @@ void Job::init(const QMap<QString,QString> &l) {
              << "Unexpected Leela Zero version: " << l[0] << endl;
         exit(EXIT_FAILURE);
     }
+   if(version_list.size() < 3) {
+       version_list.append("0");
+   }
     std::get<0>(m_leelazMinVersion) = version_list[0].toInt();
     std::get<1>(m_leelazMinVersion) = version_list[1].toInt();
+    std::get<2>(m_leelazMinVersion) = version_list[2].toInt();
+
 }
 
 ProductionJob::ProductionJob(QString gpu, Management *parent) :

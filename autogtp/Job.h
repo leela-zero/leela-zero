@@ -23,7 +23,7 @@
 #include <QObject>
 #include <QAtomicInt>
 class Management;
-using VersionTuple = std::tuple<int, int>;
+using VersionTuple = std::tuple<int, int, int>;
 
 class Job : public QObject {
     Q_OBJECT

@@ -142,14 +142,19 @@ void Game::checkVersion(const VersionTuple &min_version) {
             << "Unexpected Leela Zero version: " << version_buff << endl;
         exit(EXIT_FAILURE);
     }
-    if (version_list[0].toInt() < std::get<0>(min_version)
-        || (version_list[0].toInt() == std::get<0>(min_version)
-           && version_list[1].toInt() < std::get<1>(min_version))) {
+    if (version_list.size() < 3) {
+        version_list.append("0");
+    }
+    int versionCount = (version_list[0].toInt() - std::get<0>(min_version)) * 10000;
+    versionCount += (version_list[1].toInt() - std::get<1>(min_version)) * 100;
+    versionCount += version_list[2].toInt() - std::get<2>(min_version);
+    if (versionCount < 0) {
         QTextStream(stdout)
             << "Leela version is too old, saw " << version_buff
             << " but expected "
             << std::get<0>(min_version) << "."
-            << std::get<1>(min_version) << "." << endl;
+            << std::get<1>(min_version) << "."
+            << std::get<2>(min_version)  << endl;
         QTextStream(stdout)
             << "Check https://github.com/gcp/leela-zero for updates." << endl;
         exit(EXIT_FAILURE);
