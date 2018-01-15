@@ -510,7 +510,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
 
         cl::NDRange size_sgemm = {(m_ceil * mdimc) / mwg,
                                   (n_ceil * ndimc) / nwg,
-                                  WINOGRAD_TILE};
+                                  (cl::size_type)WINOGRAD_TILE};
 
         queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
                                    size_sgemm, local_sgemm);

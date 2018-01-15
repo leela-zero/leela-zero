@@ -40,6 +40,7 @@
     <ClInclude Include="..\..\src\Timing.h" />
     <ClInclude Include="..\..\src\Training.h" />
     <ClInclude Include="..\..\src\TTable.h" />
+    <ClInclude Include="..\..\src\Tuner.h" />
     <ClInclude Include="..\..\src\UCTNode.h" />
     <ClInclude Include="..\..\src\UCTSearch.h" />
     <ClInclude Include="..\..\src\Utils.h" />
@@ -65,6 +66,7 @@
     <ClCompile Include="..\..\src\Timing.cpp" />
     <ClCompile Include="..\..\src\Training.cpp" />
     <ClCompile Include="..\..\src\TTable.cpp" />
+    <ClCompile Include="..\..\src\Tuner.cpp" />
     <ClCompile Include="..\..\src\UCTNode.cpp" />
     <ClCompile Include="..\..\src\UCTSearch.cpp" />
     <ClCompile Include="..\..\src\Utils.cpp" />
