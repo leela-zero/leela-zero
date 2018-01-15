@@ -22,7 +22,7 @@
 #include <QProcess>
 #include <tuple>
 
-using VersionTuple = std::tuple<int, int>;
+using VersionTuple = std::tuple<int, int, int>;
 
 class Game : QProcess {
 public:
