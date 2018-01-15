@@ -54,6 +54,11 @@ Job(gpu, parent)
 {
 }
 
+WaitJob::WaitJob(QString gpu, Management *parent) :
+Job(gpu, parent)
+{
+}
+
 Result ProductionJob::execute(){
     Result res(Result::Error);
     Game game(m_network, m_option);
@@ -156,7 +161,15 @@ void ValidationJob::init(const QMap<QString,QString> &l) {
     m_secondNet = l["secondNet"];
 }
 
+Result WaitJob::execute(){
+    Result res(Result::Waited);
+    QThread::sleep(m_minutes * 60);
+    return res;
+}
 
-
+void WaitJob::init(const QMap<QString,QString> &l) {
+    Job::init(l);
+    m_minutes = l["minutes"].toInt();
+}
 
 

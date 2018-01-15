@@ -75,4 +75,15 @@ private:
     QString m_secondNet;
 };
 
+class WaitJob : public Job {
+    Q_OBJECT
+public:
+    WaitJob(QString gpu, Management *parent);
+    ~WaitJob() = default;
+    void init(const QMap<QString,QString> &l);
+    Result execute();
+private:
+    int m_minutes;
+};
+
 #endif // JOB_H

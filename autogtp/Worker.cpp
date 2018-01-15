@@ -61,6 +61,9 @@ void Worker::createJob(int type) {
     case Order::Validation:
         m_job = new ValidationJob(m_gpu, m_boss);
         break;
+    case Order::Wait:
+        m_job = new WaitJob(m_gpu, m_boss);
+        break;
     }
 }
 
