@@ -88,6 +88,7 @@ private:
     void dump_stats(KoState& state, UCTNode& parent);
     std::string get_pv(KoState& state, UCTNode& parent);
     void dump_analysis(int playouts);
+    bool should_resign(passflag_t passflag, float bestscore);
     int get_best_move(passflag_t passflag);
 
     GameState & m_rootstate;

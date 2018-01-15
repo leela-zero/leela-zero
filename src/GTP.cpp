@@ -83,7 +83,8 @@ void GTP::setup_default_parameters() {
 #endif
     cfg_puct = 0.85f;
     cfg_softmax_temp = 1.0f;
-    cfg_resignpct = 10;
+    // see UCTSearch::should_resign
+    cfg_resignpct = -1;
     cfg_noise = false;
     cfg_random_cnt = 0;
     cfg_dumbpass = false;
