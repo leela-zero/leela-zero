@@ -279,7 +279,6 @@ int UCTSearch::get_best_move(passflag_t passflag) {
         }
     }
 
-    m_root = std::move(m_root->find_and_take_ownership(bestmove));
     return bestmove;
 }
 
@@ -429,6 +428,7 @@ int UCTSearch::think(int color, GameState& g, passflag_t passflag) {
     }
     int bestmove = get_best_move(passflag);
     m_rootstate.play_move(bestmove);
+    m_root = std::move(m_root->find_and_take_ownership(bestmove));
     return bestmove;
 }
 
