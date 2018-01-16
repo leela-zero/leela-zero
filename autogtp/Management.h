@@ -68,8 +68,8 @@ private:
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
     Order m_fallBack;
-    Order getWorkInternal();
-    Order getWork();
+    Order getWorkInternal(bool tuning);
+    Order getWork(bool tuning = false);
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
     QString getOptionsString(const QJsonObject &opt, const QString &rnd);
@@ -77,6 +77,7 @@ private:
     bool networkExists(const QString &name);
     void fetchNetwork(const QString &name);
     void printTimingInfo(float duration);
+    void runTuningProcess(const QString &tuneCmdLine);
     void gzipFile(const QString &fileName);
     bool sendCurl(const QStringList &lines);
     void saveCurlCmdLine(const QStringList &prog_cmdline, const QString &name);

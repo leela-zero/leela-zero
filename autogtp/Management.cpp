@@ -57,8 +57,36 @@ Management::Management(const int gpus,
     m_fallBack(Order::Error) {
 }
 
+void Management::runTuningProcess(const QString &tuneCmdLine) {
+    QTextStream(stdout) << tuneCmdLine << endl;
+    QProcess tuneProcess;
+    tuneProcess.start(tuneCmdLine);
+    tuneProcess.waitForStarted(-1);
+    while(tuneProcess.state() == QProcess::Running) {
+        tuneProcess.waitForReadyRead(1000);
+        QTextStream(stdout) << tuneProcess.readAllStandardError();
+    }
+    tuneProcess.waitForFinished(-1);
+}
+
 void Management::giveAssignments() {
     sendAllGames();
+
+    //Make the OpenCl tuning before starting the threads
+    QTextStream(stdout) << "Starting tuning process, please wait..." << endl;
+
+    Order tuneOrder = getWork(true);
+    QString tuneCmdLine("./leelaz --tune-only -w ");
+    tuneCmdLine.append(tuneOrder.parameters()["network"]);
+    if (m_gpusList.isEmpty()) {
+        runTuningProcess(tuneCmdLine);
+    } else {
+        for (auto i = 0; i < m_gpusList.size(); ++i) {
+            runTuningProcess(tuneCmdLine + " --gpu=" + m_gpusList.at(i));
+        }
+    }
+    QTextStream(stdout) << "Tuning process finished" << endl;
+
     m_start = std::chrono::high_resolution_clock::now();
     m_mainMutex->lock();
     QString myGpu;
@@ -170,7 +198,7 @@ QString Management::getOptionsString(const QJsonObject &opt, const QString &rnd)
     return options;
 }
 
-Order Management::getWorkInternal() {
+Order Management::getWorkInternal(bool tuning) {
     Order o(Order::Error);
 
     /*
@@ -218,9 +246,11 @@ Order Management::getWorkInternal() {
 #endif
     prog_cmdline.append(" -s -J");
     prog_cmdline.append(" http://zero.sjeng.org/get-task/");
-    prog_cmdline.append(QString::number(AUTOGTP_VERSION));
-
-    QTextStream(stdout) << prog_cmdline << endl;
+    if (tuning) {
+        prog_cmdline.append("0");
+    } else {
+        prog_cmdline.append(QString::number(AUTOGTP_VERSION));
+    }
     QProcess curl;
     curl.start(prog_cmdline);
     curl.waitForFinished(-1);
@@ -238,7 +268,9 @@ Order Management::getWorkInternal() {
         throw NetworkException("JSON parse error: " + errorString);
     }
 
-    QTextStream(stdout) << doc.toJson() << endl;
+    if (!tuning) {
+        QTextStream(stdout) << doc.toJson() << endl;
+    }
     QMap<QString,QString> parameters;
     QJsonObject ob = doc.object();
     //checking client version
@@ -279,7 +311,9 @@ Order Management::getWorkInternal() {
 
     parameters["debug"] = !m_debugPath.isEmpty() ? "true" : "false";
 
-    QTextStream(stdout) << "Got new job: " << ob.value("cmd").toString() << endl;
+    if (!tuning) {
+        QTextStream(stdout) << "Got new job: " << ob.value("cmd").toString() << endl;
+    }
     if (ob.value("cmd").toString() == "selfplay") {
         QString net = ob.value("hash").toString();
         fetchNetwork(net);
@@ -305,14 +339,15 @@ Order Management::getWorkInternal() {
         o.type(Order::Wait);
         parameters["minutes"] = ob.value("minutes").toString();
         o.parameters(parameters);
+        QTextStream(stdout) << "minutes: " << parameters["minutes"]  << "." << endl;
     }
     return o;
 }
 
-Order Management::getWork() {
+Order Management::getWork(bool tuning) {
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
         try {
-            return getWorkInternal();
+            return getWorkInternal(tuning);
         } catch (NetworkException ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;
