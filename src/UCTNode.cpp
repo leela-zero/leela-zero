@@ -418,7 +418,9 @@ UCTNode::node_ptr_t UCTNode::find_and_take_ownership(const int move) {
             }
         }
     }
-    return nullptr;
+    // Should never fail to find the child.
+    assert(false);
+    return std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
 }
 
 // Use this version if the child could be anywhere.
@@ -436,7 +438,7 @@ UCTNode::node_ptr_t UCTNode::find_and_take_ownership(const GameState& g_new, Gam
             }
         }
     }
-    return nullptr;
+    return std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
 }
 
 UCTNode* UCTNode::get_nopass_child(FastState& state) const {

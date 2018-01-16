@@ -161,7 +161,7 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
 
 bool GTP::execute(GameState & game, std::string xinput) {
     std::string input;
-    static UCTSearch search;
+    static auto search = std::make_unique<UCTSearch>();
 
     bool transform_lowercase = true;
 
@@ -275,7 +275,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("clear_board") == 0) {
         Training::clear_training();
         game.reset_game();
-        search.set_gamestate(game);
+        std::make_unique<UCTSearch>().swap(search);
         gtp_printf(id, "");
         return true;
     } else if (command.find("komi") == 0) {
@@ -344,7 +344,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             // start thinking
             {
                 game.set_to_move(who);
-                int move = search.think(who, game);
+                int move = search->think(who, game);
                 game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
@@ -353,7 +353,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             if (cfg_allow_pondering) {
                 // now start pondering
                 if (!game.has_resigned()) {
-                    search.ponder(game);
+                    search->ponder(game);
                 }
             }
         } else {
@@ -380,7 +380,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             game.set_passes(0);
             {
                 game.set_to_move(who);
-                int move = search.think(who, game, UCTSearch::NOPASS);
+                int move = search->think(who, game, UCTSearch::NOPASS);
                 game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
@@ -389,7 +389,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             if (cfg_allow_pondering) {
                 // now start pondering
                 if (!game.has_resigned()) {
-                    search.ponder(game);
+                    search->ponder(game);
                 }
             }
         } else {
@@ -472,7 +472,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 // KGS sends this after our move
                 // now start pondering
                 if (!game.has_resigned()) {
-                    search.ponder(game);
+                    search->ponder(game);
                 }
             }
         } else {
@@ -481,7 +481,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         return true;
     } else if (command.find("auto") == 0) {
         do {
-            int move = search.think(game.get_to_move(), game, UCTSearch::NORMAL);
+            int move = search->think(game.get_to_move(), game, UCTSearch::NORMAL);
             game.play_move(move);
             game.display_state();
 
@@ -489,7 +489,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         return true;
     } else if (command.find("go") == 0) {
-        int move = search.think(game.get_to_move(), game);
+        int move = search->think(game.get_to_move(), game);
         game.play_move(move);
 
         std::string vertex = game.move_to_text(move);

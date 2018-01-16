@@ -75,11 +75,11 @@ public:
         (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
 
     UCTSearch();
-    void set_gamestate(GameState& g);
-    int think(int color, GameState& g, passflag_t passflag = NORMAL);
+    void set_gamestate(const GameState& g);
+    int think(int color, const GameState& g, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
-    void ponder(GameState& g);
+    void ponder(const GameState& g);
     bool is_running() const;
     bool playout_or_visit_limit_reached() const;
     void increment_playouts();
