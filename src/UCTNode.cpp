@@ -426,22 +426,19 @@ UCTNode::node_ptr_t UCTNode::find_and_take_ownership(const int move) {
 // Use this version if the child could be anywhere.
 // Gives up after searching the direct children.
 UCTNode::node_ptr_t UCTNode::find_and_take_ownership(const GameState& g_new, GameState& g_curr) {
-    if (g_new.get_komi() != g_curr.get_komi()) {
+    if (g_new.get_komi() != g_curr.get_komi() || !m_has_children) {
         return std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
     }
-    if (m_has_children) {
-        for (auto& child : m_children) {
-            auto move = child->get_move();
-            if (g_new.get_last_move() == move) {
-                g_curr.play_move(move);
-                if (g_curr.board.get_hash() == g_new.board.get_hash()) {
-                    return std::move(child);
-                }
-                g_curr.undo_move();
+    for (auto& child : m_children) {
+        auto move = child->get_move();
+        if (g_new.get_last_move() == move) {
+            g_curr.play_move(move);
+            if (g_curr.board.get_hash() == g_new.board.get_hash()) {
+                return std::move(child);
             }
+            g_curr.undo_move();
         }
     }
-    return std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
 }
 
 UCTNode* UCTNode::get_nopass_child(FastState& state) const {
