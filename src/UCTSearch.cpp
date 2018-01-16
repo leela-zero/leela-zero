@@ -52,9 +52,7 @@ void UCTSearch::set_gamestate(const GameState & g) {
     if (m_rootstate.get_komi() != g.get_komi()
         || m_rootstate.board.get_hash() != g.board.get_hash()) {
         m_root = std::move(m_root->find_and_take_ownership(g, m_rootstate));
-        m_rootstate = g;
     }
-
     m_nodes = m_root->count_nodes();
 }
 
