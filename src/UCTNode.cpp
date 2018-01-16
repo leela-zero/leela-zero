@@ -398,8 +398,8 @@ const std::vector<UCTNode::node_ptr_t>& UCTNode::get_children() const {
     return m_children;
 }
 
-int UCTNode::count_nodes() const {
-    auto nodecount = 0;
+size_t UCTNode::count_nodes() const {
+    auto nodecount = size_t{0};
     if (m_has_children) {
         nodecount += m_children.size();
         for (auto& child : m_children) {
@@ -412,9 +412,6 @@ int UCTNode::count_nodes() const {
 // Use this version if you know the child is directly under the parent.
 UCTNode::node_ptr_t UCTNode::find_and_take_ownership(const int move) {
     if (m_has_children) {
-        // TODO: I couldn't get the find_if version to work.
-        // auto& child = std::find_if(begin(m_children), end(m_children),
-        //     [&move](auto &child) { return child->get_move == move; });
         for (auto& child : m_children) {
             if (child->get_move() == move) {
                 return std::move(child);

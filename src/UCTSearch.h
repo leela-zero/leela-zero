@@ -76,10 +76,10 @@ public:
 
     UCTSearch();
     void set_gamestate(GameState& g);
-    int think(int color, passflag_t passflag = NORMAL);
+    int think(int color, GameState& g, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
-    void ponder();
+    void ponder(GameState& g);
     bool is_running() const;
     bool playout_or_visit_limit_reached() const;
     void increment_playouts();
@@ -91,8 +91,8 @@ private:
     void dump_analysis(int playouts);
     int get_best_move(passflag_t passflag);
 
-    std::unique_ptr<GameState> m_rootstate{nullptr};
-    std::unique_ptr<UCTNode> m_root{nullptr};
+    GameState m_rootstate;
+    std::unique_ptr<UCTNode> m_root;
     std::atomic<int> m_nodes{0};
     std::atomic<int> m_playouts{0};
     std::atomic<bool> m_run{false};
