@@ -426,6 +426,9 @@ UCTNode::node_ptr_t UCTNode::find_and_take_ownership(const int move) {
 // Use this version if the child could be anywhere.
 // Gives up after searching the direct children.
 UCTNode::node_ptr_t UCTNode::find_and_take_ownership(const GameState& g_new, GameState& g_curr) {
+    if (g_new.get_komi() != g_curr.get_komi()) {
+        return std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+    }
     if (m_has_children) {
         for (auto& child : m_children) {
             auto move = child->get_move();

@@ -49,17 +49,11 @@ void UCTSearch::set_gamestate(const GameState & g) {
     // Definition of m_playouts is playouts from a certain GameState.
     // So reset this count now.
     m_playouts = 0;
-    if (m_rootstate.get_komi() != g.get_komi()) {
-        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
-        m_rootstate = g;
-    } else if (m_rootstate.board.get_hash() != g.board.get_hash()) {
+    if (m_rootstate.get_komi() != g.get_komi()
+        || m_rootstate.board.get_hash() != g.board.get_hash()) {
         m_root = std::move(m_root->find_and_take_ownership(g, m_rootstate));
-        if (m_root == nullptr) {
-            m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
-        }
         m_rootstate = g;
     }
-    // else: root was a match, keep the same m_root and m_rootstate.
 
     m_nodes = m_root->count_nodes();
 }
