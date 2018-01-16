@@ -72,8 +72,8 @@ void Management::runTuningProcess(const QString &tuneCmdLine) {
 void Management::giveAssignments() {
     sendAllGames();
 
-    //Make the OpenCl tunig before starting the threads
-    QTextStream(stdout) << "Start tuning process please wait ..." << endl;
+    //Make the OpenCl tuning before starting the threads
+    QTextStream(stdout) << "Starting tuning process, please wait..." << endl;
 
     Order tuneOrder = getWork(true);
     QString tuneCmdLine("./leelaz --tune-only -w ");
