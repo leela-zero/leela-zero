@@ -95,13 +95,7 @@ void FastState::play_move(int vertex) {
 void FastState::play_move(int color, int vertex) {
     if (vertex != FastBoard::PASS) {
         board.m_hash ^= Zobrist::zobrist_ko[m_komove];
-        int kosq = board.update_board(color, vertex);
-        if ( board.get_square(kosq) == FastBoard::EMPTY &&
-            !board.is_suicide(kosq, !color)) {
-            m_komove = kosq;
-        } else {
-            m_komove = FastBoard::PASS;
-        }
+        m_komove = board.update_board(color, vertex);
         board.m_hash ^= Zobrist::zobrist_ko[m_komove];
 
         m_lastmove = vertex;

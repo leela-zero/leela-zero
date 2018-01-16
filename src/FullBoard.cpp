@@ -173,10 +173,12 @@ int FullBoard::update_board(const int color, const int i) {
 
     /* check for possible simple ko */
     if (captured_stones == 1 && eyeplay) {
+        assert (get_square(captured_sq) == FastBoard::EMPTY &&
+            !is_suicide(captured_sq, !color));
         return captured_sq;
     }
 
-    return -1;
+    return FastBoard::PASS;
 }
 
 void FullBoard::display_board(int lastmove) {
@@ -188,6 +190,6 @@ void FullBoard::display_board(int lastmove) {
 void FullBoard::reset_board(int size) {
     FastBoard::reset_board(size);
 
-    calc_hash(FastBoard::PASS);
+    calc_hash();
     calc_ko_hash();
 }
