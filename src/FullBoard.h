@@ -28,10 +28,11 @@ public:
     int remove_string(int i);
     int update_board(const int color, const int i);
 
-    std::uint64_t calc_hash(void);
+    std::uint64_t calc_hash(int komove = FastBoard::PASS);
     std::uint64_t calc_ko_hash(void);
     std::uint64_t get_hash(void) const;
     std::uint64_t get_ko_hash(void) const;
+    void set_to_move(int tomove);
 
     void reset_board(int size);
     void display_board(int lastmove = -1);

@@ -29,8 +29,10 @@
 class Zobrist {
 public:
     static std::array<std::array<std::uint64_t, FastBoard::MAXSQ>,     4> zobrist;
+    static std::array<std::uint64_t, FastBoard::MAXSQ>                    zobrist_ko;
     static std::array<std::array<std::uint64_t, FastBoard::MAXSQ * 2>, 2> zobrist_pris;
     static std::array<std::uint64_t, 5>                                   zobrist_pass;
+    static constexpr auto zobrist_blacktomove = 0xABCDABCDABCDABCDULL;
 
     static void init_zobrist(Random& rng);
 };
