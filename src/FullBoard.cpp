@@ -87,7 +87,7 @@ std::uint64_t FullBoard::calc_hash(int komove) {
         res ^= Zobrist::zobrist_blacktomove;
     }
 
-    m_hash ^= Zobrist::zobrist_ko[komove];
+    res ^= Zobrist::zobrist_ko[komove];
 
     m_hash = res;
 
@@ -128,10 +128,10 @@ int FullBoard::update_board(const int color, const int i) {
     add_neighbour(i, color);
 
     /* did we play into an opponent eye? */
-    int eyeplay = (m_neighbours[i] & s_eyemask[!color]);
+    auto eyeplay = (m_neighbours[i] & s_eyemask[!color]);
 
+    auto captured_stones = 0;
     int captured_sq;
-    int captured_stones = 0;
 
     for (int k = 0; k < 4; k++) {
         int ai = i + m_dirs[k];
@@ -161,7 +161,7 @@ int FullBoard::update_board(const int color, const int i) {
     m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
 
     /* move last vertex in list to our position */
-    int lastvertex = m_empty[--m_empty_cnt];
+    auto lastvertex = m_empty[--m_empty_cnt];
     m_empty_idx[lastvertex] = m_empty_idx[i];
     m_empty[m_empty_idx[i]] = lastvertex;
 
@@ -178,7 +178,8 @@ int FullBoard::update_board(const int color, const int i) {
         return captured_sq;
     }
 
-    return FastBoard::PASS;
+    // No ko
+    return 0;
 }
 
 void FullBoard::display_board(int lastmove) {

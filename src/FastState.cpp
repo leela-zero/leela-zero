@@ -34,7 +34,7 @@ void FastState::init_game(int size, float komi) {
 
     m_movenum = 0;
 
-    m_komove = FastBoard::PASS;
+    m_komove = 0;
     m_lastmove = 0;
     m_komi = komi;
     m_handicap = 0;
@@ -53,7 +53,7 @@ void FastState::reset_game(void) {
     m_movenum = 0;
     m_passes = 0;
     m_handicap = 0;
-    m_komove = FastBoard::PASS;
+    m_komove = 0;
     m_lastmove = 0;
 }
 
@@ -75,7 +75,7 @@ void FastState::play_pass(int color) {
     m_lastmove = FastBoard::PASS;
 
     board.m_hash ^= Zobrist::zobrist_ko[m_komove];
-    m_komove = FastBoard::PASS;
+    m_komove = 0;
     board.m_hash ^= Zobrist::zobrist_ko[m_komove];
 
     if (board.m_tomove == color) {

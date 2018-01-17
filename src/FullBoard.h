@@ -28,7 +28,7 @@ public:
     int remove_string(int i);
     int update_board(const int color, const int i);
 
-    std::uint64_t calc_hash(int komove = FastBoard::PASS);
+    std::uint64_t calc_hash(int komove = 0);
     std::uint64_t calc_ko_hash(void);
     std::uint64_t get_hash(void) const;
     std::uint64_t get_ko_hash(void) const;
