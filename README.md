@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/gcp/leela-zero.svg?branch=next)](https://travis-ci.org/gcp/leela-zero)
+
 # What
 
 A Go program with no human provided knowledge. Using MCTS (but without
