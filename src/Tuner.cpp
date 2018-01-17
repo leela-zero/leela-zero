@@ -259,10 +259,13 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
     sgemmBatched_ref(at, b, c_ref, m, n, k, batch_size);
 
     auto aBuffer = cl::Buffer(
+        m_context,
         CL_MEM_READ_WRITE, sizeof(float) * at_size, nullptr, nullptr);
     auto bBuffer = cl::Buffer(
+        m_context,
         CL_MEM_READ_WRITE, sizeof(float) * b_size, nullptr, nullptr);
     auto cBuffer = cl::Buffer(
+        m_context,
         CL_MEM_READ_WRITE, sizeof(float) * c_size, nullptr, nullptr);
 
     myprintf("\nStarted OpenCL SGEMM tuner.\n");
@@ -292,11 +295,11 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
     std::string best_params;
     auto best_time = unsigned{0};
 
-    auto queue = cl::CommandQueue(cl::Context::getDefault(),
-                                  cl::Device::getDefault(),
+    auto queue = cl::CommandQueue(m_context,
+                                  m_device,
                                   CL_QUEUE_PROFILING_ENABLE);
     auto event = cl::Event();
-    auto program = cl::Program(sourceCode_sgemm);
+    auto program = cl::Program(m_context, sourceCode_sgemm);
 
     auto m_ceil_prev = 0;
     auto n_ceil_prev = 0;

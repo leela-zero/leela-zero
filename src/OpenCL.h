@@ -148,6 +148,8 @@ public:
 
     std::vector<size_t> get_sgemm_tuners(void);
 
+    cl::Device m_device;
+    cl::Context m_context;
 private:
     void tune_sgemm(void);
     void process_tuners(std::string tuners);

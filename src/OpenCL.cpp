@@ -311,8 +311,7 @@ void OpenCL::ensure_thread_initialized() {
         opencl_thread_data.m_batchnorm_kernel =
             cl::Kernel(m_program, "batchnorm");
         opencl_thread_data.m_commandqueue =
-            cl::CommandQueue(cl::Context::getDefault(),
-                             cl::Device::getDefault());
+            cl::CommandQueue(m_context, m_device);
         opencl_thread_data.m_is_initialized = true;
     }
 }
@@ -331,6 +330,7 @@ void OpenCL_Network::add_weights(size_t layer,
 
     auto weightSize = size * sizeof(decltype(converted_weights)::value_type);
     m_layers.back().weights.emplace_back(
+        opencl.m_context,
         CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
         weightSize,
         const_cast<net_t*>(converted_weights.data()));
@@ -366,15 +366,20 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         auto v_zeros = std::vector<float>(alloc_vm_size);
 
         opencl_thread_data.m_inBuffer = cl::Buffer(
+            opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_tmpBuffer = cl::Buffer(
+            opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_residualBuffer = cl::Buffer(
+            opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_VBuffer = cl::Buffer(
+            opencl.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR,
             alloc_vm_size, v_zeros.data(), nullptr);
         opencl_thread_data.m_MBuffer = cl::Buffer(
+            opencl.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, alloc_vm_size);
         opencl_thread_data.m_buffers_allocated = true;
     }
@@ -788,7 +793,6 @@ void OpenCL::initialize(const int channels) {
         throw std::runtime_error("No suitable OpenCL device found.");
     }
 
-    cl::Platform::setDefault(best_platform);
     myprintf("Selected platform: %s\n", best_platform.getInfo<CL_PLATFORM_NAME>().c_str());
     myprintf("Selected device: %s\n", trim(best_device.getInfo<CL_DEVICE_NAME>()).c_str());
     myprintf("with OpenCL %2.1f capability.\n", best_version);
@@ -800,12 +804,13 @@ void OpenCL::initialize(const int channels) {
         myprintf("Error creating OpenCL context: %s: %d", e.what(), e.err());
         throw std::runtime_error("Error creating OpenCL context.");
     }
-    cl::Context::setDefault(context);
-    cl::Device::setDefault(best_device);
+    m_context = context;
+    m_device = best_device;
 
     // Make program of the source code in the context
     try {
-        m_program = cl::Program(sourceCode_config
+        m_program = cl::Program(m_context, 
+                                  sourceCode_config
                                 + sourceCode_convolve3
                                 + sourceCode_utility
                                 + sourceCode_sgemm);
@@ -816,7 +821,7 @@ void OpenCL::initialize(const int channels) {
 
     m_cl_args = cl_args;
 
-    auto t = Tuner();
+    auto t = Tuner(m_context, m_device);
     auto sgemm_tuners =
         t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
 
@@ -827,7 +832,7 @@ void OpenCL::initialize(const int channels) {
         m_program.build(args.c_str());
     } catch (const cl::Error&) {
         myprintf("Error building kernels: %s\n",
-                 m_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl::Device::getDefault()).c_str());
+                 m_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device).c_str());
         throw std::runtime_error("Error building OpenCL kernels.");
     }
 
@@ -855,11 +860,10 @@ void OpenCL::initialize(const int channels) {
 std::string OpenCL::get_device_name() {
     std::stringstream ss;
 
-    cl::Device device = cl::Device::getDefault();
     ss << "OpenCL: ";
-    ss << device.getInfo<CL_DEVICE_VENDOR>() << " ";
-    ss << device.getInfo<CL_DEVICE_NAME>() << " @ ";
-    ss << device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << "MHz";
+    ss << m_device.getInfo<CL_DEVICE_VENDOR>() << " ";
+    ss << m_device.getInfo<CL_DEVICE_NAME>() << " @ ";
+    ss << m_device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << "MHz";
 
     return ss.str();
 }
