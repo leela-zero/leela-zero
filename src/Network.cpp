@@ -42,7 +42,7 @@
 #include <cblas.h>
 #endif
 #ifdef USE_OPENCL
-#include "OpenCL.h"
+#include "OpenCLScheduler.h"
 #include "UCTNode.h"
 #endif
 
@@ -325,45 +325,49 @@ void Network::initialize(void) {
     myprintf("Initializing OpenCL.\n");
     opencl.initialize(channels);
 
-    auto tuners = opencl.get_sgemm_tuners();
     if (cfg_tune_only) {
         exit(EXIT_SUCCESS);
     }
-    auto mwg = tuners[0];
-    auto kwg = tuners[2];
-    auto vwm = tuners[3];
 
-    weight_index = 0;
+    for(auto & opencl_net : opencl.get_networks()) {
+        auto tuners = opencl_net->getOpenCL()->get_sgemm_tuners();
 
-    size_t m_ceil = lcm(lcm(channels, mwg), vwm);
-    size_t k_ceil = lcm(lcm(INPUT_CHANNELS, kwg), vwm);
+        auto mwg = tuners[0];
+        auto kwg = tuners[2];
+        auto vwm = tuners[3];
 
-    auto Upad = zeropad_U(conv_weights[weight_index],
-                          channels, INPUT_CHANNELS,
-                          m_ceil, k_ceil);
+        weight_index = 0;
 
-    // Winograd filter transformation changes filter size to 4x4
-    opencl_net.push_convolve(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, Upad);
-    opencl_net.push_batchnorm(361, batchnorm_means[weight_index],
-                                   batchnorm_stddivs[weight_index]);
-    weight_index++;
+        size_t m_ceil = lcm(lcm(channels, mwg), vwm);
+        size_t k_ceil = lcm(lcm(INPUT_CHANNELS, kwg), vwm);
 
-    // residual blocks
-    for (auto i = size_t{0}; i < residual_blocks; i++) {
-        auto Upad1 = zeropad_U(conv_weights[weight_index],
-                               channels, channels,
-                               m_ceil, m_ceil);
-        auto Upad2 = zeropad_U(conv_weights[weight_index + 1],
-                               channels, channels,
-                               m_ceil, m_ceil);
-        opencl_net.push_residual(WINOGRAD_ALPHA, channels, channels,
-                                 Upad1,
-                                 batchnorm_means[weight_index],
-                                 batchnorm_stddivs[weight_index],
-                                 Upad2,
-                                 batchnorm_means[weight_index + 1],
-                                 batchnorm_stddivs[weight_index + 1]);
-        weight_index += 2;
+        auto Upad = zeropad_U(conv_weights[weight_index],
+                              channels, INPUT_CHANNELS,
+                              m_ceil, k_ceil);
+
+        // Winograd filter transformation changes filter size to 4x4
+        opencl_net->push_convolve(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, Upad);
+        opencl_net->push_batchnorm(361, batchnorm_means[weight_index],
+                                    batchnorm_stddivs[weight_index]);
+        weight_index++;
+
+        // residual blocks
+        for (auto i = size_t{0}; i < residual_blocks; i++) {
+            auto Upad1 = zeropad_U(conv_weights[weight_index],
+                                   channels, channels,
+                                   m_ceil, m_ceil);
+            auto Upad2 = zeropad_U(conv_weights[weight_index + 1],
+                                   channels, channels,
+                                   m_ceil, m_ceil);
+            opencl_net->push_residual(WINOGRAD_ALPHA, channels, channels,
+                                      Upad1,
+                                      batchnorm_means[weight_index],
+                                      batchnorm_stddivs[weight_index],
+                                      Upad2,
+                                      batchnorm_means[weight_index + 1],
+                                      batchnorm_stddivs[weight_index + 1]);
+            weight_index += 2;
+        }
     }
 #endif
 #ifdef USE_BLAS
@@ -841,7 +845,7 @@ Network::Netresult Network::get_scored_moves_internal(
         }
     }
 #ifdef USE_OPENCL
-    opencl_net.forward(input_data, output_data);
+    opencl.forward(input_data, output_data);
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
     forward_cpu(input_data, output_data);
 #endif

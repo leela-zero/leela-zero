@@ -313,7 +313,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
         auto defines = parameters_to_defines(p);
 
         try {
-            auto args = opencl.m_cl_args + " " + defines;
+            auto args = m_opencl->m_cl_args + " " + defines;
             program.build(args.c_str());
         } catch (const cl::Error&) {
             // Failed to compile, get next parameter
@@ -420,7 +420,7 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
     }
     auto file = std::ofstream{TUNER_FILE_LOCAL};
 
-    auto device_name = opencl.get_device_name();
+    auto device_name = m_opencl->get_device_name();
     auto tuning_params = std::stringstream{};
     tuning_params << m << ";" << n << ";" << k << ";" << batch_size;
 
@@ -480,7 +480,7 @@ std::string Tuner::sgemm_tuners_from_line(std::string line,
         return "";
     }
 
-    if (s[7] != opencl.get_device_name()) {
+    if (s[7] != m_opencl->get_device_name()) {
         return "";
     }
 
