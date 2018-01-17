@@ -24,7 +24,6 @@
 #include <array>
 #include <cassert>
 #include <cmath>
-#include <fstream>
 #include <iterator>
 #include <memory>
 #include <sstream>
@@ -188,36 +187,17 @@ std::vector<float> Network::zeropad_U(const std::vector<float>& U,
     return Upad;
 }
 
-void Network::initialize(void) {
-    // Prepare rotation table
-    for(auto s = 0; s < 8; s++) {
-        for(auto v = 0; v < 19 * 19; v++) {
-            rotate_nn_idx_table[s][v] = rotate_nn_idx(v, s);
-        }
-    }
+std::pair<int, int>  Network::load_v1_network(std::ifstream& wtfile) {
     // Count size of the network
     myprintf("Detecting residual layers...");
-    std::ifstream wtfile(cfg_weightsfile);
-    if (wtfile.fail()) {
-        myprintf("Could not open weights file: %s\n", cfg_weightsfile.c_str());
-        exit(EXIT_FAILURE);
-    }
-    std::string line;
-    auto linecount = size_t{0};
-    auto format_version = -1;
+    // We are version 1
+    myprintf("v%d...", 1);
+    // First line was the version number
+    auto linecount = size_t{1};
     auto channels = 0;
+    auto line = std::string{};
     while (std::getline(wtfile, line)) {
-        std::stringstream iss(line);
-        // First line is the file format version id
-        if (linecount == 0) {
-           iss >> format_version;
-           if (iss.fail() || format_version != FORMAT_VERSION) {
-               myprintf("Weights file is the wrong version.\n");
-               exit(EXIT_FAILURE);
-           } else {
-               myprintf("v%d...", format_version);
-           }
-        }
+        auto iss = std::stringstream{line};
         // Third line of parameters are the convolution layer biases,
         // so this tells us the amount of channels in the residual layers.
         // (Provided they're all equally large - that's not actually required!)
@@ -234,7 +214,7 @@ void Network::initialize(void) {
     auto residual_blocks = linecount - (1 + 4 + 14);
     if (residual_blocks % 8 != 0) {
         myprintf("\nInconsistent number of weights in the file.\n");
-        exit(EXIT_FAILURE);
+        return {0, 0};
     }
     residual_blocks /= 8;
     myprintf("%d blocks.\n", residual_blocks);
@@ -304,8 +284,51 @@ void Network::initialize(void) {
     }
     wtfile.close();
 
-    auto weight_index = size_t{0};
+    return {channels, residual_blocks};
+}
 
+std::pair<int, int> Network::load_network_file(std::string filename) {
+    auto wtfile = std::ifstream{filename};
+    if (wtfile.fail()) {
+        myprintf("Could not open weights file: %s\n", filename.c_str());
+        return {0, 0};
+    }
+
+    // Read format version
+    auto line = std::string{};
+    auto format_version = -1;
+    if (std::getline(wtfile, line)) {
+        auto iss = std::stringstream{line};
+        // First line is the file format version id
+        iss >> format_version;
+        if (iss.fail() || format_version != FORMAT_VERSION) {
+            myprintf("Weights file is the wrong version.\n");
+            return {0, 0};
+        } else {
+            assert(format_version == FORMAT_VERSION);
+            return load_v1_network(wtfile);
+        }
+    }
+
+    return {0, 0};
+}
+
+void Network::initialize(void) {
+    // Prepare rotation table
+    for(auto s = 0; s < 8; s++) {
+        for(auto v = 0; v < 19 * 19; v++) {
+            rotate_nn_idx_table[s][v] = rotate_nn_idx(v, s);
+        }
+    }
+
+    // Load network from file
+    size_t channels, residual_blocks;
+    std::tie(channels, residual_blocks) = load_network_file(cfg_weightsfile);
+    if (channels == 0) {
+        exit(EXIT_FAILURE);
+    }
+
+    auto weight_index = size_t{0};
     // Input convolution
     // Winograd transform convolution weights
     conv_weights[weight_index] =

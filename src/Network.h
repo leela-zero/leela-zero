@@ -27,6 +27,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <fstream>
 
 #include "FastState.h"
 #include "GameState.h"
@@ -64,6 +65,8 @@ public:
 
     static void gather_features(const GameState* state, NNPlanes& planes);
 private:
+    static std::pair<int, int> load_v1_network(std::ifstream& wtfile);
+    static std::pair<int, int> load_network_file(std::string filename);
     static void process_bn_var(std::vector<float>& weights,
                                const float epsilon=1e-5f);
 
