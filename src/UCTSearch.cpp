@@ -157,6 +157,11 @@ bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
         return false;
     }
 
+    if (cfg_resignpct == 0) {
+        // resign not allowed
+        return false;
+    }
+
     const auto visits = m_root->get_visits();
     if (visits < std::min(500, cfg_max_playouts))  {
         // low visits
