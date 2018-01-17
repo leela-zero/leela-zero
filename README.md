@@ -273,16 +273,12 @@ If interrupted, training can be resumed with:
 # Todo
 
 - [ ] List of package names for more distros
-- [x] A real build system like CMake would nice
-- [x] Provide or link to self-play tooling
-- [x] CPU support for Xeon Phi and for people without a GPU
-- [ ] Faster GPU usage via batching
-- [x] Faster GPU usage via Winograd transforms
+- [ ] Multi-GPU support for training
+- [ ] Multi-GPU support for playing
+- [ ] Optimize Winograd transformations
 - [ ] CUDA specific version using cuDNN
 - [ ] AMD specific version using MIOpen
-- [ ] Faster GPU usage via supporting multiple GPU
-(not very urgent, we need to generate the data & network first and this can be
-done with multiple processes each bound to a GPU)
+- [ ] AppVeyor support for CI and build generation
 
 # Related links
 
@@ -295,6 +291,4 @@ https://github.com/glinscott/leela-chess
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h, half.hpp
-and cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
-those files.
+The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp and the clblast_level3 subdir, which have specific licenses (compatible with GPLv3) mentioned in those files.
