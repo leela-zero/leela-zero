@@ -19,9 +19,9 @@
 #include "Validation.h"
 #include <QFile>
 
-using VersionTuple = std::tuple<int, int>;
+using VersionTuple = std::tuple<int, int, int>;
 // Minimal Leela Zero version we expect to see
-const VersionTuple min_leelaz_version{0, 9};
+const VersionTuple min_leelaz_version{0, 10, 0};
 
 
 void ValidationWorker::run() {
