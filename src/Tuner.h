@@ -30,7 +30,7 @@ using Parameters = std::map<std::string, size_t>;
 class OpenCL;
 
 class Tuner {
-    OpenCL * m_opencl;
+    OpenCL & m_opencl;
     cl::Context m_context;
     cl::Device m_device;
 public:
@@ -40,7 +40,7 @@ public:
                                   const int batch_size);
 
     static constexpr auto TUNER_VERSION = 0;
-    Tuner(OpenCL * opencl, cl::Context context, cl::Device device) :
+    Tuner(OpenCL & opencl, cl::Context context, cl::Device device) :
         m_opencl(opencl), m_context(context), m_device(device) {}
 private:
     void store_sgemm_tuners(const int m, const int n, const int k,

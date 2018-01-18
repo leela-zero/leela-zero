@@ -30,7 +30,7 @@
 
 #include "config.h"
 #include "OpenCL.h"
-
+#include "ThreadPool.h"
 
 class OpenCLScheduler {
 private:
@@ -45,10 +45,7 @@ private:
         ForwardTask(const std::vector<net_t> * in, std::vector<net_t> * out) : input(in), output(out) {}
     };
 
-    std::atomic<bool> m_workers_launched{false};
-    std::deque<ForwardTask> m_task_queue;
-    std::condition_variable m_task_cond;
-    std::mutex m_task_mutex;
+    Utils::ThreadPool m_threadpool;
 public:
     void initialize(const int channels);
     std::vector<std::unique_ptr<OpenCL_Network>> & get_networks() {

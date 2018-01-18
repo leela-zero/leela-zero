@@ -71,8 +71,8 @@ private:
 
 class OpenCL_Network {
 public:
-    OpenCL_Network(OpenCL* opencl) : m_opencl(opencl) {}
-    OpenCL * getOpenCL() {
+    OpenCL_Network(OpenCL & opencl) : m_opencl(opencl) {}
+    OpenCL & getOpenCL() {
         return m_opencl;
     }
     void push_batchnorm(unsigned int spatial_size,
@@ -143,10 +143,12 @@ private:
                    cl::Buffer& output, cl::Buffer* residual,
                    weight_slice_t weights);
 
-    OpenCL * m_opencl;
-    // this mutex is not required for correctness, but this exists simply because queue.finish() is a busy wait
-    // and having a lot of threads waiting here is counterproductive CPU-wise.
-    // at least std::mutex isn't busy wait so it should be better.
+    OpenCL & m_opencl;
+
+    // this mutex is not required for correctness, but this exists simply
+    // because queue.finish() is a busy wait and having a lot of threads
+    // waiting here is counterproductive CPU-wise.  At least std::mutex
+    // isn't busy wait so it should be better.
     std::mutex m_queue_finish_mutex;
     std::vector<Layer> m_layers;
 };
@@ -155,7 +157,7 @@ class OpenCL {
     friend class OpenCL_Network;
     friend class Tuner;
 public:
-    void initialize(const int channels, std::vector<int> gpus, bool silent = false);
+    void initialize(const int channels, const std::vector<int> & gpus, bool silent = false);
     void ensure_thread_initialized(void);
     std::string get_device_name();
 

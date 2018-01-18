@@ -41,6 +41,7 @@ public:
     ThreadPool() = default;
     ~ThreadPool();
     void initialize(std::size_t);
+    void add_thread(std::function<void()> initializer);
     template<class F, class... Args>
     auto add_task(F&& f, Args&&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
@@ -53,23 +54,28 @@ private:
     bool m_exit{false};
 };
 
+inline void ThreadPool::add_thread(std::function<void()> initializer) {
+    m_threads.emplace_back([this, initializer] {
+        initializer();
+        for (;;) {
+            std::function<void()> task;
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_condvar.wait(lock, [this]{ return m_exit || !m_tasks.empty(); });
+                if (m_exit && m_tasks.empty()) {
+                    return;
+                }
+                task = std::move(m_tasks.front());
+                m_tasks.pop();
+            }
+            task();
+        }
+    });
+}
+
 inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
-        m_threads.emplace_back([this] {
-            for (;;) {
-                std::function<void()> task;
-                {
-                    std::unique_lock<std::mutex> lock(m_mutex);
-                    m_condvar.wait(lock, [this]{ return m_exit || !m_tasks.empty(); });
-                    if (m_exit && m_tasks.empty()) {
-                        return;
-                    }
-                    task = std::move(m_tasks.front());
-                    m_tasks.pop();
-                }
-                task();
-            }
-        });
+        add_thread( [](){} /* null function */);
     }
 }
 
