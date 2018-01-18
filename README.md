@@ -1,4 +1,7 @@
-[![Build Status](https://travis-ci.org/gcp/leela-zero.svg?branch=next)](https://travis-ci.org/gcp/leela-zero)
+[![Linux Build Status](https://travis-ci.org/gcp/leela-zero.svg?branch=next)](https://travis-ci.org/gcp/leela-zero)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/pf1hcgly8f1a8iu0/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero/branch/next)
+
+
 
 # What
 
@@ -278,7 +281,6 @@ If interrupted, training can be resumed with:
 - [ ] Optimize Winograd transformations
 - [ ] CUDA specific version using cuDNN
 - [ ] AMD specific version using MIOpen
-- [ ] AppVeyor support for CI and build generation
 
 # Related links
 
