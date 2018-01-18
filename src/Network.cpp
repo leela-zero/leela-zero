@@ -819,15 +819,15 @@ Network::Netresult Network::get_scored_moves(
         return result;
     }
 
-    NNPlanes planes;
-    gather_features(state, planes);
-
     // See if we already have this in the cache.
     if (!skip_cache) {
-      if (NNCache::get_NNCache().lookup(planes, result)) {
+      if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
         return result;
       }
     }
+
+    NNPlanes planes;
+    gather_features(state, planes);
 
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
@@ -840,7 +840,7 @@ Network::Netresult Network::get_scored_moves(
     }
 
     // Insert result into cache.
-    NNCache::get_NNCache().insert(planes, result);
+    NNCache::get_NNCache().insert(state->board.get_hash(), result);
 
     return result;
 }

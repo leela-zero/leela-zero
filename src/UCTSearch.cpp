@@ -34,7 +34,6 @@
 #include "TimeControl.h"
 #include "Timing.h"
 #include "Training.h"
-#include "TTable.h"
 #include "Utils.h"
 
 using namespace Utils;
@@ -63,7 +62,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
 
     auto result = SearchResult{};
 
-    TTable::get_TT().sync(hash, komi, node);
     node->virtual_loss();
 
     if (!node->has_children()) {
@@ -107,7 +105,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
         node->update(result.eval());
     }
     node->virtual_loss_undo();
-    TTable::get_TT().update(hash, komi, node);
 
     return result;
 }
