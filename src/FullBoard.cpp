@@ -70,7 +70,7 @@ std::uint64_t FullBoard::calc_ko_hash(void) {
     return res;
 }
 
-std::uint64_t FullBoard::calc_hash(void) {
+std::uint64_t FullBoard::calc_hash(int komove) {
     auto res = std::uint64_t{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
@@ -84,8 +84,10 @@ std::uint64_t FullBoard::calc_hash(void) {
     res ^= Zobrist::zobrist_pris[1][m_prisoners[1]];
 
     if (m_tomove == BLACK) {
-        res ^= 0xABCDABCDABCDABCDULL;
+        res ^= Zobrist::zobrist_blacktomove;
     }
+
+    res ^= Zobrist::zobrist_ko[komove];
 
     m_hash = res;
 
@@ -98,6 +100,13 @@ std::uint64_t FullBoard::get_hash(void) const {
 
 std::uint64_t FullBoard::get_ko_hash(void) const {
     return m_ko_hash;
+}
+
+void FullBoard::set_to_move(int tomove) {
+    if (m_tomove != tomove) {
+        m_hash ^= Zobrist::zobrist_blacktomove;
+    }
+    FastBoard::set_to_move(tomove);
 }
 
 int FullBoard::update_board(const int color, const int i) {
@@ -119,10 +128,10 @@ int FullBoard::update_board(const int color, const int i) {
     add_neighbour(i, color);
 
     /* did we play into an opponent eye? */
-    int eyeplay = (m_neighbours[i] & s_eyemask[!color]);
+    auto eyeplay = (m_neighbours[i] & s_eyemask[!color]);
 
+    auto captured_stones = 0;
     int captured_sq;
-    int captured_stones = 0;
 
     for (int k = 0; k < 4; k++) {
         int ai = i + m_dirs[k];
@@ -152,7 +161,7 @@ int FullBoard::update_board(const int color, const int i) {
     m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
 
     /* move last vertex in list to our position */
-    int lastvertex = m_empty[--m_empty_cnt];
+    auto lastvertex = m_empty[--m_empty_cnt];
     m_empty_idx[lastvertex] = m_empty_idx[i];
     m_empty[m_empty_idx[i]] = lastvertex;
 
@@ -164,10 +173,13 @@ int FullBoard::update_board(const int color, const int i) {
 
     /* check for possible simple ko */
     if (captured_stones == 1 && eyeplay) {
+        assert (get_square(captured_sq) == FastBoard::EMPTY
+                && !is_suicide(captured_sq, !color));
         return captured_sq;
     }
 
-    return -1;
+    // No ko
+    return 0;
 }
 
 void FullBoard::display_board(int lastmove) {

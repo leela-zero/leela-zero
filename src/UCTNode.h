@@ -69,6 +69,9 @@ public:
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
     const std::vector<node_ptr_t>& get_children() const;
+    size_t count_nodes() const;
+    node_ptr_t find_new_root(const int move);
+    node_ptr_t find_new_root(const GameState& g_new, GameState& g_curr);
 
     void sort_children(int color);
     UCTNode& get_best_root_child(int color);

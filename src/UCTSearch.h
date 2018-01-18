@@ -74,11 +74,12 @@ public:
     static constexpr auto MAX_TREE_SIZE =
         (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
 
-    UCTSearch(GameState& g);
-    int think(int color, passflag_t passflag = NORMAL);
+    UCTSearch();
+    void set_gamestate(const GameState& g);
+    int think(int color, const GameState& g, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
-    void ponder();
+    void ponder(const GameState& g);
     bool is_running() const;
     bool playout_or_visit_limit_reached() const;
     void increment_playouts();
@@ -91,8 +92,8 @@ private:
     bool should_resign(passflag_t passflag, float bestscore);
     int get_best_move(passflag_t passflag);
 
-    GameState & m_rootstate;
-    UCTNode m_root{FastBoard::PASS, 0.0f, 0.5f};
+    GameState m_rootstate;
+    std::unique_ptr<UCTNode> m_root;
     std::atomic<int> m_nodes{0};
     std::atomic<int> m_playouts{0};
     std::atomic<bool> m_run{false};
