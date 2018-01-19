@@ -136,6 +136,7 @@ protected:
     void merge_strings(const int ip, const int aip);
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
+    void print_columns();
 };
 
 #endif
