@@ -15,6 +15,9 @@
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "config.h"
+
+#ifdef USE_OPENCL
 #include "GTP.h"
 #include "Random.h"
 #include "OpenCLScheduler.h"
@@ -75,3 +78,4 @@ void OpenCLScheduler::forward(const std::vector<net_t>& input,
 
     f.get();
 }
+#endif

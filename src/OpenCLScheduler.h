@@ -18,11 +18,11 @@
 
 #ifndef OPENCL_SCHEDULER_H_INCLUDED
 #define OPENCL_SCHEDULER_H_INCLUDED
+#include "config.h"
 
 #include <vector>
 #include <future>
 
-#include "config.h"
 #include "OpenCL.h"
 #include "ThreadPool.h"
 
