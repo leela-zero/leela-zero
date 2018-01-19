@@ -86,6 +86,13 @@ using net_t = float;
 #define SELFCHECK_PROBABILITY 2000
 #endif
 
+#ifdef USE_HALF
+#include "half/half.hpp"
+using net_t = half_float::half;
+#else
+using net_t = float;
+#endif
+
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */
     #pragma warning(disable : 4996)
 #endif /* VC8+ */
