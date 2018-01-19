@@ -40,7 +40,12 @@ class ThreadPool {
 public:
     ThreadPool() = default;
     ~ThreadPool();
+   
+    // create worker threads.  This version has no initializers.
     void initialize(std::size_t);
+
+    // add an extra thread.  The thread calls initializer() before doing anything,
+    // so that the user can initialize per-thread data structures before doing work.
     void add_thread(std::function<void()> initializer);
     template<class F, class... Args>
     auto add_task(F&& f, Args&&... args)

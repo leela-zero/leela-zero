@@ -20,12 +20,6 @@
 #define OPENCL_SCHEDULER_H_INCLUDED
 
 #include <vector>
-#include <deque>
-#include <map>
-#include <atomic>
-#include <thread>
-#include <condition_variable>
-#include <mutex>
 #include <future>
 
 #include "config.h"
