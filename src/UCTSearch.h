@@ -19,12 +19,16 @@
 #ifndef UCTSEARCH_H_INCLUDED
 #define UCTSEARCH_H_INCLUDED
 
-#include <memory>
 #include <atomic>
+#include <memory>
+#include <string>
 #include <tuple>
 
+#include "FastBoard.h"
 #include "GameState.h"
+#include "KoState.h"
 #include "UCTNode.h"
+
 
 class SearchResult {
 public:
@@ -45,7 +49,7 @@ public:
     }
 private:
     explicit SearchResult(float eval)
-        : m_valid(true), m_eval(eval) {};
+        : m_valid(true), m_eval(eval) {}
     bool m_valid{false};
     float m_eval{0.0f};
 };
@@ -64,39 +68,43 @@ public:
 
     /*
         Maximum size of the tree in memory. Nodes are about
-        40 bytes, so limit to ~1.6G.
+        48 bytes, so limit to ~1.2G on 32-bits and about 5.5G
+        on 64-bits.
     */
-    static constexpr auto MAX_TREE_SIZE = 40'000'000;
+    static constexpr auto MAX_TREE_SIZE =
+        (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
 
-    UCTSearch(GameState & g);
-    int think(int color, passflag_t passflag = NORMAL);
+    UCTSearch();
+    void set_gamestate(const GameState& g);
+    int think(int color, const GameState& g, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
-    void set_analyzing(bool flag);
-    void set_quiet(bool flag);
-    void ponder();
+    void set_visit_limit(int visits);
+    void ponder(const GameState& g);
     bool is_running() const;
-    bool playout_limit_reached() const;
+    bool playout_or_visit_limit_reached() const;
     void increment_playouts();
-    SearchResult play_simulation(GameState & currstate, UCTNode * const node);
+    SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
-    void dump_stats(KoState & state, UCTNode & parent);
-    std::string get_pv(KoState & state, UCTNode & parent);
+    void dump_stats(KoState& state, UCTNode& parent);
+    std::string get_pv(KoState& state, UCTNode& parent);
     void dump_analysis(int playouts);
+    bool should_resign(passflag_t passflag, float bestscore);
     int get_best_move(passflag_t passflag);
 
-    GameState & m_rootstate;
-    UCTNode m_root{FastBoard::PASS, 0.0f};
+    GameState m_rootstate;
+    std::unique_ptr<UCTNode> m_root;
     std::atomic<int> m_nodes{0};
     std::atomic<int> m_playouts{0};
     std::atomic<bool> m_run{false};
     int m_maxplayouts;
+    int m_maxvisits;
 };
 
 class UCTWorker {
 public:
     UCTWorker(GameState & state, UCTSearch * search, UCTNode * root)
-      : m_rootstate(state), m_search(search), m_root(root) {};
+      : m_rootstate(state), m_search(search), m_root(root) {}
     void operator()();
 private:
     GameState & m_rootstate;

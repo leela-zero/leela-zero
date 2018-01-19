@@ -16,22 +16,22 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <cctype>
-#include <string>
-#include <sstream>
+#include "GameState.h"
+
 #include <algorithm>
 #include <array>
+#include <cassert>
+#include <cctype>
+#include <iterator>
+#include <memory>
+#include <sstream>
+#include <string>
 
-#include "config.h"
-
-#include "KoState.h"
-#include "GameState.h"
+#include "FastBoard.h"
+#include "FastState.h"
 #include "FullBoard.h"
+#include "KoState.h"
 #include "UCTSearch.h"
-#include "Zobrist.h"
-#include "Random.h"
-#include "Utils.h"
 
 void GameState::init_game(int size, float komi) {
     KoState::init_game(size, komi);
@@ -42,8 +42,8 @@ void GameState::init_game(int size, float komi) {
     m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
 
-    return;
-};
+    m_resigned = FastBoard::EMPTY;
+}
 
 void GameState::reset_game() {
     KoState::reset_game();
@@ -52,6 +52,8 @@ void GameState::reset_game() {
     game_history.emplace_back(std::make_shared<KoState>(*this));
 
     m_timecontrol.reset_clocks();
+
+    m_resigned = FastBoard::EMPTY;
 }
 
 bool GameState::forward_move(void) {
@@ -67,9 +69,6 @@ bool GameState::forward_move(void) {
 bool GameState::undo_move(void) {
     if (m_movenum > 0) {
         m_movenum--;
-
-        // don't actually delete it!
-        //game_history.pop_back();
 
         // this is not so nice, but it should work
         *(static_cast<KoState*>(this)) = *game_history[m_movenum];
@@ -87,7 +86,7 @@ void GameState::rewind(void) {
 }
 
 void GameState::play_move(int vertex) {
-    play_move(board.get_to_move(), vertex);
+    play_move(get_to_move(), vertex);
 }
 
 void GameState::play_pass() {
@@ -97,14 +96,10 @@ void GameState::play_pass() {
 void GameState::play_move(int color, int vertex) {
     if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
         KoState::play_move(color, vertex);
-    } else {
+    } else if (vertex == FastBoard::PASS) {
         KoState::play_pass();
-        if (vertex == FastBoard::RESIGN) {
-            std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1,
-                        rend(m_lastmove));
-            m_lastmove[0] = vertex;
-            m_last_was_capture = false;
-        }
+    } else if (vertex == FastBoard::RESIGN) {
+        m_resigned = color;
     }
 
     // cut off any leftover moves from navigating
@@ -154,7 +149,8 @@ bool GameState::play_textmove(std::string color, std::string vertex) {
 
     int move = board.get_vertex(column, row);
 
-    play_move(who, move);
+    set_to_move(who);
+    play_move(move);
 
     return true;
 }
@@ -171,6 +167,14 @@ void GameState::display_state() {
     FastState::display_state();
 
     m_timecontrol.display_times();
+}
+
+int GameState::who_resigned() const {
+    return m_resigned;
+}
+
+bool GameState::has_resigned() const {
+    return m_resigned != FastBoard::EMPTY;
 }
 
 TimeControl& GameState::get_timecontrol() {
@@ -198,11 +202,6 @@ void GameState::anchor_game_history(void) {
     m_movenum = 0;
     game_history.clear();
     game_history.emplace_back(std::make_shared<KoState>(*this));
-}
-
-void GameState::trim_game_history(int lastmove) {
-    m_movenum = lastmove - 1;
-    game_history.resize(lastmove);
 }
 
 bool GameState::set_fixed_handicap(int handicap) {
@@ -317,10 +316,9 @@ void GameState::place_free_handicap(int stones) {
 
     stones -= set_fixed_handicap_2(stones);
 
+    UCTSearch search;
     for (int i = 0; i < stones; i++) {
-        auto search = std::make_unique<UCTSearch>(*this);
-
-        int move = search->think(FastBoard::BLACK, UCTSearch::NOPASS);
+        int move = search.think(FastBoard::BLACK, *this, UCTSearch::NOPASS);
         play_move(FastBoard::BLACK, move);
     }
 
@@ -333,4 +331,10 @@ void GameState::place_free_handicap(int stones) {
     anchor_game_history();
 
     set_handicap(orgstones);
+}
+
+const FullBoard& GameState::get_past_board(int moves_ago) const {
+    assert(moves_ago >= 0 && (unsigned)moves_ago <= m_movenum);
+    assert(m_movenum + 1 <= game_history.size());
+    return game_history[m_movenum - moves_ago]->board;
 }

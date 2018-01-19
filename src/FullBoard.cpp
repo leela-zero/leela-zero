@@ -16,14 +16,14 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
-#include <algorithm>
-
 #include "config.h"
 
+#include <array>
+#include <cassert>
+
 #include "FullBoard.h"
-#include "Zobrist.h"
 #include "Utils.h"
+#include "Zobrist.h"
 
 using namespace Utils;
 
@@ -33,12 +33,11 @@ int FullBoard::remove_string(int i) {
     int color = m_square[i];
 
     do {
-        hash    ^= Zobrist::zobrist[m_square[pos]][pos];
-        ko_hash ^= Zobrist::zobrist[m_square[pos]][pos];
+        m_hash    ^= Zobrist::zobrist[m_square[pos]][pos];
+        m_ko_hash ^= Zobrist::zobrist[m_square[pos]][pos];
 
         m_square[pos] = EMPTY;
         m_parent[pos] = MAXSQ;
-        m_totalstones[color]--;
 
         remove_neighbour(pos, color);
 
@@ -46,8 +45,8 @@ int FullBoard::remove_string(int i) {
         m_empty[m_empty_cnt]  = pos;
         m_empty_cnt++;
 
-        hash    ^= Zobrist::zobrist[m_square[pos]][pos];
-        ko_hash ^= Zobrist::zobrist[m_square[pos]][pos];
+        m_hash    ^= Zobrist::zobrist[m_square[pos]][pos];
+        m_ko_hash ^= Zobrist::zobrist[m_square[pos]][pos];
 
         removed++;
         pos = m_next[pos];
@@ -56,14 +55,8 @@ int FullBoard::remove_string(int i) {
     return removed;
 }
 
-uint64 FullBoard::calc_ko_hash(void) {
-    uint64 res;
-
-#ifdef _WIN32
-    res = 0x1234567887654321UI64;
-#else
-    res = 0x1234567887654321ULL;
-#endif
+std::uint64_t FullBoard::calc_ko_hash(void) {
+    auto res = std::uint64_t{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
@@ -71,20 +64,14 @@ uint64 FullBoard::calc_ko_hash(void) {
         }
     }
 
-    ko_hash = res;
+    m_ko_hash = res;
 
     /* Tromp-Taylor has positional superko */
     return res;
 }
 
-uint64 FullBoard::calc_hash(void) {
-    uint64 res;
-
-#ifdef _WIN32
-    res = 0x1234567887654321UI64;
-#else
-    res = 0x1234567887654321ULL;
-#endif
+std::uint64_t FullBoard::calc_hash(int komove) {
+    auto res = std::uint64_t{0x1234567887654321ULL};
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
@@ -96,78 +83,55 @@ uint64 FullBoard::calc_hash(void) {
     res ^= Zobrist::zobrist_pris[0][m_prisoners[0]];
     res ^= Zobrist::zobrist_pris[1][m_prisoners[1]];
 
-    if (m_tomove == BLACK)
-#ifdef _WIN32
-        res ^= 0xABCDABCDABCDABCDUI64;
-#else
-        res ^= 0xABCDABCDABCDABCDULL;
-#endif
+    if (m_tomove == BLACK) {
+        res ^= Zobrist::zobrist_blacktomove;
+    }
 
-    hash = res;
+    res ^= Zobrist::zobrist_ko[komove];
+
+    m_hash = res;
 
     return res;
 }
 
-std::array<uint64, 8> FullBoard::get_rotated_hashes(void) {
-    std::array<uint64, 8> result;
+std::uint64_t FullBoard::get_hash(void) const {
+    return m_hash;
+}
 
-    for (int sym = 0; sym < 8; sym++) {
-        uint64 res = 0x1234567887654321ULL;
+std::uint64_t FullBoard::get_ko_hash(void) const {
+    return m_ko_hash;
+}
 
-        for (int i = 0; i < m_maxsq; i++) {
-            if (m_square[i] != INVAL) {
-                int newi = rotate_vertex(i, sym);
-                res ^= Zobrist::zobrist[m_square[i]][newi];
-            }
-        }
-        /* prisoner hashing is rule set dependent */
-        res ^= Zobrist::zobrist_pris[0][m_prisoners[0]];
-        res ^= Zobrist::zobrist_pris[1][m_prisoners[1]];
-        if (m_tomove == BLACK)
-           res ^= 0xABCDABCDABCDABCDULL;
-        result[sym] = res;
+void FullBoard::set_to_move(int tomove) {
+    if (m_tomove != tomove) {
+        m_hash ^= Zobrist::zobrist_blacktomove;
     }
-
-    return result;
+    FastBoard::set_to_move(tomove);
 }
 
-uint64 FullBoard::get_canonical_hash(void) {
-    auto hashes = get_rotated_hashes();
-    return *std::min_element(hashes.cbegin(), hashes.cend());
-}
-
-uint64 FullBoard::get_hash(void) {
-    return hash;
-}
-
-uint64 FullBoard::get_ko_hash(void) {
-    return ko_hash;
-}
-
-int FullBoard::update_board(const int color, const int i, bool &capture) {
+int FullBoard::update_board(const int color, const int i) {
     assert(m_square[i] == EMPTY);
 
-    hash ^= Zobrist::zobrist[m_square[i]][i];
-    ko_hash ^= Zobrist::zobrist[m_square[i]][i];
+    m_hash ^= Zobrist::zobrist[m_square[i]][i];
+    m_ko_hash ^= Zobrist::zobrist[m_square[i]][i];
 
     m_square[i] = (square_t)color;
     m_next[i] = i;
     m_parent[i] = i;
     m_libs[i] = count_pliberties(i);
     m_stones[i] = 1;
-    m_totalstones[color]++;
 
-    hash ^= Zobrist::zobrist[m_square[i]][i];
-    ko_hash ^= Zobrist::zobrist[m_square[i]][i];
+    m_hash ^= Zobrist::zobrist[m_square[i]][i];
+    m_ko_hash ^= Zobrist::zobrist[m_square[i]][i];
 
     /* update neighbor liberties (they all lose 1) */
     add_neighbour(i, color);
 
     /* did we play into an opponent eye? */
-    int eyeplay = (m_neighbours[i] & s_eyemask[!color]);
+    auto eyeplay = (m_neighbours[i] & s_eyemask[!color]);
 
+    auto captured_stones = 0;
     int captured_sq;
-    int captured_stones = 0;
 
     for (int k = 0; k < 4; k++) {
         int ai = i + m_dirs[k];
@@ -192,36 +156,36 @@ int FullBoard::update_board(const int color, const int i, bool &capture) {
         }
     }
 
-    hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
+    m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
     m_prisoners[color] += captured_stones;
-    hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
+    m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
 
     /* move last vertex in list to our position */
-    int lastvertex = m_empty[--m_empty_cnt];
+    auto lastvertex = m_empty[--m_empty_cnt];
     m_empty_idx[lastvertex] = m_empty_idx[i];
     m_empty[m_empty_idx[i]] = lastvertex;
 
     /* check whether we still live (i.e. detect suicide) */
     if (m_libs[m_parent[i]] == 0) {
         assert(captured_stones == 0);
-        remove_string_fast(i);
+        remove_string(i);
     }
 
-    if (captured_stones) {
-        capture = true;
-        /* check for possible simple ko */
-        if (captured_stones == 1 && eyeplay) {
-            return captured_sq;
-        }
+    /* check for possible simple ko */
+    if (captured_stones == 1 && eyeplay) {
+        assert (get_square(captured_sq) == FastBoard::EMPTY
+                && !is_suicide(captured_sq, !color));
+        return captured_sq;
     }
 
-    return -1;
+    // No ko
+    return 0;
 }
 
 void FullBoard::display_board(int lastmove) {
     FastBoard::display_board(lastmove);
 
-    myprintf("Hash: %llX Ko-Hash: %llX\n\n", hash, ko_hash);
+    myprintf("Hash: %llX Ko-Hash: %llX\n\n", get_hash(), get_ko_hash());
 }
 
 void FullBoard::reset_board(int size) {

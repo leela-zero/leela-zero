@@ -1,3 +1,8 @@
+[![Linux Build Status](https://travis-ci.org/gcp/leela-zero.svg?branch=next)](https://travis-ci.org/gcp/leela-zero)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/pf1hcgly8f1a8iu0/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero/branch/next)
+
+
+
 # What
 
 A Go program with no human provided knowledge. Using MCTS (but without
@@ -31,6 +36,11 @@ a good network (which you can feed into this program, suddenly making it strong)
 You need a PC with a GPU, i.e. a discrete graphics card made by NVIDIA or AMD,
 preferably not too old, and with the most recent drivers installed.
 
+It is possible to run the program without a GPU, but performance will be much
+lower. If your CPU is not *very* recent (Haswell or newer, Ryzen or newer),
+performance will be outright bad, and it's probably of no use trying to join
+the distributed effort. But you can still play, especially if you are patient.
+
 ## Windows
 
 Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
@@ -53,10 +63,6 @@ It's not very strong right now (and it's trained from human games, boo!).
 It will clobber gnugo, but lose to any serious engine. Hey, you said you just
 wanted to play right now!
 
-I plan to update this network with more or better training when available - just
-feeding it into this program will make it stronger. Unzip it and specify the
-weights.txt file on the command line with the -w option.
-
 # Compiling
 
 ## Requirements
@@ -68,8 +74,10 @@ weights.txt file on the command line with the -w option.
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
 https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 * OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
-* An OpenCL capable device, preferably a very, very fast GPU, with drivers
-(OpenCL 1.2 support should be enough, even OpenCL 1.1 might work)
+* An OpenCL capable device, preferably a very, very fast GPU, with recent
+drivers is strongly recommended (OpenCL 1.2 support should be enough,
+even OpenCL 1.1 might work). If you do not have a GPU, modify config.h in the
+source and remove the line that says "#define USE_OPENCL".
 * The program has been tested on Windows, Linux and macOS.
 
 ## Example of compiling and running - Ubuntu
@@ -93,12 +101,10 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
     brew install boost
-    edit config.h, remove the USE_OPENBLAS line
-    edit Makefile, uncomment the "for macOS" lines
     make
     cd ..
     curl -O https://sjeng.org/zero/best_v1.txt.zip
-    unzip https://sjeng.org/zero/best_v1.txt.zip
+    unzip best_v1.txt.zip
     src/leelaz --weights weights.txt
 
 ## Example of compiling and running - Windows
@@ -112,6 +118,24 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     # Build from Visual Studio 2015 or 2017
     # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to msvc/x64/Release
     # msvc/x64/Release/leela-zero --weights weights.txt
+
+## Example of compiling and running - CMake (macOS/Ubuntu)
+
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero
+    git submodule update --init --recursive
+
+    # Use stand alone directory to keep source dir clean
+    mkdir build && cd build
+    cmake ..
+    make leelaz
+    make tests
+    ./tests
+    curl -O https://sjeng.org/zero/best_v1.txt.zip
+    unzip best_v1.txt.zip
+    ./leelaz --weights weights.txt
+
 
 # Usage
 
@@ -252,24 +276,20 @@ If interrupted, training can be resumed with:
 # Todo
 
 - [ ] List of package names for more distros
-- [x] A real build system like CMake would nice
-- [x] Provide or link to self-play tooling
-- [ ] CPU support for Xeon Phi and for people without a GPU
-- [ ] Faster GPU usage via batching
-- [ ] Faster GPU usage via Winograd transforms
+- [ ] Multi-GPU support for training
+- [ ] Optimize Winograd transformations
 - [ ] CUDA specific version using cuDNN
 - [ ] AMD specific version using MIOpen
-- [ ] Faster GPU usage via supporting multiple GPU
-(not very urgent, we need to generate the data & network first and this can be
-done with multiple processes each bound to a GPU)
 
 # Related links
 
+* Status page of the distributed effort:
+http://zero.sjeng.org
 * Watch Leela Zero's training games live in a GUI:
 https://github.com/fsparv/LeelaWatcher
+* Stockfish chess engine ported to Leela Zero framework:
+https://github.com/glinscott/leela-chess
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h, half.hpp
-and cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
-those files.
+The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp and the clblast_level3 subdir, which have specific licenses (compatible with GPLv3) mentioned in those files.

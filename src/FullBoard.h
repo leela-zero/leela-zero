@@ -20,31 +20,25 @@
 #define FULLBOARD_H_INCLUDED
 
 #include "config.h"
+#include <cstdint>
 #include "FastBoard.h"
 
 class FullBoard : public FastBoard {
 public:
     int remove_string(int i);
-    int update_board(const int color, const int i, bool & capture);
+    int update_board(const int color, const int i);
 
-    uint64 calc_hash(void);
-    uint64 calc_ko_hash(void);
-    uint64 get_hash(void);
-    uint64 get_ko_hash(void);
-    uint64 get_canonical_hash(void);
-
-    // calculates hash after move without executing it
-    // good for calculating superko
-    uint64 predict_ko_hash(int color, int move);
+    std::uint64_t calc_hash(int komove = 0);
+    std::uint64_t calc_ko_hash(void);
+    std::uint64_t get_hash(void) const;
+    std::uint64_t get_ko_hash(void) const;
+    void set_to_move(int tomove);
 
     void reset_board(int size);
     void display_board(int lastmove = -1);
 
-    uint64 hash;
-    uint64 ko_hash;
-
-private:
-    std::array<uint64, 8> get_rotated_hashes(void);
+    std::uint64_t m_hash;
+    std::uint64_t m_ko_hash;
 };
 
 #endif

@@ -20,16 +20,25 @@
 #define TRAINING_H_INCLUDED
 
 #include "config.h"
+
+#include <cstddef>
 #include <string>
 #include <utility>
+#include <vector>
+
 #include "GameState.h"
 #include "Network.h"
+#include "UCTNode.h"
 
 class TimeStep {
 public:
     Network::NNPlanes planes;
     std::vector<float> probabilities;
     int to_move;
+    float net_winrate;
+    float root_uct_winrate;
+    float child_uct_winrate;
+    int bestmove_visits;
 };
 
 class OutputChunker {
@@ -55,7 +64,8 @@ public:
     static void clear_training();
     static void dump_training(int winner_color,
                               const std::string& out_filename);
-    static void record(GameState& state, const UCTNode& node);
+    static void dump_debug(const std::string& out_filename);
+    static void record(GameState& state, UCTNode& node);
 
     static void dump_supervised(const std::string& sgf_file,
                                 const std::string& out_filename);
@@ -69,6 +79,7 @@ private:
                              OutputChunker& outchunker);
     static void dump_training(int winner_color,
                               OutputChunker& outchunker);
+    static void dump_debug(OutputChunker& outchunker);
     static std::vector<TimeStep> m_data;
 };
 

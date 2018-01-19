@@ -17,15 +17,18 @@
 */
 
 #include "config.h"
-
-#include <vector>
-
-#include "Utils.h"
 #include "TTable.h"
 
-TTable* TTable::get_TT(void) {
+#include <algorithm>
+#include <iterator>
+#include <memory>
+#include <vector>
+
+#include "UCTNode.h"
+
+TTable& TTable::get_TT(void) {
     static TTable s_ttable;
-    return &s_ttable;
+    return s_ttable;
 }
 
 TTable::TTable(int size) {
@@ -33,7 +36,7 @@ TTable::TTable(int size) {
     m_buckets.resize(size);
 }
 
-void TTable::update(uint64 hash, const float komi, const UCTNode * node) {
+void TTable::update(std::uint64_t hash, const float komi, const UCTNode * node) {
     LOCK(m_mutex, lock);
 
     unsigned int index = (unsigned int)hash;
@@ -52,7 +55,7 @@ void TTable::update(uint64 hash, const float komi, const UCTNode * node) {
     }
 }
 
-void TTable::sync(uint64 hash, const float komi, UCTNode * node) {
+void TTable::sync(std::uint64_t hash, const float komi, UCTNode * node) {
     LOCK(m_mutex, lock);
 
     unsigned int index = (unsigned int)hash;

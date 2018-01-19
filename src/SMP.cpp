@@ -16,17 +16,12 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
 #include "SMP.h"
 
 #include <thread>
 
 SMP::Mutex::Mutex() {
     m_lock = false;
-}
-
-bool SMP::Mutex::is_held() {
-    return m_lock.load(std::memory_order_acquire);
 }
 
 SMP::Lock::Lock(Mutex & m) {

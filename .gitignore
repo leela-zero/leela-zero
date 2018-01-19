@@ -1,5 +1,9 @@
 leelaz
 *.o
 *.d
+.vscode/settings.json
+training/tf/leelalogs
+training/tf/checkpoint
 training/tf/venv
-weights.txt
+leelaz-model*
+*.orig

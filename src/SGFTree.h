@@ -19,12 +19,15 @@
 #ifndef SGFTREE_H_INCLUDED
 #define SGFTREE_H_INCLUDED
 
-#include <vector>
+#include <cstddef>
 #include <map>
-#include <string>
 #include <sstream>
-#include "KoState.h"
+#include <string>
+#include <vector>
+
+#include "FastBoard.h"
 #include "GameState.h"
+#include "KoState.h"
 
 class SGFTree {
 public:
@@ -34,13 +37,10 @@ public:
     void init_state();
 
     KoState * get_state();
-    KoState * get_state_from_mainline(unsigned int movenum = 999);
     GameState follow_mainline_state(unsigned int movenum = 999);
     std::vector<int> get_mainline();
     void load_from_file(std::string filename, int index = 0);
     void load_from_string(std::string gamebuff);
-
-    int count_mainline_moves(void);
 
     void add_property(std::string property, std::string value);
     SGFTree * add_child();
@@ -48,8 +48,8 @@ public:
     int get_move(int tomove);
     bool is_initialized() const {
         return m_initialized;
-    };
-    FastBoard::square_t get_winner();
+    }
+    FastBoard::square_t get_winner() const;
 
     static std::string state_to_string(GameState& state, int compcolor);
 

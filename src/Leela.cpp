@@ -18,33 +18,38 @@
 
 #include "config.h"
 
+#include <cstdint>
+#include <algorithm>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
-#include <boost/program_options.hpp>
-#include <boost/format.hpp>
-#include "Network.h"
+#include <string>
+#include <vector>
 
-#include "Zobrist.h"
 #include "GTP.h"
-#include "SMP.h"
+#include "GameState.h"
+#include "Network.h"
+#include "NNCache.h"
 #include "Random.h"
-#include "Utils.h"
 #include "ThreadPool.h"
+#include "Utils.h"
+#include "Zobrist.h"
 
 using namespace Utils;
 
-void license_blurb() {
+static void license_blurb() {
     printf(
-        "Leela Zero  Copyright (C) 2017  Gian-Carlo Pascutto\n"
+        "Leela Zero  Copyright (C) 2017-2018  Gian-Carlo Pascutto and contributors\n"
         "This program comes with ABSOLUTELY NO WARRANTY.\n"
         "This is free software, and you are welcome to redistribute it\n"
         "under certain conditions; see the COPYING file for details.\n\n"
     );
 }
 
-void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
+static void parse_commandline(int argc, char *argv[]) {
     namespace po = boost::program_options;
     // Declare the supported options.
     po::options_description v_desc("Allowed options");
@@ -57,6 +62,8 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("playouts,p", po::value<int>(),
                        "Weaken engine by limiting the number of playouts. "
                        "Requires --noponder.")
+        ("visits,v", po::value<int>(),
+                     "Weaken engine by limiting the number of visits. ")
         ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
                         "Safety margin for time usage in centiseconds.")
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
@@ -64,6 +71,8 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         ("randomcnt,m", po::value<int>()->default_value(cfg_random_cnt),
                         "Play more randomly the first x moves.")
         ("noise,n", "Enable policy network randomization.")
+        ("seed,s", po::value<std::uint64_t>(),
+                   "Random number generation seed.")
         ("dumbpass,d", "Don't use heuristics for smarter passing.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
@@ -72,13 +81,11 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
 #ifdef USE_OPENCL
         ("gpu",  po::value<std::vector<int> >(),
                 "ID of the OpenCL device(s) to use (disables autodetection).")
-        ("rowtiles", po::value<int>()->default_value(cfg_rowtiles),
-                     "Split up the board in # tiles.")
+        ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
+        ("tune-only", "Tune OpenCL only and then exit.")
 #endif
 #ifdef USE_TUNER
         ("puct", po::value<float>())
-        ("cutoff_offset", po::value<float>())
-        ("cutoff_ratio", po::value<float>())
         ("softmax_temp", po::value<float>())
 #endif
         ;
@@ -131,12 +138,6 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
     if (vm.count("softmax_temp")) {
         cfg_softmax_temp = vm["softmax_temp"].as<float>();
     }
-    if (vm.count("cutoff_offset")) {
-        cfg_cutoff_offset = vm["cutoff_offset"].as<float>();
-    }
-    if (vm.count("cutoff_ratio")) {
-        cfg_cutoff_ratio = vm["cutoff_ratio"].as<float>();
-    }
 #endif
 
     if (vm.count("logfile")) {
@@ -153,7 +154,7 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
     }
 
     if (vm.count("gtp")) {
-        gtp_mode = true;
+        cfg_gtp_mode = true;
     }
 
     if (vm.count("threads")) {
@@ -165,6 +166,15 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
             cfg_num_threads = num_threads;
         }
     }
+
+    if (vm.count("seed")) {
+        cfg_rng_seed = vm["seed"].as<std::uint64_t>();
+        if (cfg_num_threads > 1) {
+            myprintf("Seed specified but multiple threads enabled.\n");
+            myprintf("Games will likely not be reproducible.\n");
+        }
+    }
+    myprintf("RNG seed: %llu\n", cfg_rng_seed);
 
     if (vm.count("noponder")) {
         cfg_allow_pondering = false;
@@ -188,6 +198,10 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         }
     }
 
+    if (vm.count("visits")) {
+        cfg_max_visits = vm["visits"].as<int>();
+    }
+
     if (vm.count("resignpct")) {
         cfg_resignpct = vm["resignpct"].as<int>();
     }
@@ -209,58 +223,76 @@ void parse_commandline(int argc, char *argv[], bool & gtp_mode) {
         cfg_gpus = vm["gpu"].as<std::vector<int> >();
     }
 
-    if (vm.count("rowtiles")) {
-        int rowtiles = vm["rowtiles"].as<int>();
-        rowtiles = std::min(19, rowtiles);
-        rowtiles = std::max(1, rowtiles);
-        if (rowtiles != cfg_rowtiles) {
-            myprintf("Splitting the board in %d tiles.\n", rowtiles);
-            cfg_rowtiles = rowtiles;
-        }
+    if (vm.count("full-tuner")) {
+        cfg_sgemm_exhaustive = true;
+    }
+
+    if (vm.count("tune-only")) {
+        cfg_tune_only = true;
     }
 #endif
+
+    auto out = std::stringstream{};
+    for (auto i = 1; i < argc; i++) {
+        out << " " << argv[i];
+    }
+    if (!vm.count("seed")) {
+        out << " --seed " << cfg_rng_seed;
+    }
+    cfg_options_str = out.str();
 }
 
-int main (int argc, char *argv[]) {
-    bool gtp_mode = false;
-    std::string input;
-
-    // Set up engine parameters
-    GTP::setup_default_parameters();
-    parse_commandline(argc, argv, gtp_mode);
-
-    // Disable IO buffering as much as possible
-    std::cout.setf(std::ios::unitbuf);
-    std::cerr.setf(std::ios::unitbuf);
-    std::cin.setf(std::ios::unitbuf);
-
-    setbuf(stdout, NULL);
-    setbuf(stderr, NULL);
-#ifndef WIN32
-    setbuf(stdin, NULL);
-#endif
-
-    if (!gtp_mode) {
-        license_blurb();
-    }
-
+// Setup global objects after command line has been parsed
+void init_global_objects() {
     thread_pool.initialize(cfg_num_threads);
 
     // Use deterministic random numbers for hashing
     auto rng = std::make_unique<Random>(5489);
     Zobrist::init_zobrist(*rng);
 
+    // Initialize the main thread RNG.
+    // Doing this here avoids mixing in the thread_id, which
+    // improves reproducibility across platforms.
+    Random::get_Rng().seedrandom(cfg_rng_seed);
+
+    NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
+
     // Initialize network
     Network::initialize();
+}
+
+int main (int argc, char *argv[]) {
+    auto input = std::string{};
+
+    // Set up engine parameters
+    GTP::setup_default_parameters();
+    parse_commandline(argc, argv);
+
+    // Disable IO buffering as much as possible
+    std::cout.setf(std::ios::unitbuf);
+    std::cerr.setf(std::ios::unitbuf);
+    std::cin.setf(std::ios::unitbuf);
+
+    setbuf(stdout, nullptr);
+    setbuf(stderr, nullptr);
+#ifndef WIN32
+    setbuf(stdin, nullptr);
+#endif
+
+    if (!cfg_gtp_mode) {
+        license_blurb();
+    }
+
+    init_global_objects();
 
     auto maingame = std::make_unique<GameState>();
 
     /* set board limits */
-    float komi = 7.5;
+    auto komi = 7.5f;
     maingame->init_game(19, komi);
 
     for(;;) {
-        if (!gtp_mode) {
+        if (!cfg_gtp_mode) {
             maingame->display_state();
             std::cout << "Leela: ";
         }

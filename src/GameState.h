@@ -19,9 +19,9 @@
 #ifndef GAMESTATE_H_INCLUDED
 #define GAMESTATE_H_INCLUDED
 
-#include <vector>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "FastState.h"
 #include "FullBoard.h"
@@ -35,18 +35,18 @@ public:
         // Copy in fields from base class.
         *(static_cast<KoState*>(this)) = *rhs;
         anchor_game_history();
-    };
+    }
     void init_game(int size, float komi);
     void reset_game();
     bool set_fixed_handicap(int stones);
     int set_fixed_handicap_2(int stones);
     void place_free_handicap(int stones);
     void anchor_game_history(void);
-    void trim_game_history(int lastmove);
 
     void rewind(void); /* undo infinite */
     bool undo_move(void);
     bool forward_move(void);
+    const FullBoard& get_past_board(int moves_ago) const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
@@ -62,12 +62,15 @@ public:
     void adjust_time(int color, int time, int stones);
 
     void display_state();
+    bool has_resigned() const;
+    int who_resigned() const;
 
 private:
     bool valid_handicap(int stones);
 
-    std::vector<std::shared_ptr<KoState>> game_history;
+    std::vector<std::shared_ptr<const KoState>> game_history;
     TimeControl m_timecontrol;
+    int m_resigned{FastBoard::EMPTY};
 };
 
 #endif

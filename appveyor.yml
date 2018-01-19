@@ -1,0 +1,43 @@
+version: '{build}'
+configuration: Release
+platform: x64
+environment:
+  matrix:
+  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+install:
+- cmd: nuget restore msvc\VS2017 -PackagesDirectory pkgs
+cache: pkgs -> appveyor.yml
+build_script:
+- cmd: >-
+    set PKG_FOLDER="%cd%\pkgs"
+
+
+    set QTDIR=C:\Qt\5.9.2\msvc2017_64
+
+    set PATH=%QTDIR%\bin;%PATH%
+
+    "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+
+    cd autogtp
+
+    qmake -tp vc
+
+    msbuild autogtp.vcxproj /p:configuration=Release /verbosity:normal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+
+
+    cd ..
+
+
+    git submodule update --init --recursive
+
+
+    mkdir build
+
+    cd build
+
+    set BLAS_HOME="..\pkgs\OpenBLAS.0.2.14.1\lib\native"
+
+    cmake -G "Visual Studio 15 2017 Win64" -DBOOST_ROOT="C:/Libraries/boost_1_65_1" -DBOOST_LIBRARYDIR="C:/Libraries/boost_1_65_1/lib64-msvc-14.1" -DBoost_USE_STATIC_LIBS=ON -DZLIB_ROOT="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native" -DZLIB_LIBRARY="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native/zlib-msvc14-x64.targets" -DOpenCL_LIBRARY="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/opencl-nug.targets" -DOpenCL_INCLUDE_DIR="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/include" -DBLAS_LIBRARIES="%PKG_FOLDER%/OpenBLAS.0.2.14.1/build/native/openblas.targets" -Dgtest_force_shared_crt=ON ..
+
+    cmake --build . --target leelaz --config Release
+test: off
