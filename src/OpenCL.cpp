@@ -284,7 +284,7 @@ static std::string sourceCode_utility = R"(
     }
 )";
 
-std::string sourceCode_sgemm =
+const std::string sourceCode_sgemm =
     #include "clblast_level3/common.opencl"
     #include "clblast_level3/xgemm_part1.opencl"
     #include "clblast_level3/xgemm_part2.opencl"
@@ -293,8 +293,6 @@ std::string sourceCode_sgemm =
     #include "clblast_level3/xgemm_batched.opencl"
 ;
 
-OpenCL opencl;
-OpenCL_Network opencl_net;
 thread_local ThreadData opencl_thread_data;
 
 void OpenCL::ensure_thread_initialized() {
@@ -311,8 +309,7 @@ void OpenCL::ensure_thread_initialized() {
         opencl_thread_data.m_batchnorm_kernel =
             cl::Kernel(m_program, "batchnorm");
         opencl_thread_data.m_commandqueue =
-            cl::CommandQueue(cl::Context::getDefault(),
-                             cl::Device::getDefault());
+            cl::CommandQueue(m_context, m_device);
         opencl_thread_data.m_is_initialized = true;
     }
 }
@@ -331,6 +328,7 @@ void OpenCL_Network::add_weights(size_t layer,
 
     auto weightSize = size * sizeof(decltype(converted_weights)::value_type);
     m_layers.back().weights.emplace_back(
+        m_opencl.m_context,
         CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
         weightSize,
         const_cast<net_t*>(converted_weights.data()));
@@ -343,7 +341,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     constexpr auto tiles = WINOGRAD_P;
     constexpr auto one_plane = width * height * sizeof(net_t);
 
-    opencl.ensure_thread_initialized();
+    m_opencl.ensure_thread_initialized();
 
     if (!opencl_thread_data.m_buffers_allocated) {
         unsigned int max_channels = 0;
@@ -352,10 +350,10 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                                     std::max(layer.channels, layer.outputs));
         }
 
-        const auto mwg = opencl.m_sgemm_tuners.mwg;
-        const auto nwg = opencl.m_sgemm_tuners.nwg;
-        const auto vwm = opencl.m_sgemm_tuners.vwm;
-        const auto vwn = opencl.m_sgemm_tuners.vwn;
+        const auto mwg = m_opencl.m_sgemm_tuners.mwg;
+        const auto nwg = m_opencl.m_sgemm_tuners.nwg;
+        const auto vwm = m_opencl.m_sgemm_tuners.vwm;
+        const auto vwn = m_opencl.m_sgemm_tuners.vwn;
 
         const auto m_ceil = lcm(lcm(max_channels, mwg), vwm);
         const auto n_ceil = lcm(lcm(tiles, nwg), vwn);
@@ -366,15 +364,20 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         auto v_zeros = std::vector<float>(alloc_vm_size);
 
         opencl_thread_data.m_inBuffer = cl::Buffer(
+            m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_tmpBuffer = cl::Buffer(
+            m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_residualBuffer = cl::Buffer(
+            m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_VBuffer = cl::Buffer(
+            m_opencl.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR,
             alloc_vm_size, v_zeros.data(), nullptr);
         opencl_thread_data.m_MBuffer = cl::Buffer(
+            m_opencl.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, alloc_vm_size);
         opencl_thread_data.m_buffers_allocated = true;
     }
@@ -440,6 +443,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     const auto finalSize = m_layers.back().outputs * one_plane;
     queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, output.data());
 
+    std::lock_guard<std::mutex> lock(m_queue_finish_mutex);
     queue.finish();
 }
 
@@ -456,14 +460,14 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     cl::Kernel & out_transform_kernel = opencl_thread_data.m_out_transform_kernel;
     cl::Kernel & out_transform_bn_kernel = opencl_thread_data.m_out_transform_bn_kernel;
 
-    auto mwg = opencl.m_sgemm_tuners.mwg;
-    auto nwg = opencl.m_sgemm_tuners.nwg;
-    auto kwg = opencl.m_sgemm_tuners.kwg;
-    auto vwm = opencl.m_sgemm_tuners.vwm;
-    auto vwn = opencl.m_sgemm_tuners.vwn;
-    auto mdimc = opencl.m_sgemm_tuners.mdimc;
-    auto ndimc = opencl.m_sgemm_tuners.ndimc;
-    auto wavefront_size = opencl.m_wavefront_size;
+    auto mwg = m_opencl.m_sgemm_tuners.mwg;
+    auto nwg = m_opencl.m_sgemm_tuners.nwg;
+    auto kwg = m_opencl.m_sgemm_tuners.kwg;
+    auto vwm = m_opencl.m_sgemm_tuners.vwm;
+    auto vwn = m_opencl.m_sgemm_tuners.vwn;
+    auto mdimc = m_opencl.m_sgemm_tuners.mdimc;
+    auto ndimc = m_opencl.m_sgemm_tuners.ndimc;
+    auto wavefront_size = m_opencl.m_wavefront_size;
 
     assert(mwg != 0);
     assert(nwg != 0);
@@ -699,7 +703,7 @@ std::vector<size_t> OpenCL::get_sgemm_tuners(void) {
     return tuners;
 }
 
-void OpenCL::initialize(const int channels) {
+void OpenCL::initialize(const int channels, const std::vector<int> & gpus, bool silent) {
     std::vector<cl::Platform> platforms;
     try {
         cl::Platform::get(&platforms);
@@ -716,17 +720,21 @@ void OpenCL::initialize(const int channels) {
     auto found_device = false;
     auto id = 0;
 
-    myprintf("Detected %d OpenCL platforms.\n", platforms.size());
+    if (!silent) {
+        myprintf("Detected %d OpenCL platforms.\n", platforms.size());
+    }
 
     for (const auto &p : platforms) {
         std::string platvers = p.getInfo<CL_PLATFORM_VERSION>();
-        std::string platprof = p.getInfo<CL_PLATFORM_PROFILE>();
-        std::string platname = p.getInfo<CL_PLATFORM_NAME>();
-        std::string platvend = p.getInfo<CL_PLATFORM_VENDOR>();
-        myprintf("Platform version: %s\n", platvers.c_str());;
-        myprintf("Platform profile: %s\n", platprof.c_str());
-        myprintf("Platform name:    %s\n", platname.c_str());
-        myprintf("Platform vendor:  %s\n", platvend.c_str());
+        if (!silent) {
+            std::string platprof = p.getInfo<CL_PLATFORM_PROFILE>();
+            std::string platname = p.getInfo<CL_PLATFORM_NAME>();
+            std::string platvend = p.getInfo<CL_PLATFORM_VENDOR>();
+            myprintf("Platform version: %s\n", platvers.c_str());;
+            myprintf("Platform profile: %s\n", platprof.c_str());
+            myprintf("Platform name:    %s\n", platname.c_str());
+            myprintf("Platform vendor:  %s\n", platvend.c_str());
+        }
 
         std::istringstream versstream(platvers);
         std::string tmp;
@@ -741,19 +749,21 @@ void OpenCL::initialize(const int channels) {
             devices.clear();
         }
         for (auto& d : devices) {
-            myprintf("Device ID:     %d\n", id);
-            myprintf("Device name:   %s\n",
-                     trim(d.getInfo<CL_DEVICE_NAME>()).c_str());
-            myprintf("Device type:   %s\n",
-                     opencl_dev_type_to_string(d.getInfo<CL_DEVICE_TYPE>()).c_str());
-            myprintf("Device vendor: %s\n",
-                      d.getInfo<CL_DEVICE_VENDOR>().c_str());
-            myprintf("Device driver: %s\n",
-                      d.getInfo<CL_DRIVER_VERSION>().c_str());
-            myprintf("Device speed:  %u MHz\n",
-                      d.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>());
-            myprintf("Device cores:  %u CU\n",
-                      d.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>());
+            if (!silent) {
+                myprintf("Device ID:     %d\n", id);
+                myprintf("Device name:   %s\n",
+                         trim(d.getInfo<CL_DEVICE_NAME>()).c_str());
+                myprintf("Device type:   %s\n",
+                         opencl_dev_type_to_string(d.getInfo<CL_DEVICE_TYPE>()).c_str());
+                myprintf("Device vendor: %s\n",
+                          d.getInfo<CL_DEVICE_VENDOR>().c_str());
+                myprintf("Device driver: %s\n",
+                          d.getInfo<CL_DRIVER_VERSION>().c_str());
+                myprintf("Device speed:  %u MHz\n",
+                          d.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>());
+                myprintf("Device cores:  %u CU\n",
+                          d.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>());
+            }
 
             // assign score, try to find best device
             int this_score = 0;
@@ -764,9 +774,11 @@ void OpenCL::initialize(const int channels) {
             this_score +=  500 * boost::icontains(this_vendor, "intel");
             this_score +=  100 * (d.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU);
             this_score +=  opencl_version * 10;
-            myprintf("Device score:  %d\n", this_score);
+            if (!silent) {
+                myprintf("Device score:  %d\n", this_score);
+            }
 
-            bool preferred = std::find(cfg_gpus.cbegin(), cfg_gpus.cend(), id) != cfg_gpus.cend();
+            bool preferred = std::find(cbegin(gpus), cend(gpus), id) != cend(gpus);
 
             if ((this_score > best_score) || preferred) {
                 best_version = opencl_version;
@@ -788,7 +800,6 @@ void OpenCL::initialize(const int channels) {
         throw std::runtime_error("No suitable OpenCL device found.");
     }
 
-    cl::Platform::setDefault(best_platform);
     myprintf("Selected platform: %s\n", best_platform.getInfo<CL_PLATFORM_NAME>().c_str());
     myprintf("Selected device: %s\n", trim(best_device.getInfo<CL_DEVICE_NAME>()).c_str());
     myprintf("with OpenCL %2.1f capability.\n", best_version);
@@ -800,12 +811,13 @@ void OpenCL::initialize(const int channels) {
         myprintf("Error creating OpenCL context: %s: %d", e.what(), e.err());
         throw std::runtime_error("Error creating OpenCL context.");
     }
-    cl::Context::setDefault(context);
-    cl::Device::setDefault(best_device);
+    m_context = context;
+    m_device = best_device;
 
     // Make program of the source code in the context
     try {
-        m_program = cl::Program(sourceCode_config
+        m_program = cl::Program(m_context,
+                                  sourceCode_config
                                 + sourceCode_convolve3
                                 + sourceCode_utility
                                 + sourceCode_sgemm);
@@ -816,7 +828,7 @@ void OpenCL::initialize(const int channels) {
 
     m_cl_args = cl_args;
 
-    auto t = Tuner();
+    auto t = Tuner(*this, m_context, m_device);
     auto sgemm_tuners =
         t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
 
@@ -827,7 +839,7 @@ void OpenCL::initialize(const int channels) {
         m_program.build(args.c_str());
     } catch (const cl::Error&) {
         myprintf("Error building kernels: %s\n",
-                 m_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl::Device::getDefault()).c_str());
+                 m_program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_device).c_str());
         throw std::runtime_error("Error building OpenCL kernels.");
     }
 
@@ -855,11 +867,10 @@ void OpenCL::initialize(const int channels) {
 std::string OpenCL::get_device_name() {
     std::stringstream ss;
 
-    cl::Device device = cl::Device::getDefault();
     ss << "OpenCL: ";
-    ss << device.getInfo<CL_DEVICE_VENDOR>() << " ";
-    ss << device.getInfo<CL_DEVICE_NAME>() << " @ ";
-    ss << device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << "MHz";
+    ss << m_device.getInfo<CL_DEVICE_VENDOR>() << " ";
+    ss << m_device.getInfo<CL_DEVICE_NAME>() << " @ ";
+    ss << m_device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << "MHz";
 
     return ss.str();
 }

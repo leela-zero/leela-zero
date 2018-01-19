@@ -29,11 +29,14 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include "Tuner.h"
 
 static constexpr auto WINOGRAD_P = (19 + 1) * (19 + 1) / 4;
 static constexpr auto WINOGRAD_TILE = 4 * 4;
+
+class OpenCL;
 
 class Layer {
     friend class OpenCL_Network;
@@ -68,6 +71,10 @@ private:
 
 class OpenCL_Network {
 public:
+    OpenCL_Network(OpenCL & opencl) : m_opencl(opencl) {}
+    OpenCL & getOpenCL() {
+        return m_opencl;
+    }
     void push_batchnorm(unsigned int spatial_size,
                         const std::vector<float>& means,
                         const std::vector<float>& variances) {
@@ -135,6 +142,14 @@ private:
     void batchnorm(int outputs, int channel_size, cl::Buffer& input,
                    cl::Buffer& output, cl::Buffer* residual,
                    weight_slice_t weights);
+
+    OpenCL & m_opencl;
+
+    // this mutex is not required for correctness, but this exists simply
+    // because queue.finish() is a busy wait and having a lot of threads
+    // waiting here is counterproductive CPU-wise.  At least std::mutex
+    // isn't busy wait so it should be better.
+    std::mutex m_queue_finish_mutex;
     std::vector<Layer> m_layers;
 };
 
@@ -142,12 +157,14 @@ class OpenCL {
     friend class OpenCL_Network;
     friend class Tuner;
 public:
-    void initialize(const int channels);
+    void initialize(const int channels, const std::vector<int> & gpus, bool silent = false);
     void ensure_thread_initialized(void);
     std::string get_device_name();
 
     std::vector<size_t> get_sgemm_tuners(void);
 
+    cl::Device m_device;
+    cl::Context m_context;
 private:
     void tune_sgemm(void);
     void process_tuners(std::string tuners);
@@ -167,9 +184,7 @@ private:
     bool m_init_ok{false};
 };
 
-extern OpenCL opencl;
-extern OpenCL_Network opencl_net;
 extern thread_local ThreadData opencl_thread_data;
-extern std::string sourceCode_sgemm;
+extern const std::string sourceCode_sgemm;
 
 #endif

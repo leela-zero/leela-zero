@@ -277,7 +277,6 @@ If interrupted, training can be resumed with:
 
 - [ ] List of package names for more distros
 - [ ] Multi-GPU support for training
-- [ ] Multi-GPU support for playing
 - [ ] Optimize Winograd transformations
 - [ ] CUDA specific version using cuDNN
 - [ ] AMD specific version using MIOpen

@@ -259,10 +259,13 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
     sgemmBatched_ref(at, b, c_ref, m, n, k, batch_size);
 
     auto aBuffer = cl::Buffer(
+        m_context,
         CL_MEM_READ_WRITE, sizeof(float) * at_size, nullptr, nullptr);
     auto bBuffer = cl::Buffer(
+        m_context,
         CL_MEM_READ_WRITE, sizeof(float) * b_size, nullptr, nullptr);
     auto cBuffer = cl::Buffer(
+        m_context,
         CL_MEM_READ_WRITE, sizeof(float) * c_size, nullptr, nullptr);
 
     myprintf("\nStarted OpenCL SGEMM tuner.\n");
@@ -292,11 +295,11 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
     std::string best_params;
     auto best_time = unsigned{0};
 
-    auto queue = cl::CommandQueue(cl::Context::getDefault(),
-                                  cl::Device::getDefault(),
+    auto queue = cl::CommandQueue(m_context,
+                                  m_device,
                                   CL_QUEUE_PROFILING_ENABLE);
     auto event = cl::Event();
-    auto program = cl::Program(sourceCode_sgemm);
+    auto program = cl::Program(m_context, sourceCode_sgemm);
 
     auto m_ceil_prev = 0;
     auto n_ceil_prev = 0;
@@ -310,7 +313,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
         auto defines = parameters_to_defines(p);
 
         try {
-            auto args = opencl.m_cl_args + " " + defines;
+            auto args = m_opencl.m_cl_args + " " + defines;
             program.build(args.c_str());
         } catch (const cl::Error&) {
             // Failed to compile, get next parameter
@@ -417,7 +420,7 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
     }
     auto file = std::ofstream{TUNER_FILE_LOCAL};
 
-    auto device_name = opencl.get_device_name();
+    auto device_name = m_opencl.get_device_name();
     auto tuning_params = std::stringstream{};
     tuning_params << m << ";" << n << ";" << k << ";" << batch_size;
 
@@ -477,7 +480,7 @@ std::string Tuner::sgemm_tuners_from_line(std::string line,
         return "";
     }
 
-    if (s[7] != opencl.get_device_name()) {
+    if (s[7] != m_opencl.get_device_name()) {
         return "";
     }
 
