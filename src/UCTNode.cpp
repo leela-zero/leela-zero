@@ -418,9 +418,9 @@ UCTNode::node_ptr_t UCTNode::find_new_root(const int move) {
             }
         }
     }
-    // Should never fail to find the child.
-    assert(false);
-    return nullptr;
+    // Can happen for example if we resigned. Return a clean
+    // root for the next game or position.
+    return std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
 }
 
 // Use this version if the child could be anywhere.
