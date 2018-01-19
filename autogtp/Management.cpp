@@ -366,8 +366,9 @@ Order Management::getWork(bool tuning) {
                         << endl;
     if (m_fallBack.type() != Order::Error) {
         QMap<QString,QString> map = m_fallBack.parameters();
-        QString rs = "-s " + QString::number(QUuid::createUuid().toRfc4122().toHex().left(8).toLongLong(Q_NULLPTR, 16)) + " ";
-        map["rndSeed"] = rs;
+        QString seed = QString::number(QUuid::createUuid().toRfc4122().toHex().left(8).toLongLong(Q_NULLPTR, 16));
+        QString rs = "-s " + seed + " ";
+        map["rndSeed"] = seed;
         QString opt = map["options"];
         QRegularExpression re("-s .* ");
         opt.replace(re, rs);
