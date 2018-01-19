@@ -260,25 +260,6 @@ bool Game::setMove(const QString& m) {
     return true;
 }
 
-bool Game::setMove(const QString& m) {
-    if (!sendGtpCommand(m)) {
-        return false;
-    }
-    QStringList moves = m.split(" ");
-    if (moves.at(2)
-        .compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
-        m_passes++;
-    } else if (moves.at(2)
-               .compare(QStringLiteral("resign"), Qt::CaseInsensitive) == 0) {
-        m_resignation = true;
-        m_blackResigned = m_blackToMove;
-    } else {
-        m_passes = 0;
-    }
-    m_blackToMove = !m_blackToMove;
-    return true;
-}
-
 bool Game::nextMove() {
     if(checkGameEnd()) {
         return false;
