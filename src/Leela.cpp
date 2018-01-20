@@ -82,7 +82,10 @@ static void parse_commandline(int argc, char *argv[]) {
         ("gpu",  po::value<std::vector<int> >(),
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
-        ("tune-only", "Tune OpenCL only and then exit.")
+        ("full-tuner-only", "Try harder to find an optimal OpenCL tuning and then exit.")
+        ("quick-tuner", "Tune OpenCL.")
+        ("quick-tuner-only", "Tune OpenCL only and then exit.")
+        ("tune-only", "Tune OpenCL only if needed and then exit.")
 #endif
 #ifdef USE_TUNER
         ("puct", po::value<float>())
@@ -224,11 +227,43 @@ static void parse_commandline(int argc, char *argv[]) {
     }
 
     if (vm.count("full-tuner")) {
+        if (vm.count("full-tuner-only") || vm.count("quick-tuner") || vm.count("quick-tuner-only") || vm.count("tune-only")) {
+            myprintf("Nonsensical options: Only one tuner mode is to be selected.\n");
+            exit(EXIT_FAILURE);
+        }
         cfg_sgemm_exhaustive = true;
+        cfg_tune_and_quit = false;
+    }
+
+    if (vm.count("full-tuner-only")) {
+        if (vm.count("quick-tuner") || vm.count("quick-tuner-only") || vm.count("tune-onlyr")) {
+            myprintf("Nonsensical options: Only one tuner mode is to be selected.\n");
+            exit(EXIT_FAILURE);
+        }
+        cfg_sgemm_exhaustive = true;
+        cfg_tune_and_quit = true;
+    }
+
+    if (vm.count("quick-tuner")) {
+        if (vm.count("quick-tuner-only") || vm.count("tune-only")) {
+            myprintf("Nonsensical options: Only one tuner mode is to be selected.\n");
+            exit(EXIT_FAILURE);
+        }
+        cfg_sgemm_quick = true;
+        cfg_tune_and_quit = false;
+    }
+
+    if (vm.count("quick-tuner-only")) {
+        if (vm.count("tune-only")) {
+            myprintf("Nonsensical options: Only one tuner mode is to be selected.\n");
+            exit(EXIT_FAILURE);
+        }
+        cfg_sgemm_quick = true;
+        cfg_tune_and_quit = true;
     }
 
     if (vm.count("tune-only")) {
-        cfg_tune_only = true;
+        cfg_tune_and_quit = true;
     }
 #endif
 
