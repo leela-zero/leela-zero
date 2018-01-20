@@ -220,7 +220,7 @@ def run_test(parser):
             result = parser.convert_train_data(items, symmetry)
             assert result[0] == True
             # We got back a serialized tf.train.Example, which we need to decode.
-            graph = _parse_function(result[1])
+            graph = _parse_function(result[1], tf.float32)
             data = sess.run(graph)
             data = (data[0].tolist(), data[1].tolist(), data[2].tolist())
 
@@ -235,7 +235,7 @@ def run_test(parser):
 
 # Convert a tf.train.Example protobuf into a tuple of tensors
 # NB: This conversion is done in the tensorflow graph, NOT in python.
-def _parse_function(example_proto):
+def _parse_function(example_proto, dtype):
     features = {"planes": tf.FixedLenFeature((1), tf.string),
                 "probs": tf.FixedLenFeature((19*19+1), tf.float32),
                 "winner": tf.FixedLenFeature((1), tf.float32)}
@@ -243,7 +243,7 @@ def _parse_function(example_proto):
     # We receives the planes as a byte array, but we really want
     # floats of shape (18, 19*19), so decode, cast, and reshape.
     planes = tf.decode_raw(parsed_features["planes"], tf.uint8)
-    planes = tf.to_float(planes)
+    planes = tf.cast(planes, dtype)
     planes = tf.reshape(planes, (18, 19*19))
     # the other features are already in the correct shape as return as-is.
     return planes, parsed_features["probs"], parsed_features["winner"]
@@ -258,7 +258,7 @@ def benchmark(parser):
         print("{} pos/sec {} secs".format( 10000. / (end - start), (end - start)))
 
 def main(args):
-
+    dtype = tf.float32
     train_data_prefix = args.pop(0)
 
     chunks = get_chunks(train_data_prefix)
@@ -275,13 +275,13 @@ def main(args):
     dataset = tf.data.Dataset.from_generator(
         parser.parse_chunk, output_types=(tf.string))
     dataset = dataset.shuffle(65536)
-    dataset = dataset.map(_parse_function)
+    dataset = dataset.map(lambda x : _parse_function(x, dtype))
     dataset = dataset.batch(BATCH_SIZE)
     dataset = dataset.prefetch(16)
     iterator = dataset.make_one_shot_iterator()
     next_batch = iterator.get_next()
 
-    tfprocess = TFProcess(next_batch)
+    tfprocess = TFProcess(next_batch, dtype)
     if args:
         restore_file = args.pop(0)
         tfprocess.restore(restore_file)
