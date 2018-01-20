@@ -348,7 +348,7 @@ void Network::initialize(void) {
     myprintf("Initializing OpenCL.\n");
     opencl.initialize(channels);
 
-    if (cfg_tune_and_quit) {
+    if (cfg_tune_only) {
         exit(EXIT_SUCCESS);
     }
 

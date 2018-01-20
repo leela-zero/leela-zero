@@ -82,9 +82,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("gpu",  po::value<std::vector<int> >(),
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
-        ("full-tuner-only", "Try harder to find an optimal OpenCL tuning and then exit.")
-        ("quick-tuner", "Tune OpenCL.")
-        ("quick-tuner-only,tune-only", "Tune OpenCL only and then exit.")
+        ("tune-only", "Tune OpenCL only and then exit.")
 #endif
 #ifdef USE_TUNER
         ("puct", po::value<float>())
@@ -227,22 +225,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("full-tuner")) {
         cfg_sgemm_exhaustive = true;
-        cfg_tune_and_quit = false;
     }
 
-    if (vm.count("full-tuner-only")) {
-        cfg_sgemm_exhaustive = true;
-        cfg_tune_and_quit = true;
-    }
-
-    if (vm.count("quick-tuner")) {
-        cfg_sgemm_quick = true;
-        cfg_tune_and_quit = false;
-    }
-
-    if (vm.count("quick-tuner-only") || vm.count("tune-only")) {
-        cfg_sgemm_quick = true;
-        cfg_tune_and_quit = true;
+    if (vm.count("tune-only")) {
+        cfg_tune_only = true;
     }
 #endif
 

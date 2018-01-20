@@ -41,8 +41,7 @@ extern bool cfg_dumbpass;
 #ifdef USE_OPENCL
 extern std::vector<int> cfg_gpus;
 extern bool cfg_sgemm_exhaustive;
-extern bool cfg_sgemm_quick;
-extern bool cfg_tune_and_quit;
+extern bool cfg_tune_only;
 #endif
 extern float cfg_puct;
 extern float cfg_softmax_temp;

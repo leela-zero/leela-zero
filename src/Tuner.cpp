@@ -490,7 +490,7 @@ std::string Tuner::sgemm_tuners_from_line(std::string line,
 std::string Tuner::load_sgemm_tuners(const int m, const int n, const int k,
                                      const int batch_size) {
     auto file = std::ifstream{TUNER_FILE_LOCAL};
-    if (!cfg_sgemm_exhaustive && !cfg_sgemm_quick && file.good()) {
+    if (!cfg_sgemm_exhaustive && file.good()) {
         auto line = std::string{};
         while (std::getline(file, line)) {
             auto tuners = sgemm_tuners_from_line(line, m, n, k, batch_size);
@@ -499,10 +499,6 @@ std::string Tuner::load_sgemm_tuners(const int m, const int n, const int k,
                 return tuners;
             }
         }
-    }
-    if (!cfg_sgemm_exhaustive && !cfg_sgemm_quick) {
-        // If no tuning parameters is set, default to a quick tuning
-        cfg_sgemm_quick = true;
     }
     auto tuners = tune_sgemm(m, n, k, batch_size);
     store_sgemm_tuners(m, n, k, batch_size, tuners);
