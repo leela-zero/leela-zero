@@ -711,9 +711,12 @@ void Network::forward_cpu(std::vector<float>& input,
     constexpr int tiles = (width + 1) * (height + 1) / 4;
     // Calculate output channels
     const auto output_channels = conv_biases[0].size();
-    // Assumes that residual blocks are identical and have same
-    // number of inputs and outputs
-    const auto input_channels = output_channels;
+    //input_channels is the maximum number of input channels of any convolution.
+    //Residual blocks are identical, but the first convolution might be bigger
+    //when the network has very few filters
+    const auto input_channels = std::max(
+            static_cast<size_t>(output_channels),
+            static_cast<size_t>(INPUT_CHANNELS));
     auto conv_out = std::vector<float>(output_channels * width * height);
 
     auto V = std::vector<float>(WINOGRAD_TILE * input_channels * tiles);
