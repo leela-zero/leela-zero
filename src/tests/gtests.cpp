@@ -33,6 +33,7 @@
 #include "ThreadPool.h"
 #include "Utils.h"
 #include "Zobrist.h"
+#include "UCTSearch.h"
 
 using namespace Utils;
 
@@ -52,7 +53,7 @@ void init_global_objects() {
     NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
 
     // Initialize network
-    // Needs a weights file
+    // cfg_weightsfile = "latest_5x64.txt";
     // Network::initialize();
 }
 
@@ -148,4 +149,26 @@ TEST_F(LeelaTest, KoSqNotSame) {
     EXPECT_EQ(ko_hash, maingame.board.get_ko_hash());
     // But ko (square) is not
     EXPECT_NE(hash, maingame.board.get_hash());
+}
+
+TEST_F(LeelaTest, TimeControl) {
+    // Initialize network
+    cfg_weightsfile = "latest_5x64.txt";
+    Network::initialize();
+    cfg_max_playouts = 1;
+    cfg_num_threads = 1;
+
+    auto maingame = get_gamestate();
+    auto search = std::make_unique<UCTSearch>();
+
+    testing::internal::CaptureStdout();
+    GTP::execute(maingame, "kgs-time_settings byoyomi 0 100 1");
+    auto move = search->think(maingame.get_to_move(), maingame);
+    maingame.play_move(move);
+    EXPECT_EQ(search->m_rootstate.get_timecontrol().max_time_for_move(maingame.get_to_move()), (100-1)*100);
+    GTP::execute(maingame, "kgs-time_settings byoyomi 0 120 1");
+    move = search->think(maingame.get_to_move(), maingame);
+    EXPECT_EQ(search->m_rootstate.get_timecontrol().max_time_for_move(maingame.get_to_move()), (120-1)*100);
+    maingame.play_move(move);
+    std::string output = testing::internal::GetCapturedStdout();
 }

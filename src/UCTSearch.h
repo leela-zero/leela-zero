@@ -28,6 +28,7 @@
 #include "GameState.h"
 #include "KoState.h"
 #include "UCTNode.h"
+#include "../gtest/googletest/include/gtest/gtest_prod.h"
 
 
 class SearchResult {
@@ -99,6 +100,7 @@ private:
     std::atomic<bool> m_run{false};
     int m_maxplayouts;
     int m_maxvisits;
+    FRIEND_TEST(LeelaTest, TimeControl);
 };
 
 class UCTWorker {
