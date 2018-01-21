@@ -44,7 +44,7 @@ def conv_bn_wider(weights, next_weights, inputs, channels,
     if new_channels == 0:
         return weights, next_weights
 
-    rand = range(channels)
+    rand = list(range(channels))
     rand.extend(np.random.randint(0, channels, new_channels))
     rep_factor = np.bincount(rand)
 
