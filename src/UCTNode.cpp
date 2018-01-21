@@ -424,26 +424,32 @@ UCTNode::node_ptr_t UCTNode::find_new_root(const int move) {
 }
 
 // Use this version if the child could be anywhere.
-// Also updates the GameState.
 // Gives up after searching the direct children.
-UCTNode::node_ptr_t UCTNode::find_new_root(const GameState& g_new,
-                                           GameState& g_curr) {
-    if (m_has_children) {
-        for (auto& child : m_children) {
-            auto move = child->get_move();
-            if (g_new.get_last_move() == move) {
-                g_curr.play_move(move);
-                if (g_curr.board.get_hash() == g_new.board.get_hash()) {
-                    return std::move(child);
+// Also copies the GameState.
+void UCTNode::find_new_root(const GameState& g_new,
+                            GameState& g_curr,
+                            node_ptr_t& root) {
+    if (g_new.get_komi() != g_curr.get_komi()
+        || g_new.board.get_hash() != g_curr.board.get_hash()) {
+        if (m_has_children) {
+            for (auto& child : m_children) {
+                auto move = child->get_move();
+                if (g_new.get_last_move() == move) {
+                    g_curr.play_move(move);
+                    if (g_curr.board.get_hash() == g_new.board.get_hash()) {
+                        root = std::move(child);
+                        break;
+                    }
+                    g_curr.undo_move();
                 }
-                g_curr.undo_move();
             }
         }
+        // No match. Create a new root.
+        root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
     }
-
-    // No match. Copy new GameState and create a new root.
+    // Always copy GameState because it contains other
+    // things such as TimeControl updates.
     g_curr = g_new;
-    return std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
 }
 
 UCTNode* UCTNode::get_nopass_child(FastState& state) const {
