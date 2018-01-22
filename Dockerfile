@@ -9,13 +9,13 @@ RUN apt-get install -y qt5-default qt5-qmake
 # GPU build
 RUN mkdir -p gpu
 WORKDIR gpu
-RUN CXX=g++ CC=gcc cmake -DUSE_OPENBLAS -DUSE_OPENCL ..
+RUN CXX=g++ CC=gcc cmake -DUSE_OPENBLAS=1 -DUSE_OPENCL=1 ..
 RUN make -j2
 
 # CPU build
 RUN mkdir -p ../cpu
 WORKDIR ../cpu
-RUN CXX=g++ CC=gcc cmake -DUSE_OPENBLAS ..
+RUN CXX=g++ CC=gcc cmake -DUSE_OPENBLAS=1 ..
 RUN make -j2
 RUN ./tests
 
