@@ -6,14 +6,29 @@
 #include <QTextStream>
 #include "stdio.h"
 
+
+#ifdef Q_OS_WIN
+    #include <QWinEventNotifier>
+    #include <windows.h>
+    typedef QWinEventNotifier Notifier
+#else
+    #include <QSocketNotifier>
+    typedef QSocketNotifier Notifier;
+#endif
+
+
 class Console : public QObject
 {
     Q_OBJECT
 public:
     Console(QObject *parent = nullptr)
         : QObject(parent),
-          m_notifier(fileno(stdin), QSocketNotifier::Read) {
-            connect(&m_notifier, &QSocketNotifier::activated, this, &Console::readInput);
+#ifdef Q_OS_WIN
+          m_notifier(GetStdHandle(STD_INPUT_HANDLE));
+#else
+          m_notifier(fileno(stdin), Notifier::Read) {
+#endif
+            connect(&m_notifier, &Notifier::activated, this, &Console::readInput);
         }
     ~Console() = default;
 
@@ -30,7 +45,7 @@ public slots:
         QTextStream(stdout) << "captured input: " << line << endl;
     }
 private:
-    QSocketNotifier m_notifier;
+    Notifier m_notifier;
 };
 
 #endif // CONSOLE_H
