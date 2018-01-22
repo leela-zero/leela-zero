@@ -155,6 +155,9 @@ bool GameState::play_textmove(const std::string& color,
         return false;
     }
 
+    int curr_sq = board.get_square(move);
+    if (curr_sq != FastBoard::EMPTY) return false;
+
     set_to_move(who);
     play_move(move);
 
