@@ -51,10 +51,6 @@ void init_global_objects() {
     Random::get_Rng().seedrandom(cfg_rng_seed);
 
     NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
-
-    // Initialize network
-    // cfg_weightsfile = "latest_5x64.txt";
-    // Network::initialize();
 }
 
 class LeelaTest: public ::testing::Test {
@@ -152,8 +148,8 @@ TEST_F(LeelaTest, KoSqNotSame) {
 }
 
 TEST_F(LeelaTest, TimeControl) {
-    // Initialize network
-    cfg_weightsfile = "latest_5x64.txt";
+    // Initialize network with a small 32x1 network.
+    cfg_weightsfile = "../test_32x1.txt";
     Network::initialize();
     cfg_max_playouts = 1;
     cfg_num_threads = 1;
@@ -165,10 +161,10 @@ TEST_F(LeelaTest, TimeControl) {
     GTP::execute(maingame, "kgs-time_settings byoyomi 0 100 1");
     auto move = search->think(maingame.get_to_move(), maingame);
     maingame.play_move(move);
-    EXPECT_EQ(search->m_rootstate.get_timecontrol().max_time_for_move(maingame.get_to_move()), (100-1)*100);
+    EXPECT_EQ(search->get_gamestate().get_timecontrol().max_time_for_move(maingame.get_to_move()), (100-1)*100);
     GTP::execute(maingame, "kgs-time_settings byoyomi 0 120 1");
     move = search->think(maingame.get_to_move(), maingame);
-    EXPECT_EQ(search->m_rootstate.get_timecontrol().max_time_for_move(maingame.get_to_move()), (120-1)*100);
+    EXPECT_EQ(search->get_gamestate().get_timecontrol().max_time_for_move(maingame.get_to_move()), (120-1)*100);
     maingame.play_move(move);
     std::string output = testing::internal::GetCapturedStdout();
 }
