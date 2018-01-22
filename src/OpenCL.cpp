@@ -568,11 +568,6 @@ void OpenCL_Network::batchnorm(int outputs,
 
     cl::Kernel & batchnorm_kernel = opencl_thread_data.m_batchnorm_kernel;
 
-    size_t channelGroup = 1;
-    if (channel_size == 361) {
-        channelGroup = 19;
-    }
-
     try {
         batchnorm_kernel.setArg(0, bufferInput);
         batchnorm_kernel.setArg(1, bufferOutput);
@@ -585,8 +580,7 @@ void OpenCL_Network::batchnorm(int outputs,
         batchnorm_kernel.setArg(4, weights[1]);
 
         queue.enqueueNDRangeKernel(batchnorm_kernel, cl::NullRange,
-                                   cl::NDRange(outputs, channel_size),
-                                   cl::NDRange(std::min(8, outputs), channelGroup));
+                                   cl::NDRange(outputs, channel_size));
     } catch (const cl::Error &e) {
         std::cerr << "Error in batchnorm: " << e.what() << ": "
             << e.err() << std::endl;
