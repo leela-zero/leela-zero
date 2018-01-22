@@ -5,7 +5,7 @@ import numpy as np
 import scipy.signal as signal
 from copy import deepcopy
 
-def convolve(w, x):
+def convolve(w, x , bn=None, bn_epsilon=1e-5):
     x_ch, x_w, x_h = x.shape
     outputs, inputs, _, __ = w.shape
     assert x_ch == inputs
@@ -13,6 +13,14 @@ def convolve(w, x):
     for o in range(outputs):
         for c in range(inputs):
             res[o,:,:] += signal.correlate2d(x[c,:,:], w[o,c,:,:], mode='same')
+    if bn == None:
+        return res
+    bn_means = bn[0]
+    bn_vars = bn[1]
+    for o in range(outputs):
+        scale = 1.0 / np.sqrt(bn_epsilon + bn_vars[o])
+        v = scale * (res[o,:,:] - bn_means[o])
+        res[o,:,:] = np.maximum(v, 0)
     return res
 
 def read_net(filename):
@@ -72,9 +80,9 @@ def conv_bn_wider(weights, next_weights, inputs, channels,
 
     if noise_std == 0 and verify:
         x = np.random.random((inputs, 19, 19))
-        old1 = convolve(np.array(weights[0]).reshape(channels, inputs, 3, 3), x)
+        old1 = convolve(np.array(weights[0]).reshape(channels, inputs, 3, 3), x, bn=[weights[2], weights[3]])
         old2 = convolve(np.array(next_weights[0]).reshape(-1, channels, w_filter, w_filter), old1)
-        new1 = convolve(np.array(w_conv_new).reshape(channels + new_channels, inputs, 3, 3), x)
+        new1 = convolve(np.array(w_conv_new).reshape(channels + new_channels, inputs, 3, 3), x, bn=[w_bn_means, w_bn_vars])
         new2 = convolve(np.array(next_weights_new[0]).reshape(-1, channels + new_channels, w_filter, w_filter), new1)
         assert (np.abs(old2 - new2) < 1e-6).all()
 
