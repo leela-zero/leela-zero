@@ -265,7 +265,8 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         if (!cmdstream.fail()) {
             if (tmp != 19) {
-                gtp_fail_printf(id, "unacceptable size");
+                gtp_fail_printf(id, 
+                    "%d is an unacceptable size.\nOnly a size of 19 is currently supported.", tmp);
             } else {
                 float old_komi = game.get_komi();
                 Training::clear_training();
@@ -273,7 +274,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 gtp_printf(id, "");
             }
         } else {
-            gtp_fail_printf(id, "syntax not understood");
+            gtp_fail_printf(id, "Syntax not understood");
         }
 
         return true;
@@ -298,7 +299,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
             gtp_printf(id, "");
         } else {
-            gtp_fail_printf(id, "syntax not understood");
+            gtp_fail_printf(id, "Syntax not understood");
         }
 
         return true;
@@ -325,7 +326,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                     gtp_printf(id, "");
                 }
             } else {
-                gtp_fail_printf(id, "syntax not understood");
+                gtp_fail_printf(id, "Syntax not understood");
             }
         }
         return true;
@@ -343,7 +344,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
             } else if (tmp == "b" || tmp == "black") {
                 who = FastBoard::BLACK;
             } else {
-                gtp_fail_printf(id, "syntax error");
+                gtp_fail_printf(id, 
+                    "Specify the color for whom to generate the move.\n"
+                    "For example, 'genmove white'.");
                 return 1;
             }
             // start thinking
@@ -362,7 +365,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 }
             }
         } else {
-            gtp_fail_printf(id, "syntax not understood");
+            gtp_fail_printf(id, "Syntax not understood");
         }
         return true;
     } else if (command.find("kgs-genmove_cleanup") == 0) {
@@ -379,7 +382,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             } else if (tmp == "b" || tmp == "black") {
                 who = FastBoard::BLACK;
             } else {
-                gtp_fail_printf(id, "syntax error");
+                gtp_fail_printf(id, "Unexpected color: %s.\n", tmp.c_str());
                 return 1;
             }
             game.set_passes(0);
@@ -398,7 +401,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 }
             }
         } else {
-            gtp_fail_printf(id, "syntax not understood");
+            gtp_fail_printf(id, "Syntax not understood. Expected 'kgs-genmove_cleanup <color>'");
         }
         return true;
     } else if (command.find("undo") == 0) {
@@ -447,7 +450,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
             gtp_printf(id, "");
         } else {
-            gtp_fail_printf(id, "syntax not understood");
+            gtp_fail_printf(id, 
+                "Syntax not understood.\n"
+                "Expected 'time_settings <maintime> <byotime> <byostones>'");
         }
         return true;
     } else if (command.find("time_left") == 0) {
@@ -465,7 +470,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
             } else if (color == "b" || color == "black") {
                 icolor = FastBoard::BLACK;
             } else {
-                gtp_fail_printf(id, "Color in time adjust not understood.\n");
+                gtp_fail_printf(id, 
+                    "Color $s in time adjust not understood.\n"
+                    "Acceptable values are 'b' or 'w'.\n", color);
                 return 1;
             }
 
@@ -481,7 +488,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 }
             }
         } else {
-            gtp_fail_printf(id, "syntax not understood");
+            gtp_fail_printf(id, 
+                "Syntax not understood.\n"
+                "Expected parameters are <color> <time> <stones>.");
         }
         return true;
     } else if (command.find("auto") == 0) {
@@ -531,7 +540,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
             auto stonestring = game.board.get_stone_list();
             gtp_printf(id, "%s", stonestring.c_str());
         } else {
-            gtp_fail_printf(id, "Not a valid number of handicap stones");
+            gtp_fail_printf(id, 
+                "%d is not a valid number of handicap stones.\n"
+                "Use a number that is in the range 2 - 9", stones);
         }
         return true;
     } else if (command.find("place_free_handicap") == 0) {
@@ -547,7 +558,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
             auto stonestring = game.board.get_stone_list();
             gtp_printf(id, "%s", stonestring.c_str());
         } else {
-            gtp_fail_printf(id, "Not a valid number of handicap stones");
+            gtp_fail_printf(id, 
+                "%d is not a valid number of handicap stones.\n"
+                "Use a number that is in the range 2 - 9", stones);
         }
 
         return true;
@@ -646,15 +659,15 @@ bool GTP::execute(GameState & game, std::string xinput) {
             cmdstream >> maintime >> byotime >> byoperiods;
             game.set_timecontrol(maintime * 100, byotime * 100, 0, byoperiods);
         } else {
-            gtp_fail_printf(id, "syntax not understood");
+            gtp_fail_printf(id, 
+                "%s is not an expected KGS time setting. Try one of:\n"
+                " 'none',\n 'absolute <maintime>',\n"
+                " 'canadian <maintime> <byotime> <byostones>',\n"
+                " 'byoyomi <maintime> <byotime> <byoperiods>'", tc_type.c_str());
             return true;
         }
 
-        if (!cmdstream.fail()) {
-            gtp_printf(id, "");
-        } else {
-            gtp_fail_printf(id, "syntax not understood");
-        }
+        end(cmdstream, id);
         return true;
     } else if (command.find("netbench") == 0) {
         std::istringstream cmdstream(command);
@@ -704,18 +717,17 @@ bool GTP::execute(GameState & game, std::string xinput) {
         } else if (winner_color == "b" || winner_color == "black") {
             who_won = FullBoard::BLACK;
         } else {
-            gtp_fail_printf(id, "syntax not understood");
+            gtp_fail_printf(id, 
+                "Unexpected winner color: %s.\n"
+                "Specify either 'b' or 'w'.\n"
+                "Expected syntax is 'dump_training <winner color> <file name>'", 
+                winner_color.c_str());
             return true;
         }
 
         Training::dump_training(who_won, filename);
 
-        if (!cmdstream.fail()) {
-            gtp_printf(id, "");
-        } else {
-            gtp_fail_printf(id, "syntax not understood");
-        }
-
+        end(cmdstream, id);
         return true;
     } else if (command.find("dump_debug") == 0) {
         std::istringstream cmdstream(command);
@@ -726,12 +738,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         Training::dump_debug(filename);
 
-        if (!cmdstream.fail()) {
-            gtp_printf(id, "");
-        } else {
-            gtp_fail_printf(id, "syntax not understood");
-        }
-
+        end(cmdstream, id);
         return true;
     } else if (command.find("dump_supervised") == 0) {
         std::istringstream cmdstream(command);
@@ -742,15 +749,19 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         Training::dump_supervised(sgfname, outname);
 
-        if (!cmdstream.fail()) {
-            gtp_printf(id, "");
-        } else {
-            gtp_fail_printf(id, "syntax not understood");
-        }
-
+        end(cmdstream, id);
         return true;
     }
 
     gtp_fail_printf(id, "unknown command");
     return true;
+}
+
+void GTP::end(std::istringstream & cmdstream, int id) {
+    if (!cmdstream.fail()) {
+        gtp_printf(id, "");
+    }
+    else {
+        gtp_fail_printf(id, "Syntax not understood.");
+    }
 }

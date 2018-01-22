@@ -60,6 +60,7 @@ private:
 
     static std::string get_life_list(const GameState & game, bool live);
     static const std::string s_commands[];
+    static void end(std::istringstream & cmdstream, int id);
 };
 
 
