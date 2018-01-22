@@ -40,11 +40,7 @@ find_path(BLAS_INCLUDE_DIRS openblas_config.h
   /opt/OpenBLAS/include
   /usr/include/x86_64-linux-gnu
   $ENV{BLAS_HOME}/include)
-FIND_PACKAGE(Qt5Core REQUIRED)
-
-if (Qt5Core_VERSION VERSION_LESS "5.3.0")
-    MESSAGE(FATAL_ERROR "Qt version >= 5.3.0 is required, found: ${Qt5Core_VERSION}")
-endif()
+FIND_PACKAGE(Qt5Core)
 
 # See if we can set optimization flags as expected.
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -93,9 +89,18 @@ TARGET_LINK_LIBRARIES(leelaz ${BLAS_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${OpenCL_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${ZLIB_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${CMAKE_THREAD_LIBS_INIT})
-ADD_SUBDIRECTORY(autogtp)
-ADD_SUBDIRECTORY(validation)
 
+if (Qt5Core_FOUND)
+    if (Qt5Core_VERSION VERSION_GREATER_EQUAL "5.3.0")
+        ADD_SUBDIRECTORY(autogtp)
+        ADD_SUBDIRECTORY(validation)
+    else()
+        MESSAGE(WARNING "Qt ${Qt5Core_VERSION} is found but does not met required version 5.3.0, \
+        build target for `autogtp` and `validation` is disabled.")
+    endif()
+else()
+    MESSAGE(WARNNING "Qt is not found, build for `autogtp` and `validation` is disabled")
+endif()
 # Google Test below
 FILE(GLOB tests_SRC "${SrcPath}/tests/*.cpp")
 
