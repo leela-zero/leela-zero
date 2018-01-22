@@ -77,8 +77,12 @@ class TFProcess:
         self.reg_term = \
             tf.contrib.layers.apply_regularization(regularizer, reg_variables)
 
+        # For training from a (smaller) dataset of strong players, you will
+        # want to reduce the factor in front of self.mse_loss here.
         loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss + self.reg_term
 
+        # You need to change the learning rate here if you are training
+        # from a self-play training set, for example start with 0.005 instead.
         opt_op = tf.train.MomentumOptimizer(
             learning_rate=0.05, momentum=0.9, use_nesterov=True)
 
@@ -173,8 +177,10 @@ class TFProcess:
             print("step {}, policy={:g} mse={:g} reg={:g} total={:g} ({:g} pos/s)".format(
                 steps, avg_policy_loss, avg_mse_loss, avg_reg_term,
                 # Scale mse_loss back to the original to reflect the actual
-                # value being optimized
-                avg_policy_loss + 4.0 * avg_mse_loss + avg_reg_term,
+                # value being optimized.
+                # If you changed the factor in the loss formula above, you need
+                # to change it here as well for correct outputs.
+                avg_policy_loss + 1.0 * 4.0 * avg_mse_loss + avg_reg_term,
                 speed))
             train_summaries = tf.Summary(value=[
                 tf.Summary.Value(tag="Policy Loss", simple_value=avg_policy_loss),
