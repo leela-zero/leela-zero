@@ -91,7 +91,7 @@ class WaitJob : public Job {
 public:
     WaitJob(QString gpu, Management *parent);
     ~WaitJob() = default;
-    void init(const QMap<QString,QString> &l);
+    void init(const Order &o);
     Result execute();
 private:
     int m_minutes;

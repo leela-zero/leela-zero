@@ -228,9 +228,9 @@ Result WaitJob::execute(){
     return res;
 }
 
-void WaitJob::init(const QMap<QString,QString> &l) {
-    Job::init(l);
-    m_minutes = l["minutes"].toInt();
+void WaitJob::init(const Order &o) {
+    Job::init(o);
+    m_minutes = o.parameters()["minutes"].toInt();
 }
 
 
