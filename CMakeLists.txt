@@ -17,7 +17,7 @@ CMAKE_MINIMUM_REQUIRED (VERSION 3.1)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 PROJECT(leelaz)
-add_subdirectory(gtest)
+add_subdirectory(gtest EXCLUDE_FROM_ALL) # We don't want to install gtest, exclude it from `all`
 
 # Required Packages
 SET(Boost_MIN_VERSION "1.58.0")
@@ -89,6 +89,7 @@ TARGET_LINK_LIBRARIES(leelaz ${BLAS_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${OpenCL_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${ZLIB_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${CMAKE_THREAD_LIBS_INIT})
+INSTALL(TARGETS leelaz DESTINATION bin)
 
 if (Qt5Core_FOUND)
     if (Qt5Core_VERSION VERSION_GREATER_EQUAL "5.3.0")
@@ -101,6 +102,7 @@ if (Qt5Core_FOUND)
 else()
     MESSAGE(WARNNING "Qt is not found, build for `autogtp` and `validation` is disabled")
 endif()
+
 # Google Test below
 FILE(GLOB tests_SRC "${SrcPath}/tests/*.cpp")
 
