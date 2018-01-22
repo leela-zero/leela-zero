@@ -1,8 +1,6 @@
 
 CMAKE_MINIMUM_REQUIRED (VERSION 3.1)
 
-FIND_PACKAGE(Qt5Core)
-
 ADD_EXECUTABLE(autogtp
 	Game.h Order.h Management.h Worker.h Job.h Result.h
 	Worker.cpp Management.cpp Job.cpp main.cpp Game.cpp)

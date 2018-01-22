@@ -40,6 +40,11 @@ find_path(BLAS_INCLUDE_DIRS openblas_config.h
   /opt/OpenBLAS/include
   /usr/include/x86_64-linux-gnu
   $ENV{BLAS_HOME}/include)
+FIND_PACKAGE(Qt5Core REQUIRED)
+
+if (Qt5Core_VERSION VERSION_LESS "5.3.0")
+    MESSAGE(FATAL_ERROR "Qt version >= 5.3.0 is required, found: ${Qt5Core_VERSION}")
+endif()
 
 # See if we can set optimization flags as expected.
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
