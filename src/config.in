@@ -38,31 +38,31 @@
  * Also used for OpenCL self-checks.
  */
 #define USE_BLAS
+
 /*
  * We use OpenBLAS by default, except on macOS, which has a fast BLAS
  * built-in. (Accelerate)
  */
-#if !defined(__APPLE__) && !defined(__MACOSX)
-#define USE_OPENBLAS
-#endif
+#cmakedefine USE_OPENBLAS
+
 /*
  * USE_MKL: Optionally allows using Intel Math Kernel library as
  * BLAS implementation. Note that MKL's license is not compatible with the GPL,
  * so do not redistribute the resulting binaries. It is fine to use it on your
  * own system.
  */
-//# define USE_MKL
+#cmakedefine USE_MKL
 /*
  * USE_OPENCL: Use OpenCL acceleration for GPUs. This makes the program a lot
  * faster if you have a recent GPU. Don't use it on CPUs even if they have
  * OpenCL drivers - the BLAS version is much faster for those.
  */
-#define USE_OPENCL
+#cmakedefine USE_OPENCL
 /*
  * USE_TUNER: Expose some extra command line parameters that allow tuning the
  * search algorithm.
  */
-// #define USE_TUNER
+#cmakedefine USE_TUNER
 
 #define PROGRAM_NAME "Leela Zero"
 #define PROGRAM_VERSION "0.11"

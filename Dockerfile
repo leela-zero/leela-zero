@@ -6,11 +6,16 @@ RUN apt-get install -y cmake g++
 RUN apt-get install -y libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
 RUN apt-get install -y qt5-default qt5-qmake
 
-RUN mkdir -p /src/
-WORKDIR /src/
+# GPU build
+RUN mkdir -p gpu
+WORKDIR gpu
+RUN CXX=g++ CC=gcc cmake -DUSE_OPENBLAS -DUSE_OPENCL ..
+RUN make -j2
 
-COPY . /src/
-RUN CXX=g++ CC=gcc cmake CMakeLists.txt
+# CPU build
+RUN mkdir -p ../cpu
+WORKDIR ../cpu
+RUN CXX=g++ CC=gcc cmake -DUSE_OPENBLAS ..
 RUN make -j2
 RUN ./tests
 
