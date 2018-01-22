@@ -66,7 +66,7 @@ def conv_bn_wider(weights, next_weights, inputs, channels,
 
         for i in range(len(rand)):
             noise = 0
-            if i > channels:
+            if i >= channels:
                 noise = np.random.normal(0, noise_std)
             next_weights_new[j][:, i, :, :] *= (1.0 + noise)/rep_factor[rand[i]]
 
