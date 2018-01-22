@@ -13,7 +13,3 @@ COPY . /src/
 RUN CXX=g++ CC=gcc cmake CMakeLists.txt
 RUN make -j2
 RUN ./tests
-
-WORKDIR /src/autogtp/
-RUN qmake
-RUN make -j2
