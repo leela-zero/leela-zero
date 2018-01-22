@@ -8,9 +8,11 @@ RUN apt-get install -y qt5-default qt5-qmake
 
 RUN mkdir -p /src/
 WORKDIR /src/
-
 COPY . /src/
-RUN CXX=g++ CC=gcc cmake CMakeLists.txt
+
+RUN mkdir -p build
+WORKDIR build
+RUN CXX=g++ CC=gcc cmake ..
 RUN make -j2
 RUN ./tests
 

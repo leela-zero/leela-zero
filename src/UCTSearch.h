@@ -76,6 +76,7 @@ public:
 
     UCTSearch();
     void set_gamestate(const GameState& g);
+    GameState get_gamestate() const;
     int think(int color, const GameState& g, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);

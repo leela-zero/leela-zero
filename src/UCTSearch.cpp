@@ -49,11 +49,12 @@ void UCTSearch::set_gamestate(const GameState & g) {
     // Definition of m_playouts is playouts from a certain GameState.
     // So reset this count now.
     m_playouts = 0;
-    if (m_rootstate.get_komi() != g.get_komi()
-        || m_rootstate.board.get_hash() != g.board.get_hash()) {
-        m_root = m_root->find_new_root(g, m_rootstate);
-    }
+    m_root->find_new_root(g, m_rootstate, m_root);
     m_nodes = m_root->count_nodes();
+}
+
+GameState UCTSearch::get_gamestate() const {
+   return m_rootstate;
 }
 
 SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
