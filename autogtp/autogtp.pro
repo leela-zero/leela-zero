@@ -31,4 +31,5 @@ HEADERS += \
     Job.h \
     Order.h \
     Result.h \
-    Management.h
+    Management.h \
+    Console.h

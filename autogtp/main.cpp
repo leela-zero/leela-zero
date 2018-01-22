@@ -36,6 +36,7 @@
 #include <iostream>
 #include "Game.h"
 #include "Management.h"
+#include "Console.h"
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
@@ -99,15 +100,17 @@ int main(int argc, char *argv[]) {
         }
     }
     QMutex mutex;
+    Console cons;
     Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), parser.value(keepDebugOption), &mutex);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
     QTimer *timer = new QTimer();
     boss->checkStoredGames();
     boss->giveAssignments();
-    if(parser.isSet(timeoutOption))
-    {
+    if(parser.isSet(timeoutOption)) {
         QObject::connect(timer, &QTimer::timeout, &app, &QCoreApplication::quit);
         timer->start(parser.value(timeoutOption).toInt() * 60000);
+    } else {
+        QObject::connect(&cons, &Console::sendQuit, &app, &QCoreApplication::quit);
     }
     return app.exec();
 }
