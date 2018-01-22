@@ -12,7 +12,7 @@ COPY . /src/
 
 RUN mkdir -p build
 WORKDIR build
-RUN CXX=g++ CC=gcc cmake ../CMakeLists.txt
+RUN CXX=g++ CC=gcc cmake ..
 RUN make -j2
 RUN ./tests
 
