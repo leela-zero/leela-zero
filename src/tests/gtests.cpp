@@ -149,3 +149,28 @@ TEST_F(LeelaTest, KoSqNotSame) {
     // But ko (square) is not
     EXPECT_NE(hash, maingame.board.get_hash());
 }
+
+TEST_F(LeelaTest, MoveOnOccupiedSq) {
+    auto maingame = get_gamestate();
+    std::string output;
+
+    {
+        testing::internal::CaptureStdout();
+        GTP::execute(maingame, "play b D4");
+        GTP::execute(maingame, "play b D4");
+        output = testing::internal::GetCapturedStdout();
+    }
+
+    // Find this error in the output
+    EXPECT_NE(output.find("illegal move"), std::string::npos);
+
+    {
+        testing::internal::CaptureStdout();
+        GTP::execute(maingame, "play w Q16");
+        GTP::execute(maingame, "play b Q16");
+        output = testing::internal::GetCapturedStdout();
+    }
+
+    // Find this error in the output
+    EXPECT_NE(output.find("illegal move"), std::string::npos);
+}

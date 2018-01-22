@@ -107,22 +107,23 @@ void GameState::play_move(int color, int vertex) {
     game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
-bool GameState::play_textmove(std::string color, std::string vertex) {
+bool GameState::play_textmove(const std::string& color,
+                              const std::string& vertex) {
     int who;
-    int column, row;
-    int boardsize = board.get_boardsize();
-
     if (color == "w" || color == "white") {
         who = FullBoard::WHITE;
     } else if (color == "b" || color == "black") {
         who = FullBoard::BLACK;
-    } else return false;
+    } else {
+        return false;
+    }
 
-    if (vertex.size() < 2) return 0;
-    if (!std::isalpha(vertex[0])) return 0;
-    if (!std::isdigit(vertex[1])) return 0;
-    if (vertex[0] == 'i') return 0;
+    if (vertex.size() < 2) return false;
+    if (!std::isalpha(vertex[0])) return false;
+    if (!std::isdigit(vertex[1])) return false;
+    if (vertex[0] == 'i') return false;
 
+    int column, row;
     if (vertex[0] >= 'A' && vertex[0] <= 'Z') {
         if (vertex[0] < 'I') {
             column = 25 + vertex[0] - 'A';
@@ -144,10 +145,15 @@ bool GameState::play_textmove(std::string color, std::string vertex) {
     parsestream >> row;
     row--;
 
-    if (row >= boardsize) return false;
-    if (column >= boardsize) return false;
+    auto boardsize = board.get_boardsize();
+    if (row >= boardsize || column >= boardsize) {
+        return false;
+    }
 
-    int move = board.get_vertex(column, row);
+    auto move = board.get_vertex(column, row);
+    if (board.get_square(move) != FastBoard::EMPTY) {
+        return false;
+    }
 
     set_to_move(who);
     play_move(move);
