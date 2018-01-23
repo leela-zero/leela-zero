@@ -27,10 +27,13 @@ import time
 import tensorflow as tf
 from tfprocess import TFProcess
 
-# 16 planes, 1 stm, 1 x 362 probs, 1 winner = 19 lines
+# 16 planes, 1 side to move, 1 x 362 probs, 1 winner = 19 lines
 DATA_ITEM_LINES = 16 + 1 + 1 + 1
 
-BATCH_SIZE = 256
+# Sane values are from 4096 to 64 or so. The maximum depends on the amount
+# of RAM in your GPU and the network size. You need to adjust the learning rate
+# if you change this.
+BATCH_SIZE = 512
 
 def remap_vertex(vertex, symmetry):
     """
@@ -274,10 +277,10 @@ def main(args):
 
     dataset = tf.data.Dataset.from_generator(
         parser.parse_chunk, output_types=(tf.string))
-    dataset = dataset.shuffle(65536)
+    dataset = dataset.shuffle(1 << 18)
     dataset = dataset.map(_parse_function)
     dataset = dataset.batch(BATCH_SIZE)
-    dataset = dataset.prefetch(16)
+    dataset = dataset.prefetch(4)
     iterator = dataset.make_one_shot_iterator()
     next_batch = iterator.get_next()
 

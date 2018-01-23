@@ -9,10 +9,10 @@ A Go program with no human provided knowledge. Using MCTS (but without
 Monte Carlo playouts) and a deep residual convolutional neural network stack.
 
 This is a fairly faithful reimplementation of the system described
-in the Alpha Go Zero paper "Mastering the Game of Go without Human Knowledge".
+in the Alpha Go Zero paper "[Mastering the Game of Go without Human Knowledge](https://storage.googleapis.com/deepmind-media/alphago/AlphaGoNaturePaper.pdf)".
 For all intents and purposes, it is an open source AlphaGo Zero.
 
-# Wait, what
+# Wait, what?
 
 If you are wondering what the catch is: you still need the network weights.
 No network weights are in this repository. If you manage to obtain the
@@ -23,8 +23,7 @@ be an engine that is far stronger than the top humans.
 
 # Gimme the weights
 
-Recomputing the AlphaGo Zero weights will take about 1700 years on commodity
-hardware, see for example: http://computer-go.org/pipermail/computer-go/2017-October/010307.html
+Recomputing the AlphaGo Zero weights will [take about 1700 years on commodity hardware](http://computer-go.org/pipermail/computer-go/2017-October/010307.html).
 
 One reason for publishing this program is that we are running a public,
 distributed effort to repeat the work. Working together, and especially
@@ -129,12 +128,12 @@ source and remove the line that says "#define USE_OPENCL".
 
 # Usage
 
-The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
+The engine supports the [GTP protocol, version 2](https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html).
 
 Leela Zero is not meant to be used directly. You need a graphical interface
 for it, which will interface with Leela Zero through the GTP protocol.
 
-Sabaki (http://sabaki.yichuanshen.de/) is a very nice looking GUI with GTP 2
+[Sabaki](http://sabaki.yichuanshen.de/) is a very nice looking GUI with GTP 2
 capability. It should work with this engine. A lot of go software can
 interface to an engine via GTP, so look around.
 
@@ -180,11 +179,11 @@ neural networks). This has been fixed in Leela Zero. The inputs are:
 1) Side to move stones at time T=0
 2) Side to move stones at time T=-1  (0 if T=0)
 ...
-8) Side to move stones at time T=-8  (0 if T<=7)
+8) Side to move stones at time T=-7  (0 if T<=6)
 9) Other side stones at time T=0
 10) Other side stones at time T=-1   (0 if T=0)
 ...
-16) Other side stones at time T=-8   (0 if T<=7)
+16) Other side stones at time T=-7   (0 if T<=6)
 17) All 1 if black is to move, 0 otherwise
 18) All 1 if white is to move, 0 otherwise
 ```
@@ -233,7 +232,7 @@ format:
 first 16 input planes from the previous section
 * 1 line with 1 number indicating who is to move, 0=black, 1=white, from which
 the last 2 input planes can be reconstructed
-* 1 line with 362 floating point numbers, indicating the search probabilities
+* 1 line with 362 (19x19 + 1) floating point numbers, indicating the search probabilities
 (visit counts) at the end of the search for the move in question. The last
 number is the probability of passing.
 * 1 line with either 1 or -1, corresponding to the outcome of the game for the

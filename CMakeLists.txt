@@ -17,7 +17,7 @@ CMAKE_MINIMUM_REQUIRED (VERSION 3.1)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 PROJECT(leelaz)
-add_subdirectory(gtest)
+add_subdirectory(gtest EXCLUDE_FROM_ALL) # We don't want to install gtest, exclude it from `all`
 
 # Required Packages
 SET(Boost_MIN_VERSION "1.58.0")
@@ -40,6 +40,7 @@ find_path(BLAS_INCLUDE_DIRS openblas_config.h
   /opt/OpenBLAS/include
   /usr/include/x86_64-linux-gnu
   $ENV{BLAS_HOME}/include)
+FIND_PACKAGE(Qt5Core)
 
 # See if we can set optimization flags as expected.
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -91,6 +92,19 @@ TARGET_LINK_LIBRARIES(leelaz ${BLAS_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${OpenCL_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${ZLIB_LIBRARIES})
 TARGET_LINK_LIBRARIES(leelaz ${CMAKE_THREAD_LIBS_INIT})
+INSTALL(TARGETS leelaz DESTINATION bin)
+
+if (Qt5Core_FOUND)
+    if (NOT Qt5Core_VERSION VERSION_LESS "5.3.0")
+        ADD_SUBDIRECTORY(autogtp)
+        ADD_SUBDIRECTORY(validation)
+    else()
+        MESSAGE(WARNING "Qt ${Qt5Core_VERSION} is found but does not met required version 5.3.0, \
+        build target for `autogtp` and `validation` is disabled.")
+    endif()
+else()
+    MESSAGE(WARNNING "Qt is not found, build for `autogtp` and `validation` is disabled")
+endif()
 
 # Google Test below
 FILE(GLOB tests_SRC "${SrcPath}/tests/*.cpp")

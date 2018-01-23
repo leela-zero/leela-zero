@@ -57,11 +57,14 @@ __kernel void in_transform(__global net_t *in, __global float *V,
                            const int Ppad) {
     const int W = 19;
     const int H = 19;
+    const int T = W*H;
     const int WTILES = (W + 1) / 2;
     const int P = WTILES*WTILES;
+    const int CPpad = Ppad * Cpad;
 
     const int block = get_global_id(0);
     const int ch = get_global_id(1);
+    const int chT = ch*(T);
 
     const int block_x = block % WTILES;
     const int block_y = block / WTILES;
@@ -69,6 +72,8 @@ __kernel void in_transform(__global net_t *in, __global float *V,
     // Tiles overlap by 2
     const int yin = 2 * block_y - 1;
     const int xin = 2 * block_x - 1;
+    int a;
+    int b;
 
     if (block < P && ch < C) {
 
@@ -76,8 +81,10 @@ __kernel void in_transform(__global net_t *in, __global float *V,
         float x[4][4];
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
-                if ((yin+i) >= 0 && (xin+j) >= 0 && (yin+i) < H && (xin+j) < W) {
-                    x[i][j] = vload_net_t(ch*(W*H) + (yin+i)*W + (xin+j), in);
+                int a = xin + j;
+                int b = yin + i;
+                if (b >= 0 && a >= 0 && b < H && a < W) {
+                    x[i][j] = vload_net_t(chT + b*W + a, in);
                 } else {
                     x[i][j] = 0.0f;
                 }
@@ -123,9 +130,9 @@ __kernel void in_transform(__global net_t *in, __global float *V,
         T2[3][2] = T1[3][2] - T1[3][1];
         T2[3][3] = T1[3][1] - T1[3][3];
 
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                V[(i*4 + j)*Cpad*Ppad + offset] = T2[i][j];
+        for (int i = 0, v_idx = offset; i < 4; i++) {
+            for (int j = 0; j < 4; j++, v_idx += CPpad) {
+                V[v_idx] = T2[i][j];
             }
         }
     }
@@ -137,6 +144,8 @@ __kernel void out_transform(__global float *M, __global net_t *Y,
     const int H = 19;
     const int WTILES = (W + 1) / 2;
     const int P = WTILES * WTILES;
+    const int HW = H*W;
+    const int KPpad = Kpad * Ppad;
 
     int k = get_global_id(0);
     int block = get_global_id(1);
@@ -148,12 +157,11 @@ __kernel void out_transform(__global float *M, __global net_t *Y,
     int y = 2*block_y;
 
     if (k < K && block < P) {
+        int kHW = k * HW;
         int b = block_y * WTILES + block_x;
         float temp_m[16];
-        for (int xi = 0; xi < 4; xi++) {
-            for (int nu = 0; nu < 4; nu++) {
-                temp_m[xi*4 + nu] = M[xi*(4*Kpad*Ppad) + nu*(Kpad*Ppad)+ b*Kpad + k];
-            }
+        for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
+            temp_m[xn] = M[xnKPpad];
         }
 
         float o11 = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
@@ -172,14 +180,15 @@ __kernel void out_transform(__global float *M, __global net_t *Y,
                     temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
                     temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
 
-        vstore_net_t(o11, k*(H*W) + (y)*W + (x), Y);
+        int index = kHW + (y)*W + (x);
+        vstore_net_t(o11, index, Y);
         if (x+1 < W) {
-            vstore_net_t(o12, k*(H*W) + (y)*W + (x+1), Y);
+            vstore_net_t(o12, index + 1, Y);
         }
         if (y+1 < H) {
-            vstore_net_t(o21, k*(H*W) + (y+1)*W + (x), Y);
+            vstore_net_t(o21, index + W, Y);
             if (x+1 < W) {
-                vstore_net_t(o22, k*(H*W) + (y+1)*W + (x+1), Y);
+                vstore_net_t(o22, index + W+1, Y);
             }
         }
     }
@@ -196,6 +205,7 @@ __kernel void out_transform_fused_bn(__global float *M,
     const int H = 19;
     const int WTILES = (W + 1) / 2;
     const int P = WTILES * WTILES;
+    const int KPpad = Kpad * Ppad;
 
     int k = get_global_id(0);
     int block = get_global_id(1);
@@ -205,14 +215,13 @@ __kernel void out_transform_fused_bn(__global float *M,
 
     int x = 2*block_x;
     int y = 2*block_y;
-
+    int a_ind = (y)*W + (x);
     if (k < K && block < P) {
         int b = block_y * WTILES + block_x;
+        int kHW = k * W * H;
         float temp_m[16];
-        for (int xi = 0; xi < 4; xi++) {
-            for (int nu = 0; nu < 4; nu++) {
-                temp_m[xi*4 + nu] = M[xi*(4*Kpad*Ppad) + nu*(Kpad*Ppad)+ b*Kpad + k];
-            }
+        for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
+            temp_m[xn] = M[xnKPpad];
         }
 
         float o[4];
@@ -237,16 +246,16 @@ __kernel void out_transform_fused_bn(__global float *M,
 
         const bool pred[4] = { 1, x+1 < W, y+1 < H, x+1 < W & y+1 < H};
 
-        const int a[4] = {(y)*W + (x), (y)*W + (x+1), (y+1)*W + (x), (y+1)*W + (x+1)};
+        const int a[4] = {a_ind, a_ind+1, a_ind+W, a_ind+W+1};
 
         for (int i = 0; i < 4; i++) {
             if (pred[i]) {
                 o[i] = scale_stddiv * (o[i] - mean);
                 if (residual) {
-                    o[i] += vload_net_t(k*(H*W) + a[i], residual);
+                    o[i] += vload_net_t(kHW + a[i], residual);
                 }
                 o[i] = o[i] > 0 ? o[i] : 0.0f;
-                vstore_net_t(o[i], k*(H*W) + a[i], Y);
+                vstore_net_t(o[i], kHW + a[i], Y);
             }
         }
     }
@@ -568,11 +577,6 @@ void OpenCL_Network::batchnorm(int outputs,
 
     cl::Kernel & batchnorm_kernel = opencl_thread_data.m_batchnorm_kernel;
 
-    size_t channelGroup = 1;
-    if (channel_size == 361) {
-        channelGroup = 19;
-    }
-
     try {
         batchnorm_kernel.setArg(0, bufferInput);
         batchnorm_kernel.setArg(1, bufferOutput);
@@ -585,8 +589,7 @@ void OpenCL_Network::batchnorm(int outputs,
         batchnorm_kernel.setArg(4, weights[1]);
 
         queue.enqueueNDRangeKernel(batchnorm_kernel, cl::NullRange,
-                                   cl::NDRange(outputs, channel_size),
-                                   cl::NDRange(std::min(8, outputs), channelGroup));
+                                   cl::NDRange(outputs, channel_size));
     } catch (const cl::Error &e) {
         std::cerr << "Error in batchnorm: " << e.what() << ": "
             << e.err() << std::endl;
