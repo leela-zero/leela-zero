@@ -20,7 +20,7 @@ with open(sys.argv[1], 'r') as f:
     blocks = e - (4 + 14)
     if blocks % 8 != 0:
         raise ValueError("Inconsistent number of weights in the file")
-    blocks /= 8
+    blocks //= 8
     print("Blocks", blocks)
 
 x = [
@@ -30,6 +30,12 @@ x = [
     ]
 
 tfprocess = TFProcess(x)
+if tfprocess.RESIDUAL_BLOCKS != blocks:
+    raise ValueError("Number of blocks in tensorflow model doesn't match "\
+            "number of blocks in input network")
+if tfprocess.RESIDUAL_FILTERS != channels:
+    raise ValueError("Number of filters in tensorflow model doesn't match "\
+            "number of filters in input network")
 tfprocess.replace_weights(weights)
 path = os.path.join(os.getcwd(), "leelaz-model")
 save_path = tfprocess.saver.save(tfprocess.session, path, global_step=0)
