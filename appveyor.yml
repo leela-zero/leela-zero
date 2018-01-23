@@ -38,4 +38,8 @@ build_script:
 
     cmake --build . --config Release -- /maxcpucount:2
 
-test: off
+test_script:
+- cmd: >-
+    cd Release
+
+    tests.exe
