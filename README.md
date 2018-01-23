@@ -88,14 +88,8 @@ source and remove the line that says "#define USE_OPENCL".
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
     sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
-    git submodule update --init --recursive
-
-    # Use stand alone directory to keep source dir clean
-    mkdir build && cd build
-    cmake ..
-    cmake --build . --config Release
-    make tests
-    ./tests
+    make
+    cd ..
     wget https://sjeng.org/zero/best_v1.txt.zip
     unzip best_v1.txt.zip
     src/leelaz --weights weights.txt
@@ -106,10 +100,8 @@ source and remove the line that says "#define USE_OPENCL".
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
     brew install boost
-    mkdir build && cd build
-    cmake ..
-    cmake --build . --config Release
-    ./tests
+    make
+    cd ..
     curl -O https://sjeng.org/zero/best_v1.txt.zip
     unzip best_v1.txt.zip
     src/leelaz --weights weights.txt
@@ -125,6 +117,24 @@ source and remove the line that says "#define USE_OPENCL".
     # Build from Visual Studio 2015 or 2017
     # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to msvc/x64/Release
     # msvc/x64/Release/leela-zero --weights weights.txt
+
+## Example of compiling and running - CMake (macOS/Ubuntu)
+
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero
+    git submodule update --init --recursive
+
+    # Use stand alone directory to keep source dir clean
+    mkdir build && cd build
+    cmake ..
+    make leelaz
+    make tests
+    ./tests
+    curl -O https://sjeng.org/zero/best_v1.txt.zip
+    unzip best_v1.txt.zip
+    ./leelaz --weights weights.txt
+
 
 # Usage
 
