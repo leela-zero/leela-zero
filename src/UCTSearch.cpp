@@ -53,10 +53,6 @@ void UCTSearch::set_gamestate(const GameState & g) {
     m_nodes = m_root->count_nodes();
 }
 
-GameState UCTSearch::get_gamestate() const {
-   return m_rootstate;
-}
-
 SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
     const auto color = currstate.get_to_move();
     const auto hash = currstate.board.get_hash();
