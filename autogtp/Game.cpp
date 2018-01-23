@@ -22,7 +22,7 @@
 #include <QRegularExpression>
 #include "Game.h"
 
-Game::Game(const QString& weights, const QString& opt, const QString& binary = "./leelaz") :
+Game::Game(const QString& weights, const QString& opt, const QString& binary) :
     QProcess(),
     m_cmdLine(""),
     m_binary(binary),
@@ -36,7 +36,7 @@ Game::Game(const QString& weights, const QString& opt, const QString& binary = "
 #ifdef WIN32
     m_binary.append(".exe");
 #endif
-    m_cmdLine = m_binary + opt + weights;
+    m_cmdLine = m_binary + " " + opt + " " + weights;
     m_fileName = QUuid::createUuid().toRfc4122().toHex();
 }
 
