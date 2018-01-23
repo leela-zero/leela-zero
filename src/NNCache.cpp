@@ -42,9 +42,6 @@ bool NNCache::lookup(std::uint64_t hash, Network::Netresult & result) {
 
     // Found it.
     ++m_hits;
-    if (m_hits%100 == 0) {
-        dump_stats();
-    }
     result = entry->result;
     return true;
 }
