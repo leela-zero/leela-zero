@@ -12,11 +12,11 @@ COPY . /src/
 
 # GPU build
 WORKDIR /src/gpu/
-RUN CXX=g++ CC=gcc cmake -DUSE_OPENBLAS=1 -DUSE_OPENCL=1 ..
-RUN make -j2
+RUN CXX=g++ CC=gcc cmake ..
+RUN cmake --build . --target leelaz --config Release -- -j2
 
 # CPU build
 WORKDIR /src/cpu/
-RUN CXX=g++ CC=gcc cmake -DUSE_OPENBLAS=1 ..
-RUN make -j2
+RUN CXX=g++ CC=gcc cmake -DFEATURE_USE_CPU_ONLY=1 ..
+RUN cmake --build . --config Release -- -j2
 RUN ./tests

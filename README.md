@@ -92,8 +92,8 @@ source and remove the line that says "#define USE_OPENCL".
 
     # Use stand alone directory to keep source dir clean
     mkdir build && cd build
-    cmake -DUSE_OPENCL=1 -DUSE_OPENBLAS=1 ..
-    make leelaz
+    cmake ..
+    cmake --build . --config Release
     make tests
     ./tests
     wget https://sjeng.org/zero/best_v1.txt.zip
@@ -107,8 +107,8 @@ source and remove the line that says "#define USE_OPENCL".
     cd leela-zero/src
     brew install boost
     mkdir build && cd build
-    cmake -DUSE_OPENCL=1 ..
-    make
+    cmake ..
+    cmake --build . --config Release
     ./tests
     curl -O https://sjeng.org/zero/best_v1.txt.zip
     unzip best_v1.txt.zip
