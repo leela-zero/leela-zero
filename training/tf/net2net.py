@@ -45,15 +45,15 @@ def read_net(filename):
         return blocks, channels, weights
 
 def conv_bn_wider(weights, next_weights, inputs, channels,
-                  new_channels, noise_std=0, next_conv=True,
-                  verify=False):
-    """new_channels = number of channels to add"""
+                  new_channels, noise_std=0, last_block=False,
+                  rand=None, verify=False):
 
     if new_channels == 0:
         return weights, next_weights
 
-    rand = list(range(channels))
-    rand.extend(np.random.randint(0, channels, new_channels))
+    if rand == None:
+        rand = list(range(channels))
+        rand.extend(np.random.randint(0, channels, new_channels))
     rep_factor = np.bincount(rand)
 
     #Widen the current layer
@@ -62,7 +62,7 @@ def conv_bn_wider(weights, next_weights, inputs, channels,
     w_bn_vars = np.array(weights[3])[rand]
 
     #Widen the next layer inputs
-    if next_conv:
+    if not last_block:
         w_filter = 3
     else:
         w_filter = 1
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     new_blocks = args.blocks
-    new_filters = args.filters
+    new_channels = args.filters
     net_filename = args.network
     noise_std = args.noise
     verify = args.verify
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     if new_blocks < 0:
         raise ValueError("Blocks must be non-negative")
 
-    if new_filters < 0:
+    if new_channels < 0:
         raise ValueError("Filters must be non-negative")
 
     input_planes = 18
@@ -162,8 +162,14 @@ if __name__ == "__main__":
     #Version
     out_file.write('1\n')
 
+    #Making widening choice deterministic allows residual connection to be left
+    #as identity map. If the choice is not deterministic then the output of the
+    #widened network doesn't match the original one.
+    rand = list(range(channels))
+    rand.extend(np.random.randint(0, channels, new_channels))
+
     #Input
-    w_wider, conv_next = conv_bn_wider(w_input, [w_convs[0][0]], input_planes, channels, new_filters, noise_std, verify=verify)
+    w_wider, conv_next = conv_bn_wider(w_input, [w_convs[0][0]], input_planes, channels, new_channels, noise_std, rand=rand, verify=verify)
     w_convs[0][0] = conv_next[0]
 
     write_layer(w_wider, out_file)
@@ -171,12 +177,12 @@ if __name__ == "__main__":
     for e, w in enumerate(w_convs[:-1]):
         if e % 2 == 0:
             print("Processing block", 1 + e//2)
-        w_wider, conv_next = conv_bn_wider(w, [w_convs[e+1][0]], channels + new_filters, channels, new_filters, noise_std, verify=verify)
+        w_wider, conv_next = conv_bn_wider(w, [w_convs[e+1][0]], channels + new_channels, channels, new_channels, noise_std, rand=rand, verify=verify)
         w_convs[e+1][0] = conv_next[0]
         write_layer(w_wider, out_file)
 
     #The last block is special case because of policy and value heads
-    w_wider, w_next = conv_bn_wider(w_convs[-1], [w_pol[0], w_val[0]], channels + new_filters, channels, new_filters, noise_std, next_conv=False, verify=verify)
+    w_wider, w_next = conv_bn_wider(w_convs[-1], [w_pol[0], w_val[0]], channels + new_channels, channels, new_channels, noise_std, last_block=True, rand=rand, verify=verify)
     w_pol[0] = w_next[0]
     w_val[0] = w_next[1]
 
