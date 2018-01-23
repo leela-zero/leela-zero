@@ -124,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("blocks", help="Residual blocks to add", type=int)
     parser.add_argument("filters", help="Filters to add", type=int)
     parser.add_argument("network", help="Input network", type=str)
-    parser.add_argument("--noise", nargs='?', help="Standard deviation of noise to add to new filters/blocks. Default: 1e-5", default=1e-5, type=float)
+    parser.add_argument("--noise", nargs='?', help="Standard deviation of noise to add to new filters/blocks. Default: 5e-3", default=5e-3, type=float)
     parser.add_argument("--verify", help="Verify that output matches", default=False, action='store_true')
 
     args = parser.parse_args()
