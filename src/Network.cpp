@@ -348,10 +348,6 @@ void Network::initialize(void) {
     myprintf("Initializing OpenCL.\n");
     opencl.initialize(channels);
 
-    if (cfg_tune_only) {
-        exit(EXIT_SUCCESS);
-    }
-
     for(auto & opencl_net : opencl.get_networks()) {
         auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
 
