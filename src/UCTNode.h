@@ -71,9 +71,8 @@ public:
     const std::vector<node_ptr_t>& get_children() const;
     size_t count_nodes() const;
     node_ptr_t find_new_root(const int move);
-    void find_new_root(const GameState& g_new,
-                       GameState& g_curr,
-                       node_ptr_t& root);
+    node_ptr_t find_new_root(const GameState& g_new,
+                             GameState& g_curr);
     void sort_children(int color);
     UCTNode& get_best_root_child(int color);
     SMP::Mutex& get_mutex();
