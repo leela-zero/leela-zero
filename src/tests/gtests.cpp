@@ -31,7 +31,6 @@
 #include "NNCache.h"
 #include "Random.h"
 #include "ThreadPool.h"
-#include "UCTSearch.h"
 #include "Utils.h"
 #include "Zobrist.h"
 
