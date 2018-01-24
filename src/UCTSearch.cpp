@@ -58,9 +58,6 @@ void UCTSearch::set_gamestate(const GameState & g) {
 
 SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
     const auto color = currstate.get_to_move();
-    const auto hash = currstate.board.get_hash();
-    const auto komi = currstate.get_komi();
-
     auto result = SearchResult{};
 
     node->virtual_loss();
