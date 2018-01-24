@@ -322,9 +322,9 @@ void GameState::place_free_handicap(int stones) {
 
     stones -= set_fixed_handicap_2(stones);
 
-    UCTSearch search;
     for (int i = 0; i < stones; i++) {
-        int move = search.think(FastBoard::BLACK, *this, UCTSearch::NOPASS);
+        auto search = std::make_unique<UCTSearch>(*this);
+        auto move = search->think(FastBoard::BLACK, UCTSearch::NOPASS);
         play_move(FastBoard::BLACK, move);
     }
 
