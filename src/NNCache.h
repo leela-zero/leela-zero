@@ -39,10 +39,10 @@ public:
     void resize(int size);
 
     // Try and find an existing entry.
-    bool lookup(const Network::NNPlanes& features, Network::Netresult & result);
+    bool lookup(std::uint64_t hash, Network::Netresult & result);
 
     // Insert a new entry.
-    void insert(const Network::NNPlanes& features,
+    void insert(std::uint64_t hash,
                 const Network::Netresult& result);
 
     // Return the hit rate ratio.
@@ -63,17 +63,15 @@ private:
     int m_hits{0};
     int m_lookups{0};
     int m_inserts{0};
-    int m_collisions{0};
 
     struct Entry {
-        Entry(const Network::NNPlanes& f, const Network::Netresult& r)
-            : features(f), result(r) {}
-        Network::NNPlanes features; // ~ 1KB
+        Entry( const Network::Netresult& r)
+            : result(r) {}
         Network::Netresult result;  // ~ 3KB
     };
 
     // Map from hash to {features, result}
-    std::unordered_map<size_t, std::unique_ptr<const Entry>> m_cache;
+    std::unordered_map<std::uint64_t, std::unique_ptr<const Entry>> m_cache;
     // Order entries were added to the map.
     std::deque<size_t> m_order;
 };

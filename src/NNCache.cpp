@@ -29,23 +29,7 @@ NNCache& NNCache::get_NNCache(void) {
     return cache;
 }
 
-template <class T>
-inline size_t hash_combine(size_t seed, const T& v) {
-    std::hash<T> hasher;
-    return seed ^ (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-}
-
-static size_t compute_hash(const Network::NNPlanes& features) {
-    auto hash = size_t{0};
-    for (const auto& p : features) {
-        hash = hash_combine(hash, p);
-    }
-    return hash;
-}
-
-bool NNCache::lookup(const Network::NNPlanes& features, Network::Netresult & result) {
-    auto hash = compute_hash(features);
-
+bool NNCache::lookup(std::uint64_t hash, Network::Netresult & result) {
     std::lock_guard<std::mutex> lock(m_mutex);
     ++m_lookups;
 
@@ -55,11 +39,6 @@ bool NNCache::lookup(const Network::NNPlanes& features, Network::Netresult & res
     }
 
     const auto& entry = iter->second;
-    if (entry->features != features) {
-        // Got a hash collision.
-        ++m_collisions;
-        return false;
-    }
 
     // Found it.
     ++m_hits;
@@ -67,16 +46,15 @@ bool NNCache::lookup(const Network::NNPlanes& features, Network::Netresult & res
     return true;
 }
 
-void NNCache::insert(const Network::NNPlanes& features,
+void NNCache::insert(std::uint64_t hash,
                      const Network::Netresult& result) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    auto hash = compute_hash(features);
     if (m_cache.find(hash) != m_cache.end()) {
         return;  // Already in the cache.
     }
 
-    m_cache.emplace(hash, std::make_unique<Entry>(features, result));
+    m_cache.emplace(hash, std::make_unique<Entry>(result));
     m_order.push_back(hash);
     ++m_inserts;
 
@@ -104,7 +82,7 @@ void NNCache::set_size_from_playouts(int max_playouts) {
 }
 
 void NNCache::dump_stats() {
-    Utils::myprintf("NNCache: %d/%d hits/lookups = %.1f%% hitrate, %d inserts, %u size, %d collisions\n",
+    Utils::myprintf("NNCache: %d/%d hits/lookups = %.1f%% hitrate, %d inserts, %u size\n",
         m_hits, m_lookups, 100. * m_hits / (m_lookups + 1),
-        m_inserts, m_cache.size(), m_collisions);
+        m_inserts, m_cache.size());
 }
