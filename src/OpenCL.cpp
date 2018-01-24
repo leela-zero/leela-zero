@@ -835,6 +835,13 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus, bool 
     auto sgemm_tuners =
         t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
 
+    // Exit immediately after tuning. Some NVIDIA drivers are buggy
+    // and will fail to compile the rest of the kernels after a tuning
+    // run. See #729.
+    if (cfg_tune_only) {
+        exit(EXIT_SUCCESS);
+    }
+
     // Build program for these specific devices
     try {
         std::string args = cl_args;

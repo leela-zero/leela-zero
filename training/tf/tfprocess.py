@@ -44,6 +44,11 @@ def conv2d(x, W):
 
 class TFProcess:
     def __init__(self, next_batch):
+
+        # Network structure
+        self.RESIDUAL_FILTERS = 128
+        self.RESIDUAL_BLOCKS = 6
+
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
         config = tf.ConfigProto(gpu_options=gpu_options)
         self.session = tf.Session(config=config)
@@ -314,9 +319,6 @@ class TFProcess:
         return h_out_2
 
     def construct_net(self, planes):
-        # Network structure
-        RESIDUAL_FILTERS = 128
-        RESIDUAL_BLOCKS = 6
 
         # NCHW format
         # batch, 18 channels, 19 x 19
@@ -325,14 +327,14 @@ class TFProcess:
         # Input convolution
         flow = self.conv_block(x_planes, filter_size=3,
                                input_channels=18,
-                               output_channels=RESIDUAL_FILTERS)
+                               output_channels=self.RESIDUAL_FILTERS)
         # Residual tower
-        for _ in range(0, RESIDUAL_BLOCKS):
-            flow = self.residual_block(flow, RESIDUAL_FILTERS)
+        for _ in range(0, self.RESIDUAL_BLOCKS):
+            flow = self.residual_block(flow, self.RESIDUAL_FILTERS)
 
         # Policy head
         conv_pol = self.conv_block(flow, filter_size=1,
-                                   input_channels=RESIDUAL_FILTERS,
+                                   input_channels=self.RESIDUAL_FILTERS,
                                    output_channels=2)
         h_conv_pol_flat = tf.reshape(conv_pol, [-1, 2*19*19])
         W_fc1 = weight_variable([2 * 19 * 19, (19 * 19) + 1])
@@ -343,7 +345,7 @@ class TFProcess:
 
         # Value head
         conv_val = self.conv_block(flow, filter_size=1,
-                                   input_channels=RESIDUAL_FILTERS,
+                                   input_channels=self.RESIDUAL_FILTERS,
                                    output_channels=1)
         h_conv_val_flat = tf.reshape(conv_val, [-1, 19*19])
         W_fc2 = weight_variable([19 * 19, 256])

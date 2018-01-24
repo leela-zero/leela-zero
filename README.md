@@ -182,7 +182,7 @@ autodetect the amounts on startup. The first line contains a version number.
 
 There are 18 inputs to the first layer, instead of 17 as in the paper. The
 original AlphaGo Zero design has a slight imbalance in that it is easier
-for the white player to see the board edge (due to how padding works in
+for the black player to see the board edge (due to how padding works in
 neural networks). This has been fixed in Leela Zero. The inputs are:
 
 ```

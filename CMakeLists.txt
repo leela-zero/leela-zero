@@ -60,6 +60,10 @@ if (GccSpecificFlags)
   SET(CMAKE_EXE_LINKER_FLAGS "-flto -g")
 endif(GccSpecificFlags)
 
+if (FEATURE_USE_CPU_ONLY)
+  ADD_DEFINITIONS(-DFEATURE_USE_CPU_ONLY)
+endif()
+
 SET(IncludePath "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
 

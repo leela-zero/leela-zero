@@ -48,10 +48,11 @@ void UCTSearch::set_gamestate(const GameState & g) {
     // Definition of m_playouts is playouts from a certain GameState.
     // So reset this count now.
     m_playouts = 0;
-    if (m_rootstate.get_komi() != g.get_komi()
-        || m_rootstate.board.get_hash() != g.board.get_hash()) {
-        m_root = m_root->find_new_root(g, m_rootstate);
-    }
+    // See if the current state of the game is a direct succesor of
+    // our stored tree's root node. If so, make that the new root.
+    UCTNode::find_new_root(m_root, g, m_rootstate);
+    // If the above succeeded, we'll have a search tree already. See
+    // how big it is.
     m_nodes = m_root->count_nodes();
 }
 

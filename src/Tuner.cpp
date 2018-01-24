@@ -439,6 +439,12 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
 
     // Write new tuning
     file << tuning_line << std::endl;
+
+    if (file.fail()) {
+        myprintf("Could not save the tuning result.\n");
+        myprintf("Do I have write permissions on %s?\n",
+            TUNER_FILE_LOCAL.c_str());
+    }
 }
 
 std::string Tuner::sgemm_tuners_from_line(std::string line,
