@@ -27,194 +27,194 @@ class SprtProbability;
 
 class BayesElo
 {
-	public:
-		BayesElo(double bayesElo, double drawElo);
-		BayesElo(const SprtProbability& p);
+    public:
+        BayesElo(double bayesElo, double drawElo);
+        BayesElo(const SprtProbability& p);
 
-		double bayesElo() const;
-		double drawElo() const;
-		double scale() const;
+        double bayesElo() const;
+        double drawElo() const;
+        double scale() const;
 
-	private:
-		double m_bayesElo;
-		double m_drawElo;
+    private:
+        double m_bayesElo;
+        double m_drawElo;
 };
 
 class SprtProbability
 {
-	public:
-		SprtProbability(int wins, int losses, int draws);
-		SprtProbability(const BayesElo& b);
+    public:
+        SprtProbability(int wins, int losses, int draws);
+        SprtProbability(const BayesElo& b);
 
-		bool isValid() const;
-		double pWin() const;
-		double pLoss() const;
-		double pDraw() const;
+        bool isValid() const;
+        double pWin() const;
+        double pLoss() const;
+        double pDraw() const;
 
-	private:
-		double m_pWin;
-		double m_pLoss;
-		double m_pDraw;
+    private:
+        double m_pWin;
+        double m_pLoss;
+        double m_pDraw;
 };
 
 
 BayesElo::BayesElo(double bayesElo, double drawElo)
-	: m_bayesElo(bayesElo),
-	  m_drawElo(drawElo)
+    : m_bayesElo(bayesElo),
+      m_drawElo(drawElo)
 {
 }
 
 BayesElo::BayesElo(const SprtProbability& p)
 {
-	Q_ASSERT(p.isValid());
+    Q_ASSERT(p.isValid());
 
-	m_bayesElo = 200.0 * std::log10(p.pWin() / p.pLoss() *
-					(1.0 - p.pLoss()) / (1.0 - p.pWin()));
-	m_drawElo  = 200.0 * std::log10((1.0 - p.pLoss()) / p.pLoss() *
-					(1.0 - p.pWin()) / p.pWin());
+    m_bayesElo = 200.0 * std::log10(p.pWin() / p.pLoss() *
+                                   (1.0 - p.pLoss()) / (1.0 - p.pWin()));
+    m_drawElo  = 200.0 * std::log10((1.0 - p.pLoss()) / p.pLoss() *
+                                   (1.0 - p.pWin()) / p.pWin());
 }
 
 double BayesElo::bayesElo() const
 {
-	return m_bayesElo;
+    return m_bayesElo;
 }
 
 double BayesElo::drawElo() const
 {
-	return m_drawElo;
+    return m_drawElo;
 }
 
 double BayesElo::scale() const
 {
-	const double x = std::pow(10.0, -m_drawElo / 400.0);
-	return 4.0 * x / ((1.0 + x) * (1.0 + x));
+    const double x = std::pow(10.0, -m_drawElo / 400.0);
+    return 4.0 * x / ((1.0 + x) * (1.0 + x));
 }
 
 SprtProbability::SprtProbability(int wins, int losses, int draws)
 {
-	Q_ASSERT(wins > 0 && losses > 0 && draws > 0);
+    Q_ASSERT(wins > 0 && losses > 0 && draws > 0);
 
-	const int count = wins + losses + draws;
+    const int count = wins + losses + draws;
 
-	m_pWin = double(wins) / count;
-	m_pLoss = double(losses) / count;
-	m_pDraw = 1.0 - m_pWin - m_pLoss;
+    m_pWin = double(wins) / count;
+    m_pLoss = double(losses) / count;
+    m_pDraw = 1.0 - m_pWin - m_pLoss;
 }
 
 SprtProbability::SprtProbability(const BayesElo& b)
 {
-	m_pWin  = 1.0 / (1.0 + std::pow(10.0, (b.drawElo() - b.bayesElo()) / 400.0));
-	m_pLoss = 1.0 / (1.0 + std::pow(10.0, (b.drawElo() + b.bayesElo()) / 400.0));
-	m_pDraw = 1.0 - m_pWin - m_pLoss;
+    m_pWin  = 1.0 / (1.0 + std::pow(10.0, (b.drawElo() - b.bayesElo()) / 400.0));
+    m_pLoss = 1.0 / (1.0 + std::pow(10.0, (b.drawElo() + b.bayesElo()) / 400.0));
+    m_pDraw = 1.0 - m_pWin - m_pLoss;
 }
 
 bool SprtProbability::isValid() const
 {
-	return 0.0 < m_pWin && m_pWin < 1.0 &&
-	       0.0 < m_pLoss && m_pLoss < 1.0 &&
-	       0.0 < m_pDraw && m_pDraw < 1.0;
+    return 0.0 < m_pWin && m_pWin < 1.0 &&
+           0.0 < m_pLoss && m_pLoss < 1.0 &&
+           0.0 < m_pDraw && m_pDraw < 1.0;
 }
 
 double SprtProbability::pWin() const
 {
-	return m_pWin;
+    return m_pWin;
 }
 
 double SprtProbability::pLoss() const
 {
-	return m_pLoss;
+    return m_pLoss;
 }
 
 double SprtProbability::pDraw() const
 {
-	return m_pDraw;
+    return m_pDraw;
 }
 
 
-Sprt::Sprt()
-	: m_elo0(0),
-	  m_elo1(0),
-	  m_alpha(0),
-	  m_beta(0),
-	  m_wins(0),
-	  m_losses(0),
-	  m_draws(0),
-	  m_mutex()
+Sprt::Sprt(): 
+    m_elo0(0),
+    m_elo1(0),
+    m_alpha(0),
+    m_beta(0),
+    m_wins(0),
+    m_losses(0),
+    m_draws(0),
+    m_mutex()
 {
 }
 
 bool Sprt::isNull() const
 {
-	return m_elo0 == 0 && m_elo1 == 0 && m_alpha == 0 && m_beta == 0;
+    return m_elo0 == 0 && m_elo1 == 0 && m_alpha == 0 && m_beta == 0;
 }
 
 void Sprt::initialize(double elo0, double elo1,
-		              double alpha, double beta)
+                      double alpha, double beta)
 {
-	m_elo0 = elo0;
-	m_elo1 = elo1;
-	m_alpha = alpha;
-	m_beta = beta;
+    m_elo0 = elo0;
+    m_elo1 = elo1;
+    m_alpha = alpha;
+    m_beta = beta;
 }
 
 Sprt::Status Sprt::status() const
 {
-	QMutexLocker locker(&m_mutex);
-	Status status = {
-		Continue,
-		0.0,
-		0.0,
-		0.0
-	};
-        status.lBound = std::log(m_beta / (1.0 - m_alpha));
-        status.uBound = std::log((1.0 - m_beta) / m_alpha);
+    QMutexLocker locker(&m_mutex);
+    Status status = {
+        Continue,
+        0.0,
+        0.0,
+        0.0
+    };
+    status.lBound = std::log(m_beta / (1.0 - m_alpha));
+    status.uBound = std::log((1.0 - m_beta) / m_alpha);
 
-        if (m_wins <= 0 || m_losses <= 0 || m_draws <= 0) {
-        	if (m_wins <= 0 && m_losses >= std::exp(fabs(status.lBound))) {
-	            status.result = AcceptH0;
-	        }
-	        if (m_losses <= 0 && m_wins >= std::exp(fabs(status.uBound))) {
-        	    status.result = AcceptH1;
-	        }
-	        return status;
-	}
-	// Estimate draw_elo out of sample
-	const SprtProbability p(m_wins, m_losses, m_draws);
-	const BayesElo b(p);
+    if (m_wins <= 0 || m_losses <= 0 || m_draws <= 0) {
+        if (m_wins <= 0 && m_losses >= std::exp(fabs(status.lBound))) {
+            status.result = AcceptH0;
+        }
+        if (m_losses <= 0 && m_wins >= std::exp(fabs(status.uBound))) {
+            status.result = AcceptH1;
+        }
+        return status;
+    }
+    // Estimate draw_elo out of sample
+    const SprtProbability p(m_wins, m_losses, m_draws);
+    const BayesElo b(p);
 
-	// Probability laws under H0 and H1
-	const double s = b.scale();
-	const BayesElo b0(m_elo0 / s, b.drawElo());
-	const BayesElo b1(m_elo1 / s, b.drawElo());
-	const SprtProbability p0(b0), p1(b1);
+    // Probability laws under H0 and H1
+    const double s = b.scale();
+    const BayesElo b0(m_elo0 / s, b.drawElo());
+    const BayesElo b1(m_elo1 / s, b.drawElo());
+    const SprtProbability p0(b0), p1(b1);
 
-	// Log-Likelyhood Ratio
-	status.llr = m_wins * std::log(p1.pWin() / p0.pWin()) +
-		     m_losses * std::log(p1.pLoss() / p0.pLoss()) +
-		     m_draws * std::log(p1.pDraw() / p0.pDraw());
+    // Log-Likelyhood Ratio
+    status.llr = m_wins * std::log(p1.pWin() / p0.pWin()) +
+                 m_losses * std::log(p1.pLoss() / p0.pLoss()) +
+                 m_draws * std::log(p1.pDraw() / p0.pDraw());
 
-	// Bounds based on error levels of the test
+    // Bounds based on error levels of the test
 
-	if (status.llr > status.uBound)
-		status.result = AcceptH1;
-	else if (status.llr < status.lBound)
-		status.result = AcceptH0;
+    if (status.llr > status.uBound)
+        status.result = AcceptH1;
+    else if (status.llr < status.lBound)
+        status.result = AcceptH0;
 
-	return status;
+    return status;
 }
 
 void Sprt::addGameResult(GameResult result)
 {
-	QMutexLocker locker(&m_mutex);
-	if (result == Win)
-		m_wins++;
-	else if (result == Draw)
-		m_draws++;
-	else if (result == Loss)
-		m_losses++;
+    QMutexLocker locker(&m_mutex);
+    if (result == Win)
+        m_wins++;
+    else if (result == Draw)
+        m_draws++;
+    else if (result == Loss)
+        m_losses++;
 }
 
 std::tuple<int, int, int> Sprt::getWDL() const
 {
-       return std::make_tuple(m_wins, m_draws, m_losses);
+    return std::make_tuple(m_wins, m_draws, m_losses);
 }
