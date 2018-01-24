@@ -218,16 +218,11 @@ int UCTSearch::get_best_move(passflag_t passflag) {
         m_root->randomize_first_proportionally();
     }
 
-    int bestmove = m_root->get_first_child()->get_move();
+    auto first_child = m_root->get_first_child();
+    assert(first_child != nullptr);
 
-    // do we have statistics on the moves?
-    if (m_root->get_first_child() != nullptr) {
-        if (m_root->get_first_child()->first_visit()) {
-            return bestmove;
-        }
-    }
-
-    float bestscore = m_root->get_first_child()->get_eval(color);
+    auto bestmove = first_child->get_move();
+    auto bestscore = first_child->get_eval(color);
 
     // do we want to fiddle with the best move because of the rule set?
     if (passflag & UCTSearch::NOPASS) {
