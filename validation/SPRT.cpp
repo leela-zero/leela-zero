@@ -166,18 +166,18 @@ Sprt::Status Sprt::status() const
 		0.0,
 		0.0
 	};
-    status.lBound = std::log(m_beta / (1.0 - m_alpha));
-    status.uBound = std::log((1.0 - m_beta) / m_alpha);
+        status.lBound = std::log(m_beta / (1.0 - m_alpha));
+        status.uBound = std::log((1.0 - m_beta) / m_alpha);
 
-    if (m_wins <= 0 || m_losses <= 0 || m_draws <= 0) {
-        if (m_wins <= 0 && m_losses >= std::exp(fabs(status.lBound))) {
-            status.result = AcceptH0;
-        }
-        if (m_losses <= 0 && m_wins >= std::exp(fabs(status.uBound))) {
-            status.result = AcceptH1;
-        }
-        return status;
-    }
+        if (m_wins <= 0 || m_losses <= 0 || m_draws <= 0) {
+        	if (m_wins <= 0 && m_losses >= std::exp(fabs(status.lBound))) {
+	            status.result = AcceptH0;
+	        }
+	        if (m_losses <= 0 && m_wins >= std::exp(fabs(status.uBound))) {
+        	    status.result = AcceptH1;
+	        }
+	        return status;
+	}
 	// Estimate draw_elo out of sample
 	const SprtProbability p(m_wins, m_losses, m_draws);
 	const BayesElo b(p);
