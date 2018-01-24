@@ -139,28 +139,6 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
     m_has_children = true;
 }
 
-void UCTNode::kill_superkos(const KoState& state) {
-    for (auto& child : m_children) {
-        auto move = child->get_move();
-        if (move != FastBoard::PASS) {
-            KoState mystate = state;
-            mystate.play_move(move);
-
-            if (mystate.superko()) {
-                // Don't delete nodes for now, just mark them invalid.
-                child->invalidate();
-            }
-        }
-    }
-
-    // Now do the actual deletion.
-    m_children.erase(
-        std::remove_if(begin(m_children), end(m_children),
-                       [](const auto &child) { return !child->valid(); }),
-        end(m_children)
-    );
-}
-
 float UCTNode::eval_state(GameState& state) {
     auto raw_netlist = Network::get_scored_moves(
         &state, Network::Ensemble::RANDOM_ROTATION, -1, true);

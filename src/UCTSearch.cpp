@@ -404,7 +404,6 @@ int UCTSearch::think(int color, const GameState& g, passflag_t passflag) {
     } else {
         root_eval = m_root->get_eval(color);
     }
-    m_root->kill_superkos(m_rootstate);
     if (cfg_noise) {
         m_root->dirichlet_noise(0.25f, 0.03f);
     }
