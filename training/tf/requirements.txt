@@ -5,6 +5,7 @@ html5lib==0.9999999
 Markdown==2.6.9
 numpy==1.13.3
 protobuf==3.4.0
+scipy==1.0.0
 six==1.11.0
 tensorflow==1.4.0
 tensorflow-tensorboard==0.4.0rc2
