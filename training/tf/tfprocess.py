@@ -43,7 +43,7 @@ def conv2d(x, W):
                         strides=[1, 1, 1, 1], padding='SAME')
 
 class TFProcess:
-    def __init__(self, next_batch):
+    def __init__(self, next_batch, iterator_test=None):
 
         # Network structure
         self.RESIDUAL_FILTERS = 128
@@ -58,6 +58,7 @@ class TFProcess:
 
         # TF variables
         self.next_batch = next_batch
+        self.iterator_test = iterator_test
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
         self.x = next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 19 * 19])
         self.y_ = next_batch[1] # tf.placeholder(tf.float32, [None, 362])
@@ -197,15 +198,28 @@ class TFProcess:
         if steps % 8000 == 0:
             sum_accuracy = 0
             sum_mse = 0
-            for _ in range(0, 10):
-                train_accuracy, train_mse, _ = self.session.run(
-                    [self.accuracy, self.mse_loss, self.next_batch],
-                    feed_dict={self.training: False})
-                sum_accuracy += train_accuracy
-                sum_mse += train_mse
-            sum_accuracy /= 10.0
+            test_set_size = 10
+            if self.iterator_test != None:
+                #Use separate test set if we have one
+                next_test_batch = self.iterator_test.get_next()
+                self.session.run(self.iterator_test.initializer)
+                for _ in range(0, test_set_size):
+                    train_accuracy, train_mse, _ = self.session.run(
+                        [self.accuracy, self.mse_loss, next_test_batch],
+                        feed_dict={self.training: False})
+                    sum_accuracy += train_accuracy
+                    sum_mse += train_mse
+            else:
+                #Otherwise use training data
+                for _ in range(0, test_set_size):
+                    train_accuracy, train_mse, _ = self.session.run(
+                        [self.accuracy, self.mse_loss, self.next_batch],
+                        feed_dict={self.training: False})
+                    sum_accuracy += train_accuracy
+                    sum_mse += train_mse
+            sum_accuracy /= test_set_size
             # Additionally rescale to [0, 1] so divide by 4
-            sum_mse /= (4.0 * 10.0)
+            sum_mse /= (4.0 * test_set_size)
             test_summaries = tf.Summary(value=[
                 tf.Summary.Value(tag="Accuracy", simple_value=sum_accuracy),
                 tf.Summary.Value(tag="MSE Loss", simple_value=sum_mse)])
