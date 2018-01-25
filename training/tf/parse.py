@@ -274,6 +274,9 @@ def main(args):
     if not chunks:
         return
 
+    # The following assumes positions from one game are not
+    # spread through chunks.
+    random.shuffle(chunks)
     training, test = split_chunks(chunks, 0.1)
     print("Training with {0} chunks, validating on {1} chunks".format(
         len(training), len(test)))
