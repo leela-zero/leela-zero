@@ -41,6 +41,10 @@ public:
     void init(const QString& gpuIndex,
               const QString& firstNet,
               const QString& secondNet,
+              const QString& firstBin,
+              const QString& secondBin,
+              const QString& firstOpts,
+              const QString& secondOpts,
               const QString& keep,
               int expected);
     void run() override;
@@ -53,7 +57,10 @@ private:
     QString m_secondNet;
     int m_expected;
     QString m_keepPath;
-    QString m_option;
+    QString m_firstBin;
+    QString m_secondBin;
+    QString m_firstOpts;
+    QString m_secondOpts;
     QAtomicInt m_state;
 };
 
@@ -66,7 +73,13 @@ public:
                const QString& firstNet,
                const QString& secondNet,
                const QString& keep,
-               QMutex* mutex);
+               QMutex* mutex,
+               const QString& firstBin,
+               const QString& secondBin,
+               const QString& firstOpts,
+               const QString& secondOpts,
+               const float& h0,
+               const float& h1);
     ~Validation() = default;
     void startGames();
     void wait();
@@ -85,6 +98,10 @@ private:
     QStringList m_gpusList;
     QString m_firstNet;
     QString m_secondNet;
+    QString m_firstBin;
+    QString m_secondBin;
+    QString m_firstOpts;
+    QString m_secondOpts;
     QString m_keepPath;
     void quitThreads();
 };

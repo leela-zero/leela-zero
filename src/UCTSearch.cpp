@@ -34,37 +34,34 @@
 #include "TimeControl.h"
 #include "Timing.h"
 #include "Training.h"
-#include "TTable.h"
 #include "Utils.h"
 
 using namespace Utils;
 
-UCTSearch::UCTSearch() {
+UCTSearch::UCTSearch(GameState& g)
+    : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
 }
 
-void UCTSearch::set_gamestate(const GameState & g) {
-    // Definition of m_playouts is playouts from a certain GameState.
+void UCTSearch::update_root() {
+    // Definition of m_playouts is playouts per search call.
     // So reset this count now.
     m_playouts = 0;
     // See if the current state of the game is a direct succesor of
     // our stored tree's root node. If so, make that the new root.
-    UCTNode::find_new_root(m_root, g, m_rootstate);
+    UCTNode::find_new_root(m_root, m_rootstate, std::move(m_last_rootstate));
     // If the above succeeded, we'll have a search tree already. See
     // how big it is.
     m_nodes = m_root->count_nodes();
 }
 
-SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const node) {
+SearchResult UCTSearch::play_simulation(GameState & currstate,
+                                        UCTNode* const node) {
     const auto color = currstate.get_to_move();
-    const auto hash = currstate.board.get_hash();
-    const auto komi = currstate.get_komi();
-
     auto result = SearchResult{};
 
-    TTable::get_TT().sync(hash, komi, node);
     node->virtual_loss();
 
     if (!node->has_children()) {
@@ -108,7 +105,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate, UCTNode* const no
         node->update(result.eval());
     }
     node->virtual_loss_undo();
-    TTable::get_TT().update(hash, komi, node);
 
     return result;
 }
@@ -221,16 +217,11 @@ int UCTSearch::get_best_move(passflag_t passflag) {
         m_root->randomize_first_proportionally();
     }
 
-    int bestmove = m_root->get_first_child()->get_move();
+    auto first_child = m_root->get_first_child();
+    assert(first_child != nullptr);
 
-    // do we have statistics on the moves?
-    if (m_root->get_first_child() != nullptr) {
-        if (m_root->get_first_child()->first_visit()) {
-            return bestmove;
-        }
-    }
-
-    float bestscore = m_root->get_first_child()->get_eval(color);
+    auto bestmove = first_child->get_move();
+    auto bestscore = first_child->get_eval(color);
 
     // do we want to fiddle with the best move because of the rule set?
     if (passflag & UCTSearch::NOPASS) {
@@ -379,12 +370,11 @@ void UCTSearch::increment_playouts() {
     m_playouts++;
 }
 
-int UCTSearch::think(int color, const GameState& g, passflag_t passflag) {
-    set_gamestate(g);
-
+int UCTSearch::think(int color, passflag_t passflag) {
     // Start counting time for us
     m_rootstate.start_clock(color);
 
+    update_root();
     // set side to move
     m_rootstate.board.set_to_move(color);
 
@@ -466,13 +456,17 @@ int UCTSearch::think(int color, const GameState& g, passflag_t passflag) {
                  (m_playouts * 100) / (elapsed_centis+1));
     }
     int bestmove = get_best_move(passflag);
-    m_rootstate.play_move(bestmove);
+    // Update the root to point to the subtree after our selected move.
     m_root = m_root->find_new_root(bestmove);
+    // Copy the root state and play our move. We can search for the
+    // users' played move from this point.
+    m_last_rootstate = std::make_unique<GameState>(m_rootstate);
+    m_last_rootstate->play_move(bestmove);
     return bestmove;
 }
 
-void UCTSearch::ponder(const GameState& g) {
-    set_gamestate(g);
+void UCTSearch::ponder() {
+    update_root();
 
     m_run = true;
     int cpus = cfg_num_threads;

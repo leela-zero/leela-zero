@@ -49,6 +49,18 @@ int main(int argc, char *argv[]) {
         {"n", "network"},
             "Networks to use as players in competition mode (two are needed).",
             "filename");
+    QCommandLineOption binaryOption(
+        {"b", "binary"},
+            "Binary to execute for the game (default ./leelaz).",
+            "filename");
+    QCommandLineOption optionsOption(
+        {"o", "options"},
+            "Options for the binary given by -b (default '-g -p 1600 --noponder -t 1 -q -d -r 0 -w').",
+            "opt_string");
+    QCommandLineOption sprtOption(
+        {"s", "sprt"},
+            "Set the SPRT hypothesis (default '0.0:35.0').",
+            "lower:upper", "0.0:35.0");
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
             "Play 'gamesNum' games on one GPU at the same time.",
@@ -65,6 +77,9 @@ int main(int argc, char *argv[]) {
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(networkOption);
+    parser.addOption(binaryOption);
+    parser.addOption(optionsOption);
+    parser.addOption(sprtOption);
     parser.addOption(keepSgfOption);
 
     // Process the actual command line arguments given by the user
@@ -73,6 +88,22 @@ int main(int argc, char *argv[]) {
     if(netList.count() != 2) {
         parser.showHelp();
     }
+
+    QStringList binList = parser.values(binaryOption);
+    while(binList.count() != 2) {
+        binList << "./leelaz";
+    }
+    
+    QStringList optsList = parser.values(optionsOption);
+    while(optsList.count() != 2) {
+        optsList << " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ";
+    }
+   
+    QString sprtOpt = parser.value(sprtOption);
+    QStringList sprtList = sprtOpt.split(":");
+    float h0 = sprtList[0].toFloat(); 
+    float h1 = sprtList[1].toFloat(); 
+
     int gamesNum = parser.value(gamesNumOption).toInt();
     QStringList gpusList = parser.values(gpusOption);
     int gpusNum = gpusList.count();
@@ -92,9 +123,14 @@ int main(int argc, char *argv[]) {
         }
     }
     QMutex mutex;
+    cerr << "SPRT : " << sprtOpt << " h0 " << h0 << " h1 " << h1 << endl; 
     Validation validate(gpusNum, gamesNum, gpusList,
                         netList.at(0), netList.at(1),
-                        parser.value(keepSgfOption), &mutex);
+                        parser.value(keepSgfOption), &mutex,
+                        binList.at(0), binList.at(1),
+                        optsList.at(0), optsList.at(1),
+                        h0, h1
+                        );
     validate.startGames();
     mutex.lock();
     cerr.flush();
