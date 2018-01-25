@@ -510,11 +510,11 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         if (!cmdstream.fail()) {
             auto vec = Network::get_scored_moves(
-                &game, Network::Ensemble::DIRECT, rotation);
+                &game, Network::Ensemble::DIRECT, rotation, true);
             Network::show_heatmap(&game, vec, false);
         } else {
             auto vec = Network::get_scored_moves(
-                &game, Network::Ensemble::DIRECT, 0);
+                &game, Network::Ensemble::DIRECT, 0, true);
             Network::show_heatmap(&game, vec, false);
         }
         gtp_printf(id, "");
