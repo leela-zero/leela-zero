@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 #    This file is part of Leela Zero.
-#    Copyright (C) 2017 Gian-Carlo Pascutto
+#    Copyright (C) 2017-2018 Gian-Carlo Pascutto
 #
 #    Leela Zero is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -152,7 +152,10 @@ class ChunkParser:
                 with gzip.open(chunk, 'r') as chunk_file:
                     file_content = chunk_file.readlines()
                     item_count = len(file_content) // DATA_ITEM_LINES
-                    for item_idx in range(item_count):
+                    # Pick only 1 in every 8 positions
+                    picked_items = random.sample(range(item_count),
+                                                 (item_count + 7) // 8)
+                    for item_idx in picked_items:
                         pick_offset = item_idx * DATA_ITEM_LINES
                         item = file_content[pick_offset:pick_offset + DATA_ITEM_LINES]
                         str_items = [str(line, 'ascii') for line in item]
