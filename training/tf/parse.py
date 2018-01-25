@@ -16,11 +16,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys
+import argparse
 import glob
 import gzip
 import random
-import math
 import multiprocessing as mp
 import numpy as np
 import time
@@ -260,9 +259,18 @@ def benchmark(parser):
         end = time.time()
         print("{} pos/sec {} secs".format( 10000. / (end - start), (end - start)))
 
-def main(args):
+def main():
 
-    train_data_prefix = args.pop(0)
+    parser = argparse.ArgumentParser(description='Train neural network')
+    parser.add_argument("chunks", help="Glob of training chunks", type=str)
+    parser.add_argument("--test", nargs='?', help="Chunk to use as a test set.",
+            default=None, type=str)
+    parser.add_argument("restore", nargs='?', help="Model to resume training from",
+        default=None, type=str)
+
+    args = parser.parse_args()
+
+    train_data_prefix = args.chunks
 
     chunks = get_chunks(train_data_prefix)
     print("Found {0} chunks".format(len(chunks)))
@@ -271,6 +279,20 @@ def main(args):
         return
 
     parser = ChunkParser(chunks)
+
+    if args.test:
+        test_chunk = [args.test]
+        parser_test = ChunkParser(test_chunk)
+
+        testset = tf.data.Dataset.from_generator(
+            parser_test.parse_chunk, output_types=(tf.string))
+        testset = testset.map(_parse_function)
+        testset = testset.batch(BATCH_SIZE)
+        testset = testset.prefetch(4)
+        iterator_test = testset.make_initializable_iterator()
+        print("Using test set: {}".format(test_chunk[0]))
+    else:
+        iterator_test = None
 
     run_test(parser)
     #benchmark(parser)
@@ -284,13 +306,13 @@ def main(args):
     iterator = dataset.make_one_shot_iterator()
     next_batch = iterator.get_next()
 
-    tfprocess = TFProcess(next_batch)
-    if args:
-        restore_file = args.pop(0)
+    tfprocess = TFProcess(next_batch, iterator_test)
+    if args.restore:
+        restore_file = args.restore
         tfprocess.restore(restore_file)
     while True:
         tfprocess.process(BATCH_SIZE)
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
     mp.freeze_support()
