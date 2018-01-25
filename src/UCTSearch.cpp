@@ -227,22 +227,17 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     if (passflag & UCTSearch::NOPASS) {
         // were we going to pass?
         if (bestmove == FastBoard::PASS) {
-            UCTNode * nopass = m_root->get_nopass_child(m_rootstate);
-
+            auto nopass = m_root->get_nopass_child(m_rootstate);
             if (nopass != nullptr) {
                 myprintf("Preferring not to pass.\n");
                 bestmove = nopass->get_move();
-                if (nopass->first_visit()) {
-                    bestscore = 1.0f;
-                } else {
-                    bestscore = nopass->get_eval(color);
-                }
+                bestscore = nopass->get_eval(color);
             } else {
                 myprintf("Pass is the only acceptable move.\n");
             }
         }
-    } else {
-        if (!cfg_dumbpass && bestmove == FastBoard::PASS) {
+    } else if (!cfg_dumbpass) {
+        if (bestmove == FastBoard::PASS) {
             // Either by forcing or coincidence passing is
             // on top...check whether passing loses instantly
             // do full count including dead stones.
@@ -268,23 +263,18 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 (score < 0.0f && color == FastBoard::BLACK)) {
                 myprintf("Passing loses :-(\n");
                 // Find a valid non-pass move.
-                UCTNode * nopass = m_root->get_nopass_child(m_rootstate);
+                auto nopass = m_root->get_nopass_child(m_rootstate);
                 if (nopass != nullptr) {
                     myprintf("Avoiding pass because it loses.\n");
                     bestmove = nopass->get_move();
-                    if (nopass->first_visit()) {
-                        bestscore = 1.0f;
-                    } else {
-                        bestscore = nopass->get_eval(color);
-                    }
+                    bestscore = nopass->get_eval(color);
                 } else {
                     myprintf("No alternative to passing.\n");
                 }
             } else {
                 myprintf("Passing wins :-)\n");
             }
-        } else if (!cfg_dumbpass
-                   && m_rootstate.get_last_move() == FastBoard::PASS) {
+        } else if (m_rootstate.get_last_move() == FastBoard::PASS) {
             // Opponents last move was passing.
             // We didn't consider passing. Should we have and
             // end the game immediately?
