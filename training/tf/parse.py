@@ -286,6 +286,7 @@ def main():
 
         testset = tf.data.Dataset.from_generator(
             parser_test.parse_chunk, output_types=(tf.string))
+        testset = testset.shuffle(4096)
         testset = testset.map(_parse_function)
         testset = testset.batch(BATCH_SIZE)
         testset = testset.prefetch(4)
