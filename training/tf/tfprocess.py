@@ -43,7 +43,7 @@ def conv2d(x, W):
                         strides=[1, 1, 1, 1], padding='SAME')
 
 class TFProcess:
-    def __init__(self, next_batch):
+    def __init__(self, next_train_batch, next_test_batch):
 
         # Network structure
         self.RESIDUAL_FILTERS = 128
@@ -57,12 +57,14 @@ class TFProcess:
         self.weights = []
 
         # TF variables
-        self.next_batch = next_batch
-        self.global_step = tf.Variable(0, name='global_step', trainable=False)
-        self.x = next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 19 * 19])
-        self.y_ = next_batch[1] # tf.placeholder(tf.float32, [None, 362])
-        self.z_ = next_batch[2] # tf.placeholder(tf.float32, [None, 1])
         self.training = tf.placeholder(tf.bool)
+        self.next_batch = \
+            tf.cond(self.training,
+                    lambda: next_train_batch, lambda: next_test_batch)
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        self.x = self.next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 19 * 19])
+        self.y_ = self.next_batch[1] # tf.placeholder(tf.float32, [None, 362])
+        self.z_ = self.next_batch[2] # tf.placeholder(tf.float32, [None, 1])
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
 
@@ -157,6 +159,8 @@ class TFProcess:
         self.saver.restore(self.session, file)
 
     def process(self, batch_size):
+        if not self.time_start:
+            self.time_start = time.time()
         # Run training for this batch
         policy_loss, mse_loss, reg_term, _, _ = self.session.run(
             [self.policy_loss, self.mse_loss, self.reg_term, self.train_op,
@@ -193,19 +197,19 @@ class TFProcess:
             self.train_writer.add_summary(train_summaries, steps)
             self.time_start = time_end
             self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term = [], [], []
-        # Ideally this would use a seperate dataset and so on...
         if steps % 8000 == 0:
             sum_accuracy = 0
             sum_mse = 0
-            for _ in range(0, 10):
+            test_batches = 800
+            for _ in range(0, test_batches):
                 train_accuracy, train_mse, _ = self.session.run(
                     [self.accuracy, self.mse_loss, self.next_batch],
                     feed_dict={self.training: False})
                 sum_accuracy += train_accuracy
                 sum_mse += train_mse
-            sum_accuracy /= 10.0
+            sum_accuracy /= test_batches
             # Additionally rescale to [0, 1] so divide by 4
-            sum_mse /= (4.0 * 10.0)
+            sum_mse /= (4.0 * test_batches)
             test_summaries = tf.Summary(value=[
                 tf.Summary.Value(tag="Accuracy", simple_value=sum_accuracy),
                 tf.Summary.Value(tag="MSE Loss", simple_value=sum_mse)])

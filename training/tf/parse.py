@@ -52,7 +52,7 @@ def remap_vertex(vertex, symmetry):
     return y * 19 + x
 
 class ChunkParser:
-    def __init__(self, chunks):
+    def __init__(self, chunks, workers=None):
         # Build probility reflection tables. The last element is 'pass' and is identity mapped.
         self.prob_reflection_table = [[remap_vertex(vertex, sym) for vertex in range(361)]+[361] for sym in range(8)]
         # Build full 16-plane reflection tables.
@@ -65,8 +65,9 @@ class ChunkParser:
         # Build the all-zeros and all-ones flat planes, used for color-to-move.
         self.flat_planes = [ b'\0' * 361, b'\1' * 361 ]
 
-        # Start worker processes, leave 1 for TensorFlow
-        workers = max(1, mp.cpu_count() - 1)
+        # Start worker processes, leave 2 for TensorFlow
+        if workers is None:
+            workers = max(1, mp.cpu_count() - 2)
         print("Using {} worker processes.".format(workers))
         self.readers = []
         for _ in range(workers):
@@ -260,8 +261,11 @@ def benchmark(parser):
         end = time.time()
         print("{} pos/sec {} secs".format( 10000. / (end - start), (end - start)))
 
-def main(args):
+def split_chunks(chunks, test_ratio):
+    splitpoint = 1 + int(len(chunks) * (1.0 - test_ratio))
+    return (chunks[:splitpoint], chunks[splitpoint:])
 
+def main(args):
     train_data_prefix = args.pop(0)
 
     chunks = get_chunks(train_data_prefix)
@@ -270,21 +274,33 @@ def main(args):
     if not chunks:
         return
 
-    parser = ChunkParser(chunks)
+    training, test = split_chunks(chunks, 0.1)
+    print("Training with {0} chunks, validating on {1} chunks".format(
+        len(training), len(test)))
 
-    run_test(parser)
+    #run_test(parser)
     #benchmark(parser)
 
+    train_parser = ChunkParser(training)
     dataset = tf.data.Dataset.from_generator(
-        parser.parse_chunk, output_types=(tf.string))
+        train_parser.parse_chunk, output_types=(tf.string))
     dataset = dataset.shuffle(1 << 18)
     dataset = dataset.map(_parse_function)
     dataset = dataset.batch(BATCH_SIZE)
     dataset = dataset.prefetch(4)
     iterator = dataset.make_one_shot_iterator()
-    next_batch = iterator.get_next()
+    next_train_batch = iterator.get_next()
 
-    tfprocess = TFProcess(next_batch)
+    test_parser = ChunkParser(test, 1)
+    dataset = tf.data.Dataset.from_generator(
+        test_parser.parse_chunk, output_types=(tf.string))
+    dataset = dataset.map(_parse_function)
+    dataset = dataset.batch(BATCH_SIZE)
+    dataset = dataset.prefetch(4)
+    iterator = dataset.make_one_shot_iterator()
+    next_test_batch = iterator.get_next()
+
+    tfprocess = TFProcess(next_train_batch, next_test_batch)
     if args:
         restore_file = args.pop(0)
         tfprocess.restore(restore_file)
