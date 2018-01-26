@@ -62,6 +62,10 @@ Un(gz)ip it and head to the [Usage](#usage) section of this README.
 
 If you prefer a more human style, a network trained from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
 
+Right now, we already have trained (zero) networks that are thought to be stronger than the above, one of them is this: http://zero.sjeng.org/networks/0f54f73a7178683f72911ee2059f6d920b80e26e1464b104f969e11f06537a86.gz
+
+Please keep an eye on http://zero.sjeng.org/ for updates if you want to play with the strongest network!
+
 # Compiling
 
 ## Requirements
