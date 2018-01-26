@@ -294,8 +294,7 @@ def main(args):
     dataset = dataset.map(_parse_function)
     dataset = dataset.batch(BATCH_SIZE)
     dataset = dataset.prefetch(4)
-    iterator = dataset.make_one_shot_iterator()
-    next_train_batch = iterator.get_next()
+    train_iterator = dataset.make_one_shot_iterator()
 
     test_parser = ChunkParser(test, 1)
     dataset = tf.data.Dataset.from_generator(
@@ -303,10 +302,9 @@ def main(args):
     dataset = dataset.map(_parse_function)
     dataset = dataset.batch(BATCH_SIZE)
     dataset = dataset.prefetch(4)
-    iterator = dataset.make_one_shot_iterator()
-    next_test_batch = iterator.get_next()
+    test_iterator = dataset.make_one_shot_iterator()
 
-    tfprocess = TFProcess(next_train_batch, next_test_batch)
+    tfprocess = TFProcess(dataset, train_iterator, test_iterator)
     if args:
         restore_file = args.pop(0)
         tfprocess.restore(restore_file)
