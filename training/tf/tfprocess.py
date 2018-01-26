@@ -43,8 +43,7 @@ def conv2d(x, W):
                         strides=[1, 1, 1, 1], padding='SAME')
 
 class TFProcess:
-    def __init__(self, next_train_batch, next_test_batch):
-
+    def __init__(self, dataset, train_iterator, test_iterator):
         # Network structure
         self.RESIDUAL_FILTERS = 128
         self.RESIDUAL_BLOCKS = 6
@@ -57,10 +56,13 @@ class TFProcess:
         self.weights = []
 
         # TF variables
+        self.handle = tf.placeholder(tf.string, shape=[])
+        iterator = tf.data.Iterator.from_string_handle(
+            self.handle, dataset.output_types, dataset.output_shapes)
+        self.next_batch = iterator.get_next()
+        self.train_handle = self.session.run(train_iterator.string_handle())
+        self.test_handle = self.session.run(test_iterator.string_handle())
         self.training = tf.placeholder(tf.bool)
-        self.next_batch = \
-            tf.cond(self.training,
-                    lambda: next_train_batch, lambda: next_test_batch)
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
         self.x = self.next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 19 * 19])
         self.y_ = self.next_batch[1] # tf.placeholder(tf.float32, [None, 362])
@@ -165,7 +167,7 @@ class TFProcess:
         policy_loss, mse_loss, reg_term, _, _ = self.session.run(
             [self.policy_loss, self.mse_loss, self.reg_term, self.train_op,
                 self.next_batch],
-            feed_dict={self.training: True})
+            feed_dict={self.training: True, self.handle: self.train_handle})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
         # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
@@ -204,7 +206,7 @@ class TFProcess:
             for _ in range(0, test_batches):
                 train_accuracy, train_mse, _ = self.session.run(
                     [self.accuracy, self.mse_loss, self.next_batch],
-                    feed_dict={self.training: False})
+                    feed_dict={self.training: False, self.handle: self.test_handle})
                 sum_accuracy += train_accuracy
                 sum_mse += train_mse
             sum_accuracy /= test_batches
