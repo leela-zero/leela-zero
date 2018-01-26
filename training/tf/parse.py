@@ -303,7 +303,7 @@ def main(args):
     parser = ChunkParser(chunks, n_way_merge=64)
 
     run_test(parser)
-    benchmark(parser)
+    #benchmark(parser)
 
     dataset = tf.data.Dataset.from_generator(
         parser.parse_chunk, output_types=(tf.string))
