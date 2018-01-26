@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -36,33 +37,55 @@
 
 using namespace Utils;
 
-// Setup global objects after command line has been parsed
-void init_global_objects() {
-    thread_pool.initialize(cfg_num_threads);
-
-    // Use deterministic random numbers for hashing
-    auto rng = std::make_unique<Random>(5489);
-    Zobrist::init_zobrist(*rng);
-
-    // Initialize the main thread RNG.
-    // Doing this here avoids mixing in the thread_id, which
-    // improves reproducibility across platforms.
-    Random::get_Rng().seedrandom(cfg_rng_seed);
-
-    NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
-
-    // Initialize network
-    // Needs a weights file
-    // Network::initialize();
+void expect_regex(std::string s, std::string re, bool positive=true) {
+    auto m = std::regex_search(s, std::regex(re));
+    if (positive && !m) {
+        FAIL() << "Output:" << std::endl << s
+            << "Does not contain:" << std::endl
+            << re << std::endl;
+    } else if (!positive && m) {
+        FAIL() << "output:" << std::endl << s
+            << "Should not contain:" << std::endl
+            << re << std::endl;
+    }
 }
+
+class LeelaEnv: public ::testing::Environment {
+public:
+    ~LeelaEnv() {}
+    void SetUp() {
+        GTP::setup_default_parameters();
+        cfg_gtp_mode = true;
+
+        // Setup global objects after command line has been parsed
+        thread_pool.initialize(cfg_num_threads);
+
+        // Use deterministic random numbers for hashing
+        auto rng = std::make_unique<Random>(5489);
+        Zobrist::init_zobrist(*rng);
+
+        // Initialize the main thread RNG.
+        // Doing this here avoids mixing in the thread_id, which
+        // improves reproducibility across platforms.
+        Random::get_Rng().seedrandom(cfg_rng_seed);
+
+        NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
+
+        cfg_weightsfile = "../src/tests/0k.txt";
+        Network::initialize();
+    }
+    void TearDown() {}
+};
+
+::testing::Environment* const leela_env = ::testing::AddGlobalTestEnvironment(new LeelaEnv);
 
 class LeelaTest: public ::testing::Test {
 public:
     LeelaTest( ) {
-        // Setup engine parameters
+        // Reset engine parameters
         GTP::setup_default_parameters();
+        cfg_max_playouts = 1;
         cfg_gtp_mode = true;
-        init_global_objects();
 
         m_gamestate = std::make_unique<GameState>();
         m_gamestate->init_game(19, 7.5f);
@@ -72,6 +95,7 @@ public:
         return *m_gamestate;
     }
 
+private:
     std::unique_ptr<GameState> m_gamestate;
 };
 
@@ -175,73 +199,60 @@ TEST_F(LeelaTest, MoveOnOccupiedSq) {
     EXPECT_NE(output.find("illegal move"), std::string::npos);
 }
 
-
+// Basic TimeControl test
 TEST_F(LeelaTest, TimeControl) {
-    // Initialize network
-    cfg_weightsfile = "../src/tests/0k.txt";
-    Network::initialize();
-    cfg_max_playouts = 1;
-    cfg_num_threads = 1;
+    auto maingame = get_gamestate();
     std::string output;
+    // clear_board to force GTP to make a new UCTSearch.
+    // This will pickup our new cfg_* settings.
+    GTP::execute(maingame, "clear_board");
 
-    // TODO I tried to make these separate tests,
-    // but it died locally when leelaz ran the second time.
-    {
-        auto maingame = get_gamestate();
-        // clear_board to force GTP to make a new UCTSearch.
-        // This will pickup our new cfg_* settings.
-        GTP::execute(maingame, "clear_board");
+    // Absolute time 100s = 1.37s per move in opening.
+    // Enough to be visible on display_times
+    GTP::execute(maingame, "kgs-time_settings canadian 0 120 25");
+    testing::internal::CaptureStderr();
+    GTP::execute(maingame, "showboard");
+    output = testing::internal::GetCapturedStderr();
+    expect_regex(output, "Black time: 00:02:00, 25 stones left");
+    expect_regex(output, "White time: 00:02:00, 25 stones left");
 
-        GTP::execute(maingame, "kgs-time_settings byoyomi 0 100 1");
-        GTP::execute(maingame, "go");
-        testing::internal::CaptureStderr();
-        GTP::execute(maingame, "showboard");
-        output = testing::internal::GetCapturedStderr();
-        EXPECT_NE(output.find("Black time: 00:01:40, 1 period(s) of 100 seconds left"), std::string::npos);
-        EXPECT_NE(output.find("White time: 00:01:40, 1 period(s) of 100 seconds left"), std::string::npos);
+    GTP::execute(maingame, "go");
+    testing::internal::CaptureStderr();
+    GTP::execute(maingame, "showboard");
+    output = testing::internal::GetCapturedStderr();
+    expect_regex(output, "Black time: \\S*, 24 stones left");
+    expect_regex(output, "White time: \\S*, 25 stones left");
 
-        GTP::execute(maingame, "kgs-time_settings byoyomi 0 120 1");
-        GTP::execute(maingame, "go");
-        testing::internal::CaptureStderr();
-        GTP::execute(maingame, "showboard");
-        output = testing::internal::GetCapturedStderr();
-        EXPECT_NE(output.find("Black time: 00:02:00, 1 period(s) of 120 seconds left"), std::string::npos);
-        EXPECT_NE(output.find("White time: 00:02:00, 1 period(s) of 120 seconds left"), std::string::npos);
-    }
-
-    {
-        cfg_max_playouts = 0;
-        auto maingame = get_gamestate();
-        // clear_board to force GTP to make a new UCTSearch.
-        // This will pickup our new cfg_* settings.
-        GTP::execute(maingame, "clear_board");
-
-        // Absolute time 100s = 1.37s per move in opening.
-        // Enough to be visible on display_times
-        GTP::execute(maingame, "time_settings 100 0 0");
-        // Use assert here because if the time breaks we might
-        // cause the test to think forever.
-        testing::internal::CaptureStderr();
-        GTP::execute(maingame, "showboard");
-        output = testing::internal::GetCapturedStderr();
-        printf("output\n%s\noutput", output.c_str());
-        EXPECT_NE(output.find("Black time: 00:01:40"), std::string::npos);
-        EXPECT_NE(output.find("White time: 00:01:40"), std::string::npos);
-
-        GTP::execute(maingame, "go");
-        testing::internal::CaptureStderr();
-        GTP::execute(maingame, "showboard");
-        output = testing::internal::GetCapturedStderr();
-        printf("output\n%s\noutput", output.c_str());
-        EXPECT_NE(output.find("Black time: 00:01:38"), std::string::npos);
-        EXPECT_NE(output.find("White time: 00:01:40"), std::string::npos);
-
-        GTP::execute(maingame, "go");
-        testing::internal::CaptureStderr();
-        GTP::execute(maingame, "showboard");
-        output = testing::internal::GetCapturedStderr();
-        printf("output\n%s\noutput", output.c_str());
-        EXPECT_NE(output.find("Black time: 00:01:38"), std::string::npos);
-        EXPECT_NE(output.find("White time: 00:01:38"), std::string::npos);
-    }
+    GTP::execute(maingame, "go");
+    testing::internal::CaptureStderr();
+    GTP::execute(maingame, "showboard");
+    output = testing::internal::GetCapturedStderr();
+    expect_regex(output, "Black time: \\S*, 24 stones left");
+    expect_regex(output, "White time: \\S*, 24 stones left");
 }
+
+// Test changing TimeControl during game
+TEST_F(LeelaTest, TimeControl2) {
+    std::string output;
+    auto maingame = get_gamestate();
+    // clear_board to force GTP to make a new UCTSearch.
+    // This will pickup our new cfg_* settings.
+    GTP::execute(maingame, "clear_board");
+
+    GTP::execute(maingame, "kgs-time_settings byoyomi 0 100 1");
+    GTP::execute(maingame, "go");
+    testing::internal::CaptureStderr();
+    GTP::execute(maingame, "showboard");
+    output = testing::internal::GetCapturedStderr();
+    expect_regex(output, "Black time: 00:01:40, 1 period\\(s\\) of 100 seconds left");
+    expect_regex(output, "White time: 00:01:40, 1 period\\(s\\) of 100 seconds left");
+
+    GTP::execute(maingame, "kgs-time_settings byoyomi 0 120 1");
+    GTP::execute(maingame, "go");
+    testing::internal::CaptureStderr();
+    GTP::execute(maingame, "showboard");
+    output = testing::internal::GetCapturedStderr();
+    expect_regex(output, "Black time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
+    expect_regex(output, "White time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
+}
+
