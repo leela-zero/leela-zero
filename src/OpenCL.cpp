@@ -72,8 +72,6 @@ __kernel void in_transform(__global net_t *in, __global float *V,
     // Tiles overlap by 2
     const int yin = 2 * block_y - 1;
     const int xin = 2 * block_x - 1;
-    int a;
-    int b;
 
     if (block < P && ch < C) {
 
@@ -260,6 +258,150 @@ __kernel void out_transform_fused_bn(__global float *M,
         }
     }
 }
+
+__kernel void out_transform_fused_bn_in(
+                                     __global float *M,
+                                     __global net_t *Y,
+                                     __global net_t *V,
+                                     const int K,
+                                     const int Kpad, const int Ppad, const int Cpad,
+                                     __global const net_t * residual,
+                                     __constant const net_t * means,
+                                     __constant const net_t * stddivs,
+                                     __local float *ybuf) {
+    const int W = 19;
+    const int H = 19;
+    const int T = W*H;
+    const int WTILES = (W + 1) / 2;
+    const int P = WTILES * WTILES;
+    const int KPpad = Kpad * Ppad;
+
+    const int k = get_global_id(0);
+    const int kg = get_local_id(0);
+    const int block = get_global_id(1);
+    const int chT = k*(T);
+
+    const int block_x = block % WTILES;
+    const int block_y = block / WTILES;
+
+    const int yin = 2 * block_y - 1;
+    const int xin = 2 * block_x - 1;
+
+
+    const int x = 2*block_x;
+    const int y = 2*block_y;
+    int a_ind = (y)*W + (x);
+
+    const int kHW = k * W * H;
+
+    if (k < K && block < P) {
+        const int a[4] = {a_ind, a_ind+1, a_ind+W, a_ind+W+1};
+        const bool pred[4] = { 1, x+1 < W, y+1 < H, x+1 < W & y+1 < H};
+        int b = block_y * WTILES + block_x;
+        float temp_m[16];
+        for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
+            temp_m[xn] = M[xnKPpad];
+        }
+
+        float o[4];
+        o[0] = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
+               temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
+               temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
+
+        o[1] = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
+               temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
+               temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
+
+        o[2] = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
+               temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
+               temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
+
+        o[3] = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
+               temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
+               temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
+
+        const float mean = vload_net_t(k, means);
+        const float scale_stddiv = vload_net_t(k, stddivs);
+
+        for (int i = 0; i < 4; i++) {
+            if (pred[i]) {
+                o[i] = scale_stddiv * (o[i] - mean);
+                if (residual) {
+                    o[i] += vload_net_t(kHW + a[i], residual);
+                }
+                o[i] = o[i] > 0 ? o[i] : 0.0f;
+                ybuf[kg * T + a[i]] = o[i];
+                if (Y) {
+                    vstore_net_t(o[i], kHW + a[i], Y);
+                }
+            }
+        }
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (block < P && k < K) {
+        const int CPpad = Ppad * Cpad;
+        // Cache input tile and handle zero padding
+        float xx[4][4];
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                int a = xin + j;
+                int b = yin + i;
+                if (b >= 0 && a >= 0 && b < H && a < W) {
+                    xx[i][j] = ybuf[kg * T + b*W + a];
+                } else {
+                    xx[i][j] = 0.0f;
+                }
+            }
+        }
+
+        const int offset = k*Ppad + block;
+
+        float T1[4][4];
+        float T2[4][4];
+
+        T1[0][0] = xx[0][0] - xx[2][0];
+        T1[0][1] = xx[0][1] - xx[2][1];
+        T1[0][2] = xx[0][2] - xx[2][2];
+        T1[0][3] = xx[0][3] - xx[2][3];
+        T1[1][0] = xx[1][0] + xx[2][0];
+        T1[1][1] = xx[1][1] + xx[2][1];
+        T1[1][2] = xx[1][2] + xx[2][2];
+        T1[1][3] = xx[1][3] + xx[2][3];
+        T1[2][0] = xx[2][0] - xx[1][0];
+        T1[2][1] = xx[2][1] - xx[1][1];
+        T1[2][2] = xx[2][2] - xx[1][2];
+        T1[2][3] = xx[2][3] - xx[1][3];
+        T1[3][0] = xx[1][0] - xx[3][0];
+        T1[3][1] = xx[1][1] - xx[3][1];
+        T1[3][2] = xx[1][2] - xx[3][2];
+        T1[3][3] = xx[1][3] - xx[3][3];
+
+        T2[0][0] = T1[0][0] - T1[0][2];
+        T2[0][1] = T1[0][1] + T1[0][2];
+        T2[0][2] = T1[0][2] - T1[0][1];
+        T2[0][3] = T1[0][1] - T1[0][3];
+        T2[1][0] = T1[1][0] - T1[1][2];
+        T2[1][1] = T1[1][1] + T1[1][2];
+        T2[1][2] = T1[1][2] - T1[1][1];
+        T2[1][3] = T1[1][1] - T1[1][3];
+        T2[2][0] = T1[2][0] - T1[2][2];
+        T2[2][1] = T1[2][1] + T1[2][2];
+        T2[2][2] = T1[2][2] - T1[2][1];
+        T2[2][3] = T1[2][1] - T1[2][3];
+        T2[3][0] = T1[3][0] - T1[3][2];
+        T2[3][1] = T1[3][1] + T1[3][2];
+        T2[3][2] = T1[3][2] - T1[3][1];
+        T2[3][3] = T1[3][1] - T1[3][3];
+
+        for (int i = 0, v_idx = offset; i < 4; i++) {
+            for (int j = 0; j < 4; j++, v_idx += CPpad) {
+                V[v_idx] = T2[i][j];
+            }
+        }
+    }
+}
 )";
 
 static std::string sourceCode_utility = R"(
@@ -315,6 +457,8 @@ void OpenCL::ensure_thread_initialized() {
             cl::Kernel(m_program, "out_transform");
         opencl_thread_data.m_out_transform_bn_kernel =
             cl::Kernel(m_program, "out_transform_fused_bn");
+        opencl_thread_data.m_out_transform_bn_in_kernel =
+            cl::Kernel(m_program, "out_transform_fused_bn_in");
         opencl_thread_data.m_batchnorm_kernel =
             cl::Kernel(m_program, "batchnorm");
         opencl_thread_data.m_commandqueue =
@@ -401,7 +545,11 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, input.data());
 
-    for (const auto& layer : m_layers) {
+    bool skip_in_trans = false;
+    for (auto iter = cbegin(m_layers); iter != cend(m_layers); iter++) {
+        const auto & layer = *iter;
+        auto niter = iter+1;
+
         if (layer.is_batchnorm) {
             auto bn_weights = begin(layer.weights);
             batchnorm(layer.outputs,
@@ -426,7 +574,13 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                       MBuffer,
                       conv1_weights,
                       nullptr,
-                      &bn1_weights);
+                      &bn1_weights,
+                      skip_in_trans, true, false);
+
+            bool skip_next_in_trans = false;
+            if (niter != cend(m_layers) && !niter->is_batchnorm) {
+                skip_next_in_trans = true;
+            }
             convolve3(layer.channels,
                       layer.outputs,
                       inBuffer,
@@ -434,9 +588,15 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                       MBuffer,
                       conv2_weights,
                       &residualBuffer,
-                      &bn2_weights);
+                      &bn2_weights,
+                      true, skip_next_in_trans, true);
+            skip_in_trans = skip_next_in_trans;
         } else  {
             auto conv_weights = begin(layer.weights);
+            bool skip_next_in_trans = false;
+            if (niter != cend(m_layers) && !niter->is_batchnorm) {
+                skip_next_in_trans = true;
+            }
             // plain convolution
             convolve3(layer.channels,
                      layer.outputs,
@@ -445,7 +605,9 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                      MBuffer,
                      conv_weights,
                      nullptr,
-                     nullptr);
+                     nullptr,
+                     skip_in_trans, skip_next_in_trans, true);
+            skip_in_trans = skip_next_in_trans;
         }
     }
 
@@ -462,12 +624,16 @@ void OpenCL_Network::convolve3(int channels, int outputs,
                               cl::Buffer& bufferM,
                               weight_slice_t weights,
                               cl::Buffer* bufferResidual,
-                              weight_slice_t* bn_weights) {
+                              weight_slice_t* bn_weights,
+                              bool skip_in_transform,
+                              bool fuse_in_transform,
+                              bool store_inout) {
 
     cl::Kernel & in_transform_kernel = opencl_thread_data.m_in_transform_kernel;
     cl::Kernel & sgemm_kernel = opencl_thread_data.m_sgemm_kernel;
     cl::Kernel & out_transform_kernel = opencl_thread_data.m_out_transform_kernel;
     cl::Kernel & out_transform_bn_kernel = opencl_thread_data.m_out_transform_bn_kernel;
+    cl::Kernel & out_transform_bn_in_kernel = opencl_thread_data.m_out_transform_bn_in_kernel;
 
     auto mwg = m_opencl.m_sgemm_tuners.mwg;
     auto nwg = m_opencl.m_sgemm_tuners.nwg;
@@ -477,6 +643,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     auto mdimc = m_opencl.m_sgemm_tuners.mdimc;
     auto ndimc = m_opencl.m_sgemm_tuners.ndimc;
     auto wavefront_size = m_opencl.m_wavefront_size;
+    auto workgroup_size = m_opencl.m_max_workgroup_size;
 
     assert(mwg != 0);
     assert(nwg != 0);
@@ -496,19 +663,21 @@ void OpenCL_Network::convolve3(int channels, int outputs,
 
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
-    try {
-        in_transform_kernel.setArg(0, bufferInOut);
-        in_transform_kernel.setArg(1, bufferV);
-        in_transform_kernel.setArg(2, channels);
-        in_transform_kernel.setArg(3, k_ceil);
-        in_transform_kernel.setArg(4, n_ceil);
-
-        queue.enqueueNDRangeKernel(in_transform_kernel, cl::NullRange,
-                                   cl::NDRange(wgs, channels));
-    } catch (const cl::Error &e) {
-        std::cerr << "Error in convolve3: " << e.what() << ": "
-            << e.err() << std::endl;
-        throw;
+    if (!skip_in_transform) {
+        try {
+            in_transform_kernel.setArg(0, bufferInOut);
+            in_transform_kernel.setArg(1, bufferV);
+            in_transform_kernel.setArg(2, channels);
+            in_transform_kernel.setArg(3, k_ceil);
+            in_transform_kernel.setArg(4, n_ceil);
+    
+            queue.enqueueNDRangeKernel(in_transform_kernel, cl::NullRange,
+                                       cl::NDRange(wgs, channels));
+        } catch (const cl::Error &e) {
+            std::cerr << "Error in convolve3: " << e.what() << ": "
+                << e.err() << std::endl;
+            throw;
+        }
     }
 
     try {
@@ -535,21 +704,50 @@ void OpenCL_Network::convolve3(int channels, int outputs,
 
     try {
         if (bn_weights) {
-            out_transform_bn_kernel.setArg(0, bufferM);
-            out_transform_bn_kernel.setArg(1, bufferInOut);
-            out_transform_bn_kernel.setArg(2, outputs);
-            out_transform_bn_kernel.setArg(3, m_ceil);
-            out_transform_bn_kernel.setArg(4, n_ceil);
-            if (bufferResidual) {
-                out_transform_bn_kernel.setArg(5, *bufferResidual);
+            if (fuse_in_transform) {
+                // experiment showing this is best on a nvidia GTX 1080.
+                // Probably a reasonable value for recent nvidia GPUs
+                // TODO : eventually this might also be something tuneable?
+                auto dim_size = 2;
+                out_transform_bn_in_kernel.setArg(0, bufferM);
+                if (store_inout) {
+                    out_transform_bn_in_kernel.setArg(1, bufferInOut);
+                } else {
+                    out_transform_bn_in_kernel.setArg(1, nullptr);
+                }
+                out_transform_bn_in_kernel.setArg(2, bufferV);
+                out_transform_bn_in_kernel.setArg(3, outputs);
+                out_transform_bn_in_kernel.setArg(4, m_ceil);
+                out_transform_bn_in_kernel.setArg(5, n_ceil);
+                out_transform_bn_in_kernel.setArg(6, k_ceil);
+                if (bufferResidual) {
+                    out_transform_bn_in_kernel.setArg(7, *bufferResidual);
+                } else {
+                    out_transform_bn_in_kernel.setArg(7, nullptr);
+                }
+                out_transform_bn_in_kernel.setArg(8, (*bn_weights)[0]);
+                out_transform_bn_in_kernel.setArg(9, (*bn_weights)[1]);
+                out_transform_bn_in_kernel.setArg(10, cl::Local(dim_size * 19 * 19 * sizeof(float)));
+    
+                queue.enqueueNDRangeKernel(out_transform_bn_in_kernel, cl::NullRange,
+                                       cl::NDRange(outputs, wgs), cl::NDRange(dim_size, wgs));
             } else {
-                out_transform_bn_kernel.setArg(5, nullptr);
+                out_transform_bn_kernel.setArg(0, bufferM);
+                out_transform_bn_kernel.setArg(1, bufferInOut);
+                out_transform_bn_kernel.setArg(2, outputs);
+                out_transform_bn_kernel.setArg(3, m_ceil);
+                out_transform_bn_kernel.setArg(4, n_ceil);
+                if (bufferResidual) {
+                    out_transform_bn_kernel.setArg(5, *bufferResidual);
+                } else {
+                    out_transform_bn_kernel.setArg(5, nullptr);
+                }
+                out_transform_bn_kernel.setArg(6, (*bn_weights)[0]);
+                out_transform_bn_kernel.setArg(7, (*bn_weights)[1]);
+    
+                queue.enqueueNDRangeKernel(out_transform_bn_kernel, cl::NullRange,
+                                           cl::NDRange(outputs, wgs));
             }
-            out_transform_bn_kernel.setArg(6, (*bn_weights)[0]);
-            out_transform_bn_kernel.setArg(7, (*bn_weights)[1]);
-
-            queue.enqueueNDRangeKernel(out_transform_bn_kernel, cl::NullRange,
-                                       cl::NDRange(outputs, wgs));
         } else {
             out_transform_kernel.setArg(0, bufferM);
             out_transform_kernel.setArg(1, bufferInOut);
@@ -559,6 +757,17 @@ void OpenCL_Network::convolve3(int channels, int outputs,
 
             queue.enqueueNDRangeKernel(out_transform_kernel, cl::NullRange,
                                        cl::NDRange(outputs, wgs));
+
+            if (fuse_in_transform) {
+                in_transform_kernel.setArg(0, bufferInOut);
+                in_transform_kernel.setArg(1, bufferV);
+                in_transform_kernel.setArg(2, channels);
+                in_transform_kernel.setArg(3, k_ceil);
+                in_transform_kernel.setArg(4, n_ceil);
+            
+                queue.enqueueNDRangeKernel(in_transform_kernel, cl::NullRange,
+                                           cl::NDRange(wgs, channels));
+            }
         }
     } catch (const cl::Error &e) {
         std::cerr << "Error in convolve3: " << e.what() << ": "
