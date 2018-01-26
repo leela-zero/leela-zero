@@ -56,11 +56,11 @@ autogtp.
 
 # I just want to play right now
 
-A small network with some very limited training from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
+Download the best known network weights file from: http://zero.sjeng.org/best-network
 
-It's not very strong right now (and it's trained from human games, boo!).
-It will clobber gnugo, but lose to any serious engine. Hey, you said you just
-wanted to play right now!
+Un(gz)ip it and head to the [Usage](#usage) section of this README.
+
+If you prefer a more human style, a network trained from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
 
 # Compiling
 
