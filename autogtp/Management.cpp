@@ -155,6 +155,7 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     }
     sendAllGames();
     if(m_single) {
+        m_gamesThreads[index]->doFinish();
         sendQuit();
     } else {
         if(!m_storedOrders.isEmpty()) {
