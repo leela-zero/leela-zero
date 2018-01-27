@@ -94,6 +94,13 @@ public:
     GameState& get_gamestate() {
         return *m_gamestate;
     }
+    std::pair<std::string, std::string> gtp_execute(std::string cmd) {
+        testing::internal::CaptureStdout();
+        testing::internal::CaptureStderr();
+        GTP::execute(get_gamestate(), cmd);
+        return std::make_pair(testing::internal::GetCapturedStdout(),
+                              testing::internal::GetCapturedStderr());
+    }
 
 private:
     std::unique_ptr<GameState> m_gamestate;
@@ -201,58 +208,45 @@ TEST_F(LeelaTest, MoveOnOccupiedSq) {
 
 // Basic TimeControl test
 TEST_F(LeelaTest, TimeControl) {
-    auto maingame = get_gamestate();
-    std::string output;
+    std::pair<std::string, std::string> result;
+
     // clear_board to force GTP to make a new UCTSearch.
     // This will pickup our new cfg_* settings.
-    GTP::execute(maingame, "clear_board");
+    result = gtp_execute("clear_board");
 
-    // Absolute time 100s = 1.37s per move in opening.
-    // Enough to be visible on display_times
-    GTP::execute(maingame, "kgs-time_settings canadian 0 120 25");
-    testing::internal::CaptureStderr();
-    GTP::execute(maingame, "showboard");
-    output = testing::internal::GetCapturedStderr();
-    expect_regex(output, "Black time: 00:02:00, 25 stones left");
-    expect_regex(output, "White time: 00:02:00, 25 stones left");
+    result = gtp_execute("kgs-time_settings canadian 0 120 25");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: 00:02:00, 25 stones left");
+    expect_regex(result.second, "White time: 00:02:00, 25 stones left");
 
-    GTP::execute(maingame, "go");
-    testing::internal::CaptureStderr();
-    GTP::execute(maingame, "showboard");
-    output = testing::internal::GetCapturedStderr();
-    expect_regex(output, "Black time: \\S*, 24 stones left");
-    expect_regex(output, "White time: \\S*, 25 stones left");
+    result = gtp_execute("go");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: \\S*, 24 stones left");
+    expect_regex(result.second, "White time: \\S*, 25 stones left");
 
-    GTP::execute(maingame, "go");
-    testing::internal::CaptureStderr();
-    GTP::execute(maingame, "showboard");
-    output = testing::internal::GetCapturedStderr();
-    expect_regex(output, "Black time: \\S*, 24 stones left");
-    expect_regex(output, "White time: \\S*, 24 stones left");
+    result = gtp_execute("go");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: \\S*, 24 stones left");
+    expect_regex(result.second, "White time: \\S*, 24 stones left");
 }
 
 // Test changing TimeControl during game
 TEST_F(LeelaTest, TimeControl2) {
-    std::string output;
-    auto maingame = get_gamestate();
+    std::pair<std::string, std::string> result;
+
     // clear_board to force GTP to make a new UCTSearch.
     // This will pickup our new cfg_* settings.
-    GTP::execute(maingame, "clear_board");
+    result = gtp_execute("clear_board");
 
-    GTP::execute(maingame, "kgs-time_settings byoyomi 0 100 1");
-    GTP::execute(maingame, "go");
-    testing::internal::CaptureStderr();
-    GTP::execute(maingame, "showboard");
-    output = testing::internal::GetCapturedStderr();
-    expect_regex(output, "Black time: 00:01:40, 1 period\\(s\\) of 100 seconds left");
-    expect_regex(output, "White time: 00:01:40, 1 period\\(s\\) of 100 seconds left");
+    result = gtp_execute("kgs-time_settings byoyomi 0 100 1");
+    result = gtp_execute("go");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: 00:01:40, 1 period\\(s\\) of 100 seconds left");
+    expect_regex(result.second, "White time: 00:01:40, 1 period\\(s\\) of 100 seconds left");
 
-    GTP::execute(maingame, "kgs-time_settings byoyomi 0 120 1");
-    GTP::execute(maingame, "go");
-    testing::internal::CaptureStderr();
-    GTP::execute(maingame, "showboard");
-    output = testing::internal::GetCapturedStderr();
-    expect_regex(output, "Black time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
-    expect_regex(output, "White time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
+    result = gtp_execute("kgs-time_settings byoyomi 0 120 1");
+    result = gtp_execute("go");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
+    expect_regex(result.second, "White time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
 }
-
