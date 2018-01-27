@@ -10,7 +10,7 @@
 #ifdef Q_OS_WIN
     #include <QWinEventNotifier>
     #include <windows.h>
-    typedef QWinEventNotifier Notifier
+    typedef QWinEventNotifier Notifier;
 #else
     #include <QSocketNotifier>
     typedef QSocketNotifier Notifier;
@@ -24,7 +24,7 @@ public:
     Console(QObject *parent = nullptr)
         : QObject(parent),
 #ifdef Q_OS_WIN
-          m_notifier(GetStdHandle(STD_INPUT_HANDLE));
+          m_notifier(GetStdHandle(STD_INPUT_HANDLE)) {
 #else
           m_notifier(fileno(stdin), Notifier::Read) {
 #endif
