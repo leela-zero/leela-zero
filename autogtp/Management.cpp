@@ -40,11 +40,11 @@ Management::Management(const int gpus,
                        const int games,
                        const QStringList& gpuslist,
                        const int ver,
+                       const bool single,
                        const QString& keep,
-                       const QString& debug,
-                       QMutex* mutex)
-    : m_mainMutex(mutex),
-    m_syncMutex(),
+                       const QString& debug)
+
+    : m_syncMutex(),
     m_gamesThreads(gpus * games),
     m_games(games),
     m_gpus(gpus),
@@ -55,7 +55,8 @@ Management::Management(const int gpus,
     m_keepPath(keep),
     m_debugPath(debug),
     m_version(ver),
-    m_fallBack(Order::Error) {
+    m_fallBack(Order::Error),
+    m_single(single) {
 }
 
 void Management::runTuningProcess(const QString &tuneCmdLine) {
@@ -89,7 +90,6 @@ void Management::giveAssignments() {
     QTextStream(stdout) << "Tuning process finished" << endl;
 
     m_start = std::chrono::high_resolution_clock::now();
-    m_mainMutex->lock();
     QString myGpu;
     for (int gpu = 0; gpu < m_gpus; ++gpu) {
         for (int game = 0; game < m_games; ++game) {
@@ -132,7 +132,6 @@ void Management::wait() {
         m_gamesThreads[i]->wait();
         QTextStream(stdout) << "Management: Worker " << i+1 << " ended" << endl;
     }
-    m_mainMutex->unlock();
 }
 
 void Management::getResult(Order ord, Result res, int index, int duration) {
@@ -155,11 +154,15 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
         break;
     }
     sendAllGames();
-    if(!m_storedOrders.isEmpty()) {
-        m_gamesThreads[index]->order(m_storedOrders.takeFirst());
+    if(m_single) {
+        sendQuit();
     } else {
-        m_gamesThreads[index]->order(getWork());
-    }            
+        if(!m_storedOrders.isEmpty()) {
+            m_gamesThreads[index]->order(m_storedOrders.takeFirst());
+        } else {
+            m_gamesThreads[index]->order(getWork());
+        }
+    }
     m_syncMutex.unlock();
 }
 

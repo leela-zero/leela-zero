@@ -66,11 +66,16 @@ int main(int argc, char *argv[]) {
         { "t", "timeout" }, "Save running games after the timeout (in minutes) is passed.",
                           "time in minutes");
 
+    QCommandLineOption singleOption(
+        { "s", "single" }, "Exit after the first game is completed.",
+                          "");
+
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(keepSgfOption);
     parser.addOption(keepDebugOption);
     parser.addOption(timeoutOption);
+    parser.addOption(singleOption);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
@@ -80,7 +85,11 @@ int main(int argc, char *argv[]) {
     if (gpusNum == 0) {
         gpusNum = 1;
     }
+    if(parser.isSet(singleOption)) {
 
+        gamesNum = 1;
+        gpusNum = 1;
+    }
     // Map streams
     QTextStream cerr(stderr, QIODevice::WriteOnly);
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
@@ -99,10 +108,11 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
     }
-    QMutex mutex;
     Console cons;
-    Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), parser.value(keepDebugOption), &mutex);
+    Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.isSet(singleOption),
+                                      parser.value(keepSgfOption), parser.value(keepDebugOption));
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
+    QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
     QTimer *timer = new QTimer();
     boss->checkStoredGames();
     boss->giveAssignments();
