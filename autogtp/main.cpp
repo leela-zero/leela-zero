@@ -108,11 +108,10 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
     }
-    Console cons;
+    Console *cons = nullptr;
     Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.isSet(singleOption),
                                       parser.value(keepSgfOption), parser.value(keepDebugOption));
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
-    QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
     QTimer *timer = new QTimer();
     boss->checkStoredGames();
     boss->giveAssignments();
@@ -120,7 +119,12 @@ int main(int argc, char *argv[]) {
         QObject::connect(timer, &QTimer::timeout, &app, &QCoreApplication::quit);
         timer->start(parser.value(timeoutOption).toInt() * 60000);
     } else {
-        QObject::connect(&cons, &Console::sendQuit, &app, &QCoreApplication::quit);
+        if (parser.isSet(singleOption)) {
+            QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
+        } else {
+            cons = new Console();
+            QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
+        }
     }
     return app.exec();
 }
