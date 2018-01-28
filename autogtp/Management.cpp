@@ -107,8 +107,12 @@ void Management::giveAssignments() {
                     this,
                     &Management::getResult,
                     Qt::DirectConnection);
-            if(!m_storedOrders.isEmpty()) {
-                m_gamesThreads[thread_index]->order(m_storedOrders.takeFirst());
+            if(!m_storeGames.isEmpty()) {
+                QFileInfo fileInfo = m_storeGames.takeFirst();
+                Order o;
+                o.load(fileInfo.fileName());
+                QFile::remove(fileInfo.fileName());
+                m_gamesThreads[thread_index]->order(o);
             } else {
                 m_gamesThreads[thread_index]->order(getWork());
             }            
@@ -737,13 +741,5 @@ void Management::checkStoredGames() {
     filters << "storefile*.bin";
     dir.setNameFilters(filters);
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
-
-    QFileInfoList list = dir.entryInfoList();
-    for (int i = 0; i < list.size(); ++i) {
-        QFileInfo fileInfo = list.at(i);
-        Order o;
-        o.load(fileInfo.fileName());
-        m_storedOrders.push_back(o);
-        QFile::remove(fileInfo.fileName());
-    }
+    m_stoerdFiles = dir.entryInfoList();
 }

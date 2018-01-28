@@ -72,8 +72,9 @@ private:
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
     int m_storeGames;
-    QList<Order> m_storedOrders;
+    QFileInfoList m_stoerdFiles;
     Order m_fallBack;
+
     bool m_single;
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);
