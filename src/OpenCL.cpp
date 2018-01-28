@@ -52,6 +52,51 @@ static std::string sourceCode_config = R"(
 )";
 
 static std::string sourceCode_convolve3 = R"(
+void __in_transform_eq(float x[4][4], __global float *V, int offset, int CPpad) {
+    float T1[4][4];
+    float T2[4][4];
+
+    T1[0][0] = x[0][0] - x[2][0];
+    T1[0][1] = x[0][1] - x[2][1];
+    T1[0][2] = x[0][2] - x[2][2];
+    T1[0][3] = x[0][3] - x[2][3];
+    T1[1][0] = x[1][0] + x[2][0];
+    T1[1][1] = x[1][1] + x[2][1];
+    T1[1][2] = x[1][2] + x[2][2];
+    T1[1][3] = x[1][3] + x[2][3];
+    T1[2][0] = x[2][0] - x[1][0];
+    T1[2][1] = x[2][1] - x[1][1];
+    T1[2][2] = x[2][2] - x[1][2];
+    T1[2][3] = x[2][3] - x[1][3];
+    T1[3][0] = x[1][0] - x[3][0];
+    T1[3][1] = x[1][1] - x[3][1];
+    T1[3][2] = x[1][2] - x[3][2];
+    T1[3][3] = x[1][3] - x[3][3];
+
+    T2[0][0] = T1[0][0] - T1[0][2];
+    T2[0][1] = T1[0][1] + T1[0][2];
+    T2[0][2] = T1[0][2] - T1[0][1];
+    T2[0][3] = T1[0][1] - T1[0][3];
+    T2[1][0] = T1[1][0] - T1[1][2];
+    T2[1][1] = T1[1][1] + T1[1][2];
+    T2[1][2] = T1[1][2] - T1[1][1];
+    T2[1][3] = T1[1][1] - T1[1][3];
+    T2[2][0] = T1[2][0] - T1[2][2];
+    T2[2][1] = T1[2][1] + T1[2][2];
+    T2[2][2] = T1[2][2] - T1[2][1];
+    T2[2][3] = T1[2][1] - T1[2][3];
+    T2[3][0] = T1[3][0] - T1[3][2];
+    T2[3][1] = T1[3][1] + T1[3][2];
+    T2[3][2] = T1[3][2] - T1[3][1];
+    T2[3][3] = T1[3][1] - T1[3][3];
+
+    for (int i = 0, v_idx = offset; i < 4; i++) {
+        for (int j = 0; j < 4; j++, v_idx += CPpad) {
+            V[v_idx] = T2[i][j];
+        }
+    }
+}
+
 __kernel void in_transform(__global net_t *in, __global float *V,
                            const int C, const int Cpad,
                            const int Ppad) {
@@ -74,7 +119,6 @@ __kernel void in_transform(__global net_t *in, __global float *V,
     const int xin = 2 * block_x - 1;
 
     if (block < P && ch < C) {
-
         // Cache input tile and handle zero padding
         float x[4][4];
         for (int i = 0; i < 4; i++) {
@@ -90,51 +134,40 @@ __kernel void in_transform(__global net_t *in, __global float *V,
         }
 
         const int offset = ch*Ppad + block;
-
-        float T1[4][4];
-        float T2[4][4];
-
-        T1[0][0] = x[0][0] - x[2][0];
-        T1[0][1] = x[0][1] - x[2][1];
-        T1[0][2] = x[0][2] - x[2][2];
-        T1[0][3] = x[0][3] - x[2][3];
-        T1[1][0] = x[1][0] + x[2][0];
-        T1[1][1] = x[1][1] + x[2][1];
-        T1[1][2] = x[1][2] + x[2][2];
-        T1[1][3] = x[1][3] + x[2][3];
-        T1[2][0] = x[2][0] - x[1][0];
-        T1[2][1] = x[2][1] - x[1][1];
-        T1[2][2] = x[2][2] - x[1][2];
-        T1[2][3] = x[2][3] - x[1][3];
-        T1[3][0] = x[1][0] - x[3][0];
-        T1[3][1] = x[1][1] - x[3][1];
-        T1[3][2] = x[1][2] - x[3][2];
-        T1[3][3] = x[1][3] - x[3][3];
-
-        T2[0][0] = T1[0][0] - T1[0][2];
-        T2[0][1] = T1[0][1] + T1[0][2];
-        T2[0][2] = T1[0][2] - T1[0][1];
-        T2[0][3] = T1[0][1] - T1[0][3];
-        T2[1][0] = T1[1][0] - T1[1][2];
-        T2[1][1] = T1[1][1] + T1[1][2];
-        T2[1][2] = T1[1][2] - T1[1][1];
-        T2[1][3] = T1[1][1] - T1[1][3];
-        T2[2][0] = T1[2][0] - T1[2][2];
-        T2[2][1] = T1[2][1] + T1[2][2];
-        T2[2][2] = T1[2][2] - T1[2][1];
-        T2[2][3] = T1[2][1] - T1[2][3];
-        T2[3][0] = T1[3][0] - T1[3][2];
-        T2[3][1] = T1[3][1] + T1[3][2];
-        T2[3][2] = T1[3][2] - T1[3][1];
-        T2[3][3] = T1[3][1] - T1[3][3];
-
-        for (int i = 0, v_idx = offset; i < 4; i++) {
-            for (int j = 0; j < 4; j++, v_idx += CPpad) {
-                V[v_idx] = T2[i][j];
-            }
-        }
+        __in_transform_eq(x, V, offset, CPpad);
     }
 }
+
+void __out_transform_eq(__global float *M, float o[4], int Kpad, int Ppad, int block_x, int block_y)
+{
+    const int W = 19;
+    const int H = 19;
+    const int WTILES = (W + 1) / 2;
+    const int b = block_y * WTILES + block_x;
+    const int KPpad = Kpad * Ppad;
+    const int k = get_global_id(0);
+    float temp_m[16];
+    for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
+        temp_m[xn] = M[xnKPpad];
+    }
+
+    o[0] = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
+           temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
+           temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
+
+    o[1] = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
+           temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
+           temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
+
+    o[2] = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
+           temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
+           temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
+
+    o[3] = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
+           temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
+           temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
+}
+
 
 __kernel void out_transform(__global float *M, __global net_t *Y,
                             const int K, const int Kpad, const int Ppad) {
@@ -155,38 +188,19 @@ __kernel void out_transform(__global float *M, __global net_t *Y,
     int y = 2*block_y;
 
     if (k < K && block < P) {
-        int kHW = k * HW;
-        int b = block_y * WTILES + block_x;
-        float temp_m[16];
-        for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
-            temp_m[xn] = M[xnKPpad];
-        }
-
-        float o11 = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
-                    temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
-                    temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
-
-        float o12 = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
-                    temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
-                    temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
-
-        float o21 = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
-                    temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
-                    temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
-
-        float o22 = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
-                    temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
-                    temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
+        const int kHW = k * HW;
+        float o[4];
+        __out_transform_eq(M, o, Kpad, Ppad, block_x, block_y);
 
         int index = kHW + (y)*W + (x);
-        vstore_net_t(o11, index, Y);
+        vstore_net_t(o[0], index, Y);
         if (x+1 < W) {
-            vstore_net_t(o12, index + 1, Y);
+            vstore_net_t(o[1], index + 1, Y);
         }
         if (y+1 < H) {
-            vstore_net_t(o21, index + W, Y);
+            vstore_net_t(o[2], index + W, Y);
             if (x+1 < W) {
-                vstore_net_t(o22, index + W+1, Y);
+                vstore_net_t(o[3], index + W+1, Y);
             }
         }
     }
@@ -203,7 +217,6 @@ __kernel void out_transform_fused_bn(__global float *M,
     const int H = 19;
     const int WTILES = (W + 1) / 2;
     const int P = WTILES * WTILES;
-    const int KPpad = Kpad * Ppad;
 
     int k = get_global_id(0);
     int block = get_global_id(1);
@@ -215,29 +228,9 @@ __kernel void out_transform_fused_bn(__global float *M,
     int y = 2*block_y;
     int a_ind = (y)*W + (x);
     if (k < K && block < P) {
-        int b = block_y * WTILES + block_x;
-        int kHW = k * W * H;
-        float temp_m[16];
-        for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
-            temp_m[xn] = M[xnKPpad];
-        }
-
+        const int kHW = k * W * H;
         float o[4];
-        o[0] = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
-               temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
-               temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
-
-        o[1] = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
-               temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
-               temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
-
-        o[2] = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
-               temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
-               temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
-
-        o[3] = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
-               temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
-               temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
+        __out_transform_eq(M, o, Kpad, Ppad, block_x, block_y);
 
         const float mean = vload_net_t(k, means);
         const float scale_stddiv = vload_net_t(k, stddivs);
@@ -292,33 +285,14 @@ __kernel void out_transform_fused_bn_in(
     const int y = 2*block_y;
     int a_ind = (y)*W + (x);
 
-    const int kHW = k * W * H;
 
     if (k < K && block < P) {
         const int a[4] = {a_ind, a_ind+1, a_ind+W, a_ind+W+1};
         const bool pred[4] = { 1, x+1 < W, y+1 < H, x+1 < W & y+1 < H};
-        int b = block_y * WTILES + block_x;
-        float temp_m[16];
-        for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
-            temp_m[xn] = M[xnKPpad];
-        }
+        const int kHW = k * W * H;
 
         float o[4];
-        o[0] = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
-               temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
-               temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
-
-        o[1] = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
-               temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
-               temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
-
-        o[2] = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
-               temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
-               temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
-
-        o[3] = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
-               temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
-               temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
+        __out_transform_eq(M, o, Kpad, Ppad, block_x, block_y);
 
         const float mean = vload_net_t(k, means);
         const float scale_stddiv = vload_net_t(k, stddivs);
@@ -357,49 +331,7 @@ __kernel void out_transform_fused_bn_in(
         }
 
         const int offset = k*Ppad + block;
-
-        float T1[4][4];
-        float T2[4][4];
-
-        T1[0][0] = xx[0][0] - xx[2][0];
-        T1[0][1] = xx[0][1] - xx[2][1];
-        T1[0][2] = xx[0][2] - xx[2][2];
-        T1[0][3] = xx[0][3] - xx[2][3];
-        T1[1][0] = xx[1][0] + xx[2][0];
-        T1[1][1] = xx[1][1] + xx[2][1];
-        T1[1][2] = xx[1][2] + xx[2][2];
-        T1[1][3] = xx[1][3] + xx[2][3];
-        T1[2][0] = xx[2][0] - xx[1][0];
-        T1[2][1] = xx[2][1] - xx[1][1];
-        T1[2][2] = xx[2][2] - xx[1][2];
-        T1[2][3] = xx[2][3] - xx[1][3];
-        T1[3][0] = xx[1][0] - xx[3][0];
-        T1[3][1] = xx[1][1] - xx[3][1];
-        T1[3][2] = xx[1][2] - xx[3][2];
-        T1[3][3] = xx[1][3] - xx[3][3];
-
-        T2[0][0] = T1[0][0] - T1[0][2];
-        T2[0][1] = T1[0][1] + T1[0][2];
-        T2[0][2] = T1[0][2] - T1[0][1];
-        T2[0][3] = T1[0][1] - T1[0][3];
-        T2[1][0] = T1[1][0] - T1[1][2];
-        T2[1][1] = T1[1][1] + T1[1][2];
-        T2[1][2] = T1[1][2] - T1[1][1];
-        T2[1][3] = T1[1][1] - T1[1][3];
-        T2[2][0] = T1[2][0] - T1[2][2];
-        T2[2][1] = T1[2][1] + T1[2][2];
-        T2[2][2] = T1[2][2] - T1[2][1];
-        T2[2][3] = T1[2][1] - T1[2][3];
-        T2[3][0] = T1[3][0] - T1[3][2];
-        T2[3][1] = T1[3][1] + T1[3][2];
-        T2[3][2] = T1[3][2] - T1[3][1];
-        T2[3][3] = T1[3][1] - T1[3][3];
-
-        for (int i = 0, v_idx = offset; i < 4; i++) {
-            for (int j = 0; j < 4; j++, v_idx += CPpad) {
-                V[v_idx] = T2[i][j];
-            }
-        }
+        __in_transform_eq(xx, V, offset, CPpad);
     }
 }
 )";
@@ -643,7 +575,6 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     auto mdimc = m_opencl.m_sgemm_tuners.mdimc;
     auto ndimc = m_opencl.m_sgemm_tuners.ndimc;
     auto wavefront_size = m_opencl.m_wavefront_size;
-    auto workgroup_size = m_opencl.m_max_workgroup_size;
 
     assert(mwg != 0);
     assert(nwg != 0);
@@ -655,6 +586,8 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     assert(wavefront_size != 0);
 
     constexpr auto tiles = WINOGRAD_P;
+    constexpr auto width = 19;
+    constexpr auto height = 19;
 
     auto wgs = lcm(tiles, wavefront_size);
     auto m_ceil = int(lcm(lcm(outputs, mwg), vwm));
@@ -727,7 +660,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
                 }
                 out_transform_bn_in_kernel.setArg(8, (*bn_weights)[0]);
                 out_transform_bn_in_kernel.setArg(9, (*bn_weights)[1]);
-                out_transform_bn_in_kernel.setArg(10, cl::Local(dim_size * 19 * 19 * sizeof(float)));
+                out_transform_bn_in_kernel.setArg(10, cl::Local(dim_size * width * height * sizeof(float)));
     
                 queue.enqueueNDRangeKernel(out_transform_bn_in_kernel, cl::NullRange,
                                        cl::NDRange(outputs, wgs), cl::NDRange(dim_size, wgs));
