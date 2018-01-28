@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         { "d", "debug" }, "Save training and extra debug files after each self-play game.",
                           "output directory");
     QCommandLineOption timeoutOption(
-        { "t", "timeout" }, "Save running games after the timeout (in minutes) is passed.",
+        { "t", "timeout" }, "Save running games after the timeout (in minutes) is passed and then exit.",
                           "time in minutes");
 
     QCommandLineOption singleOption(
