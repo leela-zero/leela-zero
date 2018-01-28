@@ -19,7 +19,6 @@
 #include <cmath>
 #include <random>
 #include <QDir>
-#include <QFileInfo>
 #include <QThread>
 #include <QList>
 #include <QCryptographicHash>
@@ -71,6 +70,13 @@ void Management::runTuningProcess(const QString &tuneCmdLine) {
     tuneProcess.waitForFinished(-1);
 }
 
+Order Management::getWork(const QFileInfo &file) {
+    Order o;
+    o.load(file.fileName());
+    QFile::remove(file.fileName());
+    return o;
+}
+
 void Management::giveAssignments() {
     sendAllGames();
 
@@ -107,12 +113,8 @@ void Management::giveAssignments() {
                     this,
                     &Management::getResult,
                     Qt::DirectConnection);
-            if(!m_storeGames.isEmpty()) {
-                QFileInfo fileInfo = m_storeGames.takeFirst();
-                Order o;
-                o.load(fileInfo.fileName());
-                QFile::remove(fileInfo.fileName());
-                m_gamesThreads[thread_index]->order(o);
+            if(!m_storedFiles.isEmpty()) {
+                m_gamesThreads[thread_index]->order(getWork(m_storedFiles.takeFirst()));
             } else {
                 m_gamesThreads[thread_index]->order(getWork());
             }            
@@ -162,8 +164,8 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
         m_gamesThreads[index]->doFinish();
         sendQuit();
     } else {
-        if(!m_storedOrders.isEmpty()) {
-            m_gamesThreads[index]->order(m_storedOrders.takeFirst());
+        if(!m_storedFiles.isEmpty()) {
+            m_gamesThreads[index]->order(getWork(m_storedFiles.takeFirst()));
         } else {
             m_gamesThreads[index]->order(getWork());
         }
@@ -741,5 +743,5 @@ void Management::checkStoredGames() {
     filters << "storefile*.bin";
     dir.setNameFilters(filters);
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
-    m_stoerdFiles = dir.entryInfoList();
+    m_storedFiles = dir.entryInfoList();
 }

@@ -23,6 +23,7 @@
 #include <QString>
 #include <QTextStream>
 #include <QThread>
+#include <QFileInfo>
 #include <QVector>
 #include <chrono>
 #include <stdexcept>
@@ -72,12 +73,13 @@ private:
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
     int m_storeGames;
-    QFileInfoList m_stoerdFiles;
+    QList<QFileInfo> m_storedFiles;
     Order m_fallBack;
 
     bool m_single;
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);
+    Order getWork(const QFileInfo &file);
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
     QString getOptionsString(const QJsonObject &opt, const QString &rnd);
