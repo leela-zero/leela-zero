@@ -71,6 +71,7 @@ void Management::runTuningProcess(const QString &tuneCmdLine) {
 }
 
 Order Management::getWork(const QFileInfo &file) {
+    QTextStream(stdout) << "Got previously stored file" <<endl;
     Order o;
     o.load(file.fileName());
     QFile::remove(file.fileName());
@@ -124,8 +125,6 @@ void Management::giveAssignments() {
 }
 
 void Management::storeGames() {
-    QTextStream(stdout) << "Management: Signal received saving game(s)" << endl;
-
     for (int i = 0; i < m_gpus * m_games; ++i) {
         m_gamesThreads[i]->doStore();
     }

@@ -42,7 +42,6 @@ public slots:
         if (line.contains("q")) {
             emit sendQuit();
         }
-        QTextStream(stdout) << "captured input: " << line << endl;
     }
 private:
     Notifier m_notifier;

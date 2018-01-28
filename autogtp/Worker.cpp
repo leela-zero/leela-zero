@@ -36,7 +36,7 @@ Worker::Worker(int index, const QString& gpuIndex, Management *parent) :
 }
 
 void Worker::doStore() { 
-    QTextStream(stdout) << "Worker: Command receive store my game" << endl;
+    QTextStream(stdout) << "Storing current game ..." << endl;
     m_job->store(); 
     m_state.store(STORING); 
 }
@@ -80,11 +80,7 @@ void Worker::run() {
      Result res;
      do {
         auto start = std::chrono::high_resolution_clock::now();
-
-        QTextStream(stdout) << "Worker: before execute" << endl;
         res = m_job->execute();
-        QTextStream(stdout) << "Worker: after execute" << endl;
-
         auto end = std::chrono::high_resolution_clock::now();
         auto gameDuration =
         std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
@@ -105,5 +101,5 @@ void Worker::run() {
         QString unique = QUuid::createUuid().toRfc4122().toHex();
         m_todo.save("storefile" + unique + ".bin");
     }    
-    QTextStream(stdout) << "Worker: Program ends: exiting." << endl;
+    QTextStream(stdout) << "Program ends: quitting current worker." << endl;
 }

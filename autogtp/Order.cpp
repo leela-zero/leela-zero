@@ -7,7 +7,6 @@ void Order::save(const QString &file) {
     if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return;
     }
-    QTextStream(stdout) << "Writing Order" << endl;
     QTextStream out(&f);
     out << m_type << endl;
     out << m_parameters.size() << endl;
@@ -24,7 +23,6 @@ void Order::load(const QString &file) {
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return;
     }
-    QTextStream(stdout) << "Reading Order" << endl;
     QTextStream in(&f);
     in >>  m_type;
     int count;

@@ -166,8 +166,6 @@ void Game::checkVersion(const VersionTuple &min_version) {
 }
 
 bool Game::gameStart(const VersionTuple &min_version) {
-    QTextStream(stdout) << m_cmdLine << endl;
-
     start(m_cmdLine);
     if (!waitForStarted()) {
         error(Game::NO_LEELAZ);

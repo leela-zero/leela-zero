@@ -67,7 +67,6 @@ Job(gpu, parent)
 
 Result ProductionJob::execute(){
     Result res(Result::Error);
-    QTextStream(stdout) << m_network << " " << m_option << endl;
     Game game(m_network, m_option);
     if (!game.gameStart(m_leelazMinVersion)) {
         return res;
@@ -102,17 +101,14 @@ Result ProductionJob::execute(){
         res.add("moves", QString::number(game.getMovesCount()));
         break;
     case STORING:
-        QTextStream(stdout) << "ProductionJob: Program ends: Storing game." << endl;
         res.type(Result::StoreSelfPlayed);
         game.writeSgf();
         res.add("sgf", game.getFile());
         res.add("moves", QString::number(game.getMovesCount()));
         break;
     default:
-        QTextStream(stdout) << "ProductionJob:Program ends: exiting." << endl;
         break;
     }
-    QTextStream(stdout) << "ProductionJob: Stopping engine." << endl;
     game.gameQuit();
     return res;
 }
@@ -132,7 +128,6 @@ void ProductionJob::init(const Order &o) {
 
 Result ValidationJob::execute(){
     Result res(Result::Error);
-    QTextStream(stdout) << m_firstNet << " " << m_option << endl;
     Game first(m_firstNet,  m_option);
     if (!first.gameStart(m_leelazMinVersion)) {
         return res;
@@ -190,7 +185,6 @@ Result ValidationJob::execute(){
         res.type(Result::Win);
         break;
     case STORING:
-        QTextStream(stdout) << "ValidationJob: Program ends: Storing game." << endl;
         res.type(Result::StoreMatch);
         first.writeSgf();
         second.writeSgf();
@@ -199,7 +193,6 @@ Result ValidationJob::execute(){
         res.add("moves", QString::number(first.getMovesCount()));
         break;
     default:
-        QTextStream(stdout) << "ValidationJob: Program ends: exiting code: " <<  m_state.load() << endl;
         break;
     }
     first.gameQuit();

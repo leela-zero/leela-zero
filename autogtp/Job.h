@@ -45,7 +45,6 @@ public:
     virtual void init(const Order &o);
     void finish() { m_state.store(FINISHING); }
     void store() { 
-        QTextStream(stdout) << "Job is saving game" << endl;
         m_state.store(STORING); 
     }
 
