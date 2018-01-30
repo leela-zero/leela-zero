@@ -152,9 +152,9 @@ class ChunkParser:
                 with gzip.open(chunk, 'r') as chunk_file:
                     file_content = chunk_file.read().splitlines()
                     item_count = len(file_content) // DATA_ITEM_LINES
-                    # Pick only 1 in every 8 positions
+                    # Pick only 1 in every 16 positions
                     picked_items = random.sample(range(item_count),
-                                                 (item_count + 7) // 8)
+                                                 (item_count + 15) // 16)
                     for item_idx in picked_items:
                         pick_offset = item_idx * DATA_ITEM_LINES
                         item = file_content[pick_offset:pick_offset + DATA_ITEM_LINES]
