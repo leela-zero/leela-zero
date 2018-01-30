@@ -150,7 +150,7 @@ class ChunkParser:
             random.shuffle(chunks)
             for chunk in chunks:
                 with gzip.open(chunk, 'r') as chunk_file:
-                    file_content = chunk_file.readlines()
+                    file_content = chunk_file.read().splitlines()
                     item_count = len(file_content) // DATA_ITEM_LINES
                     # Pick only 1 in every 8 positions
                     picked_items = random.sample(range(item_count),
