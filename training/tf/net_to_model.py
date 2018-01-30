@@ -29,7 +29,8 @@ x = [
     tf.placeholder(tf.float32, [None, 1])
     ]
 
-tfprocess = TFProcess(x, x)
+tfprocess = TFProcess()
+tfprocess.init_net(x)
 if tfprocess.RESIDUAL_BLOCKS != blocks:
     raise ValueError("Number of blocks in tensorflow model doesn't match "\
             "number of blocks in input network")
