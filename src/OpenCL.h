@@ -44,8 +44,7 @@ private:
     unsigned int channels{0};
     unsigned int outputs{0};
     unsigned int filter_size{0};
-    bool is_batchnorm{false};
-    bool is_innerproduct{false};
+    bool is_input_convolution{false};
     bool is_residual_block{false};
     std::vector<cl::Buffer> weights;
 };
@@ -58,12 +57,9 @@ private:
     cl::CommandQueue m_commandqueue;
     cl::Kernel m_in_transform_kernel;
     cl::Kernel m_sgemm_kernel;
-    cl::Kernel m_out_transform_kernel;
     cl::Kernel m_out_transform_bn_kernel;
     cl::Kernel m_out_transform_bn_in_kernel;
-    cl::Kernel m_batchnorm_kernel;
     cl::Buffer m_inBuffer;
-    cl::Buffer m_tmpBuffer;
     cl::Buffer m_VBuffer;
     cl::Buffer m_MBuffer;
     cl::Buffer m_residualBuffer;
@@ -76,24 +72,18 @@ public:
     OpenCL & getOpenCL() {
         return m_opencl;
     }
-    void push_batchnorm(unsigned int spatial_size,
-                        const std::vector<float>& means,
-                        const std::vector<float>& variances) {
-        size_t layer = get_layer_count();
-        push_weights(layer, means);
-        push_weights(layer, variances);
-        m_layers[layer].is_batchnorm = true;
-        m_layers[layer].channels = means.size();
-        m_layers[layer].outputs = means.size();
-        m_layers[layer].filter_size = spatial_size;
-    }
 
-    void push_convolve(unsigned int filter_size,
+    void push_input_convolution(unsigned int filter_size,
                        unsigned int channels,
                        unsigned int outputs,
-                       const std::vector<float>& weights) {
+                       const std::vector<float>& weights,
+                       const std::vector<float>& means,
+                       const std::vector<float>& variances) {
         size_t layer = get_layer_count();
         push_weights(layer, weights);
+        push_weights(layer, means);
+        push_weights(layer, variances);
+        m_layers[layer].is_input_convolution = true;
         m_layers[layer].outputs = outputs;
         m_layers[layer].filter_size = filter_size;
         m_layers[layer].channels = channels;
@@ -142,9 +132,6 @@ private:
                     weight_slice_t* bn_weights,
                     bool skip_in_transform,
                     bool fuse_in_transform, bool store_inout);
-    void batchnorm(int outputs, int channel_size, cl::Buffer& input,
-                   cl::Buffer& output, cl::Buffer* residual,
-                   weight_slice_t weights);
 
     OpenCL & m_opencl;
 

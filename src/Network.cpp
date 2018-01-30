@@ -365,9 +365,8 @@ void Network::initialize(void) {
                               m_ceil, k_ceil);
 
         // Winograd filter transformation changes filter size to 4x4
-        opencl_net->push_convolve(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, Upad);
-        opencl_net->push_batchnorm(361, batchnorm_means[weight_index],
-                                    batchnorm_stddivs[weight_index]);
+        opencl_net->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS, channels,
+                Upad, batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
         weight_index++;
 
         // residual blocks
