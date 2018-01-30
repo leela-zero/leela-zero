@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -36,33 +37,55 @@
 
 using namespace Utils;
 
-// Setup global objects after command line has been parsed
-void init_global_objects() {
-    thread_pool.initialize(cfg_num_threads);
-
-    // Use deterministic random numbers for hashing
-    auto rng = std::make_unique<Random>(5489);
-    Zobrist::init_zobrist(*rng);
-
-    // Initialize the main thread RNG.
-    // Doing this here avoids mixing in the thread_id, which
-    // improves reproducibility across platforms.
-    Random::get_Rng().seedrandom(cfg_rng_seed);
-
-    NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
-
-    // Initialize network
-    // Needs a weights file
-    // Network::initialize();
+void expect_regex(std::string s, std::string re, bool positive=true) {
+    auto m = std::regex_search(s, std::regex(re));
+    if (positive && !m) {
+        FAIL() << "Output:" << std::endl << s
+            << "Does not contain:" << std::endl
+            << re << std::endl;
+    } else if (!positive && m) {
+        FAIL() << "output:" << std::endl << s
+            << "Should not contain:" << std::endl
+            << re << std::endl;
+    }
 }
+
+class LeelaEnv: public ::testing::Environment {
+public:
+    ~LeelaEnv() {}
+    void SetUp() {
+        GTP::setup_default_parameters();
+        cfg_gtp_mode = true;
+
+        // Setup global objects after command line has been parsed
+        thread_pool.initialize(cfg_num_threads);
+
+        // Use deterministic random numbers for hashing
+        auto rng = std::make_unique<Random>(5489);
+        Zobrist::init_zobrist(*rng);
+
+        // Initialize the main thread RNG.
+        // Doing this here avoids mixing in the thread_id, which
+        // improves reproducibility across platforms.
+        Random::get_Rng().seedrandom(cfg_rng_seed);
+
+        NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
+
+        cfg_weightsfile = "../src/tests/0k.txt";
+        Network::initialize();
+    }
+    void TearDown() {}
+};
+
+::testing::Environment* const leela_env = ::testing::AddGlobalTestEnvironment(new LeelaEnv);
 
 class LeelaTest: public ::testing::Test {
 public:
     LeelaTest( ) {
-        // Setup engine parameters
+        // Reset engine parameters
         GTP::setup_default_parameters();
+        cfg_max_playouts = 1;
         cfg_gtp_mode = true;
-        init_global_objects();
 
         m_gamestate = std::make_unique<GameState>();
         m_gamestate->init_game(19, 7.5f);
@@ -71,7 +94,15 @@ public:
     GameState& get_gamestate() {
         return *m_gamestate;
     }
+    std::pair<std::string, std::string> gtp_execute(std::string cmd) {
+        testing::internal::CaptureStdout();
+        testing::internal::CaptureStderr();
+        GTP::execute(get_gamestate(), cmd);
+        return std::make_pair(testing::internal::GetCapturedStdout(),
+                              testing::internal::GetCapturedStderr());
+    }
 
+private:
     std::unique_ptr<GameState> m_gamestate;
 };
 
@@ -173,4 +204,49 @@ TEST_F(LeelaTest, MoveOnOccupiedSq) {
 
     // Find this error in the output
     EXPECT_NE(output.find("illegal move"), std::string::npos);
+}
+
+// Basic TimeControl test
+TEST_F(LeelaTest, TimeControl) {
+    std::pair<std::string, std::string> result;
+
+    // clear_board to force GTP to make a new UCTSearch.
+    // This will pickup our new cfg_* settings.
+    result = gtp_execute("clear_board");
+
+    result = gtp_execute("kgs-time_settings canadian 0 120 25");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: 00:02:00, 25 stones left");
+    expect_regex(result.second, "White time: 00:02:00, 25 stones left");
+
+    result = gtp_execute("go");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: \\S*, 24 stones left");
+    expect_regex(result.second, "White time: \\S*, 25 stones left");
+
+    result = gtp_execute("go");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: \\S*, 24 stones left");
+    expect_regex(result.second, "White time: \\S*, 24 stones left");
+}
+
+// Test changing TimeControl during game
+TEST_F(LeelaTest, TimeControl2) {
+    std::pair<std::string, std::string> result;
+
+    // clear_board to force GTP to make a new UCTSearch.
+    // This will pickup our new cfg_* settings.
+    result = gtp_execute("clear_board");
+
+    result = gtp_execute("kgs-time_settings byoyomi 0 100 1");
+    result = gtp_execute("go");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: 00:01:40, 1 period\\(s\\) of 100 seconds left");
+    expect_regex(result.second, "White time: 00:01:40, 1 period\\(s\\) of 100 seconds left");
+
+    result = gtp_execute("kgs-time_settings byoyomi 0 120 1");
+    result = gtp_execute("go");
+    result = gtp_execute("showboard");
+    expect_regex(result.second, "Black time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
+    expect_regex(result.second, "White time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
 }
