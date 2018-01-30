@@ -401,8 +401,10 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         if (layer.is_input_convolution) {
             auto conv_weights = begin(layer.weights);
             auto bn_weights = begin(layer.weights) + 1;
-            //Only inputs = outputs case is supported with fused input transform
             bool skip_next_in_trans = false;
+            if (niter != cend(m_layers)) {
+                skip_next_in_trans = true;
+            }
             convolve3(layer.channels,
                      layer.outputs,
                      inBuffer,
@@ -557,7 +559,9 @@ void OpenCL_Network::convolve3(int channels, int outputs,
             out_transform_bn_in_kernel.setArg(3, outputs);
             out_transform_bn_in_kernel.setArg(4, m_ceil);
             out_transform_bn_in_kernel.setArg(5, n_ceil);
-            out_transform_bn_in_kernel.setArg(6, k_ceil);
+            //k_ceil of the next convolution
+            auto k_ceil2 = int(lcm(lcm(outputs, kwg), vwm));
+            out_transform_bn_in_kernel.setArg(6, k_ceil2);
             if (bufferResidual) {
                 out_transform_bn_in_kernel.setArg(7, *bufferResidual);
             } else {
