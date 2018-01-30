@@ -200,7 +200,7 @@ std::pair<int, int>  Network::load_v1_network(std::ifstream& wtfile) {
         auto iss = std::stringstream{line};
         // Third line of parameters are the convolution layer biases,
         // so this tells us the amount of channels in the residual layers.
-        // (Provided they're all equally large - that's not actually required!)
+        // We are assuming all layers have the same amount of filters.
         if (linecount == 2) {
             auto count = std::distance(std::istream_iterator<std::string>(iss),
                                        std::istream_iterator<std::string>());
@@ -365,9 +365,8 @@ void Network::initialize(void) {
                               m_ceil, k_ceil);
 
         // Winograd filter transformation changes filter size to 4x4
-        opencl_net->push_convolve(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, Upad);
-        opencl_net->push_batchnorm(361, batchnorm_means[weight_index],
-                                    batchnorm_stddivs[weight_index]);
+        opencl_net->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS, channels,
+                Upad, batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
         weight_index++;
 
         // residual blocks

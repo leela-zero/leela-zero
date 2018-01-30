@@ -161,8 +161,8 @@ not via the command line!
 The weights file is a text file with each line containing a row of coefficients.
 The layout of the network is as in the AlphaGo Zero paper, but any number of
 residual blocks is allowed, and any number of outputs (filters) per layer,
-as long as the latter is the same for all residual layers. The program will
-autodetect the amounts on startup. The first line contains a version number.
+as long as the latter is the same for all layers. The program will autodetect
+the amounts on startup. The first line contains a version number.
 
 * Convolutional layers have 2 weight rows:
     1) convolution weights

@@ -52,6 +52,44 @@ static std::string sourceCode_config = R"(
 )";
 
 static std::string sourceCode_convolve3 = R"(
+void __in_transform_eq(float x[4][4], __global float *V, int offset, int CPpad) {
+    float T1[4][4];
+
+    T1[0][0] = x[0][0] - x[2][0];
+    T1[0][1] = x[0][1] - x[2][1];
+    T1[0][2] = x[0][2] - x[2][2];
+    T1[0][3] = x[0][3] - x[2][3];
+    T1[1][0] = x[1][0] + x[2][0];
+    T1[1][1] = x[1][1] + x[2][1];
+    T1[1][2] = x[1][2] + x[2][2];
+    T1[1][3] = x[1][3] + x[2][3];
+    T1[2][0] = x[2][0] - x[1][0];
+    T1[2][1] = x[2][1] - x[1][1];
+    T1[2][2] = x[2][2] - x[1][2];
+    T1[2][3] = x[2][3] - x[1][3];
+    T1[3][0] = x[1][0] - x[3][0];
+    T1[3][1] = x[1][1] - x[3][1];
+    T1[3][2] = x[1][2] - x[3][2];
+    T1[3][3] = x[1][3] - x[3][3];
+
+    V[(0*4 + 0)*CPpad + offset] = T1[0][0] - T1[0][2];
+    V[(0*4 + 1)*CPpad + offset] = T1[0][1] + T1[0][2];
+    V[(0*4 + 2)*CPpad + offset] = T1[0][2] - T1[0][1];
+    V[(0*4 + 3)*CPpad + offset] = T1[0][1] - T1[0][3];
+    V[(1*4 + 0)*CPpad + offset] = T1[1][0] - T1[1][2];
+    V[(1*4 + 1)*CPpad + offset] = T1[1][1] + T1[1][2];
+    V[(1*4 + 2)*CPpad + offset] = T1[1][2] - T1[1][1];
+    V[(1*4 + 3)*CPpad + offset] = T1[1][1] - T1[1][3];
+    V[(2*4 + 0)*CPpad + offset] = T1[2][0] - T1[2][2];
+    V[(2*4 + 1)*CPpad + offset] = T1[2][1] + T1[2][2];
+    V[(2*4 + 2)*CPpad + offset] = T1[2][2] - T1[2][1];
+    V[(2*4 + 3)*CPpad + offset] = T1[2][1] - T1[2][3];
+    V[(3*4 + 0)*CPpad + offset] = T1[3][0] - T1[3][2];
+    V[(3*4 + 1)*CPpad + offset] = T1[3][1] + T1[3][2];
+    V[(3*4 + 2)*CPpad + offset] = T1[3][2] - T1[3][1];
+    V[(3*4 + 3)*CPpad + offset] = T1[3][1] - T1[3][3];
+}
+
 __kernel void in_transform(__global net_t *in, __global float *V,
                            const int C, const int Cpad,
                            const int Ppad) {
@@ -72,11 +110,8 @@ __kernel void in_transform(__global net_t *in, __global float *V,
     // Tiles overlap by 2
     const int yin = 2 * block_y - 1;
     const int xin = 2 * block_x - 1;
-    int a;
-    int b;
 
     if (block < P && ch < C) {
-
         // Cache input tile and handle zero padding
         float x[4][4];
         for (int i = 0; i < 4; i++) {
@@ -92,106 +127,38 @@ __kernel void in_transform(__global net_t *in, __global float *V,
         }
 
         const int offset = ch*Ppad + block;
-
-        float T1[4][4];
-        float T2[4][4];
-
-        T1[0][0] = x[0][0] - x[2][0];
-        T1[0][1] = x[0][1] - x[2][1];
-        T1[0][2] = x[0][2] - x[2][2];
-        T1[0][3] = x[0][3] - x[2][3];
-        T1[1][0] = x[1][0] + x[2][0];
-        T1[1][1] = x[1][1] + x[2][1];
-        T1[1][2] = x[1][2] + x[2][2];
-        T1[1][3] = x[1][3] + x[2][3];
-        T1[2][0] = x[2][0] - x[1][0];
-        T1[2][1] = x[2][1] - x[1][1];
-        T1[2][2] = x[2][2] - x[1][2];
-        T1[2][3] = x[2][3] - x[1][3];
-        T1[3][0] = x[1][0] - x[3][0];
-        T1[3][1] = x[1][1] - x[3][1];
-        T1[3][2] = x[1][2] - x[3][2];
-        T1[3][3] = x[1][3] - x[3][3];
-
-        T2[0][0] = T1[0][0] - T1[0][2];
-        T2[0][1] = T1[0][1] + T1[0][2];
-        T2[0][2] = T1[0][2] - T1[0][1];
-        T2[0][3] = T1[0][1] - T1[0][3];
-        T2[1][0] = T1[1][0] - T1[1][2];
-        T2[1][1] = T1[1][1] + T1[1][2];
-        T2[1][2] = T1[1][2] - T1[1][1];
-        T2[1][3] = T1[1][1] - T1[1][3];
-        T2[2][0] = T1[2][0] - T1[2][2];
-        T2[2][1] = T1[2][1] + T1[2][2];
-        T2[2][2] = T1[2][2] - T1[2][1];
-        T2[2][3] = T1[2][1] - T1[2][3];
-        T2[3][0] = T1[3][0] - T1[3][2];
-        T2[3][1] = T1[3][1] + T1[3][2];
-        T2[3][2] = T1[3][2] - T1[3][1];
-        T2[3][3] = T1[3][1] - T1[3][3];
-
-        for (int i = 0, v_idx = offset; i < 4; i++) {
-            for (int j = 0; j < 4; j++, v_idx += CPpad) {
-                V[v_idx] = T2[i][j];
-            }
-        }
+        __in_transform_eq(x, V, offset, CPpad);
     }
 }
 
-__kernel void out_transform(__global float *M, __global net_t *Y,
-                            const int K, const int Kpad, const int Ppad) {
+void __out_transform_eq(__global float *M, float o[4], int Kpad, int Ppad, int block_x, int block_y)
+{
     const int W = 19;
     const int H = 19;
     const int WTILES = (W + 1) / 2;
-    const int P = WTILES * WTILES;
-    const int HW = H*W;
+    const int b = block_y * WTILES + block_x;
     const int KPpad = Kpad * Ppad;
-
-    int k = get_global_id(0);
-    int block = get_global_id(1);
-
-    const int block_x = block % WTILES;
-    const int block_y = block / WTILES;
-
-    int x = 2*block_x;
-    int y = 2*block_y;
-
-    if (k < K && block < P) {
-        int kHW = k * HW;
-        int b = block_y * WTILES + block_x;
-        float temp_m[16];
-        for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
-            temp_m[xn] = M[xnKPpad];
-        }
-
-        float o11 = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
-                    temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
-                    temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
-
-        float o12 = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
-                    temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
-                    temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
-
-        float o21 = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
-                    temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
-                    temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
-
-        float o22 = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
-                    temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
-                    temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
-
-        int index = kHW + (y)*W + (x);
-        vstore_net_t(o11, index, Y);
-        if (x+1 < W) {
-            vstore_net_t(o12, index + 1, Y);
-        }
-        if (y+1 < H) {
-            vstore_net_t(o21, index + W, Y);
-            if (x+1 < W) {
-                vstore_net_t(o22, index + W+1, Y);
-            }
-        }
+    const int k = get_global_id(0);
+    float temp_m[16];
+    for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
+        temp_m[xn] = M[xnKPpad];
     }
+
+    o[0] = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
+           temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
+           temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
+
+    o[1] = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
+           temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
+           temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
+
+    o[2] = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
+           temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
+           temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
+
+    o[3] = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
+           temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
+           temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
 }
 
 __kernel void out_transform_fused_bn(__global float *M,
@@ -205,7 +172,6 @@ __kernel void out_transform_fused_bn(__global float *M,
     const int H = 19;
     const int WTILES = (W + 1) / 2;
     const int P = WTILES * WTILES;
-    const int KPpad = Kpad * Ppad;
 
     int k = get_global_id(0);
     int block = get_global_id(1);
@@ -217,29 +183,9 @@ __kernel void out_transform_fused_bn(__global float *M,
     int y = 2*block_y;
     int a_ind = (y)*W + (x);
     if (k < K && block < P) {
-        int b = block_y * WTILES + block_x;
-        int kHW = k * W * H;
-        float temp_m[16];
-        for (int xn = 0, xnKPpad = b*Kpad + k; xn < 16; xn++, xnKPpad += KPpad) {
-            temp_m[xn] = M[xnKPpad];
-        }
-
+        const int kHW = k * W * H;
         float o[4];
-        o[0] = temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
-               temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
-               temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
-
-        o[1] = temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
-               temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
-               temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
-
-        o[2] = temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
-               temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
-               temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
-
-        o[3] = temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
-               temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
-               temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
+        __out_transform_eq(M, o, Kpad, Ppad, block_x, block_y);
 
         const float mean = vload_net_t(k, means);
         const float scale_stddiv = vload_net_t(k, stddivs);
@@ -260,37 +206,89 @@ __kernel void out_transform_fused_bn(__global float *M,
         }
     }
 }
-)";
 
-static std::string sourceCode_utility = R"(
-    __kernel void batchnorm(__global const net_t * in,
-                            __global net_t * out,
-                            __global const net_t * residual,
-                            __constant const net_t * means,
-                            __constant const net_t * stddivs) {
-        // cl::NDRange global(outputs, 19*19);
-        const int gx = get_global_id(0);
-        const int gy = get_global_id(1);
+__kernel void out_transform_fused_bn_in(
+                                     __global float *M,
+                                     __global net_t *Y,
+                                     __global net_t *V,
+                                     const int K,
+                                     const int Kpad, const int Ppad, const int Cpad,
+                                     __global const net_t * residual,
+                                     __constant const net_t * means,
+                                     __constant const net_t * stddivs,
+                                     __local float *ybuf) {
+    const int W = 19;
+    const int H = 19;
+    const int T = W*H;
+    const int WTILES = (W + 1) / 2;
+    const int P = WTILES * WTILES;
+    const int KPpad = Kpad * Ppad;
 
-        const int output = gx;
-        const int outputs      = get_global_size(0);
-        const int channel_size = get_global_size(1);
+    const int k = get_global_id(0);
+    const int kg = get_local_id(0);
+    const int block = get_global_id(1);
+    const int chT = k*(T);
 
-        const unsigned int o = output;
-        const unsigned int b = gy;
+    const int block_x = block % WTILES;
+    const int block_y = block / WTILES;
 
-        const float mean = vload_net_t(o, means);
-        const float scale_stddiv = vload_net_t(o, stddivs);
+    const int yin = 2 * block_y - 1;
+    const int xin = 2 * block_x - 1;
 
-        // BN
-        float sum = scale_stddiv * (vload_net_t(o * channel_size + b, in) - mean);
-        // Residual Eltwise
-        if (residual) {
-            sum += vload_net_t(o * channel_size + b, residual);
+
+    const int x = 2*block_x;
+    const int y = 2*block_y;
+    int a_ind = (y)*W + (x);
+
+
+    if (k < K && block < P) {
+        const int a[4] = {a_ind, a_ind+1, a_ind+W, a_ind+W+1};
+        const bool pred[4] = { 1, x+1 < W, y+1 < H, x+1 < W & y+1 < H};
+        const int kHW = k * W * H;
+
+        float o[4];
+        __out_transform_eq(M, o, Kpad, Ppad, block_x, block_y);
+
+        const float mean = vload_net_t(k, means);
+        const float scale_stddiv = vload_net_t(k, stddivs);
+
+        for (int i = 0; i < 4; i++) {
+            if (pred[i]) {
+                o[i] = scale_stddiv * (o[i] - mean);
+                if (residual) {
+                    o[i] += vload_net_t(kHW + a[i], residual);
+                }
+                o[i] = o[i] > 0 ? o[i] : 0.0f;
+                ybuf[kg * T + a[i]] = o[i];
+                if (Y) {
+                    vstore_net_t(o[i], kHW + a[i], Y);
+                }
+            }
         }
-        // ReLU
-        vstore_net_t(sum > 0 ? sum : 0.0f, o * channel_size + b, out);
     }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (block < P && k < K) {
+        const int CPpad = Ppad * Cpad;
+        // Cache input tile and handle zero padding
+        float xx[4][4];
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                int a = xin + j;
+                int b = yin + i;
+                if (b >= 0 && a >= 0 && b < H && a < W) {
+                    xx[i][j] = ybuf[kg * T + b*W + a];
+                } else {
+                    xx[i][j] = 0.0f;
+                }
+            }
+        }
+
+        const int offset = k*Ppad + block;
+        __in_transform_eq(xx, V, offset, CPpad);
+    }
+}
 )";
 
 const std::string sourceCode_sgemm =
@@ -311,12 +309,10 @@ void OpenCL::ensure_thread_initialized() {
             cl::Kernel(m_program, "in_transform");
         opencl_thread_data.m_sgemm_kernel =
             cl::Kernel(m_program, "XgemmBatched");
-        opencl_thread_data.m_out_transform_kernel =
-            cl::Kernel(m_program, "out_transform");
         opencl_thread_data.m_out_transform_bn_kernel =
             cl::Kernel(m_program, "out_transform_fused_bn");
-        opencl_thread_data.m_batchnorm_kernel =
-            cl::Kernel(m_program, "batchnorm");
+        opencl_thread_data.m_out_transform_bn_in_kernel =
+            cl::Kernel(m_program, "out_transform_fused_bn_in");
         opencl_thread_data.m_commandqueue =
             cl::CommandQueue(m_context, m_device);
         opencl_thread_data.m_is_initialized = true;
@@ -353,7 +349,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     m_opencl.ensure_thread_initialized();
 
     if (!opencl_thread_data.m_buffers_allocated) {
-        unsigned int max_channels = 0;
+        auto max_channels = unsigned{0};
         for (const auto& layer : m_layers) {
             max_channels = std::max(max_channels,
                                     std::max(layer.channels, layer.outputs));
@@ -367,15 +363,13 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         const auto m_ceil = lcm(lcm(max_channels, mwg), vwm);
         const auto n_ceil = lcm(lcm(tiles, nwg), vwn);
 
-        const auto alloc_inSize = m_ceil * m_ceil *  max_channels * sizeof(net_t);
-        const auto alloc_vm_size = WINOGRAD_TILE * m_ceil * n_ceil * sizeof(net_t);
-
+        const auto alloc_inSize =
+            m_ceil * m_ceil *  max_channels * sizeof(net_t);
+        const auto alloc_vm_size =
+            WINOGRAD_TILE * m_ceil * n_ceil * sizeof(net_t);
         auto v_zeros = std::vector<float>(alloc_vm_size);
 
         opencl_thread_data.m_inBuffer = cl::Buffer(
-            m_opencl.m_context,
-            CL_MEM_READ_WRITE, alloc_inSize);
-        opencl_thread_data.m_tmpBuffer = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_residualBuffer = cl::Buffer(
@@ -392,7 +386,6 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     }
 
     cl::Buffer & inBuffer = opencl_thread_data.m_inBuffer;
-    cl::Buffer & tmpBuffer = opencl_thread_data.m_tmpBuffer;
     cl::Buffer & VBuffer = opencl_thread_data.m_VBuffer;
     cl::Buffer & MBuffer = opencl_thread_data.m_MBuffer;
     cl::Buffer & residualBuffer = opencl_thread_data.m_residualBuffer;
@@ -401,43 +394,18 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, input.data());
 
-    for (const auto& layer : m_layers) {
-        if (layer.is_batchnorm) {
-            auto bn_weights = begin(layer.weights);
-            batchnorm(layer.outputs,
-                      layer.filter_size,
-                      inBuffer,
-                      tmpBuffer,
-                      nullptr,
-                      bn_weights);
-            std::swap(inBuffer, tmpBuffer);
-        } else if (layer.is_residual_block) {
-            assert(layer.channels == layer.outputs);
-            auto conv1_weights = begin(layer.weights);
-            auto bn1_weights   = begin(layer.weights) + 1;
-            auto conv2_weights = begin(layer.weights) + 3;
-            auto bn2_weights   = begin(layer.weights) + 4;
-            const auto inBufferSize = layer.channels * one_plane;
-            queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0, inBufferSize);
-            convolve3(layer.channels,
-                      layer.outputs,
-                      inBuffer,
-                      VBuffer,
-                      MBuffer,
-                      conv1_weights,
-                      nullptr,
-                      &bn1_weights);
-            convolve3(layer.channels,
-                      layer.outputs,
-                      inBuffer,
-                      VBuffer,
-                      MBuffer,
-                      conv2_weights,
-                      &residualBuffer,
-                      &bn2_weights);
-        } else  {
+    auto skip_in_trans = false;
+    for (auto iter = cbegin(m_layers); iter != cend(m_layers); iter++) {
+        const auto& layer = *iter;
+        const auto niter = std::next(iter);
+
+        if (layer.is_input_convolution) {
             auto conv_weights = begin(layer.weights);
-            // plain convolution
+            auto bn_weights = begin(layer.weights) + 1;
+            auto skip_next_in_trans = false;
+            if (niter != cend(m_layers)) {
+                skip_next_in_trans = true;
+            }
             convolve3(layer.channels,
                      layer.outputs,
                      inBuffer,
@@ -445,7 +413,43 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                      MBuffer,
                      conv_weights,
                      nullptr,
-                     nullptr);
+                     bn_weights,
+                     skip_in_trans, skip_next_in_trans, true);
+            skip_in_trans = skip_next_in_trans;
+        } else {
+            assert(layer.is_residual_block);
+            assert(layer.channels == layer.outputs);
+            auto conv1_weights = begin(layer.weights);
+            auto bn1_weights   = begin(layer.weights) + 1;
+            auto conv2_weights = begin(layer.weights) + 3;
+            auto bn2_weights   = begin(layer.weights) + 4;
+            const auto inBufferSize = layer.channels * one_plane;
+            queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0,
+                                    inBufferSize);
+            convolve3(layer.channels,
+                      layer.outputs,
+                      inBuffer,
+                      VBuffer,
+                      MBuffer,
+                      conv1_weights,
+                      nullptr,
+                      bn1_weights,
+                      skip_in_trans, true, false);
+
+            bool skip_next_in_trans = false;
+            if (niter != cend(m_layers)) {
+                skip_next_in_trans = true;
+            }
+            convolve3(layer.channels,
+                      layer.outputs,
+                      inBuffer,
+                      VBuffer,
+                      MBuffer,
+                      conv2_weights,
+                      &residualBuffer,
+                      bn2_weights,
+                      true, skip_next_in_trans, true);
+            skip_in_trans = skip_next_in_trans;
         }
     }
 
@@ -462,12 +466,17 @@ void OpenCL_Network::convolve3(int channels, int outputs,
                               cl::Buffer& bufferM,
                               weight_slice_t weights,
                               cl::Buffer* bufferResidual,
-                              weight_slice_t* bn_weights) {
+                              weight_slice_t bn_weights,
+                              bool skip_in_transform,
+                              bool fuse_in_transform,
+                              bool store_inout) {
 
     cl::Kernel & in_transform_kernel = opencl_thread_data.m_in_transform_kernel;
     cl::Kernel & sgemm_kernel = opencl_thread_data.m_sgemm_kernel;
-    cl::Kernel & out_transform_kernel = opencl_thread_data.m_out_transform_kernel;
-    cl::Kernel & out_transform_bn_kernel = opencl_thread_data.m_out_transform_bn_kernel;
+    cl::Kernel & out_transform_bn_kernel =
+        opencl_thread_data.m_out_transform_bn_kernel;
+    cl::Kernel & out_transform_bn_in_kernel =
+        opencl_thread_data.m_out_transform_bn_in_kernel;
 
     auto mwg = m_opencl.m_sgemm_tuners.mwg;
     auto nwg = m_opencl.m_sgemm_tuners.nwg;
@@ -486,8 +495,11 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     assert(vwm != 0);
     assert(vwn != 0);
     assert(wavefront_size != 0);
+    assert(bn_weights != nullptr);
 
     constexpr auto tiles = WINOGRAD_P;
+    constexpr auto width = 19;
+    constexpr auto height = 19;
 
     auto wgs = lcm(tiles, wavefront_size);
     auto m_ceil = int(lcm(lcm(outputs, mwg), vwm));
@@ -496,19 +508,21 @@ void OpenCL_Network::convolve3(int channels, int outputs,
 
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
-    try {
-        in_transform_kernel.setArg(0, bufferInOut);
-        in_transform_kernel.setArg(1, bufferV);
-        in_transform_kernel.setArg(2, channels);
-        in_transform_kernel.setArg(3, k_ceil);
-        in_transform_kernel.setArg(4, n_ceil);
+    if (!skip_in_transform) {
+        try {
+            in_transform_kernel.setArg(0, bufferInOut);
+            in_transform_kernel.setArg(1, bufferV);
+            in_transform_kernel.setArg(2, channels);
+            in_transform_kernel.setArg(3, k_ceil);
+            in_transform_kernel.setArg(4, n_ceil);
 
-        queue.enqueueNDRangeKernel(in_transform_kernel, cl::NullRange,
-                                   cl::NDRange(wgs, channels));
-    } catch (const cl::Error &e) {
-        std::cerr << "Error in convolve3: " << e.what() << ": "
-            << e.err() << std::endl;
-        throw;
+            queue.enqueueNDRangeKernel(in_transform_kernel, cl::NullRange,
+                                       cl::NDRange(wgs, channels));
+        } catch (const cl::Error &e) {
+            std::cerr << "Error in convolve3: " << e.what() << ": "
+                << e.err() << std::endl;
+            throw;
+        }
     }
 
     try {
@@ -534,7 +548,37 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     }
 
     try {
-        if (bn_weights) {
+        if (fuse_in_transform) {
+            // TODO : Eventually this might also be something tuneable?
+            constexpr auto dim_size = 2;
+            out_transform_bn_in_kernel.setArg(0, bufferM);
+            if (store_inout) {
+                out_transform_bn_in_kernel.setArg(1, bufferInOut);
+            } else {
+                out_transform_bn_in_kernel.setArg(1, nullptr);
+            }
+            out_transform_bn_in_kernel.setArg(2, bufferV);
+            out_transform_bn_in_kernel.setArg(3, outputs);
+            out_transform_bn_in_kernel.setArg(4, m_ceil);
+            out_transform_bn_in_kernel.setArg(5, n_ceil);
+            // k_ceil of the next convolution
+            auto k_ceil2 = int(lcm(lcm(outputs, kwg), vwm));
+            out_transform_bn_in_kernel.setArg(6, k_ceil2);
+            if (bufferResidual) {
+                out_transform_bn_in_kernel.setArg(7, *bufferResidual);
+            } else {
+                out_transform_bn_in_kernel.setArg(7, nullptr);
+            }
+            out_transform_bn_in_kernel.setArg(8, bn_weights[0]);
+            out_transform_bn_in_kernel.setArg(9, bn_weights[1]);
+            out_transform_bn_in_kernel.setArg(10,
+                cl::Local(dim_size * width * height * sizeof(float)));
+
+            queue.enqueueNDRangeKernel(out_transform_bn_in_kernel,
+                                       cl::NullRange,
+                                       cl::NDRange(outputs, wgs),
+                                       cl::NDRange(dim_size, wgs));
+        } else {
             out_transform_bn_kernel.setArg(0, bufferM);
             out_transform_bn_kernel.setArg(1, bufferInOut);
             out_transform_bn_kernel.setArg(2, outputs);
@@ -545,53 +589,14 @@ void OpenCL_Network::convolve3(int channels, int outputs,
             } else {
                 out_transform_bn_kernel.setArg(5, nullptr);
             }
-            out_transform_bn_kernel.setArg(6, (*bn_weights)[0]);
-            out_transform_bn_kernel.setArg(7, (*bn_weights)[1]);
+            out_transform_bn_kernel.setArg(6, bn_weights[0]);
+            out_transform_bn_kernel.setArg(7, bn_weights[1]);
 
             queue.enqueueNDRangeKernel(out_transform_bn_kernel, cl::NullRange,
-                                       cl::NDRange(outputs, wgs));
-        } else {
-            out_transform_kernel.setArg(0, bufferM);
-            out_transform_kernel.setArg(1, bufferInOut);
-            out_transform_kernel.setArg(2, outputs);
-            out_transform_kernel.setArg(3, m_ceil);
-            out_transform_kernel.setArg(4, n_ceil);
-
-            queue.enqueueNDRangeKernel(out_transform_kernel, cl::NullRange,
                                        cl::NDRange(outputs, wgs));
         }
     } catch (const cl::Error &e) {
         std::cerr << "Error in convolve3: " << e.what() << ": "
-            << e.err() << std::endl;
-        throw;
-    }
-}
-
-void OpenCL_Network::batchnorm(int outputs,
-                               int channel_size,
-                               cl::Buffer& bufferInput,
-                               cl::Buffer& bufferOutput,
-                               cl::Buffer* bufferResidual,
-                               weight_slice_t weights) {
-    cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
-
-    cl::Kernel & batchnorm_kernel = opencl_thread_data.m_batchnorm_kernel;
-
-    try {
-        batchnorm_kernel.setArg(0, bufferInput);
-        batchnorm_kernel.setArg(1, bufferOutput);
-        if (bufferResidual) {
-            batchnorm_kernel.setArg(2, *bufferResidual);
-        } else {
-            batchnorm_kernel.setArg(2, nullptr);
-        }
-        batchnorm_kernel.setArg(3, weights[0]);
-        batchnorm_kernel.setArg(4, weights[1]);
-
-        queue.enqueueNDRangeKernel(batchnorm_kernel, cl::NullRange,
-                                   cl::NDRange(outputs, channel_size));
-    } catch (const cl::Error &e) {
-        std::cerr << "Error in batchnorm: " << e.what() << ": "
             << e.err() << std::endl;
         throw;
     }
@@ -706,7 +711,8 @@ std::vector<size_t> OpenCL::get_sgemm_tuners(void) {
     return tuners;
 }
 
-void OpenCL::initialize(const int channels, const std::vector<int> & gpus, bool silent) {
+void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
+                        bool silent) {
     std::vector<cl::Platform> platforms;
     try {
         cl::Platform::get(&platforms);
@@ -781,7 +787,8 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus, bool 
                 myprintf("Device score:  %d\n", this_score);
             }
 
-            bool preferred = std::find(cbegin(gpus), cend(gpus), id) != cend(gpus);
+            bool preferred =
+                std::find(cbegin(gpus), cend(gpus), id) != cend(gpus);
 
             if ((this_score > best_score) || preferred) {
                 best_version = opencl_version;
@@ -803,8 +810,10 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus, bool 
         throw std::runtime_error("No suitable OpenCL device found.");
     }
 
-    myprintf("Selected platform: %s\n", best_platform.getInfo<CL_PLATFORM_NAME>().c_str());
-    myprintf("Selected device: %s\n", trim(best_device.getInfo<CL_DEVICE_NAME>()).c_str());
+    myprintf("Selected platform: %s\n",
+        best_platform.getInfo<CL_PLATFORM_NAME>().c_str());
+    myprintf("Selected device: %s\n",
+        trim(best_device.getInfo<CL_DEVICE_NAME>()).c_str());
     myprintf("with OpenCL %2.1f capability.\n", best_version);
 
     cl::Context context;
@@ -822,7 +831,6 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus, bool 
         m_program = cl::Program(m_context,
                                   sourceCode_config
                                 + sourceCode_convolve3
-                                + sourceCode_utility
                                 + sourceCode_sgemm);
     } catch (const cl::Error &e) {
         myprintf("Error getting kernels: %s: %d", e.what(), e.err());
@@ -857,7 +865,7 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus, bool 
     process_tuners(sgemm_tuners);
 
     m_wavefront_size =
-        opencl_thread_data.m_batchnorm_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
+        opencl_thread_data.m_sgemm_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
             best_device);
     myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
 
