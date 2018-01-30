@@ -19,6 +19,8 @@
 import sys
 import glob
 import gzip
+import itertools
+import io
 import random
 import math
 import multiprocessing as mp
@@ -52,7 +54,7 @@ def remap_vertex(vertex, symmetry):
     return y * 19 + x
 
 class ChunkParser:
-    def __init__(self, chunks):
+    def __init__(self, chunks, n_way_merge=1):
         # Build probility reflection tables. The last element is 'pass' and is identity mapped.
         self.prob_reflection_table = [[remap_vertex(vertex, sym) for vertex in range(361)]+[361] for sym in range(8)]
         # Build full 16-plane reflection tables.
@@ -67,12 +69,12 @@ class ChunkParser:
 
         # Start worker processes, leave 1 for TensorFlow
         workers = max(1, mp.cpu_count() - 1)
-        print("Using {} worker processes.".format(workers))
+        print("Using {} worker processes with a {}-way merge.".format(workers, n_way_merge))
         self.readers = []
         for _ in range(workers):
             read, write = mp.Pipe(False)
             mp.Process(target=self.task,
-                       args=(chunks, write)).start()
+                       args=(chunks, write, n_way_merge)).start()
             self.readers.append(read)
 
     def convert_train_data(self, text_item, symmetry):
@@ -144,23 +146,51 @@ class ChunkParser:
             'winner' : tf.train.Feature(float_list=tf.train.FloatList(value=[winner]))}))
         return True, example.SerializeToString()
 
-    def task(self, chunks, writer):
+    def do_parse_chunk(self, chunk):
+        # Open file with an explicit 2MB memory buffer
+        with io.open(chunk, 'rb') as file:
+            fileobj = gzip.GzipFile(fileobj=file)
+            fileobj = io.BufferedReader(fileobj, buffer_size = 2*1024*1024)
+            chunk_file = io.TextIOWrapper(fileobj, encoding='ascii')
+
+            while True:
+                item = itertools.islice(chunk_file, DATA_ITEM_LINES)
+                str_items = [line for line in item]
+                if len(str_items) != DATA_ITEM_LINES:
+                    break
+                # Pick a random symmetry to apply
+                symmetry = random.randrange(8)
+                success, data = self.convert_train_data(str_items, symmetry)
+                if success:
+                    yield data
+
+    def roundrobin(self, *iterables):
+        "roundrobin('ABC', 'D', 'EF') --> A D E B F C"
+        # Recipe credited to George Sakkis
+        num_active = len(iterables)
+        nexts = itertools.cycle(iter(it).__next__ for it in iterables)
+        while num_active:
+            try:
+                for next in nexts:
+                    yield next()
+            except StopIteration:
+                # Remove the iterator we just exhausted from the cycle.
+                num_active -= 1
+                nexts = itertools.cycle(itertools.islice(nexts, num_active))
+
+
+    def task(self, chunks, writer, n_way_merge):
         while True:
             random.shuffle(chunks)
-            for chunk in chunks:
-                with gzip.open(chunk, 'r') as chunk_file:
-                    file_content = chunk_file.readlines()
-                    item_count = len(file_content) // DATA_ITEM_LINES
-                    for item_idx in range(item_count):
-                        pick_offset = item_idx * DATA_ITEM_LINES
-                        item = file_content[pick_offset:pick_offset + DATA_ITEM_LINES]
-                        str_items = [str(line, 'ascii') for line in item]
-                        # Pick a random symmetry to apply
-                        symmetry = random.randrange(8)
-                        success, data = self.convert_train_data(str_items, symmetry)
-                        if success:
-                            # Send it down the pipe.
-                            writer.send_bytes(data)
+            chunks_to_process = list(chunks)
+            while chunks_to_process:
+                clist = chunks_to_process[:n_way_merge]
+                chunks_to_process = chunks_to_process[n_way_merge:]
+
+                iters = [ self.do_parse_chunk(c) for c in clist ]
+                for m in self.roundrobin(*iters):
+                    # Send it down the pipe.
+                    writer.send_bytes(m)
 
     def parse_chunk(self):
         while True:
@@ -270,7 +300,7 @@ def main(args):
     if not chunks:
         return
 
-    parser = ChunkParser(chunks)
+    parser = ChunkParser(chunks, n_way_merge=64)
 
     run_test(parser)
     #benchmark(parser)
