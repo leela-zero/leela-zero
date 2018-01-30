@@ -43,18 +43,22 @@ def conv2d(x, W):
                         strides=[1, 1, 1, 1], padding='SAME')
 
 class TFProcess:
-    def __init__(self, dataset, train_iterator, test_iterator):
+    def __init__(self):
         # Network structure
         self.RESIDUAL_FILTERS = 128
         self.RESIDUAL_BLOCKS = 6
+
+        # For exporting
+        self.weights = []
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
         config = tf.ConfigProto(gpu_options=gpu_options)
         self.session = tf.Session(config=config)
 
-        # For exporting
-        self.weights = []
+        self.training = tf.placeholder(tf.bool)
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
 
+    def init(self, dataset, train_iterator, test_iterator):
         # TF variables
         self.handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(
@@ -62,11 +66,12 @@ class TFProcess:
         self.next_batch = iterator.get_next()
         self.train_handle = self.session.run(train_iterator.string_handle())
         self.test_handle = self.session.run(test_iterator.string_handle())
-        self.training = tf.placeholder(tf.bool)
-        self.global_step = tf.Variable(0, name='global_step', trainable=False)
-        self.x = self.next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 19 * 19])
-        self.y_ = self.next_batch[1] # tf.placeholder(tf.float32, [None, 362])
-        self.z_ = self.next_batch[2] # tf.placeholder(tf.float32, [None, 1])
+        self.init_net(self.next_batch)
+
+    def init_net(self, next_batch):
+        self.x = next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 19 * 19])
+        self.y_ = next_batch[1] # tf.placeholder(tf.float32, [None, 362])
+        self.z_ = next_batch[2] # tf.placeholder(tf.float32, [None, 1])
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
 
@@ -202,22 +207,28 @@ class TFProcess:
         if steps % 8000 == 0:
             sum_accuracy = 0
             sum_mse = 0
+            sum_policy = 0
             test_batches = 800
             for _ in range(0, test_batches):
-                train_accuracy, train_mse, _ = self.session.run(
-                    [self.accuracy, self.mse_loss, self.next_batch],
-                    feed_dict={self.training: False, self.handle: self.test_handle})
-                sum_accuracy += train_accuracy
-                sum_mse += train_mse
+                test_policy, test_accuracy, test_mse, _ = self.session.run(
+                    [self.policy_loss, self.accuracy, self.mse_loss,
+                     self.next_batch],
+                    feed_dict={self.training: False,
+                               self.handle: self.test_handle})
+                sum_accuracy += test_accuracy
+                sum_mse += test_mse
+                sum_policy += test_policy
             sum_accuracy /= test_batches
+            sum_policy /= test_batches
             # Additionally rescale to [0, 1] so divide by 4
             sum_mse /= (4.0 * test_batches)
             test_summaries = tf.Summary(value=[
                 tf.Summary.Value(tag="Accuracy", simple_value=sum_accuracy),
+                tf.Summary.Value(tag="Policy loss", simple_value=sum_policy),
                 tf.Summary.Value(tag="MSE Loss", simple_value=sum_mse)])
             self.test_writer.add_summary(test_summaries, steps)
-            print("step {}, training accuracy={:g}%, mse={:g}".format(
-                steps, sum_accuracy*100.0, sum_mse))
+            print("step {}, policy={:g} training accuracy={:g}%, mse={:g}".\
+                format(steps, sum_policy, sum_accuracy*100.0, sum_mse))
             path = os.path.join(os.getcwd(), "leelaz-model")
             save_path = self.saver.save(self.session, path, global_step=steps)
             print("Model saved in file: {}".format(save_path))
