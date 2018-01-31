@@ -25,9 +25,13 @@ def weight_variable(shape):
     """Xavier initialization"""
     stddev = np.sqrt(2.0 / (sum(shape)))
     initial = tf.truncated_normal(shape, stddev=stddev)
-    return tf.Variable(initial)
+    weights = tf.Variable(initial)
+    tf.add_to_collection(tf.GraphKeys.REGULARIZATION_LOSSES, weights)
+    return weights
 
 # Bias weights for layers not followed by BatchNorm
+# We do not regularlize biases, so they are not
+# added to the regularlizer collection
 def bias_variable(shape):
     initial = tf.constant(0.0, shape=shape)
     return tf.Variable(initial)
@@ -87,7 +91,7 @@ class TFProcess:
 
         # Regularizer
         regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
-        reg_variables = tf.trainable_variables()
+        reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
         self.reg_term = \
             tf.contrib.layers.apply_regularization(regularizer, reg_variables)
 
@@ -336,7 +340,6 @@ class TFProcess:
         return h_out_2
 
     def construct_net(self, planes):
-
         # NCHW format
         # batch, 18 channels, 19 x 19
         x_planes = tf.reshape(planes, [-1, 18, 19, 19])
