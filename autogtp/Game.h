@@ -38,6 +38,8 @@ public:
     bool getScore();
     bool loadSgf(const QString &fileName);
     bool writeSgf();
+    bool loadTraining(const QString &fileName);
+    bool saveTraining();
     bool fixSgf(QString& weightFile, bool resignation);
     bool dumpTraining();
     QString getCmdLine() const { return m_cmdLine; }

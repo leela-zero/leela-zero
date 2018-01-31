@@ -73,8 +73,10 @@ Result ProductionJob::execute(){
     }
     if(!m_sgf.isEmpty()) {
         game.loadSgf(m_sgf);
+        game.loadTraining(m_sgf);
         game.setMovesCount(m_moves);
-        QFile::remove(m_sgf);
+        QFile::remove(m_sgf + ".sgf");
+        QFile::remove(m_sgf + ".train");
     }
     do {
         game.move();
@@ -103,6 +105,7 @@ Result ProductionJob::execute(){
     case STORING:
         res.type(Result::StoreSelfPlayed);
         game.writeSgf();
+        game.saveTraining();
         res.add("sgf", game.getFile());
         res.add("moves", QString::number(game.getMovesCount()));
         break;
