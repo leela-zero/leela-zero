@@ -495,7 +495,6 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     assert(vwm != 0);
     assert(vwn != 0);
     assert(wavefront_size != 0);
-    assert(bn_weights != nullptr);
 
     constexpr auto tiles = WINOGRAD_P;
     constexpr auto width = 19;
