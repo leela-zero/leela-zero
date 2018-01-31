@@ -290,12 +290,13 @@ float UCTNode::get_eval(int tomove) const {
         return score;
     } else {
         // If a node has not been visited yet,
-        // the eval is that of the parent.
+        // the eval is that of the parent, potentially
+        // minus a constant.
         auto eval = m_init_eval;
         if (tomove == FastBoard::WHITE) {
             eval = 1.0f - eval;
         }
-        return eval;
+        return eval - cfg_fpu_reduction;
     }
 }
 
