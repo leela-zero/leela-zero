@@ -110,6 +110,7 @@ void FullBoard::set_to_move(int tomove) {
 }
 
 int FullBoard::update_board(const int color, const int i) {
+    assert(i != FastBoard::PASS);
     assert(m_square[i] == EMPTY);
 
     m_hash ^= Zobrist::zobrist[m_square[i]][i];
