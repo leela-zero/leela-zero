@@ -23,6 +23,7 @@
 #include <QString>
 #include <QTextStream>
 #include <QThread>
+#include <QFileInfo>
 #include <QVector>
 #include <chrono>
 #include <stdexcept>
@@ -36,14 +37,19 @@ public:
                const int games,
                const QStringList& gpuslist,
                const int ver,
+               const bool single,
                const QString& keep,
-               const QString& debug,
-               QMutex* mutex);
+               const QString& debug);
     ~Management() = default;
     void giveAssignments();
     void incMoves() { m_movesMade++; }
+    void wait();
+    void checkStoredGames();
+signals:
+    void sendQuit();
 public slots:
     void getResult(Order ord, Result res, int index, int duration);
+    void storeGames();
 
 private:
 
@@ -53,7 +59,6 @@ private:
             : std::runtime_error("NetworkException: " + message)
         {}
     };
-    QMutex* m_mainMutex;
     QMutex m_syncMutex;
     QVector<Worker*> m_gamesThreads;
     int m_games;
@@ -67,9 +72,14 @@ private:
     QString m_debugPath;
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
+    int m_storeGames;
+    QList<QFileInfo> m_storedFiles;
     Order m_fallBack;
+
+    bool m_single;
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);
+    Order getWork(const QFileInfo &file);
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
     QString getOptionsString(const QJsonObject &opt, const QString &rnd);

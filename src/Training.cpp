@@ -44,6 +44,47 @@
 
 std::vector<TimeStep> Training::m_data{};
 
+std::ostream& operator <<(std::ostream& stream, const TimeStep& timestep) {
+    stream << timestep.planes.size() << ' ';
+    for (const auto plane : timestep.planes) {
+        stream << plane << ' ';
+    }
+    stream << timestep.probabilities.size() << ' ';
+    for (const auto prob : timestep.probabilities) {
+        stream << prob << ' ';
+    }
+    stream << timestep.to_move << ' ';
+    stream << timestep.net_winrate << ' ';
+    stream << timestep.root_uct_winrate << ' ';
+    stream << timestep.child_uct_winrate << ' ';
+    stream << timestep.bestmove_visits << std::endl;
+    return stream;
+}
+
+std::istream& operator>> (std::istream& stream, TimeStep& timestep) {
+    int planes_size;
+    int prob_size;
+    Network::BoardPlane nn;
+    float prob;
+    stream >> planes_size;
+    for (auto i = 0; i < planes_size; ++i) {
+        stream >> nn;
+        timestep.planes.push_back(nn);
+    }
+    stream >> prob_size;
+    for (auto i = 0; i < prob_size; ++i) {
+        stream >> prob;
+        timestep.probabilities.push_back(prob);
+    }
+    stream >> timestep.to_move;
+    stream >> timestep.net_winrate;
+    stream >> timestep.root_uct_winrate;
+    stream >> timestep.child_uct_winrate;
+    stream >> timestep.bestmove_visits;
+    return stream;
+    
+}
+
 std::string OutputChunker::gen_chunk_name(void) const {
     auto base = std::string{m_basename};
     base.append("." + std::to_string(m_chunk_count) + ".gz");
@@ -148,6 +189,34 @@ void Training::record(GameState& state, UCTNode& root) {
 void Training::dump_training(int winner_color, const std::string& filename) {
     auto chunker = OutputChunker{filename, true};
     dump_training(winner_color, chunker);
+}
+
+void Training::save_training(const std::string& filename) {
+    auto flags = std::ofstream::out;
+    auto out = std::ofstream{filename, flags};
+    save_training(out);
+}
+
+void Training::load_training(const std::string& filename) {
+    auto flags = std::ifstream::in;
+    auto in = std::ifstream{filename, flags};
+    load_training(in);
+}
+
+void Training::save_training(std::ofstream& out) {
+    out << m_data.size() << ' ';
+    for (const auto& step : m_data) {
+        out << step;
+    }
+}
+void Training::load_training(std::ifstream& in) {
+    int steps;
+    in >> steps;
+    for (auto i = 0; i < steps; ++i) {
+        TimeStep step;
+        in >> step;
+        m_data.push_back(step);
+    }
 }
 
 void Training::dump_training(int winner_color, OutputChunker& outchunk) {

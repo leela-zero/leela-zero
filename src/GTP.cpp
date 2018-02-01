@@ -693,6 +693,38 @@ bool GTP::execute(GameState & game, std::string xinput) {
         }
 
         return true;
+    } else if (command.find("load_training") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp, filename;
+
+        // tmp will eat "load_training"
+        cmdstream >> tmp >> filename;
+
+        Training::load_training(filename);
+
+        if (!cmdstream.fail()) {
+            gtp_printf(id, "");
+        } else {
+            gtp_fail_printf(id, "syntax not understood");
+        }
+
+        return true;
+    } else if (command.find("save_training") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp, filename;
+        
+        // tmp will eat "save_training"
+        cmdstream >> tmp >>  filename;
+
+        Training::save_training(filename);
+
+        if (!cmdstream.fail()) {
+            gtp_printf(id, "");
+        } else {
+            gtp_fail_printf(id, "syntax not understood");
+        }
+        
+        return true;
     } else if (command.find("dump_training") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp, winner_color, filename;

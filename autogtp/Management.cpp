@@ -19,8 +19,8 @@
 #include <cmath>
 #include <random>
 #include <QDir>
-#include <QFileInfo>
 #include <QThread>
+#include <QList>
 #include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -39,11 +39,11 @@ Management::Management(const int gpus,
                        const int games,
                        const QStringList& gpuslist,
                        const int ver,
+                       const bool single,
                        const QString& keep,
-                       const QString& debug,
-                       QMutex* mutex)
-    : m_mainMutex(mutex),
-    m_syncMutex(),
+                       const QString& debug)
+
+    : m_syncMutex(),
     m_gamesThreads(gpus * games),
     m_games(games),
     m_gpus(gpus),
@@ -54,7 +54,8 @@ Management::Management(const int gpus,
     m_keepPath(keep),
     m_debugPath(debug),
     m_version(ver),
-    m_fallBack(Order::Error) {
+    m_fallBack(Order::Error),
+    m_single(single) {
 }
 
 void Management::runTuningProcess(const QString &tuneCmdLine) {
@@ -67,6 +68,14 @@ void Management::runTuningProcess(const QString &tuneCmdLine) {
         QTextStream(stdout) << tuneProcess.readAllStandardError();
     }
     tuneProcess.waitForFinished(-1);
+}
+
+Order Management::getWork(const QFileInfo &file) {
+    QTextStream(stdout) << "Got previously stored file" <<endl;
+    Order o;
+    o.load(file.fileName());
+    QFile::remove(file.fileName());
+    return o;
 }
 
 void Management::giveAssignments() {
@@ -88,7 +97,6 @@ void Management::giveAssignments() {
     QTextStream(stdout) << "Tuning process finished" << endl;
 
     m_start = std::chrono::high_resolution_clock::now();
-    m_mainMutex->lock();
     QString myGpu;
     for (int gpu = 0; gpu < m_gpus; ++gpu) {
         for (int game = 0; game < m_games; ++game) {
@@ -106,9 +114,28 @@ void Management::giveAssignments() {
                     this,
                     &Management::getResult,
                     Qt::DirectConnection);
-            m_gamesThreads[thread_index]->order(getWork());
+            if(!m_storedFiles.isEmpty()) {
+                m_gamesThreads[thread_index]->order(getWork(m_storedFiles.takeFirst()));
+            } else {
+                m_gamesThreads[thread_index]->order(getWork());
+            }            
             m_gamesThreads[thread_index]->start();
         }
+    }
+}
+
+void Management::storeGames() {
+    for (int i = 0; i < m_gpus * m_games; ++i) {
+        m_gamesThreads[i]->doStore();
+    }
+    wait();
+}
+
+void Management::wait() {
+    QTextStream(stdout) << "Management: waiting for workers" << endl;
+    for (int i = 0; i < m_gpus * m_games; ++i) {
+        m_gamesThreads[i]->wait();
+        QTextStream(stdout) << "Management: Worker " << i+1 << " ended" << endl;
     }
 }
 
@@ -132,9 +159,17 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
         break;
     }
     sendAllGames();
-    m_gamesThreads[index]->order(getWork());
+    if(m_single) {
+        m_gamesThreads[index]->doFinish();
+        sendQuit();
+    } else {
+        if(!m_storedFiles.isEmpty()) {
+            m_gamesThreads[index]->order(getWork(m_storedFiles.takeFirst()));
+        } else {
+            m_gamesThreads[index]->order(getWork());
+        }
+    }
     m_syncMutex.unlock();
-
 }
 
 
@@ -699,4 +734,13 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
         return;
     }
     cleanupFiles(r["file"]);
+}
+
+void Management::checkStoredGames() {
+    QDir dir;
+    QStringList filters;
+    filters << "storefile*.bin";
+    dir.setNameFilters(filters);
+    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+    m_storedFiles = dir.entryInfoList();
 }

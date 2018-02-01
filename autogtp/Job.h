@@ -20,8 +20,10 @@
 #define JOB_H
 
 #include "Result.h"
+#include "Order.h"
 #include <QObject>
 #include <QAtomicInt>
+#include <QTextStream>
 class Management;
 using VersionTuple = std::tuple<int, int, int>;
 
@@ -30,7 +32,8 @@ class Job : public QObject {
 public:
     enum {
         RUNNING = 0,
-        FINISHING
+        FINISHING,
+        STORING
     };
     enum {
         Production = 0,
@@ -39,13 +42,17 @@ public:
     Job(QString gpu, Management *parent);
     ~Job() = default;
     virtual Result execute() = 0;
-    virtual void init(const QMap<QString,QString> &l);
+    virtual void init(const Order &o);
     void finish() { m_state.store(FINISHING); }
+    void store() { 
+        m_state.store(STORING); 
+    }
 
 protected:
     QAtomicInt m_state;
     QString m_option;
     QString m_gpu;
+    int m_moves;
     VersionTuple m_leelazMinVersion;
     Management *m_boss;
 };
@@ -56,10 +63,11 @@ class ProductionJob : public Job {
 public:
     ProductionJob(QString gpu, Management *parent);
     ~ProductionJob() = default;
-    void init(const QMap<QString,QString> &l);
+    void init(const Order &o);
     Result execute();
 private:
     QString m_network;
+    QString m_sgf;
     bool m_debug;
 };
 
@@ -68,11 +76,13 @@ class ValidationJob : public Job {
 public:
     ValidationJob(QString gpu, Management *parent);
     ~ValidationJob() = default;
-    void init(const QMap<QString,QString> &l);
+    void init(const Order &o);
     Result execute();
 private:
     QString m_firstNet;
     QString m_secondNet;
+    QString m_sgfFirst;
+    QString m_sgfSecond;
 };
 
 class WaitJob : public Job {
@@ -80,7 +90,7 @@ class WaitJob : public Job {
 public:
     WaitJob(QString gpu, Management *parent);
     ~WaitJob() = default;
-    void init(const QMap<QString,QString> &l);
+    void init(const Order &o);
     Result execute();
 private:
     int m_minutes;
