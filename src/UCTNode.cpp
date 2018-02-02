@@ -420,7 +420,7 @@ UCTNode::node_ptr_t UCTNode::find_child(const int move) {
         }
     }
 
-    // Can happen for example if we resigned.
+    // Can happen if we resigned or children are not expanded
     return nullptr;
 }
 

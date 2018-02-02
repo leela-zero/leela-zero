@@ -85,12 +85,13 @@ public:
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
-    void update_root();
     void dump_stats(KoState& state, UCTNode& parent);
     std::string get_pv(KoState& state, UCTNode& parent);
     void dump_analysis(int playouts);
     bool should_resign(passflag_t passflag, float bestscore);
     int get_best_move(passflag_t passflag);
+    void update_root();
+    bool advance_to_new_rootstate();
 
     GameState & m_rootstate;
     std::unique_ptr<GameState> m_last_rootstate;

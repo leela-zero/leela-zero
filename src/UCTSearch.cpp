@@ -46,77 +46,79 @@ UCTSearch::UCTSearch(GameState& g)
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
 }
 
+bool UCTSearch::advance_to_new_rootstate() {
+    if (!m_root || !m_last_rootstate) {
+        // No current state
+        return false;
+    }
+
+    if (m_rootstate.get_komi() != m_last_rootstate->get_komi()) {
+        return false;
+    }
+
+    auto depth =
+        (int) (m_rootstate.get_movenum() - m_last_rootstate->get_movenum());
+
+    if (depth < 0) {
+        return false;
+    }
+
+    auto test = std::make_unique<GameState>(m_rootstate);
+    for (auto i = 0; i < depth; i++) {
+        test->undo_move();
+    }
+
+    if (m_last_rootstate->board.get_ko_hash() != test->board.get_ko_hash()) {
+        // m_rootstate and m_last_rootstate don't match
+        return false;
+    }
+
+    // Try to replay moves advancing m_root
+    for (auto i = 0; i < depth; i++) {
+        test->forward_move();
+        const auto move = test->get_last_move();
+        m_root = m_root->find_child(move);
+        if (!m_root) {
+            // Tree hasn't been expanded this far
+            return false;
+        }
+        m_last_rootstate->play_move(move);
+    }
+
+    assert(m_rootstate.get_movenum() == m_last_rootstate->get_movenum());
+
+    if (m_last_rootstate->board.get_ko_hash() != test->board.get_ko_hash()) {
+        // Can happen if user plays multiple moves in a row by same player
+        return false;
+    }
+
+    return true;
+}
+
 void UCTSearch::update_root() {
     // Definition of m_playouts is playouts per search call.
     // So reset this count now.
     m_playouts = 0;
 
-    bool found = false;
-    #ifndef NDEBUG
+#ifndef NDEBUG
     auto start_nodes = m_root->count_nodes();
-    std::string replay;
-    #endif
+#endif
 
-    // Check if new rootstate is a possible descendant of our stored rootstate.
-    if (m_last_rootstate
-            && m_rootstate.get_komi() == m_last_rootstate->get_komi()
-            && m_rootstate.get_movenum() >= m_last_rootstate->get_movenum()) {
-        auto depth = m_rootstate.get_movenum() - m_last_rootstate->get_movenum();
-        auto test = std::make_unique<GameState>(m_rootstate);
-        for (auto i = size_t{0}; i < depth; i++) {
-            test->undo_move();
-        }
-
-        // Try to replay moves advancing m_root
-        for (auto i = size_t{0}; i < depth; i++) {
-            // Verify m_rootstate and m_last_rootstate have same history.
-            if (m_last_rootstate->board.get_ko_hash()
-                    != test->board.get_ko_hash()) {
-                break;
-            }
-
-            test->forward_move();
-            auto move = test->get_last_move();
-            m_root = m_root->find_child(move);
-            if (!m_root->has_children()) {
-                break;
-            }
-            m_last_rootstate->play_move(move);
-            # ifndef NDEBUG
-            replay += m_last_rootstate->board.move_to_text(move) + " ";
-            # endif
-        }
-
-        // Check if advancing last_rootstate was possible.
-        if (m_root->has_children()
-                && m_rootstate.get_movenum() == m_last_rootstate->get_movenum()
-                && m_last_rootstate->board.get_ko_hash() ==
-                   m_rootstate.board.get_ko_hash()) {
-            found = true;
-        }
-    }
-
-    if (!m_root || !found) {
+    if (!advance_to_new_rootstate() || !m_root) {
         m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
     }
-    // Clear last_rootstate to prevent accidental use
+    // Clear last_rootstate to prevent accidental use.
     m_last_rootstate.reset(nullptr);
 
     // Check how big our search tree (reused or new) is.
     m_nodes = m_root->count_nodes();
 
-    #ifndef NDEBUG
-    if (found && m_nodes > 0) {
-        if (replay.size() > 0) {
-            // remove trailing space
-            replay.pop_back();
-        }
-
-        myprintf("update_root %s, %d -> %d nodes (%.1f%% reused)\n",
-            replay.c_str(), start_nodes, m_nodes.load(),
-            100.0 * m_nodes.load() / start_nodes);
+#ifndef NDEBUG
+    if (m_nodes > 0) {
+        myprintf("update_root, %d -> %d nodes (%.1f%% reused)\n",
+            start_nodes, m_nodes.load(), 100.0 * m_nodes.load() / start_nodes);
     }
-    #endif
+#endif
 }
 
 SearchResult UCTSearch::play_simulation(GameState & currstate,
