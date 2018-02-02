@@ -410,8 +410,8 @@ size_t UCTNode::count_nodes() const {
     return nodecount;
 }
 
-// Use this version if you know the child is directly under the parent.
-UCTNode::node_ptr_t UCTNode::find_new_root(const int move) {
+// Used to find new root in UCTSearch
+UCTNode::node_ptr_t UCTNode::find_child(const int move) {
     if (m_has_children) {
         for (auto& child : m_children) {
             if (child->get_move() == move) {
@@ -419,44 +419,9 @@ UCTNode::node_ptr_t UCTNode::find_new_root(const int move) {
             }
         }
     }
-    // Can happen for example if we resigned. Return a clean
-    // root for the next game or position.
-    return std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
-}
 
-// Use this version if the child could be anywhere.
-void UCTNode::find_new_root(node_ptr_t& root,
-                            const GameState& g_curr,
-                            std::unique_ptr<GameState>&& g_old) {
-    auto found = false;
-
-    if (g_old) {
-        if (g_curr.get_komi() == g_old->get_komi()) {
-            if (g_curr.board.get_hash() == g_old->board.get_hash()) {
-                // root is already set correctly
-                found = true;
-            } else {
-                // search the direct children
-                for (auto& child : root->m_children) {
-                    auto move = child->get_move();
-                    if (g_curr.get_last_move() == move) {
-                        g_old->play_move(move);
-                        if (g_curr.board.get_hash()
-                            == g_old->board.get_hash()) {
-                            root = std::move(child);
-                            found = true;
-                            break;
-                        }
-                        g_old->undo_move();
-                    }
-                }
-            }
-        }
-    }
-
-    if (!found) {
-        root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
-    }
+    // Can happen for example if we resigned.
+    return nullptr;
 }
 
 UCTNode* UCTNode::get_nopass_child(FastState& state) const {
