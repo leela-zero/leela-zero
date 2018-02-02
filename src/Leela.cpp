@@ -60,10 +60,11 @@ static void parse_commandline(int argc, char *argv[]) {
                       (std::min(2, cfg_num_threads)),
                       "Number of threads to use.")
         ("playouts,p", po::value<int>(),
-                       "Weaken engine by limiting the number of playouts. "
+                       "Weaken engine by limiting the number of playouts."
                        "Requires --noponder.")
         ("visits,v", po::value<int>(),
-                     "Weaken engine by limiting the number of visits. ")
+                     "Weaken engine by limiting the number of visits.")
+        ("timemanage", "Enable extra time management features.")
         ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
                         "Safety margin for time usage in centiseconds.")
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
@@ -204,6 +205,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("visits")) {
         cfg_max_visits = vm["visits"].as<int>();
+    }
+
+    if (vm.count("timemanage")) {
+        cfg_timemanage = true;
     }
 
     if (vm.count("resignpct")) {

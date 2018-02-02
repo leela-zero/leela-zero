@@ -36,6 +36,12 @@
 #include "Training.h"
 #include "Utils.h"
 
+// timemanage margin for early stop_thinking logic.
+// For playouts and visits this covers virtual losses
+// and other multi-threaded issues.
+// For time this covers variations in computer speed.
+constexpr auto TM_MARGIN = 0.9f;
+
 using namespace Utils;
 
 UCTSearch::UCTSearch(GameState& g)
@@ -119,12 +125,12 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
     // sort children, put best move on top
     parent.sort_children(color);
 
-
     if (parent.get_first_child()->first_visit()) {
         return;
     }
 
     int movecount = 0;
+
     for (const auto& node : parent.get_children()) {
         // Always display at least two moves. In the case there is
         // only one move searched the user could get an idea why.
@@ -352,8 +358,52 @@ bool UCTSearch::is_running() const {
     return m_run;
 }
 
-bool UCTSearch::playout_or_visit_limit_reached() const {
-    return m_playouts >= m_maxplayouts || m_root->get_visits() >= m_maxvisits;
+bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
+    auto visits = m_root->get_visits();
+    auto playouts = static_cast<int>(m_playouts);
+    auto stop = playouts >= m_maxplayouts
+                || visits >= m_maxvisits
+                || elapsed_centis >= time_for_move;
+
+    if (stop || !cfg_timemanage) {
+        return stop;
+    }
+
+    auto Nfirst = 0;
+    auto Nsecond = 0;
+    for (const auto& node : m_root->get_children()) {
+        if (node->valid()) {
+             auto N = node->get_visits();
+             if (N > Nfirst) {
+                 Nsecond = Nfirst;
+                 Nfirst = N;
+             } else if (N > Nsecond) {
+                 Nsecond = N;
+             }
+        }
+    }
+    if (m_maxplayouts - playouts < TM_MARGIN * (Nfirst - Nsecond)) {
+        stop = true;
+        myprintf("Stopping early. ");
+        myprintf("maxplayouts=%d playouts=%d Nfirst=%d Nsecond=%d\n",
+            m_maxplayouts, playouts, Nfirst, Nsecond);
+    } else if (m_maxvisits - visits < TM_MARGIN * (Nfirst - Nsecond)) {
+        stop = true;
+        myprintf("Stopping early. ");
+        myprintf("maxvisits=%d visits=%d Nfirst=%d Nsecond=%d\n",
+            m_maxvisits, visits, Nfirst, Nsecond);
+    } else if (elapsed_centis > 0) {
+        auto playout_rate = 1.0f * playouts / elapsed_centis;
+        auto est_playouts_left =
+            playout_rate * (time_for_move - elapsed_centis);
+        if (est_playouts_left < TM_MARGIN * (Nfirst - Nsecond)) {
+            stop = true;
+            myprintf("Stopping early. ");
+            myprintf("%0.0fn/s Approx playouts left=%0.0f Nfirst=%d Nsecond=%d\n",
+                playout_rate*100, est_playouts_left, Nfirst, Nsecond);
+        }
+    }
+    return stop;
 }
 
 void UCTWorker::operator()() {
@@ -363,7 +413,7 @@ void UCTWorker::operator()() {
         if (result.valid()) {
             m_search->increment_playouts();
         }
-    } while(m_search->is_running() && !m_search->playout_or_visit_limit_reached());
+    } while(m_search->is_running() && !m_search->stop_thinking());
 }
 
 void UCTSearch::increment_playouts() {
@@ -429,8 +479,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
             dump_analysis(static_cast<int>(m_playouts));
         }
         keeprunning  = is_running();
-        keeprunning &= (elapsed_centis < time_for_move);
-        keeprunning &= !playout_or_visit_limit_reached();
+        keeprunning &= !stop_thinking(elapsed_centis, time_for_move);
     } while(keeprunning);
 
     // stop the search
