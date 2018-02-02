@@ -32,7 +32,6 @@ public:
     bool superko(void) const;
     void reset_game();
 
-    void play_pass(void);
     void play_move(int color, int vertex);
     void play_move(int vertex);
 

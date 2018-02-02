@@ -50,7 +50,6 @@ public:
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
-    void play_pass();
     bool play_textmove(const std::string& color,
                        const std::string& vertex);
 

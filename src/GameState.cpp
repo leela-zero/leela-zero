@@ -89,17 +89,11 @@ void GameState::play_move(int vertex) {
     play_move(get_to_move(), vertex);
 }
 
-void GameState::play_pass() {
-    play_move(get_to_move(), FastBoard::PASS);
-}
-
 void GameState::play_move(int color, int vertex) {
-    if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
-        KoState::play_move(color, vertex);
-    } else if (vertex == FastBoard::PASS) {
-        KoState::play_pass();
-    } else if (vertex == FastBoard::RESIGN) {
+    if (vertex == FastBoard::RESIGN) {
         m_resigned = color;
+    } else {
+        KoState::play_move(color, vertex);
     }
 
     // cut off any leftover moves from navigating

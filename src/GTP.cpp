@@ -309,7 +309,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             game.play_move(FastBoard::RESIGN);
             gtp_printf(id, "");
         } else if (command.find("pass") != std::string::npos) {
-            game.play_pass();
+            game.play_move(FastBoard::PASS);
             gtp_printf(id, "");
         } else {
             std::istringstream cmdstream(command);

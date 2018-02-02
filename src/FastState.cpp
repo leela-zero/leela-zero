@@ -69,14 +69,22 @@ bool FastState::is_move_legal(int color, int vertex) {
                 !board.is_suicide(vertex, color));
 }
 
-void FastState::play_pass(int color) {
+void FastState::play_move(int vertex) {
+    play_move(board.m_tomove, vertex);
+}
+
+void FastState::play_move(int color, int vertex) {
+    board.m_hash ^= Zobrist::zobrist_ko[m_komove];
+    if (vertex == FastBoard::PASS) {
+        // No Ko move
+        m_komove = 0;
+    } else {
+        m_komove = board.update_board(color, vertex);
+    }
+    board.m_hash ^= Zobrist::zobrist_ko[m_komove];
+
+    m_lastmove = vertex;
     m_movenum++;
-
-    m_lastmove = FastBoard::PASS;
-
-    board.m_hash ^= Zobrist::zobrist_ko[m_komove];
-    m_komove = 0;
-    board.m_hash ^= Zobrist::zobrist_ko[m_komove];
 
     if (board.m_tomove == color) {
         board.m_hash ^= 0xABCDABCDABCDABCDULL;
@@ -84,36 +92,12 @@ void FastState::play_pass(int color) {
     board.m_tomove = !color;
 
     board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
-    increment_passes();
-    board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
-}
-
-void FastState::play_move(int vertex) {
-    play_move(board.m_tomove, vertex);
-}
-
-void FastState::play_move(int color, int vertex) {
-    if (vertex != FastBoard::PASS) {
-        board.m_hash ^= Zobrist::zobrist_ko[m_komove];
-        m_komove = board.update_board(color, vertex);
-        board.m_hash ^= Zobrist::zobrist_ko[m_komove];
-
-        m_lastmove = vertex;
-        m_movenum++;
-
-        if (board.m_tomove == color) {
-            board.m_hash ^= 0xABCDABCDABCDABCDULL;
-        }
-        board.m_tomove = !color;
-
-        if (get_passes() > 0) {
-            board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
-            set_passes(0);
-            board.m_hash ^= Zobrist::zobrist_pass[0];
-        }
-    } else if (vertex == FastBoard::PASS) {
-        play_pass(color);
+    if (vertex == FastBoard::PASS) {
+        increment_passes();
+    } else {
+        set_passes(0);
     }
+    board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
 }
 
 size_t FastState::get_movenum() const {
