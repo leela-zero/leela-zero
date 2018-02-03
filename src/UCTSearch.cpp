@@ -21,7 +21,6 @@
 
 #include <cassert>
 #include <cstddef>
-#include <string>
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -68,7 +67,7 @@ bool UCTSearch::advance_to_new_rootstate() {
         test->undo_move();
     }
 
-    if (m_last_rootstate->board.get_ko_hash() != test->board.get_ko_hash()) {
+    if (m_last_rootstate->board.get_hash() != test->board.get_hash()) {
         // m_rootstate and m_last_rootstate don't match
         return false;
     }
@@ -87,7 +86,7 @@ bool UCTSearch::advance_to_new_rootstate() {
 
     assert(m_rootstate.get_movenum() == m_last_rootstate->get_movenum());
 
-    if (m_last_rootstate->board.get_ko_hash() != test->board.get_ko_hash()) {
+    if (m_last_rootstate->board.get_hash() != test->board.get_hash()) {
         // Can happen if user plays multiple moves in a row by same player
         return false;
     }
