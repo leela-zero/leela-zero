@@ -32,7 +32,7 @@ extern bool cfg_allow_pondering;
 extern int cfg_num_threads;
 extern int cfg_max_playouts;
 extern int cfg_max_visits;
-extern bool cfg_timemanage;
+extern int cfg_timemanage;
 extern int cfg_lagbuffer_cs;
 extern int cfg_resignpct;
 extern int cfg_noise;

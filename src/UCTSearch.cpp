@@ -36,12 +36,6 @@
 #include "Training.h"
 #include "Utils.h"
 
-// timemanage margin for early stop_thinking logic.
-// For playouts and visits this covers virtual losses
-// and other multi-threaded issues.
-// For time this covers variations in computer speed.
-constexpr auto TM_MARGIN = 0.9f;
-
 using namespace Utils;
 
 UCTSearch::UCTSearch(GameState& g)
@@ -125,12 +119,12 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
     // sort children, put best move on top
     parent.sort_children(color);
 
+
     if (parent.get_first_child()->first_visit()) {
         return;
     }
 
     int movecount = 0;
-
     for (const auto& node : parent.get_children()) {
         // Always display at least two moves. In the case there is
         // only one move searched the user could get an idea why.
@@ -382,26 +376,20 @@ bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
              }
         }
     }
-    if (m_maxplayouts - playouts < TM_MARGIN * (Nfirst - Nsecond)) {
+    if ((m_maxplayouts - playouts < Nfirst - Nsecond)
+        || (m_maxvisits - visits < Nfirst - Nsecond)) {
         stop = true;
-        myprintf("Stopping early. ");
-        myprintf("maxplayouts=%d playouts=%d Nfirst=%d Nsecond=%d\n",
-            m_maxplayouts, playouts, Nfirst, Nsecond);
-    } else if (m_maxvisits - visits < TM_MARGIN * (Nfirst - Nsecond)) {
-        stop = true;
-        myprintf("Stopping early. ");
-        myprintf("maxvisits=%d visits=%d Nfirst=%d Nsecond=%d\n",
-            m_maxvisits, visits, Nfirst, Nsecond);
     } else if (elapsed_centis > 0) {
         auto playout_rate = 1.0f * playouts / elapsed_centis;
-        auto est_playouts_left =
-            playout_rate * (time_for_move - elapsed_centis);
-        if (est_playouts_left < TM_MARGIN * (Nfirst - Nsecond)) {
+        auto time_left = time_for_move - elapsed_centis;
+        auto est_playouts_left = playout_rate * time_left;
+        if (est_playouts_left < Nfirst - Nsecond) {
             stop = true;
-            myprintf("Stopping early. ");
-            myprintf("%0.0fn/s Approx playouts left=%0.0f Nfirst=%d Nsecond=%d\n",
-                playout_rate*100, est_playouts_left, Nfirst, Nsecond);
+            myprintf("%.1fs left\n", time_left/100.0f);
         }
+    }
+    if (stop) {
+        myprintf("Stopping early.\n");
     }
     return stop;
 }
