@@ -28,25 +28,21 @@ std::array<std::uint64_t, 5>                                   Zobrist::zobrist_
 void Zobrist::init_zobrist(Random& rng) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < FastBoard::MAXSQ; j++) {
-            Zobrist::zobrist[i][j]  = ((std::uint64_t)rng.randuint32()) << 32;
-            Zobrist::zobrist[i][j] ^= (std::uint64_t)rng.randuint32();
+            Zobrist::zobrist[i][j] = rng.randuint64();
         }
     }
 
     for (int j = 0; j < FastBoard::MAXSQ; j++) {
-        Zobrist::zobrist_ko[j]  = ((std::uint64_t)rng.randuint32()) << 32;
-        Zobrist::zobrist_ko[j] ^= (std::uint64_t)rng.randuint32();
+        Zobrist::zobrist_ko[j] = rng.randuint64();
     }
 
     for (int i = 0; i < 2; i++) {
         for (int j = 0; j < FastBoard::MAXSQ * 2; j++) {
-            Zobrist::zobrist_pris[i][j]  = ((std::uint64_t)rng.randuint32()) << 32;
-            Zobrist::zobrist_pris[i][j] ^= (std::uint64_t)rng.randuint32();
+            Zobrist::zobrist_pris[i][j] = rng.randuint64();
         }
     }
 
     for (int i = 0; i < 5; i++) {
-        Zobrist::zobrist_pass[i]  = ((std::uint64_t)rng.randuint32()) << 32;
-        Zobrist::zobrist_pass[i] ^= (std::uint64_t)rng.randuint32();
+        Zobrist::zobrist_pass[i]  = rng.randuint64();
     }
 }

@@ -90,7 +90,7 @@ void FastBoard::set_square(int vertex, FastBoard::square_t content) {
 }
 
 FastBoard::square_t FastBoard::get_square(int x, int y) const {
-    return get_square(get_vertex(x,y));
+    return get_square(get_vertex(x, y));
 }
 
 void FastBoard::set_square(int x, int y, FastBoard::square_t content) {

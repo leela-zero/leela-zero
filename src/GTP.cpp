@@ -282,7 +282,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("clear_board") == 0) {
         Training::clear_training();
         game.reset_game();
-        std::make_unique<UCTSearch>(game).swap(search);
+        search = std::make_unique<UCTSearch>(game);
         gtp_printf(id, "");
         return true;
     } else if (command.find("komi") == 0) {
@@ -712,7 +712,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("save_training") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp, filename;
-        
+
         // tmp will eat "save_training"
         cmdstream >> tmp >>  filename;
 
@@ -723,7 +723,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         } else {
             gtp_fail_printf(id, "syntax not understood");
         }
-        
+
         return true;
     } else if (command.find("dump_training") == 0) {
         std::istringstream cmdstream(command);

@@ -47,6 +47,7 @@ public:
     std::uint16_t randuint16(const std::uint16_t max);
     std::uint32_t randuint32(const std::uint32_t max);
     std::uint32_t randuint32();
+    std::uint64_t randuint64();
 
     // random float from 0 to 1
     float randflt(void);

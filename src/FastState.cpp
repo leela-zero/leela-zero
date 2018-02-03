@@ -87,7 +87,7 @@ void FastState::play_move(int color, int vertex) {
     m_movenum++;
 
     if (board.m_tomove == color) {
-        board.m_hash ^= 0xABCDABCDABCDABCDULL;
+        board.m_hash ^= Zobrist::zobrist_blacktomove;
     }
     board.m_tomove = !color;
 
