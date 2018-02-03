@@ -52,19 +52,13 @@ void KoState::reset_game() {
     m_ko_hash_history.push_back(board.get_ko_hash());
 }
 
-void KoState::play_pass(void) {
-    play_move(board.get_to_move(), FastBoard::PASS);
-}
-
 void KoState::play_move(int vertex) {
     play_move(board.get_to_move(), vertex);
 }
 
 void KoState::play_move(int color, int vertex) {
-    if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
+    if (vertex != FastBoard::RESIGN) {
         FastState::play_move(color, vertex);
-    } else if (vertex == FastBoard::PASS) {
-        FastState::play_pass(color);
     }
     m_ko_hash_history.push_back(board.get_ko_hash());
 }

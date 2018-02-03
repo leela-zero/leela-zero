@@ -150,16 +150,10 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         if (next != nullptr) {
             auto move = next->get_move();
 
-            if (move != FastBoard::PASS) {
-                currstate.play_move(move);
-
-                if (!currstate.superko()) {
-                    result = play_simulation(currstate, next);
-                } else {
-                    next->invalidate();
-                }
+            currstate.play_move(move);
+            if (move != FastBoard::PASS && currstate.superko()) {
+                next->invalidate();
             } else {
-                currstate.play_pass();
                 result = play_simulation(currstate, next);
             }
         }

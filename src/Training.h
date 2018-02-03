@@ -41,6 +41,9 @@ public:
     int bestmove_visits;
 };
 
+std::ostream& operator<< (std::ostream& stream, const TimeStep& timestep);
+std::istream& operator>> (std::istream& stream, TimeStep& timestep);
+
 class OutputChunker {
 public:
     OutputChunker(const std::string& basename, bool compress = false);
@@ -69,6 +72,8 @@ public:
 
     static void dump_supervised(const std::string& sgf_file,
                                 const std::string& out_filename);
+    static void save_training(const std::string& filename);
+    static void load_training(const std::string& filename);
 private:
 
     static void process_game(GameState& state, size_t& train_pos, int who_won,
@@ -77,6 +82,8 @@ private:
     static void dump_training(int winner_color,
                               OutputChunker& outchunker);
     static void dump_debug(OutputChunker& outchunker);
+    static void save_training(std::ofstream& out);
+    static void load_training(std::ifstream& in);
     static std::vector<TimeStep> m_data;
 };
 

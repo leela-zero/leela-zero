@@ -306,6 +306,7 @@ int main (int argc, char *argv[]) {
             GTP::execute(*maingame, input);
         } else {
             // eof or other error
+            std::cout << std::endl;
             break;
         }
 

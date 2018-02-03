@@ -192,6 +192,11 @@ void Game::move() {
     waitForBytesWritten(-1);
 }
 
+void Game::setMovesCount(int moves) {
+    m_moveNum = moves;
+    m_blackToMove = (moves % 2) == 0;
+}
+
 bool Game::waitReady() {
     while (!canReadLine() && state() == QProcess::Running) {
         waitForReadyRead(-1);
@@ -318,6 +323,23 @@ int Game::getWinner() {
 
 bool Game::writeSgf() {
     return sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"));
+}
+
+bool Game::loadTraining(const QString &fileName) {
+    QTextStream(stdout) << "Loading " << fileName + ".train" << endl;
+    return sendGtpCommand(qPrintable("load_training " + fileName + ".train"));
+
+}
+
+bool Game::saveTraining() {
+     QTextStream(stdout) << "Saving " << m_fileName + ".train" << endl;
+     return sendGtpCommand(qPrintable("save_training " + m_fileName + ".train"));
+}
+
+
+bool Game::loadSgf(const QString &fileName) {
+    QTextStream(stdout) << "Loading " << fileName + ".sgf" << endl;
+    return sendGtpCommand(qPrintable("loadsgf " + fileName + ".sgf"));
 }
 
 bool Game::fixSgf(QString& weightFile, bool resignation) {

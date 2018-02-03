@@ -29,6 +29,8 @@ public:
         Win,
         Loss,
         Waited,
+        StoreMatch,
+        StoreSelfPlayed,
         Error
     };
     Result() = default;

@@ -52,6 +52,11 @@ extern FILE* cfg_logfile_handle;
 extern bool cfg_quiet;
 extern std::string cfg_options_str;
 
+/*
+    A list of all valid GTP2 commands is defined here:
+    https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
+    GTP is meant to be used between programs. It's not a human interface.
+*/
 class GTP {
 public:
     static bool execute(GameState & game, std::string xinput);
