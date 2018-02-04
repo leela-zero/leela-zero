@@ -345,6 +345,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     constexpr auto height = 19;
     constexpr auto tiles = WINOGRAD_P;
     constexpr auto one_plane = width * height * sizeof(net_t);
+    const auto finalSize = m_layers.back().outputs * one_plane;
 
     m_opencl.ensure_thread_initialized();
 
@@ -382,6 +383,10 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         opencl_thread_data.m_MBuffer = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, alloc_vm_size);
+        opencl_thread_data.m_pinnedOutBuffer = cl::Buffer(
+            m_opencl.m_context,
+            CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR, finalSize);
+
         opencl_thread_data.m_buffers_allocated = true;
     }
 
@@ -448,16 +453,22 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                       conv2_weights,
                       &residualBuffer,
                       bn2_weights,
-                      true, skip_next_in_trans, true);
+                      true, skip_next_in_trans, true, !skip_next_in_trans);
             skip_in_trans = skip_next_in_trans;
         }
     }
 
-    const auto finalSize = m_layers.back().outputs * one_plane;
-    queue.enqueueReadBuffer(inBuffer, CL_FALSE, 0, finalSize, output.data());
+    auto pinnedOutBufferHost = queue.enqueueMapBuffer(
+        opencl_thread_data.m_pinnedOutBuffer, CL_FALSE,
+        CL_MAP_READ, 0, finalSize);
 
     std::lock_guard<std::mutex> lock(m_queue_finish_mutex);
     queue.finish();
+
+    std::memcpy(output.data(), pinnedOutBufferHost, finalSize);
+
+    queue.enqueueUnmapMemObject(opencl_thread_data.m_pinnedOutBuffer, pinnedOutBufferHost);
+
 }
 
 void OpenCL_Network::convolve3(int channels, int outputs,
@@ -469,7 +480,8 @@ void OpenCL_Network::convolve3(int channels, int outputs,
                               weight_slice_t bn_weights,
                               bool skip_in_transform,
                               bool fuse_in_transform,
-                              bool store_inout) {
+                              bool store_inout,
+                              bool last) {
 
     cl::Kernel & in_transform_kernel = opencl_thread_data.m_in_transform_kernel;
     cl::Kernel & sgemm_kernel = opencl_thread_data.m_sgemm_kernel;
@@ -579,7 +591,13 @@ void OpenCL_Network::convolve3(int channels, int outputs,
                                        cl::NDRange(dim_size, wgs));
         } else {
             out_transform_bn_kernel.setArg(0, bufferM);
-            out_transform_bn_kernel.setArg(1, bufferInOut);
+            if (!last) {
+                out_transform_bn_kernel.setArg(1, bufferInOut);
+            } else {
+                //If this is the last convolution write output directly to pinned
+                //memory buffer
+                out_transform_bn_kernel.setArg(1, opencl_thread_data.m_pinnedOutBuffer);
+            }
             out_transform_bn_kernel.setArg(2, outputs);
             out_transform_bn_kernel.setArg(3, m_ceil);
             out_transform_bn_kernel.setArg(4, n_ceil);
