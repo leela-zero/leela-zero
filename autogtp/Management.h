@@ -44,7 +44,6 @@ public:
     void giveAssignments();
     void incMoves() { m_movesMade++; }
     void wait();
-    void checkStoredGames();
 signals:
     void sendQuit();
 public slots:
@@ -75,8 +74,8 @@ private:
     int m_storeGames;
     QList<QFileInfo> m_storedFiles;
     Order m_fallBack;
-
     bool m_single;
+
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);
     Order getWork(const QFileInfo &file);
@@ -84,6 +83,8 @@ private:
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
     QString getOptionsString(const QJsonObject &opt, const QString &rnd);
     void sendAllGames();
+    void checkStoredGames();
+    QFileInfo getNextStored();
     bool networkExists(const QString &name);
     void fetchNetwork(const QString &name);
     void printTimingInfo(float duration);
