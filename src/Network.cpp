@@ -344,6 +344,28 @@ void Network::initialize(void) {
         weight_index++;
     }
 
+    // Biases are not calculated and are typically zero but some networks might
+    // still have non-zero biases.
+    // Move biases to batchnorm means to make the output match without having
+    // to separately add the biases.
+
+    for (auto i = size_t{0}; i < conv_biases.size(); i++) {
+        for (auto j = size_t{0}; j < batchnorm_means[i].size(); j++) {
+            batchnorm_means[i][j] -= conv_biases[i][j];
+            conv_biases[i][j] = 0.0f;
+        }
+    }
+
+    for (auto i = size_t{0}; i < bn_val_w1.size(); i++) {
+        bn_val_w1[i] -= conv_val_b[i];
+        conv_val_b[i] = 0.0f;
+    }
+
+    for (auto i = size_t{0}; i < bn_pol_w1.size(); i++) {
+        bn_pol_w1[i] -= conv_pol_b[i];
+        conv_pol_b[i] = 0.0f;
+    }
+
 #ifdef USE_OPENCL
     myprintf("Initializing OpenCL.\n");
     opencl.initialize(channels);
