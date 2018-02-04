@@ -63,6 +63,7 @@ private:
     cl::Buffer m_VBuffer;
     cl::Buffer m_MBuffer;
     cl::Buffer m_residualBuffer;
+    cl::Buffer m_pinnedOutBuffer;
     bool m_buffers_allocated{false};
 };
 
@@ -131,7 +132,8 @@ private:
                     cl::Buffer* bufferResidual,
                     weight_slice_t bn_weights,
                     bool skip_in_transform,
-                    bool fuse_in_transform, bool store_inout);
+                    bool fuse_in_transform, bool store_inout,
+                    bool last=false);
 
     OpenCL & m_opencl;
 
