@@ -482,7 +482,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         opencl_thread_data.m_inBuffer = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
-        opencl_thread_data.m_residualBuffer = cl::Buffer(
+        opencl_thread_data.m_inBuffer2 = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
         opencl_thread_data.m_VBuffer = cl::Buffer(
@@ -504,9 +504,9 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     }
 
     cl::Buffer & inBuffer = opencl_thread_data.m_inBuffer;
+    cl::Buffer & inBuffer2 = opencl_thread_data.m_inBuffer2;
     cl::Buffer & VBuffer = opencl_thread_data.m_VBuffer;
     cl::Buffer & MBuffer = opencl_thread_data.m_MBuffer;
-    cl::Buffer & residualBuffer = opencl_thread_data.m_residualBuffer;
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
     void * pinnedOutBufferHost_pol;
@@ -531,6 +531,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             convolve3(layer.channels,
                      layer.outputs,
                      inBuffer,
+                     inBuffer,
                      VBuffer,
                      MBuffer,
                      conv_weights,
@@ -545,12 +546,10 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             auto bn1_weights   = begin(layer.weights) + 1;
             auto conv2_weights = begin(layer.weights) + 3;
             auto bn2_weights   = begin(layer.weights) + 4;
-            const auto inBufferSize = layer.channels * one_plane;
-            queue.enqueueCopyBuffer(inBuffer, residualBuffer, 0, 0,
-                                    inBufferSize);
             convolve3(layer.channels,
                       layer.outputs,
                       inBuffer,
+                      inBuffer2,
                       VBuffer,
                       MBuffer,
                       conv1_weights,
@@ -564,11 +563,12 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             }
             convolve3(layer.channels,
                       layer.outputs,
+                      inBuffer2,
                       inBuffer,
                       VBuffer,
                       MBuffer,
                       conv2_weights,
-                      &residualBuffer,
+                      &inBuffer,
                       bn2_weights,
                       true, skip_next_in_trans, true);
             skip_in_trans = skip_next_in_trans;
@@ -613,7 +613,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
 }
 
 void OpenCL_Network::convolve3(int channels, int outputs,
-                              cl::Buffer& bufferInOut,
+                              cl::Buffer& bufferIn,
+                              cl::Buffer& bufferOut,
                               cl::Buffer& bufferV,
                               cl::Buffer& bufferM,
                               weight_slice_t weights,
@@ -661,7 +662,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
 
     if (!skip_in_transform) {
         try {
-            in_transform_kernel.setArg(0, bufferInOut);
+            in_transform_kernel.setArg(0, bufferIn);
             in_transform_kernel.setArg(1, bufferV);
             in_transform_kernel.setArg(2, channels);
             in_transform_kernel.setArg(3, k_ceil);
@@ -704,7 +705,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
             constexpr auto dim_size = 2;
             out_transform_bn_in_kernel.setArg(0, bufferM);
             if (store_inout) {
-                out_transform_bn_in_kernel.setArg(1, bufferInOut);
+                out_transform_bn_in_kernel.setArg(1, bufferOut);
             } else {
                 out_transform_bn_in_kernel.setArg(1, nullptr);
             }
@@ -731,7 +732,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
                                        cl::NDRange(dim_size, wgs));
         } else {
             out_transform_bn_kernel.setArg(0, bufferM);
-            out_transform_bn_kernel.setArg(1, bufferInOut);
+            out_transform_bn_kernel.setArg(1, bufferOut);
             out_transform_bn_kernel.setArg(2, outputs);
             out_transform_bn_kernel.setArg(3, m_ceil);
             out_transform_bn_kernel.setArg(4, n_ceil);

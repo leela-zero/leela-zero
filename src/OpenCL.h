@@ -63,9 +63,9 @@ private:
     cl::Kernel m_out_transform_bn_kernel;
     cl::Kernel m_out_transform_bn_in_kernel;
     cl::Buffer m_inBuffer;
+    cl::Buffer m_inBuffer2;
     cl::Buffer m_VBuffer;
     cl::Buffer m_MBuffer;
-    cl::Buffer m_residualBuffer;
     cl::Buffer m_pinnedOutBuffer_pol;
     cl::Buffer m_pinnedOutBuffer_val;
     bool m_buffers_allocated{false};
@@ -143,7 +143,9 @@ private:
     void add_weights(size_t layer, size_t size, const float* weights);
 
     void convolve3(int channels, int outputs,
-                    cl::Buffer& bufferInOut, cl::Buffer& bufferV,
+                    cl::Buffer& bufferIn,
+                    cl::Buffer& bufferOut,
+                    cl::Buffer& bufferV,
                     cl::Buffer& bufferM, weight_slice_t weights,
                     cl::Buffer* bufferResidual,
                     weight_slice_t bn_weights,
