@@ -46,6 +46,7 @@ private:
     unsigned int filter_size{0};
     bool is_input_convolution{false};
     bool is_residual_block{false};
+    bool is_convolve1{false};
     std::vector<cl::Buffer> weights;
 };
 
@@ -55,6 +56,8 @@ class ThreadData {
 private:
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
+    cl::Kernel m_convolve1_kernel;
+    cl::Kernel m_merge_kernel;
     cl::Kernel m_in_transform_kernel;
     cl::Kernel m_sgemm_kernel;
     cl::Kernel m_out_transform_bn_kernel;
@@ -63,7 +66,8 @@ private:
     cl::Buffer m_VBuffer;
     cl::Buffer m_MBuffer;
     cl::Buffer m_residualBuffer;
-    cl::Buffer m_pinnedOutBuffer;
+    cl::Buffer m_pinnedOutBuffer_pol;
+    cl::Buffer m_pinnedOutBuffer_val;
     bool m_buffers_allocated{false};
 };
 
@@ -112,11 +116,23 @@ public:
         m_layers[layer].channels = channels;
     }
 
+    void push_convolve1(unsigned int channels,
+                       unsigned int outputs,
+                       const std::vector<float>& weights) {
+        size_t layer = get_layer_count();
+        push_weights(layer, weights);
+        m_layers[layer].is_convolve1 = true;
+        m_layers[layer].outputs = outputs;
+        m_layers[layer].channels = channels;
+    }
+
     size_t get_layer_count() const {
         return m_layers.size();
     }
 
-    void forward(const std::vector<net_t>& input, std::vector<net_t>& output);
+    void forward(const std::vector<net_t>& input,
+            std::vector<net_t>& output_pol,
+            std::vector<net_t>& output_val);
 
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
@@ -132,8 +148,13 @@ private:
                     cl::Buffer* bufferResidual,
                     weight_slice_t bn_weights,
                     bool skip_in_transform,
-                    bool fuse_in_transform, bool store_inout,
-                    bool last=false);
+                    bool fuse_in_transform, bool store_inout);
+
+    void convolve1(int channels, int outputs,
+                  cl::Buffer& bufferInput,
+                  cl::Buffer& bufferOutput,
+                  cl::Buffer& bufferMerge,
+                  weight_slice_t weights);
 
     OpenCL & m_opencl;
 

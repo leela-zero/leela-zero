@@ -66,14 +66,15 @@ void OpenCLScheduler::initialize(const int channels) {
 }
 
 void OpenCLScheduler::forward(const std::vector<net_t>& input,
-                              std::vector<net_t>& output) {
+                              std::vector<net_t>& output_pol,
+                              std::vector<net_t>& output_val) {
     if (m_networks.size() == 1) {
-        m_networks[0]->forward(input, output);
+        m_networks[0]->forward(input, output_pol, output_val);
         return;
     }
 
-    auto f = m_threadpool.add_task([this, &input, &output]{
-        m_networks[current_thread_gpu_num]->forward(input, output);
+    auto f = m_threadpool.add_task([this, &input, &output_pol, &output_val]{
+        m_networks[current_thread_gpu_num]->forward(input, output_pol, output_val);
     });
 
     f.get();
