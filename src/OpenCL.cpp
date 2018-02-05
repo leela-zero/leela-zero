@@ -469,14 +469,6 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         const auto alloc_vm_size =
             WINOGRAD_TILE * m_ceil * n_ceil * sizeof(net_t);
 
-#ifndef NDEBUG
-        //Check that VBuffer can be used as a merge buffer for convolve1
-        auto channelGroups = max_channels / 8;
-        auto maxMergeSize = 2 * channelGroups;
-        const auto alloc_mergeSize = one_plane * maxMergeSize;
-        assert(alloc_vm_size > alloc_mergeSize);
-#endif
-
         auto v_zeros = std::vector<float>(alloc_vm_size);
 
         opencl_thread_data.m_inBuffer = cl::Buffer(
@@ -599,8 +591,12 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         opencl_thread_data.m_pinnedOutBuffer_val, CL_FALSE,
         CL_MAP_READ, 0, finalSize_val);
 
-    std::lock_guard<std::mutex> lock(m_queue_finish_mutex);
-    queue.finish();
+    {
+        //finish call is usually busy wait. When using multiple threads
+        //use lock to avoid busy waiting with all threads.
+        std::lock_guard<std::mutex> lock(m_queue_finish_mutex);
+        queue.finish();
+    }
 
     std::memcpy(output_pol.data(), pinnedOutBufferHost_pol, finalSize_pol);
     std::memcpy(output_val.data(), pinnedOutBufferHost_val, finalSize_val);
