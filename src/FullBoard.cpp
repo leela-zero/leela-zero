@@ -56,7 +56,7 @@ int FullBoard::remove_string(int i) {
 }
 
 std::uint64_t FullBoard::calc_ko_hash(void) {
-    auto res = std::uint64_t{0x1234567887654321ULL};
+    auto res = Zobrist::zobrist_empty;
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
@@ -64,14 +64,13 @@ std::uint64_t FullBoard::calc_ko_hash(void) {
         }
     }
 
-    m_ko_hash = res;
-
     /* Tromp-Taylor has positional superko */
+    m_ko_hash = res;
     return res;
 }
 
 std::uint64_t FullBoard::calc_hash(int komove) {
-    auto res = std::uint64_t{0x1234567887654321ULL};
+    auto res = Zobrist::zobrist_empty;
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
