@@ -114,8 +114,9 @@ void Management::giveAssignments() {
                     this,
                     &Management::getResult,
                     Qt::DirectConnection);
-            if(!m_storedFiles.isEmpty()) {
-                m_gamesThreads[thread_index]->order(getWork(m_storedFiles.takeFirst()));
+            QFileInfo finfo = getNextStored();
+            if(!finfo.fileName().isEmpty()) {
+                m_gamesThreads[thread_index]->order(getWork(finfo));
             } else {
                 m_gamesThreads[thread_index]->order(getWork());
             }            
@@ -163,8 +164,9 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
         m_gamesThreads[index]->doFinish();
         sendQuit();
     } else {
-        if(!m_storedFiles.isEmpty()) {
-            m_gamesThreads[index]->order(getWork(m_storedFiles.takeFirst()));
+        QFileInfo finfo = getNextStored();
+        if (!finfo.fileName().isEmpty()) {
+            m_gamesThreads[index]->order(getWork(finfo));
         } else {
             m_gamesThreads[index]->order(getWork());
         }
@@ -172,6 +174,17 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
     m_syncMutex.unlock();
 }
 
+QFileInfo Management::getNextStored() {
+    QFileInfo fi;
+    checkStoredGames();
+    while (!m_storedFiles.isEmpty()) {
+        fi = m_storedFiles.takeFirst();
+        if(fi.exists()) {
+            break;
+        }
+    }
+    return fi;
+}
 
 void  Management::printTimingInfo(float duration) {
 

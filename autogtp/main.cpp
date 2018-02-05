@@ -113,7 +113,6 @@ int main(int argc, char *argv[]) {
                                       parser.value(keepSgfOption), parser.value(keepDebugOption));
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
     QTimer *timer = new QTimer();
-    boss->checkStoredGames();
     boss->giveAssignments();
     if(parser.isSet(timeoutOption)) {
         QObject::connect(timer, &QTimer::timeout, &app, &QCoreApplication::quit);
