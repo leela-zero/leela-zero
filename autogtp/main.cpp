@@ -70,12 +70,17 @@ int main(int argc, char *argv[]) {
         { "s", "single" }, "Exit after the first game is completed.",
                           "");
 
+    QCommandLineOption maxOption(
+        { "m", "maxgames" }, "Exit after the given number of games is completed.",
+                          "max number of games");
+
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(keepSgfOption);
     parser.addOption(keepDebugOption);
     parser.addOption(timeoutOption);
     parser.addOption(singleOption);
+    parser.addOption(maxOption);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
@@ -85,11 +90,27 @@ int main(int argc, char *argv[]) {
     if (gpusNum == 0) {
         gpusNum = 1;
     }
+    int maxNum = -1;
+    if(parser.isSet(maxOption)) {
+        maxNum = parser.value(maxOption).toInt();
+        if (maxNum == 0) {
+            maxNum = 1;
+        }
+        if (maxNum < gpusNum * gamesNum) {
+            gamesNum = maxNum / gpusNum;
+            if (gamesNum == 0) {
+                gamesNum = 1;
+                gpusNum = 1;
+            }
+        }
+        maxNum -= (gpusNum * gamesNum);
+    }
     if(parser.isSet(singleOption)) {
-
         gamesNum = 1;
         gpusNum = 1;
+        maxNum = 0;      
     }
+
     // Map streams
     QTextStream cerr(stderr, QIODevice::WriteOnly);
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
@@ -109,7 +130,7 @@ int main(int argc, char *argv[]) {
         }
     }
     Console *cons = nullptr;
-    Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.isSet(singleOption),
+    Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, maxNum,
                                       parser.value(keepSgfOption), parser.value(keepDebugOption));
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
     QTimer *timer = new QTimer();
@@ -118,7 +139,7 @@ int main(int argc, char *argv[]) {
         QObject::connect(timer, &QTimer::timeout, &app, &QCoreApplication::quit);
         timer->start(parser.value(timeoutOption).toInt() * 60000);
     } else {
-        if (parser.isSet(singleOption)) {
+        if (parser.isSet(singleOption) || parser.isSet(maxOption)) {
             QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
         } else {
             cons = new Console();
