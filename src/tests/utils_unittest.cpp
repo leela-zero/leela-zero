@@ -23,23 +23,23 @@ using namespace Utils;
 
 TEST(UtilsTest, CeilMultiple) {
     // Equal to a multiple
-    EXPECT_EQ(ceilMultiple(0, 1), 0);
-    EXPECT_EQ(ceilMultiple(0, 3), 0);
+    EXPECT_EQ(ceilMultiple(0, 1), (size_t)0);
+    EXPECT_EQ(ceilMultiple(0, 3), (size_t)0);
 
-    EXPECT_EQ(ceilMultiple(6,  1), 6);
-    EXPECT_EQ(ceilMultiple(23, 1), 23);
+    EXPECT_EQ(ceilMultiple(6,  1), (size_t)6);
+    EXPECT_EQ(ceilMultiple(23, 1), (size_t)23);
 
-    EXPECT_EQ(ceilMultiple(2, 2), 2);
-    EXPECT_EQ(ceilMultiple(4, 2), 4);
-    EXPECT_EQ(ceilMultiple(6, 2), 6);
-    EXPECT_EQ(ceilMultiple(0, 3), 0);
-    EXPECT_EQ(ceilMultiple(3, 3), 3);
-    EXPECT_EQ(ceilMultiple(9, 3), 9);
+    EXPECT_EQ(ceilMultiple(2, 2), (size_t)2);
+    EXPECT_EQ(ceilMultiple(4, 2), (size_t)4);
+    EXPECT_EQ(ceilMultiple(6, 2), (size_t)6);
+    EXPECT_EQ(ceilMultiple(0, 3), (size_t)0);
+    EXPECT_EQ(ceilMultiple(3, 3), (size_t)3);
+    EXPECT_EQ(ceilMultiple(9, 3), (size_t)9);
 
     // Requires rounding up
-    EXPECT_EQ(ceilMultiple(3, 5), 5);
-    EXPECT_EQ(ceilMultiple(6, 5), 10);
-    EXPECT_EQ(ceilMultiple(9, 5), 10);
-    EXPECT_EQ(ceilMultiple(23, 5), 25);
-    EXPECT_EQ(ceilMultiple(99, 100), 100);
+    EXPECT_EQ(ceilMultiple(3, 5), (size_t)5);
+    EXPECT_EQ(ceilMultiple(6, 5), (size_t)10);
+    EXPECT_EQ(ceilMultiple(9, 5), (size_t)10);
+    EXPECT_EQ(ceilMultiple(23, 5), (size_t)25);
+    EXPECT_EQ(ceilMultiple(99, 100), (size_t)100);
 }
