@@ -260,11 +260,10 @@ bool UCTNode::has_children() const {
 }
 
 void UCTNode::set_visits(int visits) {
-    m_visits = visits;
     if(m_parent != nullptr) {
-        m_parent->add_parent_visit(visits);
+        m_parent->add_parent_visit(visits - m_visits);
     }
-    
+    m_visits = visits;
 }
 
 float UCTNode::get_score() const {
