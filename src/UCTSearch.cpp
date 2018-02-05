@@ -45,16 +45,79 @@ UCTSearch::UCTSearch(GameState& g)
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
 }
 
+bool UCTSearch::advance_to_new_rootstate() {
+    if (!m_root || !m_last_rootstate) {
+        // No current state
+        return false;
+    }
+
+    if (m_rootstate.get_komi() != m_last_rootstate->get_komi()) {
+        return false;
+    }
+
+    auto depth =
+        (int) (m_rootstate.get_movenum() - m_last_rootstate->get_movenum());
+
+    if (depth < 0) {
+        return false;
+    }
+
+    auto test = std::make_unique<GameState>(m_rootstate);
+    for (auto i = 0; i < depth; i++) {
+        test->undo_move();
+    }
+
+    if (m_last_rootstate->board.get_hash() != test->board.get_hash()) {
+        // m_rootstate and m_last_rootstate don't match
+        return false;
+    }
+
+    // Try to replay moves advancing m_root
+    for (auto i = 0; i < depth; i++) {
+        test->forward_move();
+        const auto move = test->get_last_move();
+        m_root = m_root->find_child(move);
+        if (!m_root) {
+            // Tree hasn't been expanded this far
+            return false;
+        }
+        m_last_rootstate->play_move(move);
+    }
+
+    assert(m_rootstate.get_movenum() == m_last_rootstate->get_movenum());
+
+    if (m_last_rootstate->board.get_hash() != test->board.get_hash()) {
+        // Can happen if user plays multiple moves in a row by same player
+        return false;
+    }
+
+    return true;
+}
+
 void UCTSearch::update_root() {
     // Definition of m_playouts is playouts per search call.
     // So reset this count now.
     m_playouts = 0;
-    // See if the current state of the game is a direct succesor of
-    // our stored tree's root node. If so, make that the new root.
-    UCTNode::find_new_root(m_root, m_rootstate, std::move(m_last_rootstate));
-    // If the above succeeded, we'll have a search tree already. See
-    // how big it is.
+
+#ifndef NDEBUG
+    auto start_nodes = m_root->count_nodes();
+#endif
+
+    if (!advance_to_new_rootstate() || !m_root) {
+        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+    }
+    // Clear last_rootstate to prevent accidental use.
+    m_last_rootstate.reset(nullptr);
+
+    // Check how big our search tree (reused or new) is.
     m_nodes = m_root->count_nodes();
+
+#ifndef NDEBUG
+    if (m_nodes > 0) {
+        myprintf("update_root, %d -> %d nodes (%.1f%% reused)\n",
+            start_nodes, m_nodes.load(), 100.0 * m_nodes.load() / start_nodes);
+    }
+#endif
 }
 
 SearchResult UCTSearch::play_simulation(GameState & currstate,
@@ -451,12 +514,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
                  (m_playouts * 100) / (elapsed_centis+1));
     }
     int bestmove = get_best_move(passflag);
-    // Update the root to point to the subtree after our selected move.
-    m_root = m_root->find_new_root(bestmove);
-    // Copy the root state and play our move. We can search for the
-    // users' played move from this point.
+
+    // Copy the root state. Use to check for tree re-use in future calls.
     m_last_rootstate = std::make_unique<GameState>(m_rootstate);
-    m_last_rootstate->play_move(bestmove);
     return bestmove;
 }
 
@@ -484,7 +544,7 @@ void UCTSearch::ponder() {
     myprintf("\n");
     dump_stats(m_rootstate, *m_root);
 
-    myprintf("\n%d visits, %d nodes\n\n", m_root->get_visits(), (int)m_nodes);
+    myprintf("\n%d visits, %d nodes\n\n", m_root->get_visits(), m_nodes.load());
 }
 
 void UCTSearch::set_playout_limit(int playouts) {
