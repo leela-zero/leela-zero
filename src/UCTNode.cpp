@@ -208,16 +208,17 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 }
 
 void UCTNode::randomize_first_proportionally() {
-    auto accum = std::uint32_t{0};
+    auto accum = 0;
     auto accum_vector = std::vector<decltype(accum)>{};
     for (const auto& child : m_children) {
         accum += child->get_visits();
         accum_vector.emplace_back(accum);
     }
+    assert(accum + 1 == get_visits());
 
-    auto pick = Random::get_Rng().randuint32(accum);
+    auto pick = int(Random::get_Rng().randuint32(accum));
     auto index = size_t{0};
-    for (size_t i = 0; i < accum_vector.size(); i++) {
+    for (auto i = size_t{0}; i < accum_vector.size(); i++) {
         if (pick < accum_vector[i]) {
             index = i;
             break;
@@ -254,10 +255,6 @@ void UCTNode::update(float eval) {
 
 bool UCTNode::has_children() const {
     return m_has_children;
-}
-
-void UCTNode::set_visits(int visits) {
-    m_visits = visits;
 }
 
 float UCTNode::get_score() const {
@@ -318,15 +315,19 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
     LOCK(get_mutex(), lock);
 
-    // Count parentvisits.
-    // We do this manually to avoid issues with transpositions.
-    auto parentvisits = size_t{0};
+    // Remove TO EOR after verifying
+    auto parentvisits = 0;
     for (const auto& child : m_children) {
         if (child->valid()) {
             parentvisits += child->get_visits();
         }
     }
-    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
+    assert(get_visits() - 1 ==  parentvisits);
+    // EOR
+
+    // Remove the initial visit to expand the node.
+    auto childvisits = get_visits() - 1;
+    auto numerator = static_cast<float>(std::sqrt((double)childvisits));
 
     for (const auto& child : m_children) {
         if (!child->valid()) {
