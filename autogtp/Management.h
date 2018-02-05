@@ -37,7 +37,7 @@ public:
                const int games,
                const QStringList& gpuslist,
                const int ver,
-               const bool single,
+               const int maxGame,
                const QString& keep,
                const QString& debug);
     ~Management() = default;
@@ -74,7 +74,8 @@ private:
     int m_storeGames;
     QList<QFileInfo> m_storedFiles;
     Order m_fallBack;
-    bool m_single;
+    int m_gamesLeft;
+    int m_threadsLeft;
 
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);

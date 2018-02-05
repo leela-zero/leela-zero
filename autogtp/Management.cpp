@@ -39,7 +39,7 @@ Management::Management(const int gpus,
                        const int games,
                        const QStringList& gpuslist,
                        const int ver,
-                       const bool single,
+                       const int maxGames,
                        const QString& keep,
                        const QString& debug)
 
@@ -55,7 +55,8 @@ Management::Management(const int gpus,
     m_debugPath(debug),
     m_version(ver),
     m_fallBack(Order::Error),
-    m_single(single) {
+    m_gamesLeft(maxGames),
+    m_threadsLeft(gpus * games) {
 }
 
 void Management::runTuningProcess(const QString &tuneCmdLine) {
@@ -160,10 +161,15 @@ void Management::getResult(Order ord, Result res, int index, int duration) {
         break;
     }
     sendAllGames();
-    if(m_single) {
+    if(m_gamesLeft == 0) {
         m_gamesThreads[index]->doFinish();
-        sendQuit();
+        if(m_threadsLeft > 1) {
+            --m_threadsLeft;
+        } else {
+            sendQuit();
+        }
     } else {
+        if(m_gamesLeft > 0) --m_gamesLeft;
         QFileInfo finfo = getNextStored();
         if (!finfo.fileName().isEmpty()) {
             m_gamesThreads[index]->order(getWork(finfo));
