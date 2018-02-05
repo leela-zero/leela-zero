@@ -39,7 +39,7 @@ public:
 
     using node_ptr_t = std::unique_ptr<UCTNode>;
 
-    explicit UCTNode(int vertex, float score, float init_eval);
+    explicit UCTNode(int vertex, float score, float init_eval, UCTNode* parent = nullptr);
     UCTNode() = delete;
     ~UCTNode() = default;
     bool first_visit() const;
@@ -64,6 +64,7 @@ public:
     void dirichlet_noise(float epsilon, float alpha);
     void randomize_first_proportionally();
     void update(float eval = std::numeric_limits<float>::quiet_NaN());
+    void set_null_parent() { m_parent = nullptr; }
 
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
@@ -79,6 +80,8 @@ private:
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist,
                        float init_eval);
+    UCTNode* m_parent;
+    void add_parent_visit(int v) { m_parentVisits += v; }
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution
     // if you want to add/remove/reorder any variables here.
@@ -88,6 +91,7 @@ private:
     // UCT
     std::atomic<std::int16_t> m_virtual_loss{0};
     std::atomic<int> m_visits{0};
+    std::atomic<int> m_parentVisits{0};
     // UCT eval
     float m_score;
     float m_init_eval;
