@@ -24,6 +24,7 @@
 #include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLockFile>
 #include <QUuid>
 #include <QRegularExpression>
 #include "Management.h"
@@ -56,7 +57,8 @@ Management::Management(const int gpus,
     m_version(ver),
     m_fallBack(Order::Error),
     m_gamesLeft(maxGames),
-    m_threadsLeft(gpus * games) {
+    m_threadsLeft(gpus * games),
+    m_lockFile(nullptr) {
 }
 
 void Management::runTuningProcess(const QString &tuneCmdLine) {
@@ -76,6 +78,9 @@ Order Management::getWork(const QFileInfo &file) {
     Order o;
     o.load(file.fileName());
     QFile::remove(file.fileName());
+    m_lockFile->unlock();
+    delete m_lockFile;
+    m_lockFile = nullptr;
     return o;
 }
 
@@ -185,9 +190,13 @@ QFileInfo Management::getNextStored() {
     checkStoredGames();
     while (!m_storedFiles.isEmpty()) {
         fi = m_storedFiles.takeFirst();
-        if(fi.exists()) {
-            break;
+        m_lockFile = new QLockFile(fi.fileName()+".lock");
+        if(m_lockFile->tryLock(10) &&
+           fi.exists()) {
+                break;
         }
+        delete m_lockFile;
+        m_lockFile = nullptr;
     }
     return fi;
 }

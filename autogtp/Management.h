@@ -24,6 +24,7 @@
 #include <QTextStream>
 #include <QThread>
 #include <QFileInfo>
+#include <QLockFile>
 #include <QVector>
 #include <chrono>
 #include <stdexcept>
@@ -76,6 +77,7 @@ private:
     Order m_fallBack;
     int m_gamesLeft;
     int m_threadsLeft;
+    QLockFile *m_lockFile;
 
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);
