@@ -69,10 +69,7 @@ std::uint32_t Random::randuint32() {
 }
 
 std::uint64_t Random::randuint64() {
-    // Current implementation for consistency with old zobrist method.
-    std::uint64_t upper = randuint32();
-    std::uint64_t lower = randuint32();
-    return (upper << 32) | lower;
+    return gen();
 }
 
 static std::uint64_t splitmix64(std::uint64_t z) {

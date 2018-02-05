@@ -115,8 +115,8 @@ TEST_F(LeelaTest, DefaultHash) {
     auto hash = maingame.board.get_hash();
     auto ko_hash = maingame.board.get_ko_hash();
 
-    EXPECT_EQ(hash, 0x30C547108A9AF65FULL);
-    EXPECT_EQ(ko_hash, 0x9EC2A5B7968B5F23ULL);
+    EXPECT_EQ(hash, 0x9A930BE1616C538E);
+    EXPECT_EQ(ko_hash, 0xA14C933E7669946D);
 }
 
 TEST_F(LeelaTest, Transposition) {
