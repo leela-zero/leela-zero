@@ -357,8 +357,8 @@ void Network::initialize(void) {
 
         weight_index = 0;
 
-        size_t m_ceil = lcm(lcm(channels, mwg), vwm);
-        size_t k_ceil = lcm(lcm(INPUT_CHANNELS, kwg), vwm);
+        size_t m_ceil = ceilMultiple(ceilMultiple(channels, mwg), vwm);
+        size_t k_ceil = ceilMultiple(ceilMultiple(INPUT_CHANNELS, kwg), vwm);
 
         auto Upad = zeropad_U(conv_weights[weight_index],
                               channels, INPUT_CHANNELS,

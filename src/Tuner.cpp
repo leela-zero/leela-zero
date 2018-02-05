@@ -322,9 +322,9 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
 
         auto sgemm_kernel = cl::Kernel(program, "XgemmBatched");
 
-        auto m_ceil = (int)lcm(lcm(m, p["MWG"]), p["VWM"]);
-        auto n_ceil = (int)lcm(lcm(n, p["NWG"]), p["VWN"]);
-        auto k_ceil = (int)lcm(lcm(k, p["KWG"]), p["VWM"]);
+        auto m_ceil = (int)ceilMultiple(ceilMultiple(m, p["MWG"]), p["VWM"]);
+        auto n_ceil = (int)ceilMultiple(ceilMultiple(n, p["NWG"]), p["VWN"]);
+        auto k_ceil = (int)ceilMultiple(ceilMultiple(k, p["KWG"]), p["VWM"]);
 
         if (m_ceil != m_ceil_prev
             || n_ceil != n_ceil_prev

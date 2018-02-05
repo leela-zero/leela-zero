@@ -360,8 +360,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         const auto vwm = m_opencl.m_sgemm_tuners.vwm;
         const auto vwn = m_opencl.m_sgemm_tuners.vwn;
 
-        const auto m_ceil = lcm(lcm(max_channels, mwg), vwm);
-        const auto n_ceil = lcm(lcm(tiles, nwg), vwn);
+        const auto m_ceil = ceilMultiple(ceilMultiple(max_channels, mwg), vwm);
+        const auto n_ceil = ceilMultiple(ceilMultiple(tiles, nwg), vwn);
 
         const auto alloc_inSize =
             m_ceil * m_ceil *  max_channels * sizeof(net_t);
@@ -500,10 +500,10 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     constexpr auto width = 19;
     constexpr auto height = 19;
 
-    auto wgs = lcm(tiles, wavefront_size);
-    auto m_ceil = int(lcm(lcm(outputs, mwg), vwm));
-    auto n_ceil = int(lcm(lcm(tiles, nwg), vwn));
-    auto k_ceil = int(lcm(lcm(channels, kwg), vwm));
+    auto wgs = ceilMultiple(tiles, wavefront_size);
+    auto m_ceil = int(ceilMultiple(ceilMultiple(outputs, mwg), vwm));
+    auto n_ceil = int(ceilMultiple(ceilMultiple(tiles, nwg), vwn));
+    auto k_ceil = int(ceilMultiple(ceilMultiple(channels, kwg), vwm));
 
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
@@ -561,7 +561,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
             out_transform_bn_in_kernel.setArg(4, m_ceil);
             out_transform_bn_in_kernel.setArg(5, n_ceil);
             // k_ceil of the next convolution
-            auto k_ceil2 = int(lcm(lcm(outputs, kwg), vwm));
+            auto k_ceil2 = int(ceilMultiple(ceilMultiple(outputs, kwg), vwm));
             out_transform_bn_in_kernel.setArg(6, k_ceil2);
             if (bufferResidual) {
                 out_transform_bn_in_kernel.setArg(7, *bufferResidual);

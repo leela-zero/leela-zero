@@ -51,7 +51,7 @@ namespace Utils {
         return c >= 0 && c <= 127;
     }
 
-    size_t lcm(size_t a, size_t b);
+    size_t ceilMultiple(size_t a, size_t b);
 }
 
 #endif
