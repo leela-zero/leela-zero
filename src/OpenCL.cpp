@@ -501,9 +501,6 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     cl::Buffer & MBuffer = opencl_thread_data.m_MBuffer;
     cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
 
-    void * pinnedOutBufferHost_pol;
-    void * pinnedOutBufferHost_val;
-
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, input.data());
 
@@ -549,7 +546,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                       bn1_weights,
                       skip_in_trans, true, false);
 
-            bool skip_next_in_trans = false;
+            auto skip_next_in_trans = false;
             if (niter->is_residual_block) {
                 skip_next_in_trans = true;
             }
@@ -580,20 +577,19 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                     out_buffer,
                     VBuffer,
                     begin(layer.weights));
-
         }
     }
 
-    pinnedOutBufferHost_pol = queue.enqueueMapBuffer(
+    auto pinnedOutBufferHost_pol = queue.enqueueMapBuffer(
         opencl_thread_data.m_pinnedOutBuffer_pol, CL_FALSE,
         CL_MAP_READ, 0, finalSize_pol);
-    pinnedOutBufferHost_val = queue.enqueueMapBuffer(
+    auto pinnedOutBufferHost_val = queue.enqueueMapBuffer(
         opencl_thread_data.m_pinnedOutBuffer_val, CL_FALSE,
         CL_MAP_READ, 0, finalSize_val);
 
     {
-        //finish call is usually busy wait. When using multiple threads
-        //use lock to avoid busy waiting with all threads.
+        // Finish call is usually a busy wait. When using multiple threads
+        // use the lock to avoid busy waiting with all threads.
         std::lock_guard<std::mutex> lock(m_queue_finish_mutex);
         queue.finish();
     }

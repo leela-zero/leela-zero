@@ -234,7 +234,8 @@ std::pair<int, int>  Network::load_v1_network(std::ifstream& wtfile) {
     while (std::getline(wtfile, line)) {
         std::vector<float> weights;
         auto it_line = line.begin();
-        auto ok = phrase_parse(it_line, line.end(), *x3::float_, x3::space, weights);
+        auto ok = phrase_parse(it_line, line.end(),
+                               *x3::float_, x3::space, weights);
         if (!ok || it_line != line.end()) {
             myprintf("\nFailed to parse weight file. Error on line %d.\n",
                     linecount + 2); //+1 from version line, +1 from 0-indexing
@@ -352,7 +353,6 @@ void Network::initialize(void) {
     // still have non-zero biases.
     // Move biases to batchnorm means to make the output match without having
     // to separately add the biases.
-
     for (auto i = size_t{0}; i < conv_biases.size(); i++) {
         for (auto j = size_t{0}; j < batchnorm_means[i].size(); j++) {
             batchnorm_means[i][j] -= conv_biases[i][j];
@@ -413,14 +413,9 @@ void Network::initialize(void) {
             weight_index += 2;
         }
 
-        //Output head convolutions
-        opencl_net->push_convolve1(channels,
-                       OUTPUTS_POLICY,
-                       conv_pol_w);
-
-        opencl_net->push_convolve1(channels,
-                       OUTPUTS_VALUE,
-                       conv_val_w);
+        // Output head convolutions
+        opencl_net->push_convolve1(channels, OUTPUTS_POLICY, conv_pol_w);
+        opencl_net->push_convolve1(channels, OUTPUTS_VALUE, conv_val_w);
     }
 #endif
 #ifdef USE_BLAS
