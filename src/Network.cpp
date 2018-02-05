@@ -785,19 +785,23 @@ T relative_difference(T a, T b) {
     if (std::isnan(a) || std::isnan(b)) {
         return std::numeric_limits<T>::max();
     }
-    // Handle sign difference
-    if (((a < 0) != (b < 0)) && (a != 0) && (b != 0)) {
-        return std::numeric_limits<T>::max();
+
+    constexpr auto small_number = 1e-3f;
+    auto fa = std::fabs(a);
+    auto fb = std::fabs(b);
+
+    if (fa > small_number && fb > small_number) {
+        // Handle sign difference
+        if (((a < 0) != (b < 0)) && (a != 0) && (b != 0)) {
+            return std::numeric_limits<T>::max();
+        }
     }
-    a = std::fabs(a);
-    b = std::fabs(b);
 
     // Handle underflow
-    constexpr float small_number = 1e-3f;
-    a = std::max(a, small_number);
-    b = std::max(b, small_number);
+    fa = std::max(fa, small_number);
+    fb = std::max(fb, small_number);
 
-    return std::max(fabs((a - b) / a), fabs((a - b) / b));
+    return std::max(fabs((fa - fb) / fa), fabs((fa - fb) / fb));
 }
 
 void compare_net_outputs(std::vector<float>& data,
