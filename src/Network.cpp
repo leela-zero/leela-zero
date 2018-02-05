@@ -30,6 +30,7 @@
 #include <string>
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
+#include <boost/spirit/home/x3.hpp>
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -57,6 +58,7 @@
 #include "Timing.h"
 #include "Utils.h"
 
+namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
 // Input + residual block tower
@@ -231,10 +233,12 @@ std::pair<int, int>  Network::load_v1_network(std::ifstream& wtfile) {
     linecount = 0;
     while (std::getline(wtfile, line)) {
         std::vector<float> weights;
-        float weight;
-        std::istringstream iss(line);
-        while (iss >> weight) {
-            weights.emplace_back(weight);
+        auto it_line = line.begin();
+        auto ok = phrase_parse(it_line, line.end(), *x3::float_, x3::space, weights);
+        if (!ok || it_line != line.end()) {
+            myprintf("\nFailed to parse weight file. Error on line %d.\n",
+                    linecount + 2); //+1 from version line, +1 from 0-indexing
+            return {0,0};
         }
         if (linecount < plain_conv_wts) {
             if (linecount % 4 == 0) {
