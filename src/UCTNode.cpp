@@ -44,8 +44,8 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float score, float init_eval)
-    : m_move(vertex), m_score(score), m_init_eval(init_eval) {
+UCTNode::UCTNode(int vertex, float score, float init_eval, UCTNode* parent)
+    : m_parent(parent), m_move(vertex), m_score(score), m_init_eval(init_eval) {
 }
 
 bool UCTNode::first_visit() const {
@@ -131,7 +131,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
     m_children.reserve(nodelist.size());
     for (const auto& node : nodelist) {
         m_children.emplace_back(
-            std::make_unique<UCTNode>(node.second, node.first, init_eval)
+            std::make_unique<UCTNode>(node.second, node.first, init_eval, this)
         );
     }
 
@@ -249,6 +249,9 @@ void UCTNode::virtual_loss_undo() {
 
 void UCTNode::update(float eval) {
     m_visits++;
+    if(m_parent != nullptr) {
+        m_parent->add_parent_visit(1);
+    }
     accumulate_eval(eval);
 }
 
@@ -258,6 +261,10 @@ bool UCTNode::has_children() const {
 
 void UCTNode::set_visits(int visits) {
     m_visits = visits;
+    if(m_parent != nullptr) {
+        m_parent->add_parent_visit(visits);
+    }
+    
 }
 
 float UCTNode::get_score() const {
@@ -320,13 +327,13 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
     // Count parentvisits.
     // We do this manually to avoid issues with transpositions.
-    auto parentvisits = size_t{0};
+  /*  auto parentvisits = size_t{0};
     for (const auto& child : m_children) {
         if (child->valid()) {
             parentvisits += child->get_visits();
         }
-    }
-    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
+    }*/
+    auto numerator = static_cast<float>(std::sqrt((double)m_parentVisits));
 
     for (const auto& child : m_children) {
         if (!child->valid()) {

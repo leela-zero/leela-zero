@@ -90,7 +90,7 @@ bool UCTSearch::advance_to_new_rootstate() {
         // Can happen if user plays multiple moves in a row by same player
         return false;
     }
-
+    m_root->set_null_parent();
     return true;
 }
 
