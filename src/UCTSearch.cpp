@@ -359,7 +359,7 @@ bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
                 || visits >= m_maxvisits
                 || elapsed_centis >= time_for_move;
 
-    if (stop || !cfg_timemanage) {
+    if (stop || cfg_timemanage == OFF) {
         return stop;
     }
 
