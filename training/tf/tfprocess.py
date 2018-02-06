@@ -228,7 +228,7 @@ class TFProcess:
             sum_mse /= (4.0 * test_batches)
             test_summaries = tf.Summary(value=[
                 tf.Summary.Value(tag="Accuracy", simple_value=sum_accuracy),
-                tf.Summary.Value(tag="Policy loss", simple_value=sum_policy),
+                tf.Summary.Value(tag="Policy Loss", simple_value=sum_policy),
                 tf.Summary.Value(tag="MSE Loss", simple_value=sum_mse)])
             self.test_writer.add_summary(test_summaries, steps)
             print("step {}, policy={:g} training accuracy={:g}%, mse={:g}".\
