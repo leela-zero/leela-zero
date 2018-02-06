@@ -23,9 +23,14 @@
 #include <limits>
 #include <vector>
 
-
 #include "Random.h"
 #include "Utils.h"
+
+// Test should fail about this often from distribution not looking uniform.
+// Increasing this allows better detection of bad RNG but increase the chance
+// of test failure with acceptable RNG implemantation. On my system RNG seems
+// to be a tiny bit not random and test fail about twice as often as predicted.
+constexpr auto ALPHA = 0.0001;
 
 using namespace Utils;
 
@@ -52,10 +57,6 @@ TEST(UtilsTest, CeilMultiple) {
     EXPECT_EQ(ceilMultiple(99, 100), (size_t)100);
 }
 
-bool NotRejectNull(double p, double alpha) {
-    return p >= (alpha/2) && p <= (1-alpha/2);
-}
-
 double randomlyDistributedProbability(std::vector<short> values, double expected) {
     auto count = values.size();
 
@@ -79,6 +80,10 @@ double randomlyDistributedProbability(std::vector<short> values, double expected
     return boost::math::gamma_p(degrees_of_freedom / 2.0, x / 2.0);
 }
 
+bool rngBucketsLookRandom(double p, double alpha) {
+    return p >= (alpha/2) && p <= (1-alpha/2);
+}
+
 TEST(UtilsTest, Randuint16_max) {
     // 0 causes Random to use thread id.
     auto rng = std::make_unique<Random>(0);
@@ -91,10 +96,7 @@ TEST(UtilsTest, Randuint16_max) {
     }
 
     auto p = randomlyDistributedProbability(count, expected);
-
-    // Test should fail this often from distribution not looking uniform.
-    auto alpha = 0.0001;
-    EXPECT_PRED2(NotRejectNull, p, alpha);
+    EXPECT_PRED2(rngBucketsLookRandom, p, ALPHA);
 }
 
 TEST(UtilsTest, Randuint16_small) {
@@ -109,10 +111,7 @@ TEST(UtilsTest, Randuint16_small) {
     }
 
     auto p = randomlyDistributedProbability(count, expected);
-
-    // Test should fail this often from distribution not looking uniform.
-    auto alpha = 0.0001;
-    EXPECT_PRED2(NotRejectNull, p, alpha);
+    EXPECT_PRED2(rngBucketsLookRandom, p, ALPHA);
 }
 
 TEST(UtilsTest, Randuint64_partial) {
@@ -128,10 +127,7 @@ TEST(UtilsTest, Randuint64_partial) {
     }
 
     auto p = randomlyDistributedProbability(count, expected);
-
-    // Test should fail this often from distribution not looking uniform.
-    auto alpha = 0.0001;
-    EXPECT_PRED2(NotRejectNull, p, alpha);
+    EXPECT_PRED2(rngBucketsLookRandom, p, ALPHA);
 }
 
 TEST(UtilsTest, Randflt) {
@@ -146,8 +142,5 @@ TEST(UtilsTest, Randflt) {
     }
 
     auto p = randomlyDistributedProbability(count, expected);
-
-    // Test should fail this often from distribution not looking uniform.
-    auto alpha = 0.0001;
-    EXPECT_PRED2(NotRejectNull, p, alpha);
+    EXPECT_PRED2(rngBucketsLookRandom, p, ALPHA);
 }
