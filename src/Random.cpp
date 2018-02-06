@@ -57,24 +57,9 @@ std::uint64_t Random::gen(void) {
     return result;
 }
 
-std::uint16_t Random::randuint16(const uint16_t max) {
-    std::uniform_int_distribution<uint32_t> dis(0, max);
-    return dis(*this);
-}
-
-std::uint32_t Random::randuint32(const uint32_t max) {
-    std::uniform_int_distribution<uint32_t> dis(0, max);
-    return dis(*this);
-}
-
 std::uint64_t Random::randuint64(const uint64_t max) {
-    std::uniform_int_distribution<uint64_t> dis(0, max);
-    return dis(*this);
-}
-
-float Random::randflt(void) {
-    std::uniform_real_distribution<> dis(0.0, 1.0);
-    return dis(*this);
+    const uint64_t inclusive_max = max - 1;
+    return std::uniform_int_distribution<uint64_t>{0, inclusive_max}(*this);
 }
 
 std::uint64_t Random::randuint64() {

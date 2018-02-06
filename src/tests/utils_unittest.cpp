@@ -84,53 +84,7 @@ bool rngBucketsLookRandom(double p, double alpha) {
     return p >= (alpha/2) && p <= (1-alpha/2);
 }
 
-TEST(UtilsTest, Randuint16_max) {
-    // 0 causes Random to use thread id.
-    auto rng = std::make_unique<Random>(0);
-
-    auto expected = size_t{40};
-    auto max = std::numeric_limits<std::uint16_t>::max();
-    auto count = std::vector<short>(max + 1, 0);
-    for (auto i = size_t{0}; i < expected * max; i++) {
-        count[rng->randuint16(max)]++;
-    }
-
-    auto p = randomlyDistributedProbability(count, expected);
-    EXPECT_PRED2(rngBucketsLookRandom, p, ALPHA);
-}
-
-TEST(UtilsTest, Randuint16_small) {
-    // Using seed = 0 results in pseudo-random seed.
-    auto rng = std::make_unique<Random>(0);
-
-    auto expected = size_t{40};
-    auto max = std::uint16_t{100};
-    auto count = std::vector<short>(max + 1, 0);
-    for (auto i = size_t{0}; i < expected * max; i++) {
-        count[rng->randuint16(max)]++;
-    }
-
-    auto p = randomlyDistributedProbability(count, expected);
-    EXPECT_PRED2(rngBucketsLookRandom, p, ALPHA);
-}
-
-TEST(UtilsTest, Randuint64_partial) {
-    // Using seed = 0 results in pseudo-random seed.
-    auto rng = std::make_unique<Random>(0);
-
-    auto expected = size_t{40};
-    // Verify last 8 bits are random.
-    auto max = std::uint16_t{127};
-    auto count = std::vector<short>(max + 1, 0);
-    for (auto i = size_t{0}; i < expected * max; i++) {
-        count[rng->randuint64(max) & 127]++;
-    }
-
-    auto p = randomlyDistributedProbability(count, expected);
-    EXPECT_PRED2(rngBucketsLookRandom, p, ALPHA);
-}
-
-TEST(UtilsTest, Randflt) {
+TEST(UtilsTest, RandFix) {
     // Using seed = 0 results in pseudo-random seed.
     auto rng = std::make_unique<Random>(0);
 
@@ -138,7 +92,38 @@ TEST(UtilsTest, Randflt) {
     auto max = std::uint16_t{200};
     auto count = std::vector<short>(max, 0);
     for (auto i = size_t{0}; i < expected * max; i++) {
-        count[int(max * rng->randflt())]++;
+        count[rng->randfix<200>()]++;
+    }
+
+    auto p = randomlyDistributedProbability(count, expected);
+    EXPECT_PRED2(rngBucketsLookRandom, p, ALPHA);
+}
+
+TEST(UtilsTest, Randuint64_lastEightBits) {
+    // Using seed = 0 results in pseudo-random seed.
+    auto rng = std::make_unique<Random>(0);
+
+    auto expected = size_t{40};
+    // Verify last 8 bits are random.
+    auto max = std::uint16_t{128};
+    auto count = std::vector<short>(max, 0);
+    for (auto i = size_t{0}; i < expected * max; i++) {
+        count[rng->randuint64() & 127]++;
+    }
+
+    auto p = randomlyDistributedProbability(count, expected);
+    EXPECT_PRED2(rngBucketsLookRandom, p, ALPHA);
+}
+
+TEST(UtilsTest, Randuint64_max) {
+    // Using seed = 0 results in pseudo-random seed.
+    auto rng = std::make_unique<Random>(0);
+
+    auto expected = size_t{40};
+    auto max = std::uint64_t{100};
+    auto count = std::vector<short>(max, 0);
+    for (auto i = size_t{0}; i < expected * max; i++) {
+        count[rng->randuint64(max)]++;
     }
 
     auto p = randomlyDistributedProbability(count, expected);

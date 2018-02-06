@@ -44,15 +44,10 @@ public:
         return gen() % MAX;
     }
 
-    // Random number from [0, max]
-    std::uint16_t randuint16(const std::uint16_t max);
-    std::uint32_t randuint32(const std::uint32_t max);
-    std::uint64_t randuint64(const std::uint64_t max);
-
     std::uint64_t randuint64();
 
-    // Random float from [0, 1)
-    float randflt(void);
+    // Random number from [0, max - 1]
+    std::uint64_t randuint64(const std::uint64_t max);
 
     // return the thread local RNG
     static Random& get_Rng(void);
