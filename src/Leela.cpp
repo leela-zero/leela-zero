@@ -64,10 +64,9 @@ static void parse_commandline(int argc, char *argv[]) {
                        "Requires --noponder.")
         ("visits,v", po::value<int>(),
                      "Weaken engine by limiting the number of visits.")
-        ("timemanage", po::value<int>()->default_value(cfg_timemanage),
-                       "Enable extra time management features.\n"
-                       "0 = off, 1 = on, "
-                       "-1 = auto (off when using -m, otherwise on)")
+        ("timemanage", po::value<std::string>()->default_value("auto"),
+                       "[auto|on|off] Enable extra time management features.\n"
+                       "auto = off when using -m, otherwise on")
         ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
                         "Safety margin for time usage in centiseconds.")
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
@@ -220,10 +219,20 @@ static void parse_commandline(int argc, char *argv[]) {
     }
 
     if (vm.count("timemanage")) {
-        cfg_timemanage = vm["timemanage"].as<int>();
+        auto tm = vm["timemanage"].as<std::string>();
+        if (tm == "auto") {
+            cfg_timemanage = AUTO;
+        } else if (tm == "on") {
+            cfg_timemanage = ON;
+        } else if (tm == "off") {
+            cfg_timemanage = OFF;
+        } else {
+            myprintf("Invalid timemanage value\n");
+            exit(EXIT_FAILURE);
+        }
     }
-    if (cfg_timemanage == -1) {
-        cfg_timemanage = cfg_random_cnt ? 0 : 1;
+    if (cfg_timemanage == AUTO) {
+        cfg_timemanage = cfg_random_cnt ? OFF : ON;
     }
 
     if (vm.count("lagbuffer")) {
