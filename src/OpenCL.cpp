@@ -55,9 +55,9 @@ static std::string sourceCode_convolve1 = R"(
     __kernel
     __attribute__((work_group_size_hint(8, 16, 1)))
     void convolve1(
-                   __global const net_t * in,
-                   __global net_t * merge,
-                   __global const net_t * weights,
+                   __global const net_t * restrict in,
+                   __global net_t * restrict merge,
+                   __global const net_t * restrict weights,
                    __local float * channel_buff,
                    __local float * row_buff) {
         // cl::NDRange global(channels, outputs, row);
@@ -124,8 +124,8 @@ static std::string sourceCode_convolve1 = R"(
     }
 
 __kernel void merge(
-                        __global const net_t * in,
-                        __global net_t * out,
+                        __global const net_t * restrict in,
+                        __global net_t * restrict out,
                         __private const int channels) {
         // cl::NDRange global(outputs, 19*19);
         const int gx = get_global_id(0);
@@ -146,7 +146,7 @@ __kernel void merge(
 )";
 
 static std::string sourceCode_convolve3 = R"(
-void __in_transform_eq(float x[4][4], __global float *V, int offset, int CPpad) {
+void __in_transform_eq(float x[4][4], __global float * restrict V, int offset, int CPpad) {
     float T1[4][4];
 
     T1[0][0] = x[0][0] - x[2][0];
@@ -184,7 +184,7 @@ void __in_transform_eq(float x[4][4], __global float *V, int offset, int CPpad) 
     V[(3*4 + 3)*CPpad + offset] = T1[3][1] - T1[3][3];
 }
 
-__kernel void in_transform(__global net_t *in, __global float *V,
+__kernel void in_transform(__global net_t * restrict in, __global float * restrict V,
                            const int C, const int Cpad,
                            const int Ppad) {
     const int W = 19;
@@ -225,7 +225,8 @@ __kernel void in_transform(__global net_t *in, __global float *V,
     }
 }
 
-void __out_transform_eq(__global float *M, float o[4], int Kpad, int Ppad, int block_x, int block_y)
+void __out_transform_eq(__global const float * restrict M, float o[4],
+                        int Kpad, int Ppad, int block_x, int block_y)
 {
     const int W = 19;
     const int H = 19;
@@ -255,13 +256,13 @@ void __out_transform_eq(__global float *M, float o[4], int Kpad, int Ppad, int b
            temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
 }
 
-__kernel void out_transform_fused_bn(__global float *M,
-                                     __global net_t *Y,
+__kernel void out_transform_fused_bn(__global const float * restrict M,
+                                     __global net_t * restrict Y,
                                      const int K,
                                      const int Kpad, const int Ppad,
-                                     __global const net_t * residual,
-                                     __constant const net_t * means,
-                                     __constant const net_t * stddivs) {
+                                     __global const net_t * restrict residual,
+                                     __constant const net_t * restrict means,
+                                     __constant const net_t * restrict stddivs) {
     const int W = 19;
     const int H = 19;
     const int WTILES = (W + 1) / 2;
@@ -302,15 +303,15 @@ __kernel void out_transform_fused_bn(__global float *M,
 }
 
 __kernel void out_transform_fused_bn_in(
-                                     __global float *M,
-                                     __global net_t *Y,
-                                     __global net_t *V,
+                                     __global const float * restrict M,
+                                     __global net_t * restrict Y,
+                                     __global net_t * restrict V,
                                      const int K,
                                      const int Kpad, const int Ppad, const int Cpad,
-                                     __global const net_t * residual,
-                                     __constant const net_t * means,
-                                     __constant const net_t * stddivs,
-                                     __local float *ybuf) {
+                                     __global const net_t * restrict residual,
+                                     __constant const net_t * restrict means,
+                                     __constant const net_t * restrict stddivs,
+                                     __local float * ybuf) {
     const int W = 19;
     const int H = 19;
     const int T = W*H;
@@ -321,7 +322,6 @@ __kernel void out_transform_fused_bn_in(
     const int k = get_global_id(0);
     const int kg = get_local_id(0);
     const int block = get_global_id(1);
-    const int chT = k*(T);
 
     const int block_x = block % WTILES;
     const int block_y = block / WTILES;
@@ -368,9 +368,9 @@ __kernel void out_transform_fused_bn_in(
         // Cache input tile and handle zero padding
         float xx[4][4];
         for (int i = 0; i < 4; i++) {
+            int b = yin + i;
             for (int j = 0; j < 4; j++) {
                 int a = xin + j;
-                int b = yin + i;
                 if (b >= 0 && a >= 0 && b < H && a < W) {
                     xx[i][j] = ybuf[kg * T + b*W + a];
                 } else {
@@ -390,7 +390,6 @@ const std::string sourceCode_sgemm =
     #include "clblast_level3/xgemm_part1.opencl"
     #include "clblast_level3/xgemm_part2.opencl"
     #include "clblast_level3/xgemm_part3.opencl"
-    #include "clblast_level3/xgemm_part4.opencl"
     #include "clblast_level3/xgemm_batched.opencl"
 ;
 

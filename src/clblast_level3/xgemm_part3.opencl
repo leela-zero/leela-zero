@@ -20,7 +20,7 @@ R"(
 // Main body of the matrix-multiplication algorithm. It calls various (inlined) functions.
 INLINE_FUNC void XgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
                            const __global realM* restrict agm, const __global realN* restrict bgm,
-                           __global realM* cgm, const real alpha, const real beta
+                           __global realM* cgm
                            #if SA == 1 && SB == 1
                              , LOCAL_PTR realM* alm, LOCAL_PTR realN* blm
                            #elif SA == 1
@@ -157,8 +157,8 @@ INLINE_FUNC void XgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
     barrier(CLK_GLOBAL_MEM_FENCE);
   #endif
 
-  // Stores an MWG * NWG tile of results and performs the multiplication with alpha and beta
-  StoreResults(cgm, cpm, kSizeM, alpha, beta);
+  // Stores an MWG * NWG tile of results
+  StoreResults(cgm, cpm, kSizeM);
 }
 
 // =================================================================================================

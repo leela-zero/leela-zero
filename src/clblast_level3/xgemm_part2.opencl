@@ -65,10 +65,8 @@ INLINE_FUNC realM MultiplyAddVector(realM cvec, const realM avec, const real bva
 
 // =================================================================================================
 
-// Merges the results in Cpm with the global array in Cgm. This also performs the multiplication
-// with the constants: Cgm = alpha*A*B + beta*Cgm = alpha*Cpm + beta*Cgm
-INLINE_FUNC void StoreResults(__global realM* cgm, realM cpm[NWI*MWI/VWM], const int kSizeM,
-                              const real alpha, const real beta) {
+// Merges the results in Cpm with the global array in Cgm.
+INLINE_FUNC void StoreResults(__global realM* cgm, realM cpm[NWI*MWI/VWM], const int kSizeM) {
   #pragma unroll
   for (int _ni = 0; _ni < NWI; _ni += 1) {
     #pragma unroll
@@ -87,92 +85,8 @@ INLINE_FUNC void StoreResults(__global realM* cgm, realM cpm[NWI*MWI/VWM], const
       int idn = ng + GetGroupID1() * NWG;
       int index = idn*(kSizeM/VWM) + idm;
 
-      realM result;
-      realM xval = cpm[_ni * (MWI/VWM) + _mi];
+      cgm[index] = cpm[_ni * (MWI/VWM) + _mi];
 
-      // The final multiplication with alpha (in case beta == 0)
-      if (IsZero(beta)) {
-        #if VWM == 1
-          Multiply(result, alpha, xval);
-        #elif VWM == 2
-          Multiply(result.x, alpha, xval.x);
-          Multiply(result.y, alpha, xval.y);
-        #elif VWM == 4
-          Multiply(result.x, alpha, xval.x);
-          Multiply(result.y, alpha, xval.y);
-          Multiply(result.z, alpha, xval.z);
-          Multiply(result.w, alpha, xval.w);
-        #elif VWM == 8
-          Multiply(result.s0, alpha, xval.s0);
-          Multiply(result.s1, alpha, xval.s1);
-          Multiply(result.s2, alpha, xval.s2);
-          Multiply(result.s3, alpha, xval.s3);
-          Multiply(result.s4, alpha, xval.s4);
-          Multiply(result.s5, alpha, xval.s5);
-          Multiply(result.s6, alpha, xval.s6);
-          Multiply(result.s7, alpha, xval.s7);
-        #elif VWM == 16
-          Multiply(result.s0, alpha, xval.s0);
-          Multiply(result.s1, alpha, xval.s1);
-          Multiply(result.s2, alpha, xval.s2);
-          Multiply(result.s3, alpha, xval.s3);
-          Multiply(result.s4, alpha, xval.s4);
-          Multiply(result.s5, alpha, xval.s5);
-          Multiply(result.s6, alpha, xval.s6);
-          Multiply(result.s7, alpha, xval.s7);
-          Multiply(result.s8, alpha, xval.s8);
-          Multiply(result.s9, alpha, xval.s9);
-          Multiply(result.sA, alpha, xval.sA);
-          Multiply(result.sB, alpha, xval.sB);
-          Multiply(result.sC, alpha, xval.sC);
-          Multiply(result.sD, alpha, xval.sD);
-          Multiply(result.sE, alpha, xval.sE);
-          Multiply(result.sF, alpha, xval.sF);
-        #endif
-      }
-
-      // The final multiplication with alpha and the addition with beta*C
-      else {
-        realM yval = cgm[index];
-        #if VWM == 1
-          AXPBY(result, alpha, xval, beta, yval);
-        #elif VWM == 2
-          AXPBY(result.x, alpha, xval.x, beta, yval.x);
-          AXPBY(result.y, alpha, xval.y, beta, yval.y);
-        #elif VWM == 4
-          AXPBY(result.x, alpha, xval.x, beta, yval.x);
-          AXPBY(result.y, alpha, xval.y, beta, yval.y);
-          AXPBY(result.z, alpha, xval.z, beta, yval.z);
-          AXPBY(result.w, alpha, xval.w, beta, yval.w);
-        #elif VWM == 8
-          AXPBY(result.s0, alpha, xval.s0, beta, yval.s0);
-          AXPBY(result.s1, alpha, xval.s1, beta, yval.s1);
-          AXPBY(result.s2, alpha, xval.s2, beta, yval.s2);
-          AXPBY(result.s3, alpha, xval.s3, beta, yval.s3);
-          AXPBY(result.s4, alpha, xval.s4, beta, yval.s4);
-          AXPBY(result.s5, alpha, xval.s5, beta, yval.s5);
-          AXPBY(result.s6, alpha, xval.s6, beta, yval.s6);
-          AXPBY(result.s7, alpha, xval.s7, beta, yval.s7);
-        #elif VWM == 16
-          AXPBY(result.s0, alpha, xval.s0, beta, yval.s0);
-          AXPBY(result.s1, alpha, xval.s1, beta, yval.s1);
-          AXPBY(result.s2, alpha, xval.s2, beta, yval.s2);
-          AXPBY(result.s3, alpha, xval.s3, beta, yval.s3);
-          AXPBY(result.s4, alpha, xval.s4, beta, yval.s4);
-          AXPBY(result.s5, alpha, xval.s5, beta, yval.s5);
-          AXPBY(result.s6, alpha, xval.s6, beta, yval.s6);
-          AXPBY(result.s7, alpha, xval.s7, beta, yval.s7);
-          AXPBY(result.s8, alpha, xval.s8, beta, yval.s8);
-          AXPBY(result.s9, alpha, xval.s9, beta, yval.s9);
-          AXPBY(result.sA, alpha, xval.sA, beta, yval.sA);
-          AXPBY(result.sB, alpha, xval.sB, beta, yval.sB);
-          AXPBY(result.sC, alpha, xval.sC, beta, yval.sC);
-          AXPBY(result.sD, alpha, xval.sD, beta, yval.sD);
-          AXPBY(result.sE, alpha, xval.sE, beta, yval.sE);
-          AXPBY(result.sF, alpha, xval.sF, beta, yval.sF);
-        #endif
-      }
-      cgm[index] = result;
     }
   }
 }
