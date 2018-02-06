@@ -276,14 +276,14 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
         cfgs *= opts[c].second.size();
     }
 
+    // Don't use thead Rng or determism will depend on if tuner.
     auto rng = Random{0};
 
     for (auto i = 0; i < cfgs; i++) {
         Parameters param = get_parameters_by_int(opts, i);
         if (valid_config_sgemm(param, cfg_sgemm_exhaustive)) {
             if (cfg_sgemm_exhaustive) {
-                auto pick = rng.randflt();
-                if (pick > (1.0f / 16.0f)) {
+                if (rng.randfix<16>() != 0) {
                     continue;
                 }
             }
