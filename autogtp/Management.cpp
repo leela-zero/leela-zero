@@ -561,7 +561,10 @@ void Management::gzipFile(const QString &fileName) {
 }
 
 void Management::saveCurlCmdLine(const QStringList &prog_cmdline, const QString &name) {
-    QFile f("curl_save" + QUuid::createUuid().toRfc4122().toHex() + ".bin");
+    QString fileName = "curl_save" + QUuid::createUuid().toRfc4122().toHex() + ".bin";
+    QLockFile lf(fileName + ".lock");
+    lf.lock();
+    QFile f(fileName);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return;
     }
@@ -585,7 +588,11 @@ void Management::sendAllGames() {
     QFileInfoList list = dir.entryInfoList();
     for (int i = 0; i < list.size(); ++i) {
         QFileInfo fileInfo = list.at(i);
-        QFile file (fileInfo.fileName());
+        QLockFile lf(fileInfo.fileName()+".lock");
+        if (!lf.tryLock()) {
+            continue;
+        }        
+        QFile file (fileInfo.fileName());        
         if (!file.open(QFile::ReadOnly)) {
             continue;
         }
