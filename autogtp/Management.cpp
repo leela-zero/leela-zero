@@ -589,7 +589,7 @@ void Management::sendAllGames() {
     for (int i = 0; i < list.size(); ++i) {
         QFileInfo fileInfo = list.at(i);
         QLockFile lf(fileInfo.fileName()+".lock");
-        if (!lf.tryLock()) {
+        if (!lf.tryLock(10)) {
             continue;
         }        
         QFile file (fileInfo.fileName());        
