@@ -213,6 +213,8 @@ void Validation::saveSprt() {
     out << m_statistic;
     out << m_results;
     f.close();
+    m_results.printResults(m_firstNet, m_secondNet);
+    printSprtStatus(m_statistic.status());
 }
 
 void Validation::loadSprt() {
@@ -234,10 +236,9 @@ void Validation::loadSprt() {
     in >> m_results;
     f.close();
     QFile::remove(fi.fileName());
-    Sprt::Status status = m_statistic.status();
     QTextStream(stdout) << "Initial Statistics" << endl;
     m_results.printResults(m_firstNet, m_secondNet);
-    printSprtStatus(status);
+    printSprtStatus(m_statistic.status());
 }
 
 void Validation::printSprtStatus(const Sprt::Status& status) {
