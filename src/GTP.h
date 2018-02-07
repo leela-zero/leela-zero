@@ -26,16 +26,14 @@
 #include <vector>
 
 #include "GameState.h"
+#include "UCTSearch.h"
 
 extern bool cfg_gtp_mode;
 extern bool cfg_allow_pondering;
 extern int cfg_num_threads;
 extern int cfg_max_playouts;
 extern int cfg_max_visits;
-enum timemanage_t : int {
-    AUTO = -1, OFF = 0, ON = 1
-};
-extern timemanage_t cfg_timemanage;
+extern UCTSearch::timemanage_t cfg_timemanage;
 extern int cfg_lagbuffer_cs;
 extern int cfg_resignpct;
 extern int cfg_noise;

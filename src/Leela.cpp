@@ -221,18 +221,18 @@ static void parse_commandline(int argc, char *argv[]) {
     if (vm.count("timemanage")) {
         auto tm = vm["timemanage"].as<std::string>();
         if (tm == "auto") {
-            cfg_timemanage = AUTO;
+            cfg_timemanage = UCTSearch::AUTO;
         } else if (tm == "on") {
-            cfg_timemanage = ON;
+            cfg_timemanage = UCTSearch::ON;
         } else if (tm == "off") {
-            cfg_timemanage = OFF;
+            cfg_timemanage = UCTSearch::OFF;
         } else {
             myprintf("Invalid timemanage value\n");
             exit(EXIT_FAILURE);
         }
     }
-    if (cfg_timemanage == AUTO) {
-        cfg_timemanage = cfg_random_cnt ? OFF : ON;
+    if (cfg_timemanage == UCTSearch::AUTO) {
+        cfg_timemanage = cfg_random_cnt ? UCTSearch::OFF : UCTSearch::ON;
     }
 
     if (vm.count("lagbuffer")) {

@@ -74,6 +74,10 @@ public:
     static constexpr auto MAX_TREE_SIZE =
         (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
 
+    enum timemanage_t : int {
+        AUTO = -1, OFF = 0, ON = 1
+    };
+
     UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);

@@ -385,12 +385,10 @@ bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
         auto est_playouts_left = playout_rate * time_left;
         if (est_playouts_left < Nfirst - Nsecond) {
             stop = true;
-            if (!cfg_quiet) {
-                myprintf("%.1fs left\n", time_left/100.0f);
-            }
+            myprintf("%.1fs left\n", time_left/100.0f);
         }
     }
-    if (stop && !cfg_quiet) {
+    if (stop) {
         myprintf("Stopping early.\n");
     }
     return stop;
