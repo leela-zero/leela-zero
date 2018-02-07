@@ -31,6 +31,8 @@ public:
     void printResults(const QString& firstNetName,
                       const QString& secondNetName) const;
 
+    friend QTextStream& operator<<(QTextStream& stream, const Results& r);
+    friend QTextStream& operator>>(QTextStream& stream, Results& r);
 private:
     int m_gamesPlayed{0};
     int m_blackWins{0};

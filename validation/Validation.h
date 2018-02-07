@@ -83,10 +83,12 @@ public:
     ~Validation() = default;
     void startGames();
     void wait();
-
+    void loadSprt();
+signals:
+    void sendQuit();
 public slots:
     void getResult(Sprt::GameResult result, int net_one_color);
-
+    void storeSprt();
 private:
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
@@ -104,6 +106,8 @@ private:
     QString m_secondOpts;
     QString m_keepPath;
     void quitThreads();
+    void saveSprt();
+    void printSprtStatus(const Sprt::Status& status);
 };
 
 #endif
