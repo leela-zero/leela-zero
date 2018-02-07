@@ -181,28 +181,23 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 
     auto dirichlet_vector = std::vector<float>{};
     std::gamma_distribution<float> gamma(alpha, 1.0f);
+    auto sample_sum = 0.0f;
     for (size_t i = 0; i < child_cnt; i++) {
-        dirichlet_vector.emplace_back(gamma(Random::get_Rng()));
+        auto v = gamma(Random::get_Rng());
+        dirichlet_vector.emplace_back(v);
+        sample_sum += v;
     }
-
-    auto sample_sum = std::accumulate(begin(dirichlet_vector),
-                                      end(dirichlet_vector), 0.0f);
-
     // If the noise vector sums to 0 or a denormal, then don't try to
     // normalize.
     if (sample_sum < std::numeric_limits<float>::min()) {
         return;
     }
 
-    for (auto& v: dirichlet_vector) {
-        v /= sample_sum;
-    }
-
     child_cnt = 0;
     for (auto& child : m_children) {
         auto score = child->get_score();
-        auto eta_a = dirichlet_vector[child_cnt++];
-        score = score * (1 - epsilon) + epsilon * eta_a;
+        auto eta_a = dirichlet_vector[child_cnt++]/sample_sum - score;
+        score += epsilon * eta_a;
         child->set_score(score);
     }
 }
