@@ -289,14 +289,12 @@ float UCTNode::get_eval(int tomove) const {
         }
         return score;
     } else {
-        // If a node has not been visited yet,
-        // the eval is that of the parent, potentially
-        // minus a constant.
+        // If a node has not been visited yet, the eval is that of the parent.
         auto eval = m_init_eval;
         if (tomove == FastBoard::WHITE) {
             eval = 1.0f - eval;
         }
-        return eval - cfg_fpu_reduction;
+        return eval;
     }
 }
 
@@ -318,23 +316,35 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
     LOCK(get_mutex(), lock);
 
-    // Count parentvisits.
-    // We do this manually to avoid issues with transpositions.
     auto parentvisits = size_t{0};
+    auto num_visited = 0;
+    auto total_visited_eval = 0.0f;
     for (const auto& child : m_children) {
         if (child->valid()) {
+            // Count parentvisits manually to avoid issues with transpositions.
             parentvisits += child->get_visits();
+            if (child->get_visits() > 0) {
+                num_visited += 1;
+                total_visited_eval += child->get_eval(color);
+            }
         }
     }
-    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
 
+    auto avg_visited_eval = 0.0f;
+    if (num_visited > 0) {
+        avg_visited_eval = total_visited_eval / num_visited;
+    }
+    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
     for (const auto& child : m_children) {
         if (!child->valid()) {
             continue;
         }
 
-        // get_eval() will automatically set first-play-urgency
         auto winrate = child->get_eval(color);
+        if (child->get_visits() == 0 && num_visited > 0) {
+            // FPU: Take the average of all visited child evals.
+            winrate = avg_visited_eval;
+        }
         auto psa = child->get_score();
         auto denom = 1.0f + child->get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
