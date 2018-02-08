@@ -289,14 +289,12 @@ float UCTNode::get_eval(int tomove) const {
         }
         return score;
     } else {
-        // If a node has not been visited yet,
-        // the eval is that of the parent, potentially
-        // minus a constant.
+        // If a node has not been visited yet, the eval is that of the parent.
         auto eval = m_init_eval;
         if (tomove == FastBoard::WHITE) {
             eval = 1.0f - eval;
         }
-        return eval - cfg_fpu_reduction;
+        return eval;
     }
 }
 
@@ -318,23 +316,34 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
     LOCK(get_mutex(), lock);
 
-    // Count parentvisits.
-    // We do this manually to avoid issues with transpositions.
     auto parentvisits = size_t{0};
+    auto has_visited_child = false;
+    auto best_visited_eval = 0.0f;
     for (const auto& child : m_children) {
         if (child->valid()) {
+            // Count parentvisits manually to avoid issues with transpositions.
             parentvisits += child->get_visits();
+            if (child->get_visits() > 0) {
+                has_visited_child = true;
+                auto eval = child->get_eval(color);
+                if (eval > best_visited_eval) {
+                    best_visited_eval = eval;
+                }
+            }
         }
     }
-    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
 
+    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
     for (const auto& child : m_children) {
         if (!child->valid()) {
             continue;
         }
 
-        // get_eval() will automatically set first-play-urgency
         auto winrate = child->get_eval(color);
+        if (child->get_visits() == 0 && has_visited_child) {
+            // FPU: Take the lesser of parent eval and best we've seen so far.
+            winrate = std::min(winrate, best_visited_eval);
+        }
         auto psa = child->get_score();
         auto denom = 1.0f + child->get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
