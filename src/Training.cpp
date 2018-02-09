@@ -269,11 +269,12 @@ void Training::dump_debug(const std::string& filename) {
 }
 
 void Training::dump_debug(OutputChunker& outchunk) {
+    auto debug_str = std::string{};
     {
         auto out = std::stringstream{};
         out << "2" << std::endl; // File format version
         out << cfg_resignpct << " " << cfg_weightsfile << std::endl;
-        outchunk.append(out.str());
+        debug_str.append(out.str());
     }
     for (const auto& step : m_data) {
         auto out = std::stringstream{};
@@ -281,8 +282,9 @@ void Training::dump_debug(OutputChunker& outchunk) {
             << " " << step.root_uct_winrate
             << " " << step.child_uct_winrate
             << " " << step.bestmove_visits << std::endl;
-        outchunk.append(out.str());
+        debug_str.append(out.str());
     }
+    outchunk.append(debug_str);
 }
 
 void Training::process_game(GameState& state, size_t& train_pos, int who_won,
