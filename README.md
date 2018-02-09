@@ -116,8 +116,8 @@ source and remove the line that says "#define USE_OPENCL".
     Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
     to the Visual Studio version you have.
     # Build from Visual Studio 2015 or 2017
-    # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to msvc/x64/Release
-    # msvc/x64/Release/leela-zero --weights weights.txt
+    # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to msvc\x64\Release
+    msvc\x64\Release\leelaz.exe --weights weights.txt
 
 ## Example of compiling and running - CMake (macOS/Ubuntu)
 
