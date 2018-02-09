@@ -20,6 +20,7 @@
 
 #include "SPRT.h"
 #include <cmath>
+#include <iostream>
 #include <QtGlobal>
 
 class BayesElo;
@@ -217,4 +218,23 @@ void Sprt::addGameResult(GameResult result)
 std::tuple<int, int, int> Sprt::getWDL() const
 {
     return std::make_tuple(m_wins, m_draws, m_losses);
+}
+
+QTextStream& operator<<(QTextStream& stream, const Sprt& sprt) {
+    stream << sprt.m_elo0 << ' ' << sprt.m_elo1 << ' ';
+    stream << sprt.m_alpha << ' ' << sprt.m_beta << ' ';
+    stream << sprt.m_wins << ' ' << sprt.m_losses << ' ';
+    stream << sprt.m_draws << endl;
+    return stream;
+}
+
+QTextStream& operator>>(QTextStream& stream, Sprt& sprt) {
+    stream >> sprt.m_elo0;
+    stream >> sprt.m_elo1;
+    stream >> sprt.m_alpha;
+    stream >> sprt.m_beta;
+    stream >> sprt.m_wins;
+    stream >> sprt.m_losses;
+    stream >> sprt.m_draws;
+    return stream;
 }

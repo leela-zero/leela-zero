@@ -32,6 +32,7 @@
  */
 
 #include <QMutex>
+#include <QTextStream>
 #include <tuple>
 
 class Sprt
@@ -51,7 +52,8 @@ class Sprt
             NoResult = 0,    //!< Game ended with no result
             Win,        //!< First player won
             Loss,        //!< First player lost
-            Draw        //!< Game was drawn
+            Draw,        //!< Game was drawn
+            NotEnded    //!< Game was interrupted
         };
 
         /*! The status of the test. */
@@ -97,7 +99,8 @@ class Sprt
          * check if H0 or H1 can be accepted.
          */
         void addGameResult(GameResult result);
-
+        friend QTextStream& operator<<(QTextStream& stream, const Sprt& sprt);
+        friend QTextStream& operator>>(QTextStream& stream, Sprt& sprt);
     private:
         double m_elo0;
         double m_elo1;

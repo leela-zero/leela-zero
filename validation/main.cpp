@@ -28,8 +28,8 @@
 #include <QDebug>
 #include <chrono>
 #include <QCommandLineParser>
-#include <iostream>
 #include "../autogtp/Game.h"
+#include "../autogtp/Console.h"
 #include "Validation.h"
 
 constexpr int VALIDATION_VERSION = 1;
@@ -38,9 +38,6 @@ int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
     app.setApplicationName("validation");
     app.setApplicationVersion(QString("v%1").arg(VALIDATION_VERSION));
-
-    QTimer::singleShot(0, &app, SLOT(quit()));
-
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addVersionOption();
@@ -111,29 +108,30 @@ int main(int argc, char *argv[]) {
         gpusNum = 1;
     }
 
-    // Map streams
-    QTextStream cout(stdout, QIODevice::WriteOnly);
-    QTextStream cerr(stderr, QIODevice::WriteOnly);
-    cerr << "validation v" << VALIDATION_VERSION << endl;
+    QTextStream(stdout) << "validation v" << VALIDATION_VERSION << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
-            cerr << "Couldn't create output directory for self-play SGF files!"
+            QTextStream(stdout) << "Couldn't create output directory for self-play SGF files!"
                  << endl;
             return EXIT_FAILURE;
         }
     }
     QMutex mutex;
-    cerr << "SPRT : " << sprtOpt << " h0 " << h0 << " h1 " << h1 << endl; 
-    Validation validate(gpusNum, gamesNum, gpusList,
+    QTextStream(stdout) << "SPRT : " << sprtOpt << " h0 " << h0 << " h1 " << h1 << endl;
+
+    Console *cons = nullptr;
+    Validation *validate = new Validation(gpusNum, gamesNum, gpusList,
                         netList.at(0), netList.at(1),
                         parser.value(keepSgfOption), &mutex,
                         binList.at(0), binList.at(1),
                         optsList.at(0), optsList.at(1),
                         h0, h1
                         );
-    validate.startGames();
-    mutex.lock();
-    cerr.flush();
-    cout.flush();
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, validate, &Validation::storeSprt);
+    validate->loadSprt();
+    validate->startGames();
+    QObject::connect(validate, &Validation::sendQuit, &app, &QCoreApplication::quit);
+    cons = new Console();
+    QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
     return app.exec();
 }
