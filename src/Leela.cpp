@@ -60,14 +60,18 @@ static void parse_commandline(int argc, char *argv[]) {
                       (std::min(2, cfg_num_threads)),
                       "Number of threads to use.")
         ("playouts,p", po::value<int>(),
-                       "Weaken engine by limiting the number of playouts. "
+                       "Weaken engine by limiting the number of playouts."
                        "Requires --noponder.")
         ("visits,v", po::value<int>(),
-                     "Weaken engine by limiting the number of visits. ")
+                     "Weaken engine by limiting the number of visits.")
+        ("timemanage", po::value<std::string>()->default_value("auto"),
+                       "[auto|on|off] Enable extra time management features.\n"
+                       "auto = off when using -m, otherwise on")
         ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
                         "Safety margin for time usage in centiseconds.")
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
-                        "Resign when winrate is less than x%.")
+                        "Resign when winrate is less than x%.\n"
+                        "-1 uses 10% but scales for handicap.")
         ("randomcnt,m", po::value<int>()->default_value(cfg_random_cnt),
                         "Play more randomly the first x moves.")
         ("noise,n", "Enable policy network randomization.")
@@ -212,6 +216,24 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("randomcnt")) {
         cfg_random_cnt = vm["randomcnt"].as<int>();
+    }
+
+    if (vm.count("timemanage")) {
+        auto tm = vm["timemanage"].as<std::string>();
+        if (tm == "auto") {
+            cfg_timemanage = TimeManagement::AUTO;
+        } else if (tm == "on") {
+            cfg_timemanage = TimeManagement::ON;
+        } else if (tm == "off") {
+            cfg_timemanage = TimeManagement::OFF;
+        } else {
+            myprintf("Invalid timemanage value.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (cfg_timemanage == TimeManagement::AUTO) {
+        cfg_timemanage =
+            cfg_random_cnt ? TimeManagement::OFF : TimeManagement::ON;
     }
 
     if (vm.count("lagbuffer")) {
