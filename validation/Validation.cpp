@@ -256,6 +256,7 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
         QTextStream(stdout) << "Engine Error." << endl;
         return;
     }
+    m_syncMutex.lock();
     m_statistic.addGameResult(result);
     m_results.addGameResult(result, net_one_color);
 
