@@ -32,7 +32,7 @@ public:
     Random(std::uint64_t seed = 0);
     void seedrandom(std::uint64_t s);
 
-    // random numbers from 0 to max
+    // Random numbers from [0, max - 1]
     template<int MAX>
     std::uint32_t randfix() {
         static_assert(0 < MAX &&
@@ -44,13 +44,10 @@ public:
         return gen() % MAX;
     }
 
-    std::uint16_t randuint16(const std::uint16_t max);
-    std::uint32_t randuint32(const std::uint32_t max);
-    std::uint32_t randuint32();
     std::uint64_t randuint64();
 
-    // random float from 0 to 1
-    float randflt(void);
+    // Random number from [0, max - 1]
+    std::uint64_t randuint64(const std::uint64_t max);
 
     // return the thread local RNG
     static Random& get_Rng(void);
