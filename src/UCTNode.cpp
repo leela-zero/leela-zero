@@ -296,7 +296,7 @@ float UCTNode::get_eval(int tomove) const {
         if (tomove == FastBoard::WHITE) {
             eval = 1.0f - eval;
         }
-        return eval - cfg_fpu_reduction;
+        return eval;
     }
 }
 
@@ -320,21 +320,32 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
     // Count parentvisits.
     // We do this manually to avoid issues with transpositions.
+    auto total_visited_policy = 0.0f;
     auto parentvisits = size_t{0};
     for (const auto& child : m_children) {
         if (child->valid()) {
             parentvisits += child->get_visits();
+            if (child->get_visits() > 0) {
+                total_visited_policy += child->get_score();
+            }
         }
     }
+
     auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
+    auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
 
     for (const auto& child : m_children) {
         if (!child->valid()) {
             continue;
         }
 
-        // get_eval() will automatically set first-play-urgency
-        auto winrate = child->get_eval(color);
+        auto winrate = 0.5f;
+        if (child->get_visits() > 0) {
+            winrate = child->get_eval(color);
+        } else { // First play urgency
+            winrate = child->get_eval(color) - fpu_reduction;
+        }
+
         auto psa = child->get_score();
         auto denom = 1.0f + child->get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
