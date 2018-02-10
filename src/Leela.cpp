@@ -66,7 +66,7 @@ static void parse_commandline(int argc, char *argv[]) {
                      "Weaken engine by limiting the number of visits.")
         ("timemanage", po::value<std::string>()->default_value("auto"),
                        "[auto|on|off] Enable extra time management features.\n"
-                       "auto = off when using -m, otherwise on")
+                       "auto = off for early random moves, otherwise on")
         ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
                         "Safety margin for time usage in centiseconds.")
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
@@ -230,10 +230,6 @@ static void parse_commandline(int argc, char *argv[]) {
             myprintf("Invalid timemanage value.\n");
             exit(EXIT_FAILURE);
         }
-    }
-    if (cfg_timemanage == TimeManagement::AUTO) {
-        cfg_timemanage =
-            cfg_random_cnt ? TimeManagement::OFF : TimeManagement::ON;
     }
 
     if (vm.count("lagbuffer")) {
