@@ -416,7 +416,9 @@ bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
                 || visits >= m_maxvisits
                 || elapsed_centis >= time_for_move;
 
-    if (stop || cfg_timemanage == TimeManagement::OFF) {
+    auto movenum = static_cast<int>(m_rootstate.get_movenum());
+    if (stop || cfg_timemanage == TimeManagement::OFF
+        || (cfg_timemanage == TimeManagement::AUTO && movenum < cfg_random_cnt)) {
         return stop;
     }
 
