@@ -436,7 +436,9 @@ bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
     if ((m_maxplayouts - playouts < Nfirst - Nsecond)
         || (m_maxvisits - visits < Nfirst - Nsecond)) {
         stop = true;
-    } else if (elapsed_centis > 0) {
+    } else if (elapsed_centis > 100 && playouts > 100) {
+        // Wait for at least 1 second and 100 playouts
+        // so we get a reliable playout_rate.
         auto playout_rate = 1.0f * playouts / elapsed_centis;
         auto time_left = time_for_move - elapsed_centis;
         auto est_playouts_left = playout_rate * time_left;
