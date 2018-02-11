@@ -143,9 +143,6 @@ static void parse_commandline(int argc, char *argv[]) {
     if (vm.count("softmax_temp")) {
         cfg_softmax_temp = vm["softmax_temp"].as<float>();
     }
-    if (vm.count("fpu_reduction")) {
-        cfg_fpu_reduction = vm["fpu_reduction"].as<float>();
-    }
 #endif
 
     if (vm.count("logfile")) {
