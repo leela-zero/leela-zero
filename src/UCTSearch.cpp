@@ -460,7 +460,7 @@ void UCTWorker::operator()() {
         if (result.valid()) {
             m_search->increment_playouts();
         }
-    } while(m_search->is_running() && !m_search->stop_thinking());
+    } while(m_search->is_running());
 }
 
 void UCTSearch::increment_playouts() {
