@@ -70,6 +70,7 @@ std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
 std::string cfg_options_str;
+bool cfg_benchmark;
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
@@ -94,6 +95,7 @@ void GTP::setup_default_parameters() {
     cfg_dumbpass = false;
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
+    cfg_benchmark = false;
 
     // C++11 doesn't guarantee *anything* about how random this is,
     // and in MinGW it isn't random at all. But we can mix it in, which
@@ -184,9 +186,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
         if (xinput[tmp] == 9) {
             input += " ";
         } else if ((xinput[tmp] > 0 && xinput[tmp] <= 9)
-	        || (xinput[tmp] >= 11 && xinput[tmp] <= 31)
-	        || xinput[tmp] == 127) {
-	       continue;
+                || (xinput[tmp] >= 11 && xinput[tmp] <= 31)
+                || xinput[tmp] == 127) {
+               continue;
         } else {
             if (transform_lowercase) {
                 input += std::tolower(xinput[tmp]);
