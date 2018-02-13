@@ -29,7 +29,9 @@
     <ClInclude Include="..\..\src\Im2Col.h" />
     <ClInclude Include="..\..\src\KoState.h" />
     <ClInclude Include="..\..\src\Network.h" />
+    <ClInclude Include="..\..\src\NNCache.h" />
     <ClInclude Include="..\..\src\OpenCL.h" />
+    <ClInclude Include="..\..\src\OpenCLScheduler.h" />
     <ClInclude Include="..\..\src\Random.h" />
     <ClInclude Include="..\..\src\SGFParser.h" />
     <ClInclude Include="..\..\src\SGFTree.h" />
@@ -38,7 +40,7 @@
     <ClInclude Include="..\..\src\TimeControl.h" />
     <ClInclude Include="..\..\src\Timing.h" />
     <ClInclude Include="..\..\src\Training.h" />
-    <ClInclude Include="..\..\src\TTable.h" />
+    <ClInclude Include="..\..\src\Tuner.h" />
     <ClInclude Include="..\..\src\UCTNode.h" />
     <ClInclude Include="..\..\src\UCTSearch.h" />
     <ClInclude Include="..\..\src\Utils.h" />
@@ -54,7 +56,9 @@
     <ClCompile Include="..\..\src\KoState.cpp" />
     <ClCompile Include="..\..\src\Leela.cpp" />
     <ClCompile Include="..\..\src\Network.cpp" />
+    <ClCompile Include="..\..\src\NNCache.cpp" />
     <ClCompile Include="..\..\src\OpenCL.cpp" />
+    <ClCompile Include="..\..\src\OpenCLScheduler.cpp" />
     <ClCompile Include="..\..\src\Random.cpp" />
     <ClCompile Include="..\..\src\SGFParser.cpp" />
     <ClCompile Include="..\..\src\SGFTree.cpp" />
@@ -62,7 +66,7 @@
     <ClCompile Include="..\..\src\TimeControl.cpp" />
     <ClCompile Include="..\..\src\Timing.cpp" />
     <ClCompile Include="..\..\src\Training.cpp" />
-    <ClCompile Include="..\..\src\TTable.cpp" />
+    <ClCompile Include="..\..\src\Tuner.cpp" />
     <ClCompile Include="..\..\src\UCTNode.cpp" />
     <ClCompile Include="..\..\src\UCTSearch.cpp" />
     <ClCompile Include="..\..\src\Utils.cpp" />
@@ -132,6 +136,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>leelaz</TargetName>
+    <IntDir>$(Platform)\$(Configuration)\leelaz\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

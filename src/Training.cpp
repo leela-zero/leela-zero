@@ -16,24 +16,74 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
-#include <cassert>
-#include <iostream>
-#include <fstream>
-#include <algorithm>
-#include <boost/utility.hpp>
-#include "stdlib.h"
-#include "zlib.h"
-#include "string.h"
-
 #include "Training.h"
-#include "UCTNode.h"
+
+#include <algorithm>
+#include <bitset>
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
+#include <utility>
+
+#include "FastBoard.h"
+#include "FullBoard.h"
+#include "GTP.h"
+#include "GameState.h"
+#include "Random.h"
 #include "SGFParser.h"
 #include "SGFTree.h"
-#include "Random.h"
+#include "Timing.h"
+#include "UCTNode.h"
 #include "Utils.h"
+#include "string.h"
+#include "zlib.h"
 
 std::vector<TimeStep> Training::m_data{};
+
+std::ostream& operator <<(std::ostream& stream, const TimeStep& timestep) {
+    stream << timestep.planes.size() << ' ';
+    for (const auto plane : timestep.planes) {
+        stream << plane << ' ';
+    }
+    stream << timestep.probabilities.size() << ' ';
+    for (const auto prob : timestep.probabilities) {
+        stream << prob << ' ';
+    }
+    stream << timestep.to_move << ' ';
+    stream << timestep.net_winrate << ' ';
+    stream << timestep.root_uct_winrate << ' ';
+    stream << timestep.child_uct_winrate << ' ';
+    stream << timestep.bestmove_visits << std::endl;
+    return stream;
+}
+
+std::istream& operator>> (std::istream& stream, TimeStep& timestep) {
+    int planes_size;
+    int prob_size;
+    Network::BoardPlane nn;
+    float prob;
+    stream >> planes_size;
+    for (auto i = 0; i < planes_size; ++i) {
+        stream >> nn;
+        timestep.planes.push_back(nn);
+    }
+    stream >> prob_size;
+    for (auto i = 0; i < prob_size; ++i) {
+        stream >> prob;
+        timestep.probabilities.push_back(prob);
+    }
+    stream >> timestep.to_move;
+    stream >> timestep.net_winrate;
+    stream >> timestep.root_uct_winrate;
+    stream >> timestep.child_uct_winrate;
+    stream >> timestep.bestmove_visits;
+    return stream;
+    
+}
 
 std::string OutputChunker::gen_chunk_name(void) const {
     auto base = std::string{m_basename};
@@ -52,8 +102,8 @@ OutputChunker::~OutputChunker() {
 
 void OutputChunker::append(const std::string& str) {
     m_buffer.append(str);
-    m_step_count++;
-    if (m_step_count >= CHUNK_SIZE) {
+    m_game_count++;
+    if (m_game_count >= CHUNK_SIZE) {
         flush_chunks();
     }
 }
@@ -83,7 +133,7 @@ void OutputChunker::flush_chunks() {
 
     m_buffer.clear();
     m_chunk_count++;
-    m_step_count = 0;
+    m_game_count = 0;
 }
 
 void Training::clear_training() {
@@ -100,23 +150,18 @@ void Training::record(GameState& state, UCTNode& root) {
         Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
     step.net_winrate = result.second;
 
-    const auto best_node = root.get_best_root_child(step.to_move);
-    if (!best_node) {
-        return;
-    }
+    const auto& best_node = root.get_best_root_child(step.to_move);
     step.root_uct_winrate = root.get_eval(step.to_move);
-    step.child_uct_winrate = best_node->get_eval(step.to_move);
-    step.bestmove_visits = best_node->get_visits();
+    step.child_uct_winrate = best_node.get_eval(step.to_move);
+    step.bestmove_visits = best_node.get_visits();
 
     step.probabilities.resize((19 * 19) + 1);
 
     // Get total visit amount. We count rather
     // than trust the root to avoid ttable issues.
     auto sum_visits = 0.0;
-    auto child = root.get_first_child();
-    while (child != nullptr) {
+    for (const auto& child : root.get_children()) {
         sum_visits += child->get_visits();
-        child = child->get_sibling();
     }
 
     // In a terminal position (with 2 passes), we can have children, but we
@@ -127,8 +172,7 @@ void Training::record(GameState& state, UCTNode& root) {
         return;
     }
 
-    child = root.get_first_child();
-    while (child != nullptr) {
+    for (const auto& child : root.get_children()) {
         auto prob = static_cast<float>(child->get_visits() / sum_visits);
         auto move = child->get_move();
         if (move != FastBoard::PASS) {
@@ -137,7 +181,6 @@ void Training::record(GameState& state, UCTNode& root) {
         } else {
             step.probabilities[19 * 19] = prob;
         }
-        child = child->get_sibling();
     }
 
     m_data.emplace_back(step);
@@ -148,7 +191,36 @@ void Training::dump_training(int winner_color, const std::string& filename) {
     dump_training(winner_color, chunker);
 }
 
+void Training::save_training(const std::string& filename) {
+    auto flags = std::ofstream::out;
+    auto out = std::ofstream{filename, flags};
+    save_training(out);
+}
+
+void Training::load_training(const std::string& filename) {
+    auto flags = std::ifstream::in;
+    auto in = std::ifstream{filename, flags};
+    load_training(in);
+}
+
+void Training::save_training(std::ofstream& out) {
+    out << m_data.size() << ' ';
+    for (const auto& step : m_data) {
+        out << step;
+    }
+}
+void Training::load_training(std::ifstream& in) {
+    int steps;
+    in >> steps;
+    for (auto i = 0; i < steps; ++i) {
+        TimeStep step;
+        in >> step;
+        m_data.push_back(step);
+    }
+}
+
 void Training::dump_training(int winner_color, OutputChunker& outchunk) {
+    auto training_str = std::string{};
     for (const auto& step : m_data) {
         auto out = std::stringstream{};
         // First output 16 times an input feature plane
@@ -174,7 +246,7 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
         for (auto it = begin(step.probabilities);
             it != end(step.probabilities); ++it) {
             out << *it;
-            if (boost::next(it) != end(step.probabilities)) {
+            if (next(it) != end(step.probabilities)) {
                 out << " ";
             }
         }
@@ -186,20 +258,23 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
             out << "-1";
         }
         out << std::endl;
-        outchunk.append(out.str());
+        training_str.append(out.str());
     }
+    outchunk.append(training_str);
 }
 
-void Training::dump_stats(const std::string& filename) {
+void Training::dump_debug(const std::string& filename) {
     auto chunker = OutputChunker{filename, true};
-    dump_stats(chunker);
+    dump_debug(chunker);
 }
 
-void Training::dump_stats(OutputChunker& outchunk) {
+void Training::dump_debug(OutputChunker& outchunk) {
+    auto debug_str = std::string{};
     {
         auto out = std::stringstream{};
-        out << "1" << std::endl; // File format version 1
-        outchunk.append(out.str());
+        out << "2" << std::endl; // File format version
+        out << cfg_resignpct << " " << cfg_weightsfile << std::endl;
+        debug_str.append(out.str());
     }
     for (const auto& step : m_data) {
         auto out = std::stringstream{};
@@ -207,8 +282,9 @@ void Training::dump_stats(OutputChunker& outchunk) {
             << " " << step.root_uct_winrate
             << " " << step.child_uct_winrate
             << " " << step.bestmove_visits << std::endl;
-        outchunk.append(out.str());
+        debug_str.append(out.str());
     }
+    outchunk.append(debug_str);
 }
 
 void Training::process_game(GameState& state, size_t& train_pos, int who_won,
@@ -220,45 +296,33 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
 
     do {
         auto to_move = state.get_to_move();
-        auto move = tree_moves[counter];
-        auto this_move = size_t{0};
+        auto move_vertex = tree_moves[counter];
+        auto move_idx = size_t{0};
 
         // Detect if this SGF seems to be corrupted
-        auto moves = state.generate_moves(to_move);
-        auto moveseen = false;
-        for(const auto& gen_move : moves) {
-            if (gen_move == move) {
-                if (move != FastBoard::PASS) {
-                    // get x y coords for actual move
-                    auto xy = state.board.get_xy(move);
-                    this_move = (xy.second * 19) + xy.first;
-                } else {
-                    this_move = (19 * 19); // PASS
-                }
-                moveseen = true;
-                break;
-            }
-        }
-
-        if (!moveseen) {
-            std::cout << "Mainline move not found: " << move << std::endl;
+        if (!state.is_move_legal(to_move, move_vertex)) {
+            std::cout << "Mainline move not found: " << move_vertex << std::endl;
             return;
         }
 
-        // Pick every 1/SKIP_SIZE th position.
-        auto skip = Random::get_Rng().randfix<SKIP_SIZE>();
-        if (skip == 0) {
-            auto step = TimeStep{};
-            step.to_move = state.board.get_to_move();
-            step.planes = Network::NNPlanes{};
-            Network::gather_features(&state, step.planes);
-
-            step.probabilities.resize((19 * 19) + 1);
-            step.probabilities[this_move] = 1.0f;
-
-            train_pos++;
-            m_data.emplace_back(step);
+        if (move_vertex != FastBoard::PASS) {
+            // get x y coords for actual move
+            auto xy = state.board.get_xy(move_vertex);
+            move_idx = (xy.second * 19) + xy.first;
+        } else {
+            move_idx = 19 * 19; // PASS
         }
+
+        auto step = TimeStep{};
+        step.to_move = to_move;
+        step.planes = Network::NNPlanes{};
+        Network::gather_features(&state, step.planes);
+
+        step.probabilities.resize((19 * 19) + 1);
+        step.probabilities[move_idx] = 1.0f;
+
+        train_pos++;
+        m_data.emplace_back(step);
 
         counter++;
     } while (state.forward_move() && counter < tree_moves.size());
@@ -279,44 +343,43 @@ void Training::dump_supervised(const std::string& sgf_name,
     std::shuffle(begin(games), end(games), Random::get_Rng());
     std::cout << "done." << std::endl;
 
-    // Loop over the database multiple times. We will select different
-    // positions from each game on every pass.
-    for (auto repeat = size_t{0}; repeat < SKIP_SIZE; repeat++) {
-        for (auto gamecount = size_t{0}; gamecount < gametotal; gamecount++) {
-            auto sgftree = std::make_unique<SGFTree>();
-            try {
-                sgftree->load_from_string(games[gamecount]);
-            } catch (...) {
-                continue;
-            };
+    Time start;
+    for (auto gamecount = size_t{0}; gamecount < gametotal; gamecount++) {
+        auto sgftree = std::make_unique<SGFTree>();
+        try {
+            sgftree->load_from_string(games[gamecount]);
+        } catch (...) {
+            continue;
+        };
 
-            if (gamecount % (1000) == 0) {
-                std::cout << "Game " << gamecount
-                          << ", " << train_pos << " positions" << std::endl;
-            }
-
-            auto tree_moves = sgftree->get_mainline();
-            // Empty game or couldn't be parsed?
-            if (tree_moves.size() == 0) {
-                continue;
-            }
-
-            auto who_won = sgftree->get_winner();
-            // Accept all komis and handicaps, but reject no usable result
-            if (who_won != FastBoard::BLACK && who_won != FastBoard::WHITE) {
-                continue;
-            }
-
-            auto state =
-                std::make_unique<GameState>(sgftree->follow_mainline_state());
-            // Our board size is hardcoded in several places
-            if (state->board.get_boardsize() != 19) {
-                continue;
-            }
-
-            process_game(*state, train_pos, who_won, tree_moves,
-                        outchunker);
+        if (gamecount > 0 && gamecount % 1000 == 0) {
+            Time elapsed;
+            auto elapsed_s = Time::timediff_seconds(start, elapsed);
+            Utils::myprintf("Game %5d, %5d positions in %5.2f seconds -> %d pos/s\n",
+                gamecount, train_pos, elapsed_s, (int)(train_pos / elapsed_s));
         }
+
+        auto tree_moves = sgftree->get_mainline();
+        // Empty game or couldn't be parsed?
+        if (tree_moves.size() == 0) {
+            continue;
+        }
+
+        auto who_won = sgftree->get_winner();
+        // Accept all komis and handicaps, but reject no usable result
+        if (who_won != FastBoard::BLACK && who_won != FastBoard::WHITE) {
+            continue;
+        }
+
+        auto state =
+            std::make_unique<GameState>(sgftree->follow_mainline_state());
+        // Our board size is hardcoded in several places
+        if (state->board.get_boardsize() != 19) {
+            continue;
+        }
+
+        process_game(*state, train_pos, who_won, tree_moves,
+                    outchunker);
     }
 
     std::cout << "Dumped " << train_pos << " training positions." << std::endl;

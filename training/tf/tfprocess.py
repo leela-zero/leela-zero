@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 #    This file is part of Leela Zero.
-#    Copyright (C) 2017 Gian-Carlo Pascutto
+#    Copyright (C) 2017-2018 Gian-Carlo Pascutto
 #
 #    Leela Zero is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -25,9 +25,13 @@ def weight_variable(shape):
     """Xavier initialization"""
     stddev = np.sqrt(2.0 / (sum(shape)))
     initial = tf.truncated_normal(shape, stddev=stddev)
-    return tf.Variable(initial)
+    weights = tf.Variable(initial)
+    tf.add_to_collection(tf.GraphKeys.REGULARIZATION_LOSSES, weights)
+    return weights
 
 # Bias weights for layers not followed by BatchNorm
+# We do not regularlize biases, so they are not
+# added to the regularlizer collection
 def bias_variable(shape):
     initial = tf.constant(0.0, shape=shape)
     return tf.Variable(initial)
@@ -43,21 +47,35 @@ def conv2d(x, W):
                         strides=[1, 1, 1, 1], padding='SAME')
 
 class TFProcess:
-    def __init__(self, next_batch):
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
-        config = tf.ConfigProto(gpu_options=gpu_options)
-        self.session = tf.Session(config=config)
+    def __init__(self):
+        # Network structure
+        self.RESIDUAL_FILTERS = 128
+        self.RESIDUAL_BLOCKS = 6
 
         # For exporting
         self.weights = []
 
-        # TF variables
-        self.next_batch = next_batch
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
+        config = tf.ConfigProto(gpu_options=gpu_options)
+        self.session = tf.Session(config=config)
+
+        self.training = tf.placeholder(tf.bool)
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
+
+    def init(self, dataset, train_iterator, test_iterator):
+        # TF variables
+        self.handle = tf.placeholder(tf.string, shape=[])
+        iterator = tf.data.Iterator.from_string_handle(
+            self.handle, dataset.output_types, dataset.output_shapes)
+        self.next_batch = iterator.get_next()
+        self.train_handle = self.session.run(train_iterator.string_handle())
+        self.test_handle = self.session.run(test_iterator.string_handle())
+        self.init_net(self.next_batch)
+
+    def init_net(self, next_batch):
         self.x = next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 19 * 19])
         self.y_ = next_batch[1] # tf.placeholder(tf.float32, [None, 362])
         self.z_ = next_batch[2] # tf.placeholder(tf.float32, [None, 1])
-        self.training = tf.placeholder(tf.bool)
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
 
@@ -73,12 +91,16 @@ class TFProcess:
 
         # Regularizer
         regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
-        reg_variables = tf.trainable_variables()
+        reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
         self.reg_term = \
             tf.contrib.layers.apply_regularization(regularizer, reg_variables)
 
+        # For training from a (smaller) dataset of strong players, you will
+        # want to reduce the factor in front of self.mse_loss here.
         loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss + self.reg_term
 
+        # You need to change the learning rate here if you are training
+        # from a self-play training set, for example start with 0.005 instead.
         opt_op = tf.train.MomentumOptimizer(
             learning_rate=0.05, momentum=0.9, use_nesterov=True)
 
@@ -92,9 +114,9 @@ class TFProcess:
         correct_prediction = tf.cast(correct_prediction, tf.float32)
         self.accuracy = tf.reduce_mean(correct_prediction)
 
-        self.avg_policy_loss = None
-        self.avg_mse_loss = None
-        self.avg_reg_term = None
+        self.avg_policy_loss = []
+        self.avg_mse_loss = []
+        self.avg_reg_term = []
         self.time_start = None
 
         # Summary part
@@ -148,62 +170,69 @@ class TFProcess:
         self.saver.restore(self.session, file)
 
     def process(self, batch_size):
+        if not self.time_start:
+            self.time_start = time.time()
         # Run training for this batch
         policy_loss, mse_loss, reg_term, _, _ = self.session.run(
             [self.policy_loss, self.mse_loss, self.reg_term, self.train_op,
                 self.next_batch],
-            feed_dict={self.training: True})
+            feed_dict={self.training: True, self.handle: self.train_handle})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
-        # XXX: use built-in support like tf.moving_average_variables?
         # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
         # get comparable values.
         mse_loss = mse_loss / 4.0
-        decay = 0.999
-        if self.avg_policy_loss:
-            self.avg_policy_loss = decay * self.avg_policy_loss + (1 - decay) * policy_loss
-        else:
-            self.avg_policy_loss = policy_loss
-        if self.avg_mse_loss:
-            self.avg_mse_loss = decay * self.avg_mse_loss + (1 - decay) * mse_loss
-        else:
-            self.avg_mse_loss = mse_loss
-        if self.avg_reg_term:
-            self.avg_reg_term = decay * self.avg_reg_term + (1 - decay) * reg_term
-        else:
-            self.avg_reg_term = reg_term
-        if steps % 100 == 0:
+        self.avg_policy_loss.append(policy_loss)
+        self.avg_mse_loss.append(mse_loss)
+        self.avg_reg_term.append(reg_term)
+        if steps % 1000 == 0:
             time_end = time.time()
             speed = 0
             if self.time_start:
                 elapsed = time_end - self.time_start
-                speed = batch_size * (100.0 / elapsed)
-            print("step {}, policy loss={:g} mse={:g} reg={:g} ({:g} pos/s)".format(
-                steps, self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term, speed))
+                speed = batch_size * (1000.0 / elapsed)
+            avg_policy_loss = np.mean(self.avg_policy_loss or [0])
+            avg_mse_loss = np.mean(self.avg_mse_loss or [0])
+            avg_reg_term = np.mean(self.avg_reg_term or [0])
+            print("step {}, policy={:g} mse={:g} reg={:g} total={:g} ({:g} pos/s)".format(
+                steps, avg_policy_loss, avg_mse_loss, avg_reg_term,
+                # Scale mse_loss back to the original to reflect the actual
+                # value being optimized.
+                # If you changed the factor in the loss formula above, you need
+                # to change it here as well for correct outputs.
+                avg_policy_loss + 1.0 * 4.0 * avg_mse_loss + avg_reg_term,
+                speed))
             train_summaries = tf.Summary(value=[
-                tf.Summary.Value(tag="Policy Loss", simple_value=self.avg_policy_loss),
-                tf.Summary.Value(tag="MSE Loss", simple_value=self.avg_mse_loss)])
+                tf.Summary.Value(tag="Policy Loss", simple_value=avg_policy_loss),
+                tf.Summary.Value(tag="MSE Loss", simple_value=avg_mse_loss)])
             self.train_writer.add_summary(train_summaries, steps)
             self.time_start = time_end
-        # Ideally this would use a seperate dataset and so on...
-        if steps % 2000 == 0:
+            self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term = [], [], []
+        if steps % 8000 == 0:
             sum_accuracy = 0
             sum_mse = 0
-            for _ in range(0, 10):
-                train_accuracy, train_mse, _ = self.session.run(
-                    [self.accuracy, self.mse_loss, self.next_batch],
-                    feed_dict={self.training: False})
-                sum_accuracy += train_accuracy
-                sum_mse += train_mse
-            sum_accuracy /= 10.0
+            sum_policy = 0
+            test_batches = 800
+            for _ in range(0, test_batches):
+                test_policy, test_accuracy, test_mse, _ = self.session.run(
+                    [self.policy_loss, self.accuracy, self.mse_loss,
+                     self.next_batch],
+                    feed_dict={self.training: False,
+                               self.handle: self.test_handle})
+                sum_accuracy += test_accuracy
+                sum_mse += test_mse
+                sum_policy += test_policy
+            sum_accuracy /= test_batches
+            sum_policy /= test_batches
             # Additionally rescale to [0, 1] so divide by 4
-            sum_mse /= (4.0 * 10.0)
+            sum_mse /= (4.0 * test_batches)
             test_summaries = tf.Summary(value=[
                 tf.Summary.Value(tag="Accuracy", simple_value=sum_accuracy),
+                tf.Summary.Value(tag="Policy Loss", simple_value=sum_policy),
                 tf.Summary.Value(tag="MSE Loss", simple_value=sum_mse)])
             self.test_writer.add_summary(test_summaries, steps)
-            print("step {}, training accuracy={:g}%, mse={:g}".format(
-                steps, sum_accuracy*100.0, sum_mse))
+            print("step {}, policy={:g} training accuracy={:g}%, mse={:g}".\
+                format(steps, sum_policy, sum_accuracy*100.0, sum_mse))
             path = os.path.join(os.getcwd(), "leelaz-model")
             save_path = self.saver.save(self.session, path, global_step=steps)
             print("Model saved in file: {}".format(save_path))
@@ -311,10 +340,6 @@ class TFProcess:
         return h_out_2
 
     def construct_net(self, planes):
-        # Network structure
-        RESIDUAL_FILTERS = 128
-        RESIDUAL_BLOCKS = 6
-
         # NCHW format
         # batch, 18 channels, 19 x 19
         x_planes = tf.reshape(planes, [-1, 18, 19, 19])
@@ -322,14 +347,14 @@ class TFProcess:
         # Input convolution
         flow = self.conv_block(x_planes, filter_size=3,
                                input_channels=18,
-                               output_channels=RESIDUAL_FILTERS)
+                               output_channels=self.RESIDUAL_FILTERS)
         # Residual tower
-        for _ in range(0, RESIDUAL_BLOCKS):
-            flow = self.residual_block(flow, RESIDUAL_FILTERS)
+        for _ in range(0, self.RESIDUAL_BLOCKS):
+            flow = self.residual_block(flow, self.RESIDUAL_FILTERS)
 
         # Policy head
         conv_pol = self.conv_block(flow, filter_size=1,
-                                   input_channels=RESIDUAL_FILTERS,
+                                   input_channels=self.RESIDUAL_FILTERS,
                                    output_channels=2)
         h_conv_pol_flat = tf.reshape(conv_pol, [-1, 2*19*19])
         W_fc1 = weight_variable([2 * 19 * 19, (19 * 19) + 1])
@@ -340,7 +365,7 @@ class TFProcess:
 
         # Value head
         conv_val = self.conv_block(flow, filter_size=1,
-                                   input_channels=RESIDUAL_FILTERS,
+                                   input_channels=self.RESIDUAL_FILTERS,
                                    output_channels=1)
         h_conv_val_flat = tf.reshape(conv_val, [-1, 19*19])
         W_fc2 = weight_variable([19 * 19, 256])

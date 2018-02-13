@@ -16,22 +16,22 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
-#include <cctype>
-#include <string>
-#include <sstream>
+#include "GameState.h"
+
 #include <algorithm>
 #include <array>
+#include <cassert>
+#include <cctype>
+#include <iterator>
+#include <memory>
+#include <sstream>
+#include <string>
 
-#include "config.h"
-
-#include "KoState.h"
-#include "GameState.h"
+#include "FastBoard.h"
+#include "FastState.h"
 #include "FullBoard.h"
+#include "KoState.h"
 #include "UCTSearch.h"
-#include "Zobrist.h"
-#include "Random.h"
-#include "Utils.h"
 
 void GameState::init_game(int size, float komi) {
     KoState::init_game(size, komi);
@@ -42,8 +42,8 @@ void GameState::init_game(int size, float komi) {
     m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
 
-    return;
-};
+    m_resigned = FastBoard::EMPTY;
+}
 
 void GameState::reset_game() {
     KoState::reset_game();
@@ -52,6 +52,8 @@ void GameState::reset_game() {
     game_history.emplace_back(std::make_shared<KoState>(*this));
 
     m_timecontrol.reset_clocks();
+
+    m_resigned = FastBoard::EMPTY;
 }
 
 bool GameState::forward_move(void) {
@@ -67,9 +69,6 @@ bool GameState::forward_move(void) {
 bool GameState::undo_move(void) {
     if (m_movenum > 0) {
         m_movenum--;
-
-        // don't actually delete it!
-        //game_history.pop_back();
 
         // this is not so nice, but it should work
         *(static_cast<KoState*>(this)) = *game_history[m_movenum];
@@ -87,24 +86,14 @@ void GameState::rewind(void) {
 }
 
 void GameState::play_move(int vertex) {
-    play_move(board.get_to_move(), vertex);
-}
-
-void GameState::play_pass() {
-    play_move(get_to_move(), FastBoard::PASS);
+    play_move(get_to_move(), vertex);
 }
 
 void GameState::play_move(int color, int vertex) {
-    if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
-        KoState::play_move(color, vertex);
+    if (vertex == FastBoard::RESIGN) {
+        m_resigned = color;
     } else {
-        KoState::play_pass();
-        if (vertex == FastBoard::RESIGN) {
-            std::rotate(rbegin(m_lastmove), rbegin(m_lastmove) + 1,
-                        rend(m_lastmove));
-            m_lastmove[0] = vertex;
-            m_last_was_capture = false;
-        }
+        KoState::play_move(color, vertex);
     }
 
     // cut off any leftover moves from navigating
@@ -112,22 +101,23 @@ void GameState::play_move(int color, int vertex) {
     game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
-bool GameState::play_textmove(std::string color, std::string vertex) {
+bool GameState::play_textmove(const std::string& color,
+                              const std::string& vertex) {
     int who;
-    int column, row;
-    int boardsize = board.get_boardsize();
-
     if (color == "w" || color == "white") {
         who = FullBoard::WHITE;
     } else if (color == "b" || color == "black") {
         who = FullBoard::BLACK;
-    } else return false;
+    } else {
+        return false;
+    }
 
-    if (vertex.size() < 2) return 0;
-    if (!std::isalpha(vertex[0])) return 0;
-    if (!std::isdigit(vertex[1])) return 0;
-    if (vertex[0] == 'i') return 0;
+    if (vertex.size() < 2) return false;
+    if (!std::isalpha(vertex[0])) return false;
+    if (!std::isdigit(vertex[1])) return false;
+    if (vertex[0] == 'i') return false;
 
+    int column, row;
     if (vertex[0] >= 'A' && vertex[0] <= 'Z') {
         if (vertex[0] < 'I') {
             column = 25 + vertex[0] - 'A';
@@ -149,12 +139,18 @@ bool GameState::play_textmove(std::string color, std::string vertex) {
     parsestream >> row;
     row--;
 
-    if (row >= boardsize) return false;
-    if (column >= boardsize) return false;
+    auto boardsize = board.get_boardsize();
+    if (row >= boardsize || column >= boardsize) {
+        return false;
+    }
 
-    int move = board.get_vertex(column, row);
+    auto move = board.get_vertex(column, row);
+    if (board.get_square(move) != FastBoard::EMPTY) {
+        return false;
+    }
 
-    play_move(who, move);
+    set_to_move(who);
+    play_move(move);
 
     return true;
 }
@@ -171,6 +167,14 @@ void GameState::display_state() {
     FastState::display_state();
 
     m_timecontrol.display_times();
+}
+
+int GameState::who_resigned() const {
+    return m_resigned;
+}
+
+bool GameState::has_resigned() const {
+    return m_resigned != FastBoard::EMPTY;
 }
 
 TimeControl& GameState::get_timecontrol() {
@@ -314,8 +318,7 @@ void GameState::place_free_handicap(int stones) {
 
     for (int i = 0; i < stones; i++) {
         auto search = std::make_unique<UCTSearch>(*this);
-
-        int move = search->think(FastBoard::BLACK, UCTSearch::NOPASS);
+        auto move = search->think(FastBoard::BLACK, UCTSearch::NOPASS);
         play_move(FastBoard::BLACK, move);
     }
 
@@ -328,4 +331,10 @@ void GameState::place_free_handicap(int stones) {
     anchor_game_history();
 
     set_handicap(orgstones);
+}
+
+const FullBoard& GameState::get_past_board(int moves_ago) const {
+    assert(moves_ago >= 0 && (unsigned)moves_ago <= m_movenum);
+    assert(m_movenum + 1 <= game_history.size());
+    return game_history[m_movenum - moves_ago]->board;
 }

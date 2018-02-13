@@ -17,21 +17,18 @@
 */
 
 #include "config.h"
+#include "Utils.h"
 
-#include <iostream>
-#include <fstream>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <thread>
 #include <mutex>
+#include <cstdarg>
+#include <cstdio>
+
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/select.h>
 #endif
 
-#include "Utils.h"
 #include "GTP.h"
 
 Utils::ThreadPool thread_pool;
@@ -39,16 +36,11 @@ Utils::ThreadPool thread_pool;
 bool Utils::input_pending(void) {
 #ifdef HAVE_SELECT
     fd_set read_fds;
-    struct timeval timeout;
     FD_ZERO(&read_fds);
     FD_SET(0,&read_fds);
-    timeout.tv_sec = timeout.tv_usec = 0;
+    struct timeval timeout{0,0};
     select(1,&read_fds,NULL,NULL,&timeout);
-    if (FD_ISSET(0,&read_fds)) {
-        return true;
-    } else {
-        return false;
-    }
+    return FD_ISSET(0, &read_fds);
 #else
     static int init = 0, pipe;
     static HANDLE inh;
@@ -70,22 +62,14 @@ bool Utils::input_pending(void) {
             exit(EXIT_FAILURE);
         }
 
-        if (dw) {
-            return true;
-        } else {
-            return false;
-        }
+        return dw;
     } else {
         if (!GetNumberOfConsoleInputEvents(inh, &dw)) {
             myprintf("Nothing at other end - exiting\n");
             exit(EXIT_FAILURE);
         }
 
-        if (dw <= 1) {
-            return false;
-        } else {
-            return true;
-        }
+        return dw > 1;
     }
     return false;
 #endif
@@ -94,7 +78,9 @@ bool Utils::input_pending(void) {
 static std::mutex IOmutex;
 
 void Utils::myprintf(const char *fmt, ...) {
-    if (cfg_quiet) return;
+    if (cfg_quiet) {
+        return;
+    }
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
@@ -108,65 +94,53 @@ void Utils::myprintf(const char *fmt, ...) {
     }
 }
 
-void Utils::gtp_printf(int id, const char *fmt, ...) {
-    va_list ap;
+static void gtp_fprintf(FILE* file, const std::string& prefix,
+                        const char *fmt, va_list ap) {
+    fprintf(file, "%s ", prefix.c_str());
+    vfprintf(file, fmt, ap);
+    fprintf(file, "\n\n");
+}
 
+static void gtp_base_printf(int id, std::string prefix,
+                            const char *fmt, va_list ap) {
     if (id != -1) {
-        fprintf(stdout, "=%d ", id);
-    } else {
-        fprintf(stdout, "= ");
+        prefix += std::to_string(id);
     }
 
-    va_start(ap, fmt);
-    vfprintf(stdout, fmt, ap);
-    va_end(ap);
-    printf("\n\n");
+    gtp_fprintf(stdout, prefix, fmt, ap);
 
     if (cfg_logfile_handle) {
         std::lock_guard<std::mutex> lock(IOmutex);
-        if (id != -1) {
-            fprintf(cfg_logfile_handle, "=%d ", id);
-        } else {
-            fprintf(cfg_logfile_handle, "= ");
-        }
-        va_start(ap, fmt);
-        vfprintf(cfg_logfile_handle, fmt, ap);
-        va_end(ap);
-        fprintf(cfg_logfile_handle, "\n\n");
+        gtp_fprintf(cfg_logfile_handle, prefix, fmt, ap);
     }
+}
+
+void Utils::gtp_printf(int id, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    gtp_base_printf(id, "=", fmt, ap);
+    va_end(ap);
 }
 
 void Utils::gtp_fail_printf(int id, const char *fmt, ...) {
     va_list ap;
-
-    if (id != -1) {
-        fprintf(stdout, "?%d ", id);
-    } else {
-        fprintf(stdout, "? ");
-    }
-
     va_start(ap, fmt);
-    vfprintf(stdout, fmt, ap);
+    gtp_base_printf(id, "?", fmt, ap);
     va_end(ap);
-    printf("\n\n");
-
-    if (cfg_logfile_handle) {
-        std::lock_guard<std::mutex> lock(IOmutex);
-        if (id != -1) {
-            fprintf(cfg_logfile_handle, "?%d ", id);
-        } else {
-            fprintf(cfg_logfile_handle, "? ");
-        }
-        va_start(ap, fmt);
-        vfprintf(cfg_logfile_handle, fmt, ap);
-        va_end(ap);
-        fprintf(cfg_logfile_handle, "\n\n");
-    }
 }
 
-void Utils::log_input(std::string input) {
+void Utils::log_input(const std::string& input) {
     if (cfg_logfile_handle) {
         std::lock_guard<std::mutex> lock(IOmutex);
         fprintf(cfg_logfile_handle, ">>%s\n", input.c_str());
     }
+}
+
+size_t Utils::ceilMultiple(size_t a, size_t b) {
+    if (a % b == 0) {
+        return a;
+    }
+
+    auto ret = a + (b - a % b);
+    return ret;
 }

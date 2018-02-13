@@ -16,21 +16,24 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
-#include <fstream>
-#include <cctype>
-#include <sstream>
-#include <stdexcept>
-#include <memory>
-#include <ctime>
+#include "config.h"
+#include "SGFTree.h"
+
+#include <cassert>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <ctime>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
 
-#include "SGFTree.h"
+#include "FullBoard.h"
+#include "GTP.h"
 #include "KoState.h"
 #include "SGFParser.h"
 #include "Utils.h"
-#include "GTP.h"
 
 using namespace Utils;
 
@@ -82,19 +85,6 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) {
     }
 
     return result;
-}
-
-// the number of states is one more than the number of moves
-int SGFTree::count_mainline_moves(void) {
-    SGFTree * link = this;
-    int count = -1;
-
-    while (link != nullptr) {
-        link = link->get_child(0);
-        count++;
-    }
-
-    return count;
 }
 
 void SGFTree::load_from_string(std::string gamebuff) {
@@ -359,7 +349,7 @@ int SGFTree::get_move(int tomove) {
     return SGFTree::EOT;
 }
 
-FastBoard::square_t SGFTree::get_winner() {
+FastBoard::square_t SGFTree::get_winner() const {
     return m_winner;
 }
 
@@ -402,6 +392,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     header.append("DT[" + std::string(timestr) + "]");
     header.append("SZ[" + std::to_string(size) + "]");
     header.append("KM[" + str(boost::format("%.1f") % komi) + "]");
+    header.append(state->get_timecontrol().to_text_sgf());
 
     auto leela_name = std::string{PROGRAM_NAME};
     leela_name.append(" " + std::string(PROGRAM_VERSION));
@@ -446,11 +437,9 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
 
     while (state->forward_move()) {
         int move = state->get_last_move();
-        if (move == FastBoard::RESIGN) {
-            break;
-        }
+        assert(move != FastBoard::RESIGN);
         std::string movestr = state->board.move_to_text_sgf(move);
-        if (state->get_to_move() == FastBoard::BLACK) {
+        if (state->board.black_to_move()) {
             moves.append(";W[" + movestr + "]");
         } else {
             moves.append(";B[" + movestr + "]");
@@ -460,7 +449,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         }
     }
 
-    if (state->get_last_move() != FastBoard::RESIGN) {
+    if (!state->has_resigned()) {
         float score = state->final_score();
 
         if (score > 0.0f) {
@@ -469,13 +458,14 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
             header.append("RE[W+" + str(boost::format("%.1f") % -score) + "]");
         }
     } else {
-        // Last move was resign, so side to move won
-        if (state->get_to_move() == FastBoard::BLACK) {
+        if (state->who_resigned() == FastBoard::WHITE) {
             header.append("RE[B+Resign]");
         } else {
             header.append("RE[W+Resign]");
         }
     }
+
+    header.append("\nC[" + std::string{PROGRAM_NAME} + " options:" + cfg_options_str + "]");
 
     std::string result(header);
     result.append("\n");

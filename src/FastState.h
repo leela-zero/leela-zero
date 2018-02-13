@@ -19,6 +19,9 @@
 #ifndef FASTSTATE_H_INCLUDED
 #define FASTSTATE_H_INCLUDED
 
+#include <cstddef>
+#include <array>
+#include <string>
 #include <vector>
 
 #include "FullBoard.h"
@@ -29,10 +32,9 @@ public:
     void reset_game();
     void reset_board();
 
-    void play_pass(void);
     void play_move(int vertex);
 
-    std::vector<int> generate_moves(int color);
+    bool is_move_legal(int color, int vertex);
 
     void set_komi(float komi);
     float get_komi() const;
@@ -44,13 +46,10 @@ public:
     void set_passes(int val);
     void increment_passes();
 
-    int estimate_mc_score();
-    float final_score();
+    float final_score() const;
 
     size_t get_movenum() const;
     int get_last_move() const;
-    int get_prevlast_move() const;
-    int get_komove() const;
     void display_state();
     std::string move_to_text(int move);
 
@@ -61,8 +60,7 @@ public:
     int m_passes;
     int m_komove;
     size_t m_movenum;
-    std::array<int, 16> m_lastmove;
-    bool m_last_was_capture;
+    int m_lastmove;
 
 protected:
     void play_move(int color, int vertex);

@@ -60,3 +60,10 @@ So, the current number is a best guess based on these observations. To be sure w
 自对弈的增加了随机性，一旦黑棋在开始阶段选择pass，由于贴目的关系，白棋有很大概率也选择pass获胜。短对局由此产生。
 
 This is expected. Due to randomness of self-play games, once Black choose to pass at the beginning, there is a big chance for White to pass too (7.5 komi advantage for White). See issue #198 for defailed explanation.
+
+## 对局结果错误 ##
+## Wrong score? ##
+
+Leela Zero使用Tromp-Taylor规则(详见<https://senseis.xmp.net/?TrompTaylorRules>)。虽然与中国规则一样贴7.5目，但为计算方便，并不去除死子。因此，结果与使用中国规则计算可能有所不同。不过，不去除死子并不影响模型的训练结果，因为双方会将死子自行提掉。
+
+Leela Zero uses Tromp-Taylor rules (see https://senseis.xmp.net/?TrompTaylorRules). Although its komi is 7.5 as in Chinese rule, for simplicity, Tromp-Taylor rules do not remvoe dead stones. Thus, the result may be different from that calcuated using Chinese rule. However, keeping dead stones does not affect training results because both players are expected to capture dead stones themselves.

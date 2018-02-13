@@ -16,38 +16,20 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ctime>
-#include <cstdlib>
-
-#include "config.h"
 #include "Timing.h"
 
+#include <chrono>
 
-int Time::timediff (Time start, Time end) {
-    int diff;
 
-#ifdef GETTICKCOUNT
-    diff = ((end.m_time-start.m_time)+5)/10;
-#elif (defined(GETTIMEOFDAY))
-    diff = ((end.m_time.tv_sec-start.m_time.tv_sec)*100
-           + (end.m_time.tv_usec-start.m_time.tv_usec)/10000);
-#else
-    diff = (100*(int) difftime (end.m_time, start.m_time));
-#endif
+int Time::timediff_centis(Time start, Time end) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>
+        (end.m_time - start.m_time).count() / 10;
+}
 
-    return (abs(diff));
+double Time::timediff_seconds(Time start, Time end) {
+    return std::chrono::duration<double>(end.m_time - start.m_time).count();
 }
 
 Time::Time(void) {
-
-#if defined (GETTICKCOUNT)
-    m_time = (int)(GetTickCount());
-#elif defined(GETTIMEOFDAY)
-    struct timeval tmp;
-    gettimeofday(&tmp, NULL);
-    m_time = tmp;
-#else
-    m_time = time (0);
-#endif
-
+    m_time = std::chrono::steady_clock::now();
 }

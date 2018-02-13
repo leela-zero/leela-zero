@@ -19,9 +19,9 @@
 #ifndef GAMESTATE_H_INCLUDED
 #define GAMESTATE_H_INCLUDED
 
-#include <vector>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "FastState.h"
 #include "FullBoard.h"
@@ -46,11 +46,12 @@ public:
     void rewind(void); /* undo infinite */
     bool undo_move(void);
     bool forward_move(void);
+    const FullBoard& get_past_board(int moves_ago) const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
-    void play_pass();
-    bool play_textmove(std::string color, std::string vertex);
+    bool play_textmove(const std::string& color,
+                       const std::string& vertex);
 
     void start_clock(int color);
     void stop_clock(int color);
@@ -61,12 +62,15 @@ public:
     void adjust_time(int color, int time, int stones);
 
     void display_state();
+    bool has_resigned() const;
+    int who_resigned() const;
 
 private:
     bool valid_handicap(int stones);
 
-    std::vector<std::shared_ptr<KoState>> game_history;
+    std::vector<std::shared_ptr<const KoState>> game_history;
     TimeControl m_timecontrol;
+    int m_resigned{FastBoard::EMPTY};
 };
 
 #endif

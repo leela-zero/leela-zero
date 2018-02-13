@@ -21,30 +21,35 @@
 
 #include "Job.h"
 #include "Order.h"
+
 #include <QThread>
 #include <QMutex>
+
+class Management;
 
 class Worker : public QThread {
    Q_OBJECT
 public:
     enum {
         RUNNING = 0,
-        FINISHING
+        FINISHING,
+        STORING
     };
-    Worker(int index, const QString& gpuIndex,const QString& keep);
+    Worker(int index, const QString& gpuIndex, Management *parent);
     ~Worker() = default;
     void order(Order o);
     void doFinish() { m_job->finish(); m_state.store(FINISHING); }
+    void doStore();
     void run() override;
 signals:
     void resultReady(Order o, Result r, int index, int duration);
 private:
     int m_index;
     QAtomicInt m_state;
-    QString m_keepPath;
     QString m_gpu;
     Order m_todo;
     Job *m_job;
+    Management *m_boss;
     void createJob(int type);
 };
 

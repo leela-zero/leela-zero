@@ -1,19 +1,28 @@
 # git shortlog -sn | cut -c8- with manually removed duplicates
 
 Gian-Carlo Pascutto
-Seth Troisi
 Marco Calignano
+Seth Troisi
 Henrik Forstén
-earthengine
 Andy Olsen
-Arseny Krasutsky
 Bood Qian
 Junhee Yoo
+earthengine
+Arseny Krasutsky
+michael
+ywrt
 Mankit Pong
 Peter Wen
 tux3
 Ashley Griffiths
 Barry Becker
+Jiannan Liu
+Joe Ren
 Nate
+Shen-Ta Hsieh(BestSteve)
 Virgile Andreani
+Xingcan LAN
 cheshirecats
+gaieepo
+zediir
+Пахотин Иван

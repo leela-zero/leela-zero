@@ -47,49 +47,57 @@ def to_move_str(to_move):
     if (to_move): return "W"
     else: return "B"
 
+def parseGameBody(filename, fh, tfh, verbose):
+    gs = GameStats(filename)
+    movenum = 0
+    while 1:
+        movenum += 1
+        for _ in range(16):
+            line = tfh.readline()               # Board input planes
+        if not line: break
+        to_move = int(tfh.readline())           # 0 = black, 1 = white
+        policy_weights = tfh.readline()         # 361 moves + 1 pass
+        side_to_move_won = int(tfh.readline())  # 1 = side to move won, -1 = lost
+        if not gs.winner:
+            if side_to_move_won == 1: gs.winner = to_move
+            else : gs.winner = 1 - to_move
+        (netwinrate, root_uctwinrate, child_uctwinrate, bestmovevisits) = fh.readline().split()
+        netwinrate = float(netwinrate)
+        root_uctwinrate = float(root_uctwinrate)
+        child_uctwinrate = float(child_uctwinrate)
+        bestmovevisits = int(bestmovevisits)
+        if side_to_move_won == 1:
+            if verbose >= 3: print("+", to_move, movenum, netwinrate, child_uctwinrate, bestmovevisits)
+            if not gs.resign_type and child_uctwinrate < resignrate:
+                if verbose >= 1:
+                    print("Incorrect resign -- %s rr=%0.3f wr=%0.3f winner=%s movenum=%d" %
+                        (filename, resignrate, child_uctwinrate, to_move_str(to_move), movenum))
+                    if verbose >= 3:
+                        print("policy_weights", policy_weights)
+                gs.resign_type = "Incorrect"
+                gs.resign_movenum = movenum
+        else:
+            if verbose >= 2: print("-", to_move, movenum, netwinrate, child_uctwinrate, bestmovevisits)
+            if not gs.resign_type and child_uctwinrate < resignrate:
+                if verbose >= 2: print("Correct resign -- %s" % (filename))
+                gs.resign_type = "Correct"
+                gs.resign_movenum = movenum
+    gs.total_moves = movenum
+    return gs
+
 def parseGames(filenames, resignrate, verbose):
     gsd = {}
     for filename in filenames:
         training_filename = filename.replace(".debug", "")
-        gs = GameStats(filename)
-        gsd[filename] = gs
         with open(filename) as fh, open(training_filename) as tfh:
-            movenum = 0
-            version = fh.readline()
-            assert version == "1\n"
-            while 1:
-                movenum += 1
-                for _ in range(16):
-                    line = tfh.readline()               # Board input planes
-                if not line: break
-                to_move = int(tfh.readline())           # 0 = black, 1 = white
-                policy_weights = tfh.readline()         # 361 moves + 1 pass
-                side_to_move_won = int(tfh.readline())  # 1 = side to move won, -1 = lost
-                if not gs.winner:
-                    if side_to_move_won == 1: gs.winner = to_move
-                    else : gs.winner = 1 - to_move
-                (netwinrate, root_uctwinrate, child_uctwinrate, bestmovevisits) = fh.readline().split()
-                netwinrate = float(netwinrate)
-                root_uctwinrate = float(root_uctwinrate)
-                child_uctwinrate = float(child_uctwinrate)
-                bestmovevisits = int(bestmovevisits)
-                if side_to_move_won == 1:
-                    if verbose >= 2: print("+", to_move, movenum, netwinrate, child_uctwinrate, bestmovevisits)
-                    if not gs.resign_type and child_uctwinrate < resignrate:
-                        if verbose >= 1:
-                            print("Incorrect resign -- %s rr=%0.3f wr=%0.3f winner=%s movenum=%d" %
-                                (filename, resignrate, child_uctwinrate, to_move_str(to_move), movenum))
-                            if verbose >= 2:
-                                print("policy_weights", policy_weights)
-                        gs.resign_type = "Incorrect"
-                        gs.resign_movenum = movenum
-                else:
-                    if verbose >= 2: print("-", to_move, movenum, netwinrate, child_uctwinrate, bestmovevisits)
-                    if not gs.resign_type and child_uctwinrate < resignrate:
-                        if verbose >= 2: print("Correct resign -- %s" % (filename))
-                        gs.resign_type = "Correct"
-                        gs.resign_movenum = movenum
-            gs.total_moves = movenum
+            version = fh.readline().rstrip()
+            assert version == "2"
+            (cfg_resignpct, network) = fh.readline().split()
+            cfg_resignpct = int(cfg_resignpct)
+            if cfg_resignpct == 0:
+                gsd[filename] = parseGameBody(filename, fh, tfh, verbose)
+            elif verbose >= 2:
+                print("%s was played with -r %d, skipping" % (filename, cfg_resignpct))
     return gsd
 
 def resignStats(gsd, resignrate):
@@ -154,19 +162,23 @@ Process flow:
     gunzip savedir/*.gz
 
   Analyze results with this script:
-    ./resign_analysis.py savedir/*.txt.debug.0
+    ./resign_analysis.py savedir/*.debug.txt.0
 
-Note the script takes the debug files hash.txt.debug.0
+Note the script takes the debug files hash.debug.txt.0
 as the input arguments, but it also expects the training
 files hash.txt.0 to be in the same directory."""
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=usage_str)
     default_resignrates="0.5,0.2,0.15,0.1,0.05,0.02,0.01"
     parser.add_argument("--r", metavar="Resign_rates", dest="resignrates", type=str, default=default_resignrates, help="comma separated resign thresholds (default %s)" % (default_resignrates))
     parser.add_argument("--v", metavar="Verbose", dest="verbose", type=int, default=0, help="Verbosity level (default 0)")
-    parser.add_argument("data", metavar="files", type=str, nargs="+", help="Debug data files (*.txt.debug.0)")
+    parser.add_argument("data", metavar="files", type=str, nargs="+", help="Debug data files (*.debug.txt.0)")
     args = parser.parse_args()
     resignrates = [float(i) for i in args.resignrates.split(",")]
+    print("Total games to analyze: %d" % len(args.data))
     for resignrate in (resignrates):
         print("Resign rate: %0.2f" % (resignrate))
         gsd = parseGames(args.data, resignrate, args.verbose)
-        resignStats(gsd, resignrate)
+        if gsd:
+            resignStats(gsd, resignrate)
+        else:
+            print("No games to analyze (for more info try running with --v 2)")

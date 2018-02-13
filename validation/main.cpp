@@ -28,8 +28,8 @@
 #include <QDebug>
 #include <chrono>
 #include <QCommandLineParser>
-#include <iostream>
 #include "../autogtp/Game.h"
+#include "../autogtp/Console.h"
 #include "Validation.h"
 
 constexpr int VALIDATION_VERSION = 1;
@@ -38,9 +38,6 @@ int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
     app.setApplicationName("validation");
     app.setApplicationVersion(QString("v%1").arg(VALIDATION_VERSION));
-
-    QTimer::singleShot(0, &app, SLOT(quit()));
-
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addVersionOption();
@@ -49,6 +46,18 @@ int main(int argc, char *argv[]) {
         {"n", "network"},
             "Networks to use as players in competition mode (two are needed).",
             "filename");
+    QCommandLineOption binaryOption(
+        {"b", "binary"},
+            "Binary to execute for the game (default ./leelaz).",
+            "filename");
+    QCommandLineOption optionsOption(
+        {"o", "options"},
+            "Options for the binary given by -b (default '-g -p 1600 --noponder -t 1 -q -d -r 0 -w').",
+            "opt_string");
+    QCommandLineOption sprtOption(
+        {"s", "sprt"},
+            "Set the SPRT hypothesis (default '0.0:35.0').",
+            "lower:upper", "0.0:35.0");
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
             "Play 'gamesNum' games on one GPU at the same time.",
@@ -65,6 +74,9 @@ int main(int argc, char *argv[]) {
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(networkOption);
+    parser.addOption(binaryOption);
+    parser.addOption(optionsOption);
+    parser.addOption(sprtOption);
     parser.addOption(keepSgfOption);
 
     // Process the actual command line arguments given by the user
@@ -73,6 +85,22 @@ int main(int argc, char *argv[]) {
     if(netList.count() != 2) {
         parser.showHelp();
     }
+
+    QStringList binList = parser.values(binaryOption);
+    while(binList.count() != 2) {
+        binList << "./leelaz";
+    }
+    
+    QStringList optsList = parser.values(optionsOption);
+    while(optsList.count() != 2) {
+        optsList << " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ";
+    }
+   
+    QString sprtOpt = parser.value(sprtOption);
+    QStringList sprtList = sprtOpt.split(":");
+    float h0 = sprtList[0].toFloat(); 
+    float h1 = sprtList[1].toFloat(); 
+
     int gamesNum = parser.value(gamesNumOption).toInt();
     QStringList gpusList = parser.values(gpusOption);
     int gpusNum = gpusList.count();
@@ -80,24 +108,30 @@ int main(int argc, char *argv[]) {
         gpusNum = 1;
     }
 
-    // Map streams
-    QTextStream cout(stdout, QIODevice::WriteOnly);
-    QTextStream cerr(stderr, QIODevice::WriteOnly);
-    cerr << "validation v" << VALIDATION_VERSION << endl;
+    QTextStream(stdout) << "validation v" << VALIDATION_VERSION << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
-            cerr << "Couldn't create output directory for self-play SGF files!"
+            QTextStream(stdout) << "Couldn't create output directory for self-play SGF files!"
                  << endl;
             return EXIT_FAILURE;
         }
     }
     QMutex mutex;
-    Validation validate(gpusNum, gamesNum, gpusList,
+    QTextStream(stdout) << "SPRT : " << sprtOpt << " h0 " << h0 << " h1 " << h1 << endl;
+
+    Console *cons = nullptr;
+    Validation *validate = new Validation(gpusNum, gamesNum, gpusList,
                         netList.at(0), netList.at(1),
-                        parser.value(keepSgfOption), &mutex);
-    validate.startGames();
-    mutex.lock();
-    cerr.flush();
-    cout.flush();
+                        parser.value(keepSgfOption), &mutex,
+                        binList.at(0), binList.at(1),
+                        optsList.at(0), optsList.at(1),
+                        h0, h1
+                        );
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, validate, &Validation::storeSprt);
+    validate->loadSprt();
+    validate->startGames();
+    QObject::connect(validate, &Validation::sendQuit, &app, &QCoreApplication::quit);
+    cons = new Console();
+    QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
     return app.exec();
 }

@@ -1,13 +1,18 @@
+[![Linux Build Status](https://travis-ci.org/gcp/leela-zero.svg?branch=next)](https://travis-ci.org/gcp/leela-zero)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/pf1hcgly8f1a8iu0/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero/branch/next)
+
+
+
 # What
 
 A Go program with no human provided knowledge. Using MCTS (but without
 Monte Carlo playouts) and a deep residual convolutional neural network stack.
 
 This is a fairly faithful reimplementation of the system described
-in the Alpha Go Zero paper "Mastering the Game of Go without Human Knowledge".
+in the Alpha Go Zero paper "[Mastering the Game of Go without Human Knowledge](https://storage.googleapis.com/deepmind-media/alphago/AlphaGoNaturePaper.pdf)".
 For all intents and purposes, it is an open source AlphaGo Zero.
 
-# Wait, what
+# Wait, what?
 
 If you are wondering what the catch is: you still need the network weights.
 No network weights are in this repository. If you manage to obtain the
@@ -18,8 +23,7 @@ be an engine that is far stronger than the top humans.
 
 # Gimme the weights
 
-Recomputing the AlphaGo Zero weights will take about 1700 years on commodity
-hardware, see for example: http://computer-go.org/pipermail/computer-go/2017-October/010307.html
+Recomputing the AlphaGo Zero weights will [take about 1700 years on commodity hardware](http://computer-go.org/pipermail/computer-go/2017-October/010307.html).
 
 One reason for publishing this program is that we are running a public,
 distributed effort to repeat the work. Working together, and especially
@@ -30,6 +34,11 @@ a good network (which you can feed into this program, suddenly making it strong)
 
 You need a PC with a GPU, i.e. a discrete graphics card made by NVIDIA or AMD,
 preferably not too old, and with the most recent drivers installed.
+
+It is possible to run the program without a GPU, but performance will be much
+lower. If your CPU is not *very* recent (Haswell or newer, Ryzen or newer),
+performance will be outright bad, and it's probably of no use trying to join
+the distributed effort. But you can still play, especially if you are patient.
 
 ## Windows
 
@@ -47,15 +56,11 @@ autogtp.
 
 # I just want to play right now
 
-A small network with some very limited training from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
+Download the best known network weights file from: http://zero.sjeng.org/best-network
 
-It's not very strong right now (and it's trained from human games, boo!).
-It will clobber gnugo, but lose to any serious engine. Hey, you said you just
-wanted to play right now!
+Un(gz)ip it and head to the [Usage](#usage) section of this README.
 
-I plan to update this network with more or better training when available - just
-feeding it into this program will make it stronger. Unzip it and specify the
-weights.txt file on the command line with the -w option.
+If you prefer a more human style, a network trained from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
 
 # Compiling
 
@@ -68,8 +73,10 @@ weights.txt file on the command line with the -w option.
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
 https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 * OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
-* An OpenCL capable device, preferably a very, very fast GPU, with drivers
-(OpenCL 1.2 support should be enough, even OpenCL 1.1 might work)
+* An OpenCL capable device, preferably a very, very fast GPU, with recent
+drivers is strongly recommended (OpenCL 1.2 support should be enough,
+even OpenCL 1.1 might work). If you do not have a GPU, modify config.h in the
+source and remove the line that says "#define USE_OPENCL".
 * The program has been tested on Windows, Linux and macOS.
 
 ## Example of compiling and running - Ubuntu
@@ -96,7 +103,7 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     make
     cd ..
     curl -O https://sjeng.org/zero/best_v1.txt.zip
-    unzip https://sjeng.org/zero/best_v1.txt.zip
+    unzip best_v1.txt.zip
     src/leelaz --weights weights.txt
 
 ## Example of compiling and running - Windows
@@ -108,17 +115,35 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
     Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
     to the Visual Studio version you have.
     # Build from Visual Studio 2015 or 2017
-    # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to msvc/x64/Release
-    # msvc/x64/Release/leela-zero --weights weights.txt
+    # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to msvc\x64\Release
+    msvc\x64\Release\leelaz.exe --weights weights.txt
+
+## Example of compiling and running - CMake (macOS/Ubuntu)
+
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero
+    git submodule update --init --recursive
+
+    # Use stand alone directory to keep source dir clean
+    mkdir build && cd build
+    cmake ..
+    make leelaz
+    make tests
+    ./tests
+    curl -O https://sjeng.org/zero/best_v1.txt.zip
+    unzip best_v1.txt.zip
+    ./leelaz --weights weights.txt
+
 
 # Usage
 
-The engine supports the GTP protocol, version 2, specified at: https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
+The engine supports the [GTP protocol, version 2](https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html).
 
 Leela Zero is not meant to be used directly. You need a graphical interface
 for it, which will interface with Leela Zero through the GTP protocol.
 
-Sabaki (http://sabaki.yichuanshen.de/) is a very nice looking GUI with GTP 2
+[Sabaki](http://sabaki.yichuanshen.de/) is a very nice looking GUI with GTP 2
 capability. It should work with this engine. A lot of go software can
 interface to an engine via GTP, so look around.
 
@@ -136,8 +161,8 @@ not via the command line!
 The weights file is a text file with each line containing a row of coefficients.
 The layout of the network is as in the AlphaGo Zero paper, but any number of
 residual blocks is allowed, and any number of outputs (filters) per layer,
-as long as the latter is the same for all residual layers. The program will
-autodetect the amounts on startup. The first line contains a version number.
+as long as the latter is the same for all layers. The program will autodetect
+the amounts on startup. The first line contains a version number.
 
 * Convolutional layers have 2 weight rows:
     1) convolution weights
@@ -157,18 +182,18 @@ autodetect the amounts on startup. The first line contains a version number.
 
 There are 18 inputs to the first layer, instead of 17 as in the paper. The
 original AlphaGo Zero design has a slight imbalance in that it is easier
-for the white player to see the board edge (due to how padding works in
+for the black player to see the board edge (due to how padding works in
 neural networks). This has been fixed in Leela Zero. The inputs are:
 
 ```
 1) Side to move stones at time T=0
 2) Side to move stones at time T=-1  (0 if T=0)
 ...
-8) Side to move stones at time T=-8  (0 if T<=7)
+8) Side to move stones at time T=-7  (0 if T<=6)
 9) Other side stones at time T=0
 10) Other side stones at time T=-1   (0 if T=0)
 ...
-16) Other side stones at time T=-8   (0 if T<=7)
+16) Other side stones at time T=-7   (0 if T<=6)
 17) All 1 if black is to move, 0 otherwise
 18) All 1 if white is to move, 0 otherwise
 ```
@@ -217,7 +242,7 @@ format:
 first 16 input planes from the previous section
 * 1 line with 1 number indicating who is to move, 0=black, 1=white, from which
 the last 2 input planes can be reconstructed
-* 1 line with 362 floating point numbers, indicating the search probabilities
+* 1 line with 362 (19x19 + 1) floating point numbers, indicating the search probabilities
 (visit counts) at the end of the search for the move in question. The last
 number is the probability of passing.
 * 1 line with either 1 or -1, corresponding to the outcome of the game for the
@@ -250,24 +275,20 @@ If interrupted, training can be resumed with:
 # Todo
 
 - [ ] List of package names for more distros
-- [x] A real build system like CMake would nice
-- [x] Provide or link to self-play tooling
-- [ ] CPU support for Xeon Phi and for people without a GPU
-- [ ] Faster GPU usage via batching
-- [ ] Faster GPU usage via Winograd transforms
+- [ ] Multi-GPU support for training
+- [ ] Optimize Winograd transformations
 - [ ] CUDA specific version using cuDNN
 - [ ] AMD specific version using MIOpen
-- [ ] Faster GPU usage via supporting multiple GPU
-(not very urgent, we need to generate the data & network first and this can be
-done with multiple processes each bound to a GPU)
 
 # Related links
 
+* Status page of the distributed effort:
+http://zero.sjeng.org
 * Watch Leela Zero's training games live in a GUI:
 https://github.com/fsparv/LeelaWatcher
+* Stockfish chess engine ported to Leela Zero framework:
+https://github.com/glinscott/leela-chess
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h, half.hpp
-and cl2.hpp, which have specific licenses (compatible with GPLv3) mentioned in
-those files.
+The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp and the clblast_level3 subdir, which have specific licenses (compatible with GPLv3) mentioned in those files.

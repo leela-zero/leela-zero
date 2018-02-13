@@ -28,6 +28,9 @@ public:
         File = 0,
         Win,
         Loss,
+        Waited,
+        StoreMatch,
+        StoreSelfPlayed,
         Error
     };
     Result() = default;
