@@ -44,8 +44,7 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float score, float init_eval)
-    : m_move(vertex), m_score(score), m_init_eval(init_eval) {
+UCTNode::UCTNode(int vertex, float score) : m_move(vertex), m_score(score) {
 }
 
 bool UCTNode::first_visit() const {
@@ -56,9 +55,9 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(std::atomic<int> & nodecount,
-                              GameState & state,
-                              float & eval) {
+bool UCTNode::create_children(std::atomic<int>& nodecount,
+                              GameState& state,
+                              float& eval) {
     // check whether somebody beat us to it (atomic)
     if (has_children()) {
         return false;
@@ -112,13 +111,12 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
         }
     }
 
-    link_nodelist(nodecount, nodelist, net_eval);
+    link_nodelist(nodecount, nodelist);
     return true;
 }
 
-void UCTNode::link_nodelist(std::atomic<int> & nodecount,
-                            std::vector<Network::scored_node> & nodelist,
-                            float init_eval) {
+void UCTNode::link_nodelist(std::atomic<int>& nodecount,
+                            std::vector<Network::scored_node>& nodelist) {
     if (nodelist.empty()) {
         return;
     }
@@ -131,7 +129,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
     m_children.reserve(nodelist.size());
     for (const auto& node : nodelist) {
         m_children.emplace_back(
-            std::make_unique<UCTNode>(node.second, node.first, init_eval)
+            std::make_unique<UCTNode>(node.second, node.first)
         );
     }
 
@@ -288,14 +286,8 @@ float UCTNode::get_eval(int tomove) const {
             score = 1.0f - score;
         }
         return score;
-    } else {
-        // If a node has not been visited yet, the eval is that of the parent.
-        auto eval = m_init_eval;
-        if (tomove == FastBoard::WHITE) {
-            eval = 1.0f - eval;
-        }
-        return eval;
     }
+    return 0.0f;
 }
 
 double UCTNode::get_blackevals() const {
