@@ -39,7 +39,7 @@ public:
 
     using node_ptr_t = std::unique_ptr<UCTNode>;
 
-    explicit UCTNode(int vertex, float score, float init_eval);
+    explicit UCTNode(int vertex, float score);
     UCTNode() = delete;
     ~UCTNode() = default;
     bool first_visit() const;
@@ -57,7 +57,6 @@ public:
     float get_eval(int tomove) const;
     double get_blackevals() const;
     void set_visits(int visits);
-    void set_blackevals(double blacevals);
     void accumulate_eval(float eval);
     void virtual_loss(void);
     void virtual_loss_undo(void);
@@ -76,9 +75,9 @@ public:
     SMP::Mutex& get_mutex();
 
 private:
+    float get_pure_eval(int tomove) const;
     void link_nodelist(std::atomic<int>& nodecount,
-                       std::vector<Network::scored_node>& nodelist,
-                       float init_eval);
+                       std::vector<Network::scored_node>& nodelist);
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution
     // if you want to add/remove/reorder any variables here.
@@ -90,7 +89,6 @@ private:
     std::atomic<int> m_visits{0};
     // UCT eval
     float m_score;
-    float m_init_eval;
     std::atomic<double> m_blackevals{0};
     // node alive (not superko)
     std::atomic<bool> m_valid{true};

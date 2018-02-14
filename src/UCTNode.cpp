@@ -44,8 +44,8 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float score, float init_eval)
-    : m_move(vertex), m_score(score), m_init_eval(init_eval) {
+UCTNode::UCTNode(int vertex, float score)
+    : m_move(vertex), m_score(score) {
 }
 
 bool UCTNode::first_visit() const {
@@ -112,13 +112,12 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
         }
     }
 
-    link_nodelist(nodecount, nodelist, net_eval);
+    link_nodelist(nodecount, nodelist);
     return true;
 }
 
 void UCTNode::link_nodelist(std::atomic<int> & nodecount,
-                            std::vector<Network::scored_node> & nodelist,
-                            float init_eval) {
+                            std::vector<Network::scored_node> & nodelist) {
     if (nodelist.empty()) {
         return;
     }
@@ -131,7 +130,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
     m_children.reserve(nodelist.size());
     for (const auto& node : nodelist) {
         m_children.emplace_back(
-            std::make_unique<UCTNode>(node.second, node.first, init_eval)
+            std::make_unique<UCTNode>(node.second, node.first)
         );
     }
 
@@ -278,33 +277,32 @@ float UCTNode::get_eval(int tomove) const {
     // to return a consistent result to the caller by caching the values.
     auto virtual_loss = int{m_virtual_loss};
     auto visits = get_visits() + virtual_loss;
-    if (visits > 0) {
-        auto blackeval = get_blackevals();
-        if (tomove == FastBoard::WHITE) {
-            blackeval += static_cast<double>(virtual_loss);
-        }
-        auto score = static_cast<float>(blackeval / (double)visits);
-        if (tomove == FastBoard::WHITE) {
-            score = 1.0f - score;
-        }
-        return score;
-    } else {
-        // If a node has not been visited yet,
-        // the eval is that of the parent.
-        auto eval = m_init_eval;
-        if (tomove == FastBoard::WHITE) {
-            eval = 1.0f - eval;
-        }
-        return eval;
+    auto blackeval = get_blackevals();
+    assert(visits > 0);
+    if (tomove == FastBoard::WHITE) {
+        blackeval += static_cast<double>(virtual_loss);
     }
+    auto score = static_cast<float>(blackeval / (double)visits);
+    if (tomove == FastBoard::WHITE) {
+        score = 1.0f - score;
+    }
+    return score;
+}
+
+// version without virtual losses
+float UCTNode::get_pure_eval(int tomove) const {
+    auto visits = get_visits();
+    auto blackeval = get_blackevals();
+    assert(visits > 0);
+    auto score = static_cast<float>(blackeval / (double)visits);
+    if (tomove == FastBoard::WHITE) {
+        score = 1.0f - score;
+    }
+    return score;
 }
 
 double UCTNode::get_blackevals() const {
     return m_blackevals;
-}
-
-void UCTNode::set_blackevals(double blackevals) {
-    m_blackevals = blackevals;
 }
 
 void UCTNode::accumulate_eval(float eval) {
@@ -332,16 +330,20 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
     auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
     auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
+    auto parent_eval = get_pure_eval(color);
+    auto reduced_parent_eval = parent_eval - fpu_reduction;
 
     for (const auto& child : m_children) {
         if (!child->valid()) {
             continue;
         }
 
-        auto winrate = child->get_eval(color);
+        float winrate;
         if (child->get_visits() == 0) {
             // First play urgency
-            winrate -= fpu_reduction;
+            winrate = reduced_parent_eval;
+        } else {
+            winrate = child->get_eval(color);
         }
         auto psa = child->get_score();
         auto denom = 1.0f + child->get_visits();
