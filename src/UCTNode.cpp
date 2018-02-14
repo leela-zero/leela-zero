@@ -44,8 +44,7 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float score, float init_eval)
-    : m_move(vertex), m_score(score), m_init_eval(init_eval) {
+UCTNode::UCTNode(int vertex, float score) : m_move(vertex), m_score(score) {
 }
 
 bool UCTNode::first_visit() const {
@@ -56,9 +55,9 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(std::atomic<int> & nodecount,
-                              GameState & state,
-                              float & eval) {
+bool UCTNode::create_children(std::atomic<int>& nodecount,
+                              GameState& state,
+                              float& eval) {
     // check whether somebody beat us to it (atomic)
     if (has_children()) {
         return false;
@@ -112,13 +111,12 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
         }
     }
 
-    link_nodelist(nodecount, nodelist, net_eval);
+    link_nodelist(nodecount, nodelist);
     return true;
 }
 
-void UCTNode::link_nodelist(std::atomic<int> & nodecount,
-                            std::vector<Network::scored_node> & nodelist,
-                            float init_eval) {
+void UCTNode::link_nodelist(std::atomic<int>& nodecount,
+                            std::vector<Network::scored_node>& nodelist) {
     if (nodelist.empty()) {
         return;
     }
@@ -131,7 +129,7 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
     m_children.reserve(nodelist.size());
     for (const auto& node : nodelist) {
         m_children.emplace_back(
-            std::make_unique<UCTNode>(node.second, node.first, init_eval)
+            std::make_unique<UCTNode>(node.second, node.first)
         );
     }
 
@@ -256,10 +254,6 @@ bool UCTNode::has_children() const {
     return m_has_children;
 }
 
-void UCTNode::set_visits(int visits) {
-    m_visits = visits;
-}
-
 float UCTNode::get_score() const {
     return m_score;
 }
@@ -288,15 +282,8 @@ float UCTNode::get_eval(int tomove) const {
             score = 1.0f - score;
         }
         return score;
-    } else {
-        // If a node has not been visited yet,
-        // the eval is that of the parent.
-        auto eval = m_init_eval;
-        if (tomove == FastBoard::WHITE) {
-            eval = 1.0f - eval;
-        }
-        return eval;
     }
+    return 0.0f;
 }
 
 double UCTNode::get_blackevals() const {
@@ -317,31 +304,34 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
     LOCK(get_mutex(), lock);
 
-    // Count parentvisits.
-    // We do this manually to avoid issues with transpositions.
-    auto total_visited_policy = 0.0f;
+    // Count parentvisits manually to avoid issues with transpositions.
     auto parentvisits = size_t{0};
     for (const auto& child : m_children) {
         if (child->valid()) {
             parentvisits += child->get_visits();
-            if (child->get_visits() > 0) {
-                total_visited_policy += child->get_score();
-            }
         }
     }
 
     auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
-    auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
+    // Calculate manually to avoid virtual loss.
+    auto parent_eval =
+        static_cast<float>(get_blackevals() / (1.0f + parentvisits));
+    if (color == FastBoard::WHITE) {
+        parent_eval = 1.0f - parent_eval;
+    }
+    parent_eval -= cfg_fpu_reduction;
 
     for (const auto& child : m_children) {
         if (!child->valid()) {
             continue;
         }
 
-        auto winrate = child->get_eval(color);
-        if (child->get_visits() == 0) {
-            // First play urgency
-            winrate -= fpu_reduction;
+        auto winrate = 0.5f;
+        if (child->get_visits() > 0) {
+            winrate = child->get_eval(color);
+        } else {
+            // FPU: Use dynamic parent eval for the same color.
+            winrate = parent_eval;
         }
         auto psa = child->get_score();
         auto denom = 1.0f + child->get_visits();

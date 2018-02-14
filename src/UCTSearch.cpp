@@ -42,7 +42,7 @@ UCTSearch::UCTSearch(GameState& g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
-    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -104,7 +104,7 @@ void UCTSearch::update_root() {
 #endif
 
     if (!advance_to_new_rootstate() || !m_root) {
-        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
     }
     // Clear last_rootstate to prevent accidental use.
     m_last_rootstate.reset(nullptr);
@@ -120,7 +120,7 @@ void UCTSearch::update_root() {
 #endif
 }
 
-SearchResult UCTSearch::play_simulation(GameState & currstate,
+SearchResult UCTSearch::play_simulation(GameState& currstate,
                                         UCTNode* const node) {
     const auto color = currstate.get_to_move();
     auto result = SearchResult{};
@@ -166,7 +166,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
     return result;
 }
 
-void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
+void UCTSearch::dump_stats(KoState& state, UCTNode& parent) {
     if (cfg_quiet || !parent.has_children()) {
         return;
     }
@@ -284,7 +284,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     if (passflag & UCTSearch::NOPASS) {
         // were we going to pass?
         if (bestmove == FastBoard::PASS) {
-            UCTNode * nopass = m_root->get_nopass_child(m_rootstate);
+            UCTNode* nopass = m_root->get_nopass_child(m_rootstate);
 
             if (nopass != nullptr) {
                 myprintf("Preferring not to pass.\n");
@@ -325,7 +325,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 (score < 0.0f && color == FastBoard::BLACK)) {
                 myprintf("Passing loses :-(\n");
                 // Find a valid non-pass move.
-                UCTNode * nopass = m_root->get_nopass_child(m_rootstate);
+                UCTNode* nopass = m_root->get_nopass_child(m_rootstate);
                 if (nopass != nullptr) {
                     myprintf("Avoiding pass because it loses.\n");
                     bestmove = nopass->get_move();
@@ -370,7 +370,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     return bestmove;
 }
 
-std::string UCTSearch::get_pv(KoState & state, UCTNode& parent) {
+std::string UCTSearch::get_pv(KoState& state, UCTNode& parent) {
     if (!parent.has_children()) {
         return std::string();
     }
