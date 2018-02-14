@@ -254,10 +254,6 @@ bool UCTNode::has_children() const {
     return m_has_children;
 }
 
-void UCTNode::set_visits(int visits) {
-    m_visits = visits;
-}
-
 float UCTNode::get_score() const {
     return m_score;
 }
@@ -317,7 +313,13 @@ UCTNode* UCTNode::uct_select_child(int color) {
     }
 
     auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
-    auto parent_eval = get_eval(color);
+    // Calculate manually to avoid virtual loss.
+    auto parent_eval =
+        static_cast<float>(get_blackevals() / (1.0f + parentvisits));
+    if (color == FastBoard::WHITE) {
+        parent_eval = 1.0f - parent_eval;
+    }
+    parent_eval -= cfg_fpu_reduction;
 
     for (const auto& child : m_children) {
         if (!child->valid()) {
