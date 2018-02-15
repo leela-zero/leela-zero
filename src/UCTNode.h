@@ -22,7 +22,6 @@
 #include "config.h"
 
 #include <atomic>
-#include <limits>
 #include <memory>
 #include <vector>
 
@@ -61,7 +60,7 @@ public:
     void virtual_loss_undo(void);
     void dirichlet_noise(float epsilon, float alpha);
     void randomize_first_proportionally();
-    void update(float eval = std::numeric_limits<float>::quiet_NaN());
+    void update(float eval);
 
     UCTNode* uct_select_child(int color);
     UCTNode* get_first_child() const;
