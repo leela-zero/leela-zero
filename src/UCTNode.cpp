@@ -303,10 +303,6 @@ double UCTNode::get_blackevals() const {
     return m_blackevals;
 }
 
-void UCTNode::set_blackevals(double blackevals) {
-    m_blackevals = blackevals;
-}
-
 void UCTNode::accumulate_eval(float eval) {
     atomic_add(m_blackevals, (double)eval);
 }
