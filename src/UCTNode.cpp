@@ -256,10 +256,6 @@ bool UCTNode::has_children() const {
     return m_has_children;
 }
 
-void UCTNode::set_visits(int visits) {
-    m_visits = visits;
-}
-
 float UCTNode::get_score() const {
     return m_score;
 }

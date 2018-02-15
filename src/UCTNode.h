@@ -56,7 +56,6 @@ public:
     void set_score(float score);
     float get_eval(int tomove) const;
     double get_blackevals() const;
-    void set_visits(int visits);
     void accumulate_eval(float eval);
     void virtual_loss(void);
     void virtual_loss_undo(void);
