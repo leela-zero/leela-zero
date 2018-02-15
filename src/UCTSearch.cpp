@@ -488,6 +488,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     float root_eval;
     if (!m_root->has_children()) {
         m_root->create_children(m_nodes, m_rootstate, root_eval);
+        m_root->update(root_eval);
     } else {
         root_eval = m_root->get_eval(color);
     }
