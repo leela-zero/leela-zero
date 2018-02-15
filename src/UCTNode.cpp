@@ -427,7 +427,7 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
     for (const auto& child : m_children) {
         /* If we prevent the engine from passing, we must bail out when
            we only have unreasonable moves to pick, like filling eyes.
-           Note that this isn't knowledge isn't required by the engine,
+           Note that this knowledge isn't required by the engine,
            we require it because we're overruling its moves. */
         if (child->m_move != FastBoard::PASS
             && !state.board.is_eye(state.get_to_move(), child->m_move)) {
