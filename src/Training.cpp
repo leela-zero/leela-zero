@@ -150,18 +150,18 @@ void Training::record(GameState& state, UCTNode& root) {
         Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
     step.net_winrate = result.second;
 
-    const auto& best_node = root.get_best_root_child(step.to_move);
+    const auto best_edge = root.get_best_root_edge(step.to_move);
     step.root_uct_winrate = root.get_eval(step.to_move);
-    step.child_uct_winrate = best_node.get_eval(step.to_move);
-    step.bestmove_visits = best_node.get_visits();
+    step.child_uct_winrate = best_edge->get_eval(step.to_move);
+    step.bestmove_visits = best_edge->get_visits();
 
     step.probabilities.resize((19 * 19) + 1);
 
     // Get total visit amount. We count rather
     // than trust the root to avoid ttable issues.
     auto sum_visits = 0.0;
-    for (const auto& child : root.get_children()) {
-        sum_visits += child->get_visits();
+    for (const auto& edge : root.get_edges()) {
+        sum_visits += edge->get_visits();
     }
 
     // In a terminal position (with 2 passes), we can have children, but we
@@ -172,9 +172,9 @@ void Training::record(GameState& state, UCTNode& root) {
         return;
     }
 
-    for (const auto& child : root.get_children()) {
-        auto prob = static_cast<float>(child->get_visits() / sum_visits);
-        auto move = child->get_move();
+    for (const auto& edge : root.get_edges()) {
+        auto prob = static_cast<float>(edge->get_visits() / sum_visits);
+        auto move = edge->get_move();
         if (move != FastBoard::PASS) {
             auto xy = state.board.get_xy(move);
             step.probabilities[xy.second * 19 + xy.first] = prob;

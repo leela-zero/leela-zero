@@ -29,6 +29,39 @@
 #include "Network.h"
 #include "SMP.h"
 
+class UCTNode;
+
+class UCTEdge {
+public:
+    using node_ptr_t = std::unique_ptr<UCTNode>;
+
+    explicit UCTEdge(int vertex, float score);
+    UCTEdge() = delete;
+    ~UCTEdge() = default;
+    int get_move() const;
+    float get_score() const;
+    void set_score(float score);
+    UCTNode* get_child() const;
+    void invalidate();
+    bool valid() const;
+    int get_visits() const;
+    float get_eval(int tomove) const;
+    UCTNode* get_or_create_child(std::atomic<int>& nodecount);
+    node_ptr_t pass_or_create_child(std::atomic<int>& nodecount);
+    bool first_visit() const;
+
+private:
+    void create_child(std::atomic<int>& nodecount);
+    // Note : This class is very size-sensitive as we are going to create
+    // tens of millions of instances of these.  Please put extra caution
+    // if you want to add/remove/reorder any variables here.
+    std::int16_t m_move;
+    std::atomic<bool> m_valid{true};  // Validity under superko rules.
+    SMP::Mutex m_nodemutex;  // Guards the creation of nodes.
+    float m_score;
+    node_ptr_t m_child;
+};
+
 class UCTNode {
 public:
     // When we visit a node, add this amount of virtual losses
@@ -36,15 +69,15 @@ public:
     // search tree.
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
 
-    using node_ptr_t = std::unique_ptr<UCTNode>;
+    using edge_ptr_t = std::unique_ptr<UCTEdge>;
 
     explicit UCTNode(int vertex, float score);
     UCTNode() = delete;
     ~UCTNode() = default;
     bool first_visit() const;
-    bool has_children() const;
-    bool create_children(std::atomic<int>& nodecount,
-                         GameState& state, float& eval);
+    bool has_edges() const;
+    bool create_edges(std::atomic<int>& edgecount,
+                      GameState& state, float& eval);
     float eval_state(GameState& state);
     void kill_superkos(const KoState& state);
     void invalidate();
@@ -63,23 +96,20 @@ public:
     void randomize_first_proportionally();
     void update(float eval);
 
-    UCTNode* uct_select_child(int color);
-    UCTNode* get_first_child() const;
-    UCTNode* get_nopass_child(FastState& state) const;
-    const std::vector<node_ptr_t>& get_children() const;
+    UCTEdge* uct_select_edge(int color);
+    UCTEdge* get_first_edge() const;
+    UCTEdge* get_nopass_edge(FastState& state) const;
+    const std::vector<edge_ptr_t>& get_edges() const;
     size_t count_nodes() const;
-    node_ptr_t find_child(const int move);
-    void sort_children(int color);
-    UCTNode& get_best_root_child(int color);
+    size_t count_edges() const;
+    UCTEdge* find_edge(const int move);
+    void sort_edges(int color);
+    UCTEdge* get_best_root_edge(int color);
     SMP::Mutex& get_mutex();
 
 private:
-    void link_nodelist(std::atomic<int>& nodecount,
+    void link_nodelist(std::atomic<int>& edgecount,
                        std::vector<Network::scored_node>& nodelist);
-    // Note : This class is very size-sensitive as we are going to create
-    // tens of millions of instances of these.  Please put extra caution
-    // if you want to add/remove/reorder any variables here.
-
     // Move
     std::int16_t m_move;
     // UCT
@@ -97,8 +127,8 @@ private:
     SMP::Mutex m_nodemutex;
 
     // Tree data
-    std::atomic<bool> m_has_children{false};
-    std::vector<node_ptr_t> m_children;
+    std::atomic<bool> m_has_edges{false};
+    std::vector<edge_ptr_t> m_edges;
 };
 
 #endif
