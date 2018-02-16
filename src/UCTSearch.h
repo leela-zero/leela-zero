@@ -74,11 +74,11 @@ public:
 
     /*
         Maximum size of the tree in memory. Nodes are 56 bytes, edges are
-        16 bytes, so limit to ~1.1G on 32-bit and ~5.4G on 64-bit.
-        Average 360 edges per node, 5.8KB total per node.
+        16 bytes, so limit to ~1.45G on 32-bit and ~7.25G on 64-bit.
+        Average empirical memory usage is 14.5KB per node.
     */
     static constexpr auto MAX_TREE_SIZE =
-        (sizeof(void*) == 4 ? 200'000 : 1'000'000);
+        (sizeof(void*) == 4 ? 100'000 : 500'000);
 
     UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
