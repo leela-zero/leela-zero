@@ -359,8 +359,10 @@ public:
     NodeComp(int color) : m_color(color) {};
     bool operator()(const UCTNode::node_ptr_t& a,
                     const UCTNode::node_ptr_t& b) {
-        float a_lb = binomial_distribution<>::find_lower_bound_on_p( a->get_visits(), floor(a->get_eval(m_color) * a->get_visits()), .001);
-        float b_lb = binomial_distribution<>::find_lower_bound_on_p( b->get_visits(), floor(b->get_eval(m_color) * b->get_visits()), .001);
+        // Calculate the lower confidence bound for each node.
+        // Use CI_ALPHA / 2 if calculating double sided bounds.
+        float a_lb = binomial_distribution<>::find_lower_bound_on_p( a->get_visits(), floor(a->get_eval(m_color) * a->get_visits()), CI_ALPHA);
+        float b_lb = binomial_distribution<>::find_lower_bound_on_p( b->get_visits(), floor(b->get_eval(m_color) * b->get_visits()), CI_ALPHA);
 
         // Sort on lower confidence bounds
         if (a_lb != b_lb) {

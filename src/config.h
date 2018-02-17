@@ -94,4 +94,6 @@ using net_t = float;
     #pragma warning(disable : 4996)
 #endif /* VC8+ */
 
+#define CI_ALPHA .001
+
 #endif
