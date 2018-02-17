@@ -469,7 +469,7 @@ size_t UCTNode::count_nodes() const {
         for (auto& edge : m_edges) {
             auto child = edge->get_child();
             if (child) {
-                nodecount += child->count_edges();
+                nodecount += child->count_nodes();
             }
         }
     }
