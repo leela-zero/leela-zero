@@ -256,10 +256,6 @@ bool UCTNode::has_children() const {
     return m_has_children;
 }
 
-void UCTNode::set_visits(int visits) {
-    m_visits = visits;
-}
-
 float UCTNode::get_score() const {
     return m_score;
 }
@@ -301,10 +297,6 @@ float UCTNode::get_eval(int tomove) const {
 
 double UCTNode::get_blackevals() const {
     return m_blackevals;
-}
-
-void UCTNode::set_blackevals(double blackevals) {
-    m_blackevals = blackevals;
 }
 
 void UCTNode::accumulate_eval(float eval) {
@@ -435,7 +427,7 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
     for (const auto& child : m_children) {
         /* If we prevent the engine from passing, we must bail out when
            we only have unreasonable moves to pick, like filling eyes.
-           Note that this isn't knowledge isn't required by the engine,
+           Note that this knowledge isn't required by the engine,
            we require it because we're overruling its moves. */
         if (child->m_move != FastBoard::PASS
             && !state.board.is_eye(state.get_to_move(), child->m_move)) {
