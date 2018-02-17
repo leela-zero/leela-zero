@@ -24,6 +24,7 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+#include <boost/math/distributions/binomial.hpp>
 
 #include "FastBoard.h"
 #include "FullBoard.h"
@@ -37,6 +38,7 @@
 #include "Utils.h"
 
 using namespace Utils;
+using namespace boost::math;
 
 UCTSearch::UCTSearch(GameState& g)
     : m_rootstate(g) {
@@ -190,11 +192,16 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
         std::string tmp = state.move_to_text(node->get_move());
         std::string pvstring(tmp);
 
-        myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: ",
+        myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) [%5.2f%%] [%5.2f%%,%5.2f%%] [%5.2f%%] PV: ",
             tmp.c_str(),
             node->get_visits(),
             node->get_eval(color)*100.0f,
-            node->get_score() * 100.0f);
+            node->get_score() * 100.0f,
+            binomial_distribution<>::find_lower_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), .001) * 100.0f,
+            binomial_distribution<>::find_lower_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), .001/2) * 100.0f,
+            binomial_distribution<>::find_upper_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), .001/2) * 100.0f,
+            binomial_distribution<>::find_upper_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), .001) * 100.0f
+            );
 
         KoState tmpstate = state;
 

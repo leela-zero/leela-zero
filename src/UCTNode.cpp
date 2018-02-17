@@ -30,6 +30,7 @@
 #include <random>
 #include <utility>
 #include <vector>
+#include <boost/math/distributions/binomial.hpp>
 
 #include "UCTNode.h"
 #include "FastBoard.h"
@@ -43,6 +44,7 @@
 #include "Utils.h"
 
 using namespace Utils;
+using namespace boost::math;
 
 UCTNode::UCTNode(int vertex, float score, float init_eval)
     : m_move(vertex), m_score(score), m_init_eval(init_eval) {
@@ -357,6 +359,14 @@ public:
     NodeComp(int color) : m_color(color) {};
     bool operator()(const UCTNode::node_ptr_t& a,
                     const UCTNode::node_ptr_t& b) {
+        float a_lb = binomial_distribution<>::find_lower_bound_on_p( a->get_visits(), floor(a->get_eval(m_color) * a->get_visits()), .001);
+        float b_lb = binomial_distribution<>::find_lower_bound_on_p( b->get_visits(), floor(b->get_eval(m_color) * b->get_visits()), .001);
+
+        // Sort on lower confidence bounds
+        if (a_lb != b_lb) {
+            return a_lb < b_lb;
+        }
+
         // if visits are not same, sort on visits
         if (a->get_visits() != b->get_visits()) {
             return a->get_visits() < b->get_visits();
