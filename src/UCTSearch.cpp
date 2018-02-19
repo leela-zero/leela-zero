@@ -42,7 +42,7 @@ UCTSearch::UCTSearch(GameState& g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
-    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -76,7 +76,8 @@ bool UCTSearch::advance_to_new_rootstate() {
     for (auto i = 0; i < depth; i++) {
         test->forward_move();
         const auto move = test->get_last_move();
-        m_root = m_root->find_child(move);
+        auto edge = m_root->find_edge(move);
+        m_root = edge->pass_or_create_child(m_nodes);
         if (!m_root) {
             // Tree hasn't been expanded this far
             return false;
@@ -101,21 +102,24 @@ void UCTSearch::update_root() {
 
 #ifndef NDEBUG
     auto start_nodes = m_root->count_nodes();
+    auto start_edges = m_root->count_edges();
 #endif
 
     if (!advance_to_new_rootstate() || !m_root) {
-        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
     }
     // Clear last_rootstate to prevent accidental use.
     m_last_rootstate.reset(nullptr);
 
     // Check how big our search tree (reused or new) is.
     m_nodes = m_root->count_nodes();
+    m_edges = m_root->count_edges();
 
 #ifndef NDEBUG
     if (m_nodes > 0) {
-        myprintf("update_root, %d -> %d nodes (%.1f%% reused)\n",
-            start_nodes, m_nodes.load(), 100.0 * m_nodes.load() / start_nodes);
+        myprintf("update_root, %d,%d -> %d,%d nodes,edges (%.1f%% reused)\n",
+            start_nodes, start_edges, m_nodes.load(), m_edges.load(),
+            100.0 * m_nodes.load() / start_nodes);
     }
 #endif
 }
@@ -127,13 +131,13 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
 
     node->virtual_loss();
 
-    if (!node->has_children()) {
+    if (!node->has_edges()) {
         if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
         } else if (m_nodes < MAX_TREE_SIZE) {
             float eval;
-            auto success = node->create_children(m_nodes, currstate, eval);
+            auto success = node->create_edges(m_edges, currstate, eval);
             if (success) {
                 result = SearchResult::from_eval(eval);
             }
@@ -143,8 +147,8 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         }
     }
 
-    if (node->has_children() && !result.valid()) {
-        auto next = node->uct_select_child(color);
+    if (node->has_edges() && !result.valid()) {
+        auto next = node->uct_select_edge(color);
 
         if (next != nullptr) {
             auto move = next->get_move();
@@ -153,7 +157,8 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             if (move != FastBoard::PASS && currstate.superko()) {
                 next->invalidate();
             } else {
-                result = play_simulation(currstate, next);
+                result = play_simulation(currstate,
+                                         next->get_or_create_child(m_nodes));
             }
         }
     }
@@ -167,39 +172,39 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
 }
 
 void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
-    if (cfg_quiet || !parent.has_children()) {
+    if (cfg_quiet || !parent.has_edges()) {
         return;
     }
 
     const int color = state.get_to_move();
 
-    // sort children, put best move on top
-    parent.sort_children(color);
+    // sort edges, put best move on top
+    parent.sort_edges(color);
 
 
-    if (parent.get_first_child()->first_visit()) {
+    if (parent.get_first_edge()->first_visit()) {
         return;
     }
 
     int movecount = 0;
-    for (const auto& node : parent.get_children()) {
+    for (const auto& edge : parent.get_edges()) {
         // Always display at least two moves. In the case there is
         // only one move searched the user could get an idea why.
-        if (++movecount > 2 && !node->get_visits()) break;
+        if (++movecount > 2 && !edge->get_visits()) break;
 
-        std::string tmp = state.move_to_text(node->get_move());
+        std::string tmp = state.move_to_text(edge->get_move());
         std::string pvstring(tmp);
 
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: ",
             tmp.c_str(),
-            node->get_visits(),
-            node->get_eval(color)*100.0f,
-            node->get_score() * 100.0f);
+            edge->get_visits(),
+            edge->get_eval(color)*100.0f,
+            edge->get_score() * 100.0f);
 
         KoState tmpstate = state;
 
-        tmpstate.play_move(node->get_move());
-        pvstring += " " + get_pv(tmpstate, *node);
+        tmpstate.play_move(edge->get_move());
+        pvstring += " " + get_pv(tmpstate, edge->get_or_create_child(m_nodes));
 
         myprintf("%s\n", pvstring.c_str());
     }
@@ -265,7 +270,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     int color = m_rootstate.board.get_to_move();
 
     // Make sure best is first
-    m_root->sort_children(color);
+    m_root->sort_edges(color);
 
     // Check whether to randomize the best move proportional
     // to the playout counts, early game only.
@@ -274,17 +279,17 @@ int UCTSearch::get_best_move(passflag_t passflag) {
         m_root->randomize_first_proportionally();
     }
 
-    auto first_child = m_root->get_first_child();
-    assert(first_child != nullptr);
+    auto first_edge = m_root->get_first_edge();
+    assert(first_edge != nullptr);
 
-    auto bestmove = first_child->get_move();
-    auto bestscore = first_child->get_eval(color);
+    auto bestmove = first_edge->get_move();
+    auto bestscore = first_edge->get_eval(color);
 
     // do we want to fiddle with the best move because of the rule set?
     if (passflag & UCTSearch::NOPASS) {
         // were we going to pass?
         if (bestmove == FastBoard::PASS) {
-            UCTNode * nopass = m_root->get_nopass_child(m_rootstate);
+            UCTEdge * nopass = m_root->get_nopass_edge(m_rootstate);
 
             if (nopass != nullptr) {
                 myprintf("Preferring not to pass.\n");
@@ -325,7 +330,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 (score < 0.0f && color == FastBoard::BLACK)) {
                 myprintf("Passing loses :-(\n");
                 // Find a valid non-pass move.
-                UCTNode * nopass = m_root->get_nopass_child(m_rootstate);
+                UCTEdge * nopass = m_root->get_nopass_edge(m_rootstate);
                 if (nopass != nullptr) {
                     myprintf("Avoiding pass because it loses.\n");
                     bestmove = nopass->get_move();
@@ -370,21 +375,21 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     return bestmove;
 }
 
-std::string UCTSearch::get_pv(KoState & state, UCTNode& parent) {
-    if (!parent.has_children()) {
+std::string UCTSearch::get_pv(KoState & state, UCTNode* parent) {
+    if (!parent->has_edges()) {
         return std::string();
     }
 
-    auto& best_child = parent.get_best_root_child(state.get_to_move());
-    if (best_child.first_visit()) {
+    auto best_edge = parent->get_best_root_edge(state.get_to_move());
+    if (best_edge->first_visit()) {
         return std::string();
     }
-    auto best_move = best_child.get_move();
+    auto best_move = best_edge->get_move();
     auto res = state.move_to_text(best_move);
 
     state.play_move(best_move);
 
-    auto next = get_pv(state, best_child);
+    auto next = get_pv(state, best_edge->get_or_create_child(m_nodes));
     if (!next.empty()) {
         res.append(" ").append(next);
     }
@@ -399,7 +404,7 @@ void UCTSearch::dump_analysis(int playouts) {
     GameState tempstate = m_rootstate;
     int color = tempstate.board.get_to_move();
 
-    std::string pvstring = get_pv(tempstate, *m_root);
+    std::string pvstring = get_pv(tempstate, m_root.get());
     float winrate = 100.0f * m_root->get_eval(color);
     myprintf("Playouts: %d, Win: %5.2f%%, PV: %s\n",
              playouts, winrate, pvstring.c_str());
@@ -422,9 +427,9 @@ bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
 
     auto Nfirst = 0;
     auto Nsecond = 0;
-    for (const auto& node : m_root->get_children()) {
-        if (node->valid()) {
-             auto N = node->get_visits();
+    for (const auto& edge : m_root->get_edges()) {
+        if (edge->valid()) {
+             auto N = edge->get_visits();
              if (N > Nfirst) {
                  Nsecond = Nfirst;
                  Nfirst = N;
@@ -486,8 +491,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
     // create a sorted list off legal moves (make sure we
     // play something legal and decent even in time trouble)
     float root_eval;
-    if (!m_root->has_children()) {
-        m_root->create_children(m_nodes, m_rootstate, root_eval);
+    if (!m_root->has_edges()) {
+        m_root->create_edges(m_edges, m_rootstate, root_eval);
         m_root->update(root_eval);
     } else {
         root_eval = m_root->get_eval(color);
@@ -534,7 +539,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     m_run = false;
     tg.wait_all();
     m_rootstate.stop_clock(color);
-    if (!m_root->has_children()) {
+    if (!m_root->has_edges()) {
         return FastBoard::PASS;
     }
 
@@ -547,9 +552,10 @@ int UCTSearch::think(int color, passflag_t passflag) {
     Time elapsed;
     int elapsed_centis = Time::timediff_centis(start, elapsed);
     if (elapsed_centis+1 > 0) {
-        myprintf("%d visits, %d nodes, %d playouts, %d n/s\n\n",
+        myprintf("%d visits, %d nodes, %d edges, %d playouts, %d n/s\n\n",
                  m_root->get_visits(),
                  static_cast<int>(m_nodes),
+                 static_cast<int>(m_edges),
                  static_cast<int>(m_playouts),
                  (m_playouts * 100) / (elapsed_centis+1));
     }
@@ -584,7 +590,8 @@ void UCTSearch::ponder() {
     myprintf("\n");
     dump_stats(m_rootstate, *m_root);
 
-    myprintf("\n%d visits, %d nodes\n\n", m_root->get_visits(), m_nodes.load());
+    myprintf("\n%d visits, %d nodes, %d edges\n\n",
+             m_root->get_visits(), m_nodes.load(), m_edges.load());
 }
 
 void UCTSearch::set_playout_limit(int playouts) {

@@ -73,12 +73,12 @@ public:
     static constexpr passflag_t NORESIGN = 1 << 1;
 
     /*
-        Maximum size of the tree in memory. Nodes are about
-        48 bytes, so limit to ~1.2G on 32-bits and about 5.5G
-        on 64-bits.
+        Maximum size of the tree in memory. Nodes are 56 bytes, edges are
+        16 bytes, so limit to ~1.45G on 32-bit and ~7.25G on 64-bit.
+        Average empirical memory usage is 14.5KB per node.
     */
     static constexpr auto MAX_TREE_SIZE =
-        (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
+        (sizeof(void*) == 4 ? 100'000 : 500'000);
 
     UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
@@ -92,7 +92,7 @@ public:
 
 private:
     void dump_stats(KoState& state, UCTNode& parent);
-    std::string get_pv(KoState& state, UCTNode& parent);
+    std::string get_pv(KoState& state, UCTNode* parent);
     void dump_analysis(int playouts);
     bool should_resign(passflag_t passflag, float bestscore);
     int get_best_move(passflag_t passflag);
@@ -103,6 +103,7 @@ private:
     std::unique_ptr<GameState> m_last_rootstate;
     std::unique_ptr<UCTNode> m_root;
     std::atomic<int> m_nodes{0};
+    std::atomic<int> m_edges{0};
     std::atomic<int> m_playouts{0};
     std::atomic<bool> m_run{false};
     int m_maxplayouts;

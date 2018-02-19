@@ -44,8 +44,75 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float score, float init_eval)
-    : m_move(vertex), m_score(score), m_init_eval(init_eval) {
+UCTEdge::UCTEdge(int vertex, float score)
+    : m_move(vertex), m_score(score), m_child(nullptr) {
+}
+
+int UCTEdge::get_move() const {
+    return m_move;
+}
+
+float UCTEdge::get_score() const {
+    return m_score;
+}
+
+void UCTEdge::set_score(float score) {
+    m_score = score;
+}
+
+UCTNode* UCTEdge::get_child() const {
+    return m_child.get();
+}
+
+void UCTEdge::invalidate() {
+    m_valid = false;
+}
+
+bool UCTEdge::valid() const {
+    return m_valid;
+}
+
+int UCTEdge::get_visits() const {
+    if (m_child) {
+        return m_child->get_visits();
+    }
+    return 0;
+}
+
+float UCTEdge::get_eval(int tomove) const {
+    if (m_child) {
+        return m_child->get_eval(tomove);
+    }
+    return 0.0f;
+}
+
+void UCTEdge::create_child(std::atomic<int>& nodecount) {
+    if (m_child) return;
+
+    LOCK(m_nodemutex, lock);
+    // Check whether another thread beat us to it (after taking the lock).
+    if (m_child) return;
+    m_child = std::make_unique<UCTNode>(m_move, m_score);
+    lock.unlock();
+
+    nodecount++;
+}
+
+UCTNode* UCTEdge::get_or_create_child(std::atomic<int>& nodecount) {
+    create_child(nodecount);
+    return m_child.get();
+}
+
+UCTEdge::node_ptr_t UCTEdge::pass_or_create_child(std::atomic<int>& nodecount) {
+    create_child(nodecount);
+    return std::move(m_child);
+}
+
+bool UCTEdge::first_visit() const {
+    return !m_child;
+}
+
+UCTNode::UCTNode(int vertex, float score) : m_move(vertex), m_score(score) {
 }
 
 bool UCTNode::first_visit() const {
@@ -56,11 +123,11 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(std::atomic<int> & nodecount,
-                              GameState & state,
-                              float & eval) {
+bool UCTNode::create_edges(std::atomic<int>& edgecount,
+                           GameState& state,
+                           float& eval) {
     // check whether somebody beat us to it (atomic)
-    if (has_children()) {
+    if (has_edges()) {
         return false;
     }
     // acquire the lock
@@ -70,7 +137,7 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
         return false;
     }
     // check whether somebody beat us to it (after taking the lock)
-    if (has_children()) {
+    if (has_edges()) {
         return false;
     }
     // Someone else is running the expansion
@@ -85,13 +152,13 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
         &state, Network::Ensemble::RANDOM_ROTATION);
 
     // DCNN returns winrate as side to move
-    auto net_eval = raw_netlist.second;
+    m_net_eval = raw_netlist.second;
     const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
     if (state.board.white_to_move()) {
-        net_eval = 1.0f - net_eval;
+        m_net_eval = 1.0f - m_net_eval;
     }
-    eval = net_eval;
+    eval = m_net_eval;
 
     std::vector<Network::scored_node> nodelist;
 
@@ -112,13 +179,12 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
         }
     }
 
-    link_nodelist(nodecount, nodelist, net_eval);
+    link_nodelist(edgecount, nodelist);
     return true;
 }
 
-void UCTNode::link_nodelist(std::atomic<int> & nodecount,
-                            std::vector<Network::scored_node> & nodelist,
-                            float init_eval) {
+void UCTNode::link_nodelist(std::atomic<int>& edgecount,
+                            std::vector<Network::scored_node>& nodelist) {
     if (nodelist.empty()) {
         return;
     }
@@ -128,36 +194,36 @@ void UCTNode::link_nodelist(std::atomic<int> & nodecount,
 
     LOCK(get_mutex(), lock);
 
-    m_children.reserve(nodelist.size());
+    m_edges.reserve(nodelist.size());
     for (const auto& node : nodelist) {
-        m_children.emplace_back(
-            std::make_unique<UCTNode>(node.second, node.first, init_eval)
+        m_edges.emplace_back(
+            std::make_unique<UCTEdge>(node.second, node.first)
         );
     }
 
-    nodecount += m_children.size();
-    m_has_children = true;
+    edgecount += m_edges.size();
+    m_has_edges = true;
 }
 
 void UCTNode::kill_superkos(const KoState& state) {
-    for (auto& child : m_children) {
-        auto move = child->get_move();
+    for (auto& edge : m_edges) {
+        auto move = edge->get_move();
         if (move != FastBoard::PASS) {
             KoState mystate = state;
             mystate.play_move(move);
 
             if (mystate.superko()) {
-                // Don't delete nodes for now, just mark them invalid.
-                child->invalidate();
+                // Don't delete edges for now, just mark them invalid.
+                edge->invalidate();
             }
         }
     }
 
     // Now do the actual deletion.
-    m_children.erase(
-        std::remove_if(begin(m_children), end(m_children),
-                       [](const auto &child) { return !child->valid(); }),
-        end(m_children)
+    m_edges.erase(
+        std::remove_if(begin(m_edges), end(m_edges),
+                       [](const auto &edge) { return !edge->valid(); }),
+        end(m_edges)
     );
 }
 
@@ -177,11 +243,11 @@ float UCTNode::eval_state(GameState& state) {
 }
 
 void UCTNode::dirichlet_noise(float epsilon, float alpha) {
-    auto child_cnt = m_children.size();
+    auto edge_cnt = m_edges.size();
 
     auto dirichlet_vector = std::vector<float>{};
     std::gamma_distribution<float> gamma(alpha, 1.0f);
-    for (size_t i = 0; i < child_cnt; i++) {
+    for (size_t i = 0; i < edge_cnt; i++) {
         dirichlet_vector.emplace_back(gamma(Random::get_Rng()));
     }
 
@@ -198,20 +264,20 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
         v /= sample_sum;
     }
 
-    child_cnt = 0;
-    for (auto& child : m_children) {
-        auto score = child->get_score();
-        auto eta_a = dirichlet_vector[child_cnt++];
+    edge_cnt = 0;
+    for (auto& edge : m_edges) {
+        auto score = edge->get_score();
+        auto eta_a = dirichlet_vector[edge_cnt++];
         score = score * (1 - epsilon) + epsilon * eta_a;
-        child->set_score(score);
+        edge->set_score(score);
     }
 }
 
 void UCTNode::randomize_first_proportionally() {
     auto accum = std::uint64_t{0};
     auto accum_vector = std::vector<decltype(accum)>{};
-    for (const auto& child : m_children) {
-        accum += child->get_visits();
+    for (const auto& edge : m_edges) {
+        accum += edge->get_visits();
         accum_vector.emplace_back(accum);
     }
 
@@ -229,10 +295,10 @@ void UCTNode::randomize_first_proportionally() {
         return;
     }
 
-    assert(m_children.size() >= index);
+    assert(m_edges.size() >= index);
 
-    // Now swap the child at index with the first child
-    std::iter_swap(begin(m_children), begin(m_children) + index);
+    // Now swap the edge at index with the first edge
+    std::iter_swap(begin(m_edges), begin(m_edges) + index);
 }
 
 int UCTNode::get_move() const {
@@ -252,8 +318,8 @@ void UCTNode::update(float eval) {
     accumulate_eval(eval);
 }
 
-bool UCTNode::has_children() const {
-    return m_has_children;
+bool UCTNode::has_edges() const {
+    return m_has_edges;
 }
 
 float UCTNode::get_score() const {
@@ -274,25 +340,23 @@ float UCTNode::get_eval(int tomove) const {
     // to return a consistent result to the caller by caching the values.
     auto virtual_loss = int{m_virtual_loss};
     auto visits = get_visits() + virtual_loss;
-    if (visits > 0) {
-        auto blackeval = get_blackevals();
-        if (tomove == FastBoard::WHITE) {
-            blackeval += static_cast<double>(virtual_loss);
-        }
-        auto score = static_cast<float>(blackeval / (double)visits);
-        if (tomove == FastBoard::WHITE) {
-            score = 1.0f - score;
-        }
-        return score;
-    } else {
-        // If a node has not been visited yet,
-        // the eval is that of the parent.
-        auto eval = m_init_eval;
-        if (tomove == FastBoard::WHITE) {
-            eval = 1.0f - eval;
-        }
-        return eval;
+    assert(visits > 0);
+    auto blackeval = get_blackevals();
+    if (tomove == FastBoard::WHITE) {
+        blackeval += static_cast<double>(virtual_loss);
     }
+    auto score = static_cast<float>(blackeval / (double)visits);
+    if (tomove == FastBoard::WHITE) {
+        score = 1.0f - score;
+    }
+    return score;
+}
+
+float UCTNode::get_net_eval(int tomove) const {
+    if (tomove == FastBoard::WHITE) {
+        return 1.0f - m_net_eval;
+    }
+    return m_net_eval;
 }
 
 double UCTNode::get_blackevals() const {
@@ -303,47 +367,48 @@ void UCTNode::accumulate_eval(float eval) {
     atomic_add(m_blackevals, (double)eval);
 }
 
-UCTNode* UCTNode::uct_select_child(int color) {
-    UCTNode* best = nullptr;
+UCTEdge* UCTNode::uct_select_edge(int color) {
+    UCTEdge* best = nullptr;
     auto best_value = -1000.0f;
 
     LOCK(get_mutex(), lock);
 
-    // Count parentvisits.
-    // We do this manually to avoid issues with transpositions.
+    // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
     auto parentvisits = size_t{0};
-    for (const auto& child : m_children) {
-        if (child->valid()) {
-            parentvisits += child->get_visits();
-            if (child->get_visits() > 0) {
-                total_visited_policy += child->get_score();
+    for (const auto& edge : m_edges) {
+        if (edge->valid()) {
+            auto visits = edge->get_visits();
+            parentvisits += visits;
+            if (visits > 0) {
+                total_visited_policy += edge->get_score();
             }
         }
     }
 
     auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
     auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
+    // Estimated eval for unknown nodes = original parent NN eval - reduction
+    auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
-    for (const auto& child : m_children) {
-        if (!child->valid()) {
+    for (const auto& edge : m_edges) {
+        if (!edge->valid()) {
             continue;
         }
 
-        auto winrate = child->get_eval(color);
-        if (child->get_visits() == 0) {
-            // First play urgency
-            winrate -= fpu_reduction;
+        float winrate = fpu_eval;
+        if (edge->get_visits() > 0) {
+            winrate = edge->get_eval(color);
         }
-        auto psa = child->get_score();
-        auto denom = 1.0f + child->get_visits();
+        auto psa = edge->get_score();
+        auto denom = 1.0f + edge->get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
         auto value = winrate + puct;
         assert(value > -1000.0f);
 
         if (value > best_value) {
             best_value = value;
-            best = child.get();
+            best = edge.get();
         }
     }
 
@@ -351,12 +416,12 @@ UCTNode* UCTNode::uct_select_child(int color) {
     return best;
 }
 
-class NodeComp : public std::binary_function<UCTNode::node_ptr_t&,
-                                             UCTNode::node_ptr_t&, bool> {
+class EdgeComp : public std::binary_function<UCTNode::edge_ptr_t&,
+                                             UCTNode::edge_ptr_t&, bool> {
 public:
-    NodeComp(int color) : m_color(color) {};
-    bool operator()(const UCTNode::node_ptr_t& a,
-                    const UCTNode::node_ptr_t& b) {
+    EdgeComp(int color) : m_color(color) {};
+    bool operator()(const UCTNode::edge_ptr_t& a,
+                    const UCTNode::edge_ptr_t& b) {
         // if visits are not same, sort on visits
         if (a->get_visits() != b->get_visits()) {
             return a->get_visits() < b->get_visits();
@@ -374,64 +439,80 @@ private:
     int m_color;
 };
 
-void UCTNode::sort_children(int color) {
+void UCTNode::sort_edges(int color) {
     LOCK(get_mutex(), lock);
-    std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color));
+    std::stable_sort(rbegin(m_edges), rend(m_edges), EdgeComp(color));
 }
 
-UCTNode& UCTNode::get_best_root_child(int color) {
+UCTEdge* UCTNode::get_best_root_edge(int color) {
     LOCK(get_mutex(), lock);
-    assert(!m_children.empty());
+    assert(!m_edges.empty());
 
-    return *(std::max_element(begin(m_children), end(m_children),
-                              NodeComp(color))->get());
+    return std::max_element(begin(m_edges), end(m_edges),
+                            EdgeComp(color))->get();
 }
 
-UCTNode* UCTNode::get_first_child() const {
-    if (m_children.empty()) {
+UCTEdge* UCTNode::get_first_edge() const {
+    if (m_edges.empty()) {
         return nullptr;
     }
-    return m_children.front().get();
+    return m_edges.front().get();
 }
 
-const std::vector<UCTNode::node_ptr_t>& UCTNode::get_children() const {
-    return m_children;
+const std::vector<UCTNode::edge_ptr_t>& UCTNode::get_edges() const {
+    return m_edges;
 }
 
 size_t UCTNode::count_nodes() const {
-    auto nodecount = size_t{0};
-    if (m_has_children) {
-        nodecount += m_children.size();
-        for (auto& child : m_children) {
-            nodecount += child->count_nodes();
+    auto nodecount = size_t{1};
+    if (m_has_edges) {
+        for (auto& edge : m_edges) {
+            auto child = edge->get_child();
+            if (child) {
+                nodecount += child->count_nodes();
+            }
         }
     }
     return nodecount;
 }
 
+size_t UCTNode::count_edges() const {
+    auto edgecount = size_t{0};
+    if (m_has_edges) {
+        edgecount += m_edges.size();
+        for (auto& edge : m_edges) {
+            auto child = edge->get_child();
+            if (child) {
+                edgecount += child->count_edges();
+            }
+        }
+    }
+    return edgecount;
+}
+
 // Used to find new root in UCTSearch
-UCTNode::node_ptr_t UCTNode::find_child(const int move) {
-    if (m_has_children) {
-        for (auto& child : m_children) {
-            if (child->get_move() == move) {
-                return std::move(child);
+UCTEdge* UCTNode::find_edge(const int move) {
+    if (m_has_edges) {
+        for (auto& edge : m_edges) {
+            if (edge->get_move() == move) {
+                return edge.get();
             }
         }
     }
 
-    // Can happen if we resigned or children are not expanded
+    // Can happen if we resigned or edges are not expanded
     return nullptr;
 }
 
-UCTNode* UCTNode::get_nopass_child(FastState& state) const {
-    for (const auto& child : m_children) {
+UCTEdge* UCTNode::get_nopass_edge(FastState& state) const {
+    for (const auto& edge : m_edges) {
         /* If we prevent the engine from passing, we must bail out when
            we only have unreasonable moves to pick, like filling eyes.
            Note that this knowledge isn't required by the engine,
            we require it because we're overruling its moves. */
-        if (child->m_move != FastBoard::PASS
-            && !state.board.is_eye(state.get_to_move(), child->m_move)) {
-            return child.get();
+        if (edge->get_move() != FastBoard::PASS
+            && !state.board.is_eye(state.get_to_move(), edge->get_move())) {
+            return edge.get();
         }
     }
     return nullptr;
