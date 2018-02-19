@@ -322,7 +322,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
         }
     }
 
-    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
+    auto numerator = std::sqrt((double)parentvisits);
     auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
 
     for (const auto& child : m_children) {
