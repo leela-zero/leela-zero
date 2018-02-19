@@ -992,14 +992,12 @@ void Network::show_heatmap(const FastState * state, Netresult& result, bool topm
         std::stable_sort(rbegin(moves), rend(moves));
 
         auto cum = 0.0f;
-        size_t tried = 0;
-        while (cum < 0.85f && tried < moves.size()) {
-            if (moves[tried].first < 0.01f) break;
+        for (const auto& move : moves) {
+            if (cum > 0.85f || move.first < 0.01f) break;
             myprintf("%1.3f (%s)\n",
-                    moves[tried].first,
-                    state->board.move_to_text(moves[tried].second).c_str());
-            cum += moves[tried].first;
-            tried++;
+                    move.first,
+                    state->board.move_to_text(move.second).c_str());
+            cum += move.first;
         }
     }
 }
