@@ -42,10 +42,11 @@ using namespace Utils;
 
 static void license_blurb() {
     printf(
-        "Leela Zero  Copyright (C) 2017-2018  Gian-Carlo Pascutto and contributors\n"
+        "Leela Zero %s  Copyright (C) 2017-2018  Gian-Carlo Pascutto and contributors\n"
         "This program comes with ABSOLUTELY NO WARRANTY.\n"
         "This is free software, and you are welcome to redistribute it\n"
-        "under certain conditions; see the COPYING file for details.\n\n"
+        "under certain conditions; see the COPYING file for details.\n\n",
+        PROGRAM_VERSION
     );
 }
 
