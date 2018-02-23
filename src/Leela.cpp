@@ -57,7 +57,8 @@ static void parse_commandline(int argc, char *argv[]) {
     v_desc.add_options()
         ("help,h", "Show commandline options.")
         ("gtp,g", "Enable GTP mode.")
-        ("threads,t", po::value<int>(), "Number of threads to use.")
+        ("threads,t", po::value<int>()->default_value(cfg_num_threads),
+                      "Number of threads to use.")
         ("playouts,p", po::value<int>(),
                        "Weaken engine by limiting the number of playouts."
                        "Requires --noponder.")
@@ -170,15 +171,13 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_gtp_mode = true;
     }
 
-    if (vm.count("threads")) {
-        int num_threads = vm["threads"].as<int>();
-        if (num_threads > cfg_num_threads) {
-            myprintf("Clamping threads to maximum = %d\n", cfg_num_threads);
+    if (!vm["threads"].defaulted()) {
+        auto num_threads = vm["threads"].as<int>();
+        if (num_threads > cfg_max_threads) {
+            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
         } else if (num_threads != cfg_num_threads) {
             cfg_num_threads = num_threads;
         }
-    } else {
-        cfg_num_threads = std::min(2, cfg_num_threads);
     }
     myprintf("Using %d thread(s).\n", cfg_num_threads);
 
@@ -273,7 +272,7 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_random_cnt = 0;
         cfg_rng_seed = 1;
         cfg_timemanage = TimeManagement::OFF;  // Reliable number of playouts.
-        if (!vm.count("threads")) {
+        if (vm["threads"].defaulted()) {
             cfg_num_threads = 1;
         }
         if (!vm.count("playouts") && !vm.count("visits")) {
