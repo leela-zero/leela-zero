@@ -43,6 +43,7 @@ find_path(BLAS_INCLUDE_DIRS openblas_config.h
 FIND_PACKAGE(Qt5Core)
 
 # See if we can set optimization flags as expected.
+set (CMAKE_CXX_STANDARD 14)
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   SET(GccSpecificFlags 1)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
@@ -118,6 +119,7 @@ endif()
 FILE(GLOB tests_SRC "${SrcPath}/tests/*.cpp")
 
 ADD_EXECUTABLE(tests ${tests_SRC} $<TARGET_OBJECTS:objs>)
+target_compile_options(tests PRIVATE "-Wno-unused-variable")
 
 TARGET_LINK_LIBRARIES(tests ${Boost_LIBRARIES})
 TARGET_LINK_LIBRARIES(tests ${BLAS_LIBRARIES})
