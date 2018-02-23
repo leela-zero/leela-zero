@@ -305,7 +305,7 @@ void UCTNode::accumulate_eval(float eval) {
 
 UCTNode* UCTNode::uct_select_child(int color) {
     UCTNode* best = nullptr;
-    auto best_value = -1000.0f;
+    auto best_value = -1000.0;
 
     LOCK(get_mutex(), lock);
 
@@ -322,7 +322,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
         }
     }
 
-    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
+    auto numerator = std::sqrt((double)parentvisits);
     auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
 
     for (const auto& child : m_children) {
@@ -336,10 +336,10 @@ UCTNode* UCTNode::uct_select_child(int color) {
             winrate -= fpu_reduction;
         }
         auto psa = child->get_score();
-        auto denom = 1.0f + child->get_visits();
+        auto denom = 1.0 + child->get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
         auto value = winrate + puct;
-        assert(value > -1000.0f);
+        assert(value > -1000.0);
 
         if (value > best_value) {
             best_value = value;
