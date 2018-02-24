@@ -42,6 +42,9 @@ find_path(BLAS_INCLUDE_DIRS openblas_config.h
   $ENV{BLAS_HOME}/include)
 FIND_PACKAGE(Qt5Core)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED on)
+
 # See if we can set optimization flags as expected.
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   SET(GccSpecificFlags 1)
@@ -56,12 +59,15 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 IF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
-    SET(CMAKE_BUILD_TYPE RELEASE)
+  SET(CMAKE_BUILD_TYPE RELEASE)
 ENDIF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+
 if (GccSpecificFlags)
-  SET(CMAKE_CXX_FLAGS "-Wall -Wextra -pipe -ffast-math -flto -march=native -std=c++14")
-  SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -Og")
-  SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -g -O3 -DNDEBUG")
+  SET(GCC_COMPILE_FLAGS "-Wall -Wextra -ffast-math -flto -march=native")
+  SET(GCC_DISABLED_WARNING_COMPILE_FLAGS "-Wno-ignored-attributes -Wno-maybe-uninitialized")
+  SET(GCC_FLAGS "${GCC_COMPILE_FLAGS} ${GCC_DISABLED_WARNING_COMPILE_FLAGS}")
+  SET(CMAKE_CXX_FLAGS_DEBUG "${GCC_FLAGS} -g -Og")
+  SET(CMAKE_CXX_FLAGS_RELEASE "${GCC_FLAGS} -g -O3 -DNDEBUG")
   SET(CMAKE_EXE_LINKER_FLAGS "-flto -g")
 endif(GccSpecificFlags)
 
@@ -116,6 +122,9 @@ endif()
 FILE(GLOB tests_SRC "${SrcPath}/tests/*.cpp")
 
 ADD_EXECUTABLE(tests ${tests_SRC} $<TARGET_OBJECTS:objs>)
+if (GccSpecificFlags)
+  target_compile_options(tests PRIVATE "-Wno-unused-variable")
+endif()
 
 TARGET_LINK_LIBRARIES(tests ${Boost_LIBRARIES})
 TARGET_LINK_LIBRARIES(tests ${BLAS_LIBRARIES})
