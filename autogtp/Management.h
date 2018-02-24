@@ -24,12 +24,13 @@
 #include <QTextStream>
 #include <QThread>
 #include <QFileInfo>
+#include <QLockFile>
 #include <QVector>
 #include <chrono>
 #include <stdexcept>
 #include "Worker.h"
 
-constexpr int AUTOGTP_VERSION = 13;
+constexpr int AUTOGTP_VERSION = 14;
 class Management : public QObject {
     Q_OBJECT
 public:
@@ -76,6 +77,7 @@ private:
     Order m_fallBack;
     int m_gamesLeft;
     int m_threadsLeft;
+    QLockFile *m_lockFile;
 
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);

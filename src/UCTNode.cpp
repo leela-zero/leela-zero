@@ -256,10 +256,6 @@ bool UCTNode::has_children() const {
     return m_has_children;
 }
 
-void UCTNode::set_visits(int visits) {
-    m_visits = visits;
-}
-
 float UCTNode::get_score() const {
     return m_score;
 }
@@ -290,22 +286,17 @@ float UCTNode::get_eval(int tomove) const {
         return score;
     } else {
         // If a node has not been visited yet,
-        // the eval is that of the parent, potentially
-        // minus a constant.
+        // the eval is that of the parent.
         auto eval = m_init_eval;
         if (tomove == FastBoard::WHITE) {
             eval = 1.0f - eval;
         }
-        return eval - cfg_fpu_reduction;
+        return eval;
     }
 }
 
 double UCTNode::get_blackevals() const {
     return m_blackevals;
-}
-
-void UCTNode::set_blackevals(double blackevals) {
-    m_blackevals = blackevals;
 }
 
 void UCTNode::accumulate_eval(float eval) {
@@ -314,32 +305,41 @@ void UCTNode::accumulate_eval(float eval) {
 
 UCTNode* UCTNode::uct_select_child(int color) {
     UCTNode* best = nullptr;
-    auto best_value = -1000.0f;
+    auto best_value = -1000.0;
 
     LOCK(get_mutex(), lock);
 
     // Count parentvisits.
     // We do this manually to avoid issues with transpositions.
+    auto total_visited_policy = 0.0f;
     auto parentvisits = size_t{0};
     for (const auto& child : m_children) {
         if (child->valid()) {
             parentvisits += child->get_visits();
+            if (child->get_visits() > 0) {
+                total_visited_policy += child->get_score();
+            }
         }
     }
-    auto numerator = static_cast<float>(std::sqrt((double)parentvisits));
+
+    auto numerator = std::sqrt((double)parentvisits);
+    auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
 
     for (const auto& child : m_children) {
         if (!child->valid()) {
             continue;
         }
 
-        // get_eval() will automatically set first-play-urgency
         auto winrate = child->get_eval(color);
+        if (child->get_visits() == 0) {
+            // First play urgency
+            winrate -= fpu_reduction;
+        }
         auto psa = child->get_score();
-        auto denom = 1.0f + child->get_visits();
+        auto denom = 1.0 + child->get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
         auto value = winrate + puct;
-        assert(value > -1000.0f);
+        assert(value > -1000.0);
 
         if (value > best_value) {
             best_value = value;
@@ -427,7 +427,7 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
     for (const auto& child : m_children) {
         /* If we prevent the engine from passing, we must bail out when
            we only have unreasonable moves to pick, like filling eyes.
-           Note that this isn't knowledge isn't required by the engine,
+           Note that this knowledge isn't required by the engine,
            we require it because we're overruling its moves. */
         if (child->m_move != FastBoard::PASS
             && !state.board.is_eye(state.get_to_move(), child->m_move)) {

@@ -138,7 +138,7 @@ Result ValidationJob::execute(){
     if(!m_sgfFirst.isEmpty()) {
         first.loadSgf(m_sgfFirst);
         first.setMovesCount(m_moves);
-        QFile::remove(m_sgfFirst);
+        QFile::remove(m_sgfFirst + ".sgf");
     }
     Game second(m_secondNet, m_option);
     if (!second.gameStart(m_leelazMinVersion)) {
@@ -147,7 +147,7 @@ Result ValidationJob::execute(){
     if(!m_sgfSecond.isEmpty()) {
         second.loadSgf(m_sgfSecond);
         second.setMovesCount(m_moves);
-        QFile::remove(m_sgfSecond);
+        QFile::remove(m_sgfSecond + ".sgf");
     }
 
     QString wmove = "play white ";

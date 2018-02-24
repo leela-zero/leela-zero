@@ -19,6 +19,7 @@
 #include "Worker.h"
 #include "Game.h"
 #include <QTextStream>
+#include <QLockFile>
 #include <QUuid>
 #include <chrono>
 
@@ -99,7 +100,10 @@ void Worker::run() {
             m_todo.type(Order::RestoreSelfPlayed);
         }
         QString unique = QUuid::createUuid().toRfc4122().toHex();
+        QLockFile fi("storefile" + unique + ".bin.lock");
+        fi.lock();
         m_todo.save("storefile" + unique + ".bin");
+        fi.unlock();
     }    
     QTextStream(stdout) << "Program ends: quitting current worker." << endl;
 }
