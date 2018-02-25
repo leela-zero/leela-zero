@@ -104,11 +104,16 @@ bool UCTNode::create_children(std::atomic<int> & nodecount,
         }
     }
 
-    // If the sum is 0 or a denormal, then don't try to normalize.
     if (legal_sum > std::numeric_limits<float>::min()) {
         // re-normalize after removing illegal moves.
         for (auto& node : nodelist) {
             node.first /= legal_sum;
+        }
+    } else {
+        // This can happen with new randomized nets.
+        auto uniform_prob = 1.0f / nodelist.size();
+        for (auto& node : nodelist) {
+            node.first = uniform_prob;
         }
     }
 
