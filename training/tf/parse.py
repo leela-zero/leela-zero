@@ -247,13 +247,6 @@ class ChunkParser:
 
         return self.raw_struct.pack(winner, probs.tobytes(), planes)
 
-    def load_chunk_file(self, filename):
-        """
-            Read chunk file off disk
-        """
-        with gzip.open(filename, 'r') as chunk_file:
-            return chunk_file.read()
-
     def convert_chunkdata_to_v2(self, chunkdata):
         """
             Take chunk of unknown format, and return it as a list of
