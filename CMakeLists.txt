@@ -63,11 +63,11 @@ IF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 ENDIF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 
 if (GccSpecificFlags)
-  SET(GCC_COMPILE_FLAGS "-Wall -Wextra -ffast-math -flto -march=native")
+  SET(GCC_COMPILE_FLAGS "-Wall -Wextra -pedantic -pipe")
   SET(GCC_DISABLED_WARNING_COMPILE_FLAGS "-Wno-ignored-attributes -Wno-maybe-uninitialized")
   SET(GCC_FLAGS "${GCC_COMPILE_FLAGS} ${GCC_DISABLED_WARNING_COMPILE_FLAGS}")
   SET(CMAKE_CXX_FLAGS_DEBUG "${GCC_FLAGS} -g -Og")
-  SET(CMAKE_CXX_FLAGS_RELEASE "${GCC_FLAGS} -g -O3 -DNDEBUG")
+  SET(CMAKE_CXX_FLAGS_RELEASE "${GCC_FLAGS} -g -O3 -flto -ffast-math -march=native -mtune=native -DNDEBUG")
   SET(CMAKE_EXE_LINKER_FLAGS "-flto -g")
 endif(GccSpecificFlags)
 
