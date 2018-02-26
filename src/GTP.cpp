@@ -153,8 +153,8 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
     const auto& board = game.board;
 
     if (live) {
-        for (int i = 0; i < board.get_boardsize(); i++) {
-            for (int j = 0; j < board.get_boardsize(); j++) {
+        for (int i = 0; i < BOARD_SIZE; i++) {
+            for (int j = 0; j < BOARD_SIZE; j++) {
                 int vertex = board.get_vertex(i, j);
 
                 if (board.get_square(vertex) != FastBoard::EMPTY) {

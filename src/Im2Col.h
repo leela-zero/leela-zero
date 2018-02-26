@@ -29,7 +29,6 @@ void im2col(const int channels,
             std::vector<float>& output) {
     constexpr unsigned int height = BOARD_SIZE;
     constexpr unsigned int width = BOARD_SIZE;
-    constexpr unsigned int channel_size = height * width;
 
     constexpr int pad = (filter_size / 2);
     constexpr unsigned int output_h = height + 2 * pad - filter_size  + 1;
@@ -38,7 +37,7 @@ void im2col(const int channels,
     const net_t* data_im = input.data();
     float* data_col = output.data();
 
-    for (int channel = channels; channel--; data_im += channel_size) {
+    for (int channel = channels; channel--; data_im += BOARD_SQUARES) {
         for (unsigned int kernel_row = 0; kernel_row < filter_size; kernel_row++) {
             for (unsigned int kernel_col = 0; kernel_col < filter_size; kernel_col++) {
                 int input_row = -pad + kernel_row;

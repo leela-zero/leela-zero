@@ -374,9 +374,6 @@ void Training::dump_supervised(const std::string& sgf_name,
         auto state =
             std::make_unique<GameState>(sgftree->follow_mainline_state());
         // Our board size is hardcoded in several places
-        if (state->board.get_boardsize() != BOARD_SIZE) {
-            continue;
-        }
 
         process_game(*state, train_pos, who_won, tree_moves,
                     outchunker);

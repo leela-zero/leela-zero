@@ -136,7 +136,7 @@ void SGFTree::populate_states(void) {
         std::istringstream strm(size);
         int bsize;
         strm >> bsize;
-        if (bsize <= BOARD_SIZE) {
+        if (bsize == BOARD_SIZE) {
             // Assume 7.5 komi if not specified
             m_state.init_game(bsize, 7.5f);
             valid_size = true;
@@ -155,11 +155,12 @@ void SGFTree::populate_states(void) {
         int handicap = m_state.get_handicap();
         // last ditch effort: if no GM or SZ, assume 19x19 Go here
         int bsize = 19;
-        if (valid_size) {
-            bsize = m_state.board.get_boardsize();
+        if (bsize == BOARD_SIZE) {
+            m_state.init_game(bsize, komi);
+            m_state.set_handicap(handicap);
+        } else {
+            throw std::runtime_error("Board size not supported.");
         }
-        m_state.init_game(bsize, komi);
-        m_state.set_handicap(handicap);
     }
 
     // handicap
@@ -290,13 +291,13 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
         return FastBoard::PASS;
     }
 
-    if (m_state.board.get_boardsize() <= 19) {
+    if (BOARD_SIZE <= 19) {
         if (movestring == "tt") {
             return FastBoard::PASS;
         }
     }
 
-    int bsize = m_state.board.get_boardsize();
+    int bsize = BOARD_SIZE;
     if (bsize == 0) {
         throw std::runtime_error("Node has 0 sized board");
     }
@@ -382,7 +383,6 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     std::string moves;
 
     float komi = state->get_komi();
-    int size = state->board.get_boardsize();
     time_t now;
     time(&now);
     char timestr[sizeof "2017-10-16"];
@@ -390,7 +390,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
 
     header.append("(;GM[1]FF[4]RU[Chinese]");
     header.append("DT[" + std::string(timestr) + "]");
-    header.append("SZ[" + std::to_string(size) + "]");
+    header.append("SZ[" + std::to_string(BOARD_SIZE) + "]");
     header.append("KM[" + str(boost::format("%.1f") % komi) + "]");
     header.append(state->get_timecontrol().to_text_sgf());
 
@@ -414,8 +414,8 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     int handicap = 0;
     std::string handicapstr;
 
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        for (int j = 0; j < BOARD_SIZE; j++) {
             int vertex = state->board.get_vertex(i, j);
             int square = state->board.get_square(vertex);
 

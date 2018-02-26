@@ -45,15 +45,9 @@ const std::array<FastBoard::square_t, 4> FastBoard::s_cinvert = {
     WHITE, BLACK, EMPTY, INVAL
 };
 
-int FastBoard::get_boardsize(void) const {
-    return m_boardsize;
-}
-
 int FastBoard::get_vertex(int x, int y) const {
     assert(x >= 0 && x < BOARD_SIZE);
     assert(y >= 0 && y < BOARD_SIZE);
-    assert(x >= 0 && x < m_boardsize);
-    assert(y >= 0 && y < m_boardsize);
 
     int vertex = ((y + 1) * m_squaresize) + (x + 1);
 
@@ -63,12 +57,12 @@ int FastBoard::get_vertex(int x, int y) const {
 }
 
 std::pair<int, int> FastBoard::get_xy(int vertex) const {
-    //int vertex = ((y + 1) * (get_boardsize() + 2)) + (x + 1);
+    //int vertex = ((y + 1) * (BOARD_SIZE + 2)) + (x + 1);
     int x = (vertex % m_squaresize) - 1;
     int y = (vertex / m_squaresize) - 1;
 
-    assert(x >= 0 && x < m_boardsize);
-    assert(y >= 0 && y < m_boardsize);
+    assert(x >= 0 && x < BOARD_SIZE);
+    assert(y >= 0 && y < BOARD_SIZE);
     assert(get_vertex(x, y) == vertex);
 
     return std::make_pair(x, y);
@@ -98,7 +92,6 @@ void FastBoard::set_square(int x, int y, FastBoard::square_t content) {
 }
 
 void FastBoard::reset_board(int size) {
-    m_boardsize = size;
     m_squaresize = size + 2;
     m_maxsq = m_squaresize * m_squaresize;
     m_tomove = BLACK;
@@ -243,8 +236,8 @@ int FastBoard::calc_reach_color(int color) const {
     auto reachable = 0;
     auto bd = std::vector<bool>(m_maxsq, false);
     auto open = std::queue<int>();
-    for (auto i = 0; i < m_boardsize; i++) {
-        for (auto j = 0; j < m_boardsize; j++) {
+    for (auto i = 0; i < BOARD_SIZE; i++) {
+        for (auto j = 0; j < BOARD_SIZE; j++) {
             auto vertex = get_vertex(i, j);
             if (m_square[vertex] == color) {
                 reachable++;
@@ -278,28 +271,26 @@ float FastBoard::area_score(float komi) const {
 }
 
 void FastBoard::display_board(int lastmove) {
-    int boardsize = get_boardsize();
-
     myprintf("\n   ");
     print_columns();
-    for (int j = boardsize-1; j >= 0; j--) {
+    for (int j = BOARD_SIZE-1; j >= 0; j--) {
         myprintf("%2d", j+1);
         if (lastmove == get_vertex(0, j))
             myprintf("(");
         else
             myprintf(" ");
-        for (int i = 0; i < boardsize; i++) {
+        for (int i = 0; i < BOARD_SIZE; i++) {
             if (get_square(i,j) == WHITE) {
                 myprintf("O");
             } else if (get_square(i,j) == BLACK)  {
                 myprintf("X");
-            } else if (starpoint(boardsize, i, j)) {
+            } else if (starpoint(BOARD_SIZE, i, j)) {
                 myprintf("+");
             } else {
                 myprintf(".");
             }
             if (lastmove == get_vertex(i, j)) myprintf(")");
-            else if (i != boardsize-1 && lastmove == get_vertex(i, j)+1) myprintf("(");
+            else if (i != BOARD_SIZE-1 && lastmove == get_vertex(i, j)+1) myprintf("(");
             else myprintf(" ");
         }
         myprintf("%2d\n", j+1);
@@ -310,7 +301,7 @@ void FastBoard::display_board(int lastmove) {
 }
 
 void FastBoard::print_columns() {
-    for (int i = 0; i < get_boardsize(); i++) {
+    for (int i = 0; i < BOARD_SIZE; i++) {
         if (i < 25) {
             myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
         }
@@ -408,8 +399,8 @@ std::string FastBoard::move_to_text(int move) const {
     column--;
     row--;
 
-    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (column >= 0 && column < m_boardsize));
+    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (row >= 0 && row < BOARD_SIZE));
+    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (column >= 0 && column < BOARD_SIZE));
 
     if (move >= 0 && move <= m_maxsq) {
         result << static_cast<char>(column < 8 ? 'A' + column : 'A' + column + 1);
@@ -434,11 +425,11 @@ std::string FastBoard::move_to_text_sgf(int move) const {
     column--;
     row--;
 
-    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (column >= 0 && column < m_boardsize));
+    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (row >= 0 && row < BOARD_SIZE));
+    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (column >= 0 && column < BOARD_SIZE));
 
     // SGF inverts rows
-    row = m_boardsize - row - 1;
+    row = BOARD_SIZE - row - 1;
 
     if (move >= 0 && move <= m_maxsq) {
         if (column <= 25) {
@@ -536,8 +527,8 @@ std::string FastBoard::get_string(int vertex) const {
 std::string FastBoard::get_stone_list() const {
     std::string result;
 
-    for (int i = 0; i < m_boardsize; i++) {
-        for (int j = 0; j < m_boardsize; j++) {
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        for (int j = 0; j < BOARD_SIZE; j++) {
             int vertex = get_vertex(i, j);
 
             if (get_square(vertex) != EMPTY) {

@@ -58,7 +58,7 @@ void FastState::reset_game(void) {
 }
 
 void FastState::reset_board(void) {
-    board.reset_board(board.get_boardsize());
+    board.reset_board(BOARD_SIZE);
 }
 
 bool FastState::is_move_legal(int color, int vertex) {

@@ -222,9 +222,7 @@ bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
         return false;
     }
 
-    const size_t board_squares = m_rootstate.board.get_boardsize()
-                               * m_rootstate.board.get_boardsize();
-    const auto move_threshold = board_squares / 4;
+    const auto move_threshold = BOARD_SQUARES / 4;
     const auto movenum = m_rootstate.get_movenum();
     if (movenum <= move_threshold) {
         // too early in game to resign
@@ -248,7 +246,7 @@ bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
             resign_threshold / (1 + m_rootstate.get_handicap());
 
         // Blend the thresholds for the first ~215 moves.
-        auto blend_ratio = std::min(1.0f, movenum / (0.6f * board_squares));
+        auto blend_ratio = std::min(1.0f, movenum / (0.6f * BOARD_SQUARES));
         auto blended_resign_threshold = blend_ratio * resign_threshold
             + (1 - blend_ratio) * handicap_resign_threshold;
         if (bestscore > blended_resign_threshold) {
@@ -478,7 +476,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     // set up timing info
     Time start;
 
-    m_rootstate.get_timecontrol().set_boardsize(m_rootstate.board.get_boardsize());
+    m_rootstate.get_timecontrol().set_boardsize(BOARD_SIZE);
     auto time_for_move = m_rootstate.get_timecontrol().max_time_for_move(color);
 
     myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
