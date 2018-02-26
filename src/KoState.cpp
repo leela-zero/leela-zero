@@ -28,7 +28,7 @@
 #include "FullBoard.h"
 
 void KoState::init_game(int size, float komi) {
-    assert(size <= FastBoard::MAXBOARDSIZE);
+    assert(size <= BOARD_SIZE);
 
     FastState::init_game(size, komi);
 

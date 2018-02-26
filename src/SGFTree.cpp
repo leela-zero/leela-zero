@@ -123,7 +123,7 @@ void SGFTree::populate_states(void) {
         } else {
             if (!m_properties.count("SZ")) {
                 // No size, but SGF spec defines default size for Go
-                m_properties.insert(std::make_pair("SZ", "BOARD_SIZE"));
+                m_properties.insert(std::make_pair("SZ", "19"));
                 valid_size = true;
             }
         }
@@ -136,7 +136,7 @@ void SGFTree::populate_states(void) {
         std::istringstream strm(size);
         int bsize;
         strm >> bsize;
-        if (bsize <= FastBoard::MAXBOARDSIZE) {
+        if (bsize <= BOARD_SIZE) {
             // Assume 7.5 komi if not specified
             m_state.init_game(bsize, 7.5f);
             valid_size = true;
@@ -153,8 +153,8 @@ void SGFTree::populate_states(void) {
         float komi;
         strm >> komi;
         int handicap = m_state.get_handicap();
-        // last ditch effort: if no GM or SZ, assume BOARD_SIZExBOARD_SIZE Go here
-        int bsize = BOARD_SIZE;
+        // last ditch effort: if no GM or SZ, assume 19x19 Go here
+        int bsize = 19;
         if (valid_size) {
             bsize = m_state.board.get_boardsize();
         }
@@ -290,7 +290,7 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
         return FastBoard::PASS;
     }
 
-    if (m_state.board.get_boardsize() <= BOARD_SIZE) {
+    if (m_state.board.get_boardsize() <= 19) {
         if (movestring == "tt") {
             return FastBoard::PASS;
         }

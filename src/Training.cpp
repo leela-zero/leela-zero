@@ -155,7 +155,7 @@ void Training::record(GameState& state, UCTNode& root) {
     step.child_uct_winrate = best_node.get_eval(step.to_move);
     step.bestmove_visits = best_node.get_visits();
 
-    step.probabilities.resize((BOARD_SIZE * BOARD_SIZE) + 1);
+    step.probabilities.resize((BOARD_SQUARES) + 1);
 
     // Get total visit amount. We count rather
     // than trust the root to avoid ttable issues.
@@ -179,7 +179,7 @@ void Training::record(GameState& state, UCTNode& root) {
             auto xy = state.board.get_xy(move);
             step.probabilities[xy.second * BOARD_SIZE + xy.first] = prob;
         } else {
-            step.probabilities[BOARD_SIZE * BOARD_SIZE] = prob;
+            step.probabilities[BOARD_SQUARES] = prob;
         }
     }
 
@@ -234,7 +234,7 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
                               | plane[bit + 3] << 0;
                 out << std::hex << hexbyte;
             }
-            // BOARD_SIZE * BOARD_SIZE % 4 = 1 so the last bit goes by itself
+            // BOARD_SQUARES % 4 = 1 so the last bit goes by itself for odd sizes
             assert(plane.size() % 4 == 1);
             out << plane[plane.size() - 1];
             out << std::dec << std::endl;
@@ -242,7 +242,7 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
         // The side to move planes can be compactly encoded into a single
         // bit, 0 = black to move.
         out << (step.to_move == FastBoard::BLACK ? "0" : "1") << std::endl;
-        // Then a BOARD_SIZE * BOARD_SIZE + 1 long array of float probabilities
+        // Then a BOARD_SQUARES + 1 long array of float probabilities
         for (auto it = begin(step.probabilities);
             it != end(step.probabilities); ++it) {
             out << *it;
@@ -310,7 +310,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
             auto xy = state.board.get_xy(move_vertex);
             move_idx = (xy.second * BOARD_SIZE) + xy.first;
         } else {
-            move_idx = BOARD_SIZE * BOARD_SIZE; // PASS
+            move_idx = BOARD_SQUARES; // PASS
         }
 
         auto step = TimeStep{};
@@ -318,7 +318,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         step.planes = Network::NNPlanes{};
         Network::gather_features(&state, step.planes);
 
-        step.probabilities.resize((BOARD_SIZE * BOARD_SIZE) + 1);
+        step.probabilities.resize(BOARD_SQUARES + 1);
         step.probabilities[move_idx] = 1.0f;
 
         train_pos++;

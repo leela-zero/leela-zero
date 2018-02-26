@@ -73,8 +73,8 @@ static std::vector<float> conv_pol_b;
 static std::array<float, 2> bn_pol_w1;
 static std::array<float, 2> bn_pol_w2;
 
-static std::array<float, (BOARD_SIZE * BOARD_SIZE + 1) * BOARD_SIZE * BOARD_SIZE * 2> ip_pol_w;
-static std::array<float, BOARD_SIZE * BOARD_SIZE + 1> ip_pol_b;
+static std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> ip_pol_w;
+static std::array<float, BOARD_SQUARES + 1> ip_pol_b;
 
 // Value head
 static std::vector<float> conv_val_w;
@@ -82,14 +82,14 @@ static std::vector<float> conv_val_b;
 static std::array<float, 1> bn_val_w1;
 static std::array<float, 1> bn_val_w2;
 
-static std::array<float, BOARD_SIZE * BOARD_SIZE * 256> ip1_val_w;
+static std::array<float, BOARD_SQUARES * 256> ip1_val_w;
 static std::array<float, 256> ip1_val_b;
 
 static std::array<float, 256> ip2_val_w;
 static std::array<float, 1> ip2_val_b;
 
 // Rotation helper
-static std::array<std::array<int, BOARD_SIZE * BOARD_SIZE>, 8> rotate_nn_idx_table;
+static std::array<std::array<int, BOARD_SQUARES>, 8> rotate_nn_idx_table;
 
 void Network::benchmark(const GameState * state, int iterations) {
     int cpus = cfg_num_threads;
@@ -321,7 +321,7 @@ std::pair<int, int> Network::load_network_file(std::string filename) {
 void Network::initialize(void) {
     // Prepare rotation table
     for(auto s = 0; s < 8; s++) {
-        for(auto v = 0; v < BOARD_SIZE * BOARD_SIZE; v++) {
+        for(auto v = 0; v < BOARD_SQUARES; v++) {
             rotate_nn_idx_table[s][v] = rotate_nn_idx(v, s);
         }
     }
@@ -642,9 +642,9 @@ void convolve(size_t outputs,
     im2col<filter_size>(input_channels, input, col);
 
     // Weight shape (output, input, filter_size, filter_size)
-    // 96 22 3 3
-    // outputs[96,BOARD_SIZExBOARD_SIZE] = weights[96,22x3x3] x col[22x3x3,BOARD_SIZExBOARD_SIZE]
+    // 96 18 3 3
     // C←αAB + βC
+    // outputs[96,19x19] = weights[96,18x3x3] x col[18x3x3,19x19]
     // M Number of rows in matrices A and C.
     // N Number of columns in matrices B and C.
     // K Number of columns in matrix A; number of rows in matrix B.
@@ -749,7 +749,7 @@ void Network::forward_cpu(std::vector<float>& input,
     auto M = std::vector<float>(WINOGRAD_TILE * output_channels * tiles);
 
     winograd_convolve3(output_channels, input, conv_weights[0], V, M, conv_out);
-    batchnorm<BOARD_SIZE * BOARD_SIZE>(output_channels, conv_out,
+    batchnorm<BOARD_SQUARES>(output_channels, conv_out,
                    batchnorm_means[0].data(),
                    batchnorm_stddivs[0].data());
 
@@ -762,7 +762,7 @@ void Network::forward_cpu(std::vector<float>& input,
         std::copy(begin(conv_in), end(conv_in), begin(res));
         winograd_convolve3(output_channels, conv_in,
 	                       conv_weights[i], V, M, conv_out);
-        batchnorm<BOARD_SIZE * BOARD_SIZE>(output_channels, conv_out,
+        batchnorm<BOARD_SQUARES>(output_channels, conv_out,
                        batchnorm_means[i].data(),
                        batchnorm_stddivs[i].data());
 
@@ -770,7 +770,7 @@ void Network::forward_cpu(std::vector<float>& input,
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
 			               conv_weights[i + 1], V, M, conv_out);
-        batchnorm<BOARD_SIZE * BOARD_SIZE>(output_channels, conv_out,
+        batchnorm<BOARD_SQUARES>(output_channels, conv_out,
                        batchnorm_means[i + 1].data(),
                        batchnorm_stddivs[i + 1].data(),
                        res.data());
@@ -919,14 +919,14 @@ Network::Netresult Network::get_scored_moves_internal(
 #endif
 
     // Get the moves
-    batchnorm<BOARD_SIZE * BOARD_SIZE>(OUTPUTS_POLICY, policy_data, bn_pol_w1.data(), bn_pol_w2.data());
-    innerproduct<OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE, BOARD_SIZE * BOARD_SIZE + 1>(policy_data, ip_pol_w, ip_pol_b, policy_out);
+    batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data, bn_pol_w1.data(), bn_pol_w2.data());
+    innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1>(policy_data, ip_pol_w, ip_pol_b, policy_out);
     softmax(policy_out, softmax_data, cfg_softmax_temp);
     std::vector<float>& outputs = softmax_data;
 
     // Now get the score
-    batchnorm<BOARD_SIZE * BOARD_SIZE>(OUTPUTS_VALUE, value_data, bn_val_w1.data(), bn_val_w2.data());
-    innerproduct<BOARD_SIZE * BOARD_SIZE, 256>(value_data, ip1_val_w, ip1_val_b, winrate_data);
+    batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data, bn_val_w1.data(), bn_val_w2.data());
+    innerproduct<BOARD_SQUARES, 256>(value_data, ip1_val_w, ip1_val_b, winrate_data);
     innerproduct<256, 1>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
 
     // Sigmoid
@@ -934,7 +934,7 @@ Network::Netresult Network::get_scored_moves_internal(
 
     std::vector<scored_node> result;
     for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
-        if (idx < BOARD_SIZE * BOARD_SIZE) {
+        if (idx < BOARD_SQUARES) {
             auto val = outputs[idx];
             auto rot_idx = rotate_nn_idx_table[rotation][idx];
             auto x = rot_idx % BOARD_SIZE;
@@ -1051,7 +1051,7 @@ void Network::gather_features(const GameState* state, NNPlanes & planes) {
 }
 
 int Network::rotate_nn_idx(const int vertex, int symmetry) {
-    assert(vertex >= 0 && vertex < BOARD_SIZE*BOARD_SIZE);
+    assert(vertex >= 0 && vertex < BOARD_SQUARES);
     assert(symmetry >= 0 && symmetry < 8);
     int x = vertex % BOARD_SIZE;
     int y = vertex / BOARD_SIZE;
@@ -1079,6 +1079,6 @@ int Network::rotate_nn_idx(const int vertex, int symmetry) {
     }
 
     int newvtx = (newy * BOARD_SIZE) + newx;
-    assert(newvtx >= 0 && newvtx < BOARD_SIZE*BOARD_SIZE);
+    assert(newvtx >= 0 && newvtx < BOARD_SQUARES);
     return newvtx;
 }
