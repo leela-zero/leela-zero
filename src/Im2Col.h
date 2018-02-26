@@ -70,7 +70,7 @@ template <>
 void im2col<1>(const int channels,
                const std::vector<net_t>& input,
                std::vector<float>& output) {
-    auto outSize = size_t{channels * BOARD_SQUARES};
+    auto outSize = size_t{channels * static_cast<size_t>(BOARD_SQUARES)};
     assert(output.size() == outSize);
     std::copy(begin(input), begin(input) + outSize, begin(output));
 }
