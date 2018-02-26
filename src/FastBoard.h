@@ -40,7 +40,7 @@ public:
     /*
         largest board supported
     */
-    static constexpr int MAXBOARDSIZE = 19;
+    static constexpr int MAXBOARDSIZE = BOARD_SIZE;
 
     /*
         highest existing square

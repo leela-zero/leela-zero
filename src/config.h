@@ -30,6 +30,11 @@
 #endif
 
 /*
+ * BOARD_SIZE: Define size of the board to compile Leela with, must be an odd number due to winograd tiles
+ */
+#define BOARD_SIZE 19
+
+/*
  * Features
  *
  * USE_BLAS: Use a basic linear algebra library.

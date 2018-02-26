@@ -42,7 +42,7 @@ void SGFTree::init_state(void) {
     // Initialize with defaults.
     // The SGF might be missing boardsize or komi
     // which means we'll never initialize properly.
-    m_state.init_game(19, 7.5f);
+    m_state.init_game(BOARD_SIZE, 7.5f);
 }
 
 KoState * SGFTree::get_state(void) {
@@ -123,7 +123,7 @@ void SGFTree::populate_states(void) {
         } else {
             if (!m_properties.count("SZ")) {
                 // No size, but SGF spec defines default size for Go
-                m_properties.insert(std::make_pair("SZ", "19"));
+                m_properties.insert(std::make_pair("SZ", "BOARD_SIZE"));
                 valid_size = true;
             }
         }
@@ -153,8 +153,8 @@ void SGFTree::populate_states(void) {
         float komi;
         strm >> komi;
         int handicap = m_state.get_handicap();
-        // last ditch effort: if no GM or SZ, assume 19x19 Go here
-        int bsize = 19;
+        // last ditch effort: if no GM or SZ, assume BOARD_SIZExBOARD_SIZE Go here
+        int bsize = BOARD_SIZE;
         if (valid_size) {
             bsize = m_state.board.get_boardsize();
         }
@@ -290,7 +290,7 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
         return FastBoard::PASS;
     }
 
-    if (m_state.board.get_boardsize() <= 19) {
+    if (m_state.board.get_boardsize() <= BOARD_SIZE) {
         if (movestring == "tt") {
             return FastBoard::PASS;
         }
