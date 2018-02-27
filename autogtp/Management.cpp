@@ -24,6 +24,7 @@
 #include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLockFile>
 #include <QUuid>
 #include <QRegularExpression>
 #include "Management.h"
@@ -56,7 +57,8 @@ Management::Management(const int gpus,
     m_version(ver),
     m_fallBack(Order::Error),
     m_gamesLeft(maxGames),
-    m_threadsLeft(gpus * games) {
+    m_threadsLeft(gpus * games),
+    m_lockFile(nullptr) {
 }
 
 void Management::runTuningProcess(const QString &tuneCmdLine) {
@@ -76,6 +78,9 @@ Order Management::getWork(const QFileInfo &file) {
     Order o;
     o.load(file.fileName());
     QFile::remove(file.fileName());
+    m_lockFile->unlock();
+    delete m_lockFile;
+    m_lockFile = nullptr;
     return o;
 }
 
@@ -185,9 +190,13 @@ QFileInfo Management::getNextStored() {
     checkStoredGames();
     while (!m_storedFiles.isEmpty()) {
         fi = m_storedFiles.takeFirst();
-        if(fi.exists()) {
-            break;
+        m_lockFile = new QLockFile(fi.fileName()+".lock");
+        if(m_lockFile->tryLock(10) &&
+           fi.exists()) {
+                break;
         }
+        delete m_lockFile;
+        m_lockFile = nullptr;
     }
     return fi;
 }
@@ -552,7 +561,10 @@ void Management::gzipFile(const QString &fileName) {
 }
 
 void Management::saveCurlCmdLine(const QStringList &prog_cmdline, const QString &name) {
-    QFile f("curl_save" + QUuid::createUuid().toRfc4122().toHex() + ".bin");
+    QString fileName = "curl_save" + QUuid::createUuid().toRfc4122().toHex() + ".bin";
+    QLockFile lf(fileName + ".lock");
+    lf.lock();
+    QFile f(fileName);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return;
     }
@@ -576,7 +588,11 @@ void Management::sendAllGames() {
     QFileInfoList list = dir.entryInfoList();
     for (int i = 0; i < list.size(); ++i) {
         QFileInfo fileInfo = list.at(i);
-        QFile file (fileInfo.fileName());
+        QLockFile lf(fileInfo.fileName()+".lock");
+        if (!lf.tryLock(10)) {
+            continue;
+        }        
+        QFile file (fileInfo.fileName());        
         if (!file.open(QFile::ReadOnly)) {
             continue;
         }

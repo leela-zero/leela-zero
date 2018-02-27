@@ -42,7 +42,7 @@ UCTSearch::UCTSearch(GameState& g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
-    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -104,7 +104,7 @@ void UCTSearch::update_root() {
 #endif
 
     if (!advance_to_new_rootstate() || !m_root) {
-        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
     }
     // Clear last_rootstate to prevent accidental use.
     m_last_rootstate.reset(nullptr);
@@ -409,8 +409,48 @@ bool UCTSearch::is_running() const {
     return m_run;
 }
 
-bool UCTSearch::playout_or_visit_limit_reached() const {
-    return m_playouts >= m_maxplayouts || m_root->get_visits() >= m_maxvisits;
+bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
+    auto visits = m_root->get_visits();
+    auto playouts = static_cast<int>(m_playouts);
+    auto stop = playouts >= m_maxplayouts
+                || visits >= m_maxvisits
+                || elapsed_centis >= time_for_move;
+
+    if (stop || cfg_timemanage == TimeManagement::OFF) {
+        return stop;
+    }
+
+    auto Nfirst = 0;
+    auto Nsecond = 0;
+    for (const auto& node : m_root->get_children()) {
+        if (node->valid()) {
+             auto N = node->get_visits();
+             if (N > Nfirst) {
+                 Nsecond = Nfirst;
+                 Nfirst = N;
+             } else if (N > Nsecond) {
+                 Nsecond = N;
+             }
+        }
+    }
+    if ((m_maxplayouts - playouts < Nfirst - Nsecond)
+        || (m_maxvisits - visits < Nfirst - Nsecond)) {
+        stop = true;
+    } else if (elapsed_centis > 100 && playouts > 100) {
+        // Wait for at least 1 second and 100 playouts
+        // so we get a reliable playout_rate.
+        auto playout_rate = 1.0f * playouts / elapsed_centis;
+        auto time_left = time_for_move - elapsed_centis;
+        auto est_playouts_left = playout_rate * time_left;
+        if (est_playouts_left < Nfirst - Nsecond) {
+            stop = true;
+            myprintf("%.1fs left\n", time_left/100.0f);
+        }
+    }
+    if (stop) {
+        myprintf("Stopping early.\n");
+    }
+    return stop;
 }
 
 void UCTWorker::operator()() {
@@ -420,7 +460,7 @@ void UCTWorker::operator()() {
         if (result.valid()) {
             m_search->increment_playouts();
         }
-    } while(m_search->is_running() && !m_search->playout_or_visit_limit_reached());
+    } while(m_search->is_running());
 }
 
 void UCTSearch::increment_playouts() {
@@ -487,8 +527,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
             dump_analysis(static_cast<int>(m_playouts));
         }
         keeprunning  = is_running();
-        keeprunning &= (elapsed_centis < time_for_move);
-        keeprunning &= !playout_or_visit_limit_reached();
+        keeprunning &= !stop_thinking(elapsed_centis, time_for_move);
     } while(keeprunning);
 
     // stop the search

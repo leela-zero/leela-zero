@@ -18,4 +18,5 @@ HEADERS += \
     ../autogtp/Game.h \
     SPRT.h \
     Validation.h \
-    Results.h
+    Results.h \
+    ../autogtp/Console.h

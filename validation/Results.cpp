@@ -89,3 +89,19 @@ void Results::printResults(const QString& firstNetName,
         << winPercentColumn(black_wins, m_gamesPlayed)
         << winPercentColumn(white_wins, m_gamesPlayed) << std::endl;
 }
+
+QTextStream& operator<<(QTextStream& stream, const Results& r) {
+    stream << r.m_gamesPlayed << ' ';
+    stream << r.m_blackWins << ' ' << r.m_blackLosses << ' ';
+    stream << r.m_whiteWins << ' ' << r.m_whiteLosses << endl;
+    return stream;
+}
+
+QTextStream& operator>>(QTextStream& stream, Results& r) {
+    stream >> r.m_gamesPlayed;
+    stream >> r.m_blackWins;
+    stream >> r.m_blackLosses;
+    stream >> r.m_whiteWins;
+    stream >> r.m_whiteLosses;
+    return stream;
+}

@@ -54,6 +54,12 @@ private:
     float m_eval{0.0f};
 };
 
+namespace TimeManagement {
+    enum enabled_t {
+        AUTO = -1, OFF = 0, ON = 1
+    };
+};
+
 class UCTSearch {
 public:
     /*
@@ -80,7 +86,7 @@ public:
     void set_visit_limit(int visits);
     void ponder();
     bool is_running() const;
-    bool playout_or_visit_limit_reached() const;
+    bool stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
     void increment_playouts();
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 

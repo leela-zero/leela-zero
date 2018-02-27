@@ -18,6 +18,8 @@
 
 #include "Validation.h"
 #include <QFile>
+#include <QDir>
+#include <QUuid>
 
 using VersionTuple = std::tuple<int, int, int>;
 // Minimal Leela Zero version we expect to see
@@ -99,6 +101,9 @@ void ValidationWorker::run() {
             } else {
                 m_expected = Game::BLACK;
             }
+        } else {
+            first.gameQuit();
+            second.gameQuit();
         }
     } while (m_state.load() != FINISHING);
 }
@@ -140,6 +145,7 @@ Validation::Validation(const int gpus,
                        const QString& secondOpts,
                        const float& h0,
                        const float& h1) :
+        
     m_mainMutex(mutex),
     m_syncMutex(),
     m_gamesThreads(gpus*games),
@@ -158,7 +164,6 @@ Validation::Validation(const int gpus,
 }
 
 void Validation::startGames() {
-    m_mainMutex->lock();
     QString n1, n2, b1 ,b2 ,o1, o2;
     int expected;
     QString myGpu;
@@ -199,6 +204,53 @@ void Validation::startGames() {
     }
 }
 
+void Validation::saveSprt() {
+    QFile f("sprtsave" + QUuid::createUuid().toRfc4122().toHex() + ".bin");
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return;
+    }
+    QTextStream out(&f);
+    out << m_statistic;
+    out << m_results;
+    f.close();
+    m_results.printResults(m_firstNet, m_secondNet);
+    printSprtStatus(m_statistic.status());
+}
+
+void Validation::loadSprt() {
+    QDir dir;
+    QStringList filters;
+    filters << "sprtsave*.bin";
+    dir.setNameFilters(filters);
+    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+    if (dir.entryInfoList().isEmpty()) {
+        return;
+    }
+    QFileInfo fi = dir.entryInfoList().takeFirst();
+    QFile f(fi.fileName());
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return;
+    }
+    QTextStream in(&f);
+    in >> m_statistic;
+    in >> m_results;
+    f.close();
+    QFile::remove(fi.fileName());
+    QTextStream(stdout) << "Initial Statistics" << endl;
+    m_results.printResults(m_firstNet, m_secondNet);
+    printSprtStatus(m_statistic.status());
+}
+
+void Validation::printSprtStatus(const Sprt::Status& status) {
+    QTextStream(stdout)
+        << m_results.getGamesPlayed() << " games played." << endl;
+    QTextStream(stdout)
+        << "Status: " << status.result
+        << " LLR " << status.llr
+        << " Lower Bound " << status.lBound
+        << " Upper Bound " << status.uBound << endl;
+}
+
 void Validation::getResult(Sprt::GameResult result, int net_one_color) {
     if(result == Sprt::NoResult) {
         QTextStream(stdout) << "Engine Error." << endl;
@@ -219,15 +271,9 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
             <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ")
             << "than the second" << endl;
         m_results.printResults(m_firstNet, m_secondNet);
-        m_mainMutex->unlock();
+        //sendQuit();
     } else {
-        QTextStream(stdout)
-            << m_results.getGamesPlayed() << " games played." << endl;
-        QTextStream(stdout)
-            << "Status: " << status.result
-            << " LLR " << status.llr
-            << " Lower Bound " << status.lBound
-            << " Upper Bound " << status.uBound << endl;
+        printSprtStatus(status);
     }
     m_syncMutex.unlock();
 }
@@ -242,4 +288,13 @@ void Validation::wait() {
     for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
         m_gamesThreads[gpu].wait();
     }
+}
+
+void Validation::storeSprt() {
+    QTextStream(stdout) << "storeSprt" << endl;
+    m_syncMutex.lock();
+    saveSprt();
+    m_syncMutex.unlock();
+    quitThreads();
+    wait();
 }
