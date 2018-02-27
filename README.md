@@ -75,8 +75,7 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 * OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
 * An OpenCL capable device, preferably a very, very fast GPU, with recent
 drivers is strongly recommended (OpenCL 1.2 support should be enough,
-even OpenCL 1.1 might work). If you do not have a GPU, modify config.h in the
-source and remove the line that says "#define USE_OPENCL".
+even OpenCL 1.1 might work). If you do not have a GPU, define FEATURE_USE_CPU_ONLY flag with cmake to produce a CPU-only build.
 * The program has been tested on Windows, Linux and macOS.
 
 ## Example of compiling and running - Ubuntu
@@ -127,6 +126,7 @@ source and remove the line that says "#define USE_OPENCL".
 
     # Use stand alone directory to keep source dir clean
     mkdir build && cd build
+    # Run "cmake -DFEATURE_USE_CPU_ONLY=1 .." if you need CPU-only build
     cmake ..
     make leelaz
     make tests
