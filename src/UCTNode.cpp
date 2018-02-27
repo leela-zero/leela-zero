@@ -55,9 +55,9 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(std::atomic<int>& nodecount,
-                              GameState& state,
-                              float& eval) {
+bool UCTNode::create_children(std::atomic<int>& score_count,
+                              GameState & state,
+                              float & eval) {
     // check whether somebody beat us to it (atomic)
     if (has_children()) {
         return false;
@@ -116,52 +116,42 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         }
     }
 
-    link_nodelist(nodecount, nodelist);
+    assert(!nodelist.empty());
+
+    m_child_scores.reserve(nodelist.size());
+    for (const auto& node : nodelist) {
+        m_child_scores.emplace_back(node.second, node.first);
+    }
+
+    m_has_children = true;
+    score_count += nodelist.size();
+
     return true;
 }
 
-void UCTNode::link_nodelist(std::atomic<int>& nodecount,
-                            std::vector<Network::scored_node>& nodelist) {
-    if (nodelist.empty()) {
-        return;
-    }
-
-    // Use best to worst order, so highest go first
-    std::stable_sort(rbegin(nodelist), rend(nodelist));
-
-    LOCK(get_mutex(), lock);
-
-    m_children.reserve(nodelist.size());
-    for (const auto& node : nodelist) {
-        m_children.emplace_back(
-            std::make_unique<UCTNode>(node.second, node.first)
-        );
-    }
-
-    nodecount += m_children.size();
-    m_has_children = true;
-}
-
+// Only safe to call in single threaded context after calling expand_all
 void UCTNode::kill_superkos(const KoState& state) {
-    for (auto& child : m_children) {
-        auto move = child->get_move();
+    LOCK(get_mutex(), lock);
+    assert(m_child_scores.empty());
+
+    std::vector<node_ptr_t> good_expanded;
+    good_expanded.reserve(m_expanded.size());
+    for (auto& child : m_expanded) {
+        const auto move = child->get_move();
         if (move != FastBoard::PASS) {
             KoState mystate = state;
             mystate.play_move(move);
 
             if (mystate.superko()) {
-                // Don't delete nodes for now, just mark them invalid.
-                child->invalidate();
+                // Skip invalid moves.
+                continue;
             }
         }
+        good_expanded.emplace_back(std::move(child));
     }
 
-    // Now do the actual deletion.
-    m_children.erase(
-        std::remove_if(begin(m_children), end(m_children),
-                       [](const auto &child) { return !child->valid(); }),
-        end(m_children)
-    );
+    // Now do the actual deletions
+    std::swap(m_expanded, good_expanded);
 }
 
 float UCTNode::eval_state(GameState& state) {
@@ -179,12 +169,14 @@ float UCTNode::eval_state(GameState& state) {
     return net_eval;
 }
 
+// Should only be called once after expand_all
 void UCTNode::dirichlet_noise(float epsilon, float alpha) {
-    auto child_cnt = m_children.size();
+    LOCK(get_mutex(), lock);
+    assert(m_child_scores.empty());
 
     auto dirichlet_vector = std::vector<float>{};
     std::gamma_distribution<float> gamma(alpha, 1.0f);
-    for (size_t i = 0; i < child_cnt; i++) {
+    for (size_t i = 0; i < m_expanded.size(); i++) {
         dirichlet_vector.emplace_back(gamma(Random::get_Rng()));
     }
 
@@ -201,19 +193,23 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
         v /= sample_sum;
     }
 
-    child_cnt = 0;
-    for (auto& child : m_children) {
+    auto child_cnt = 0;
+    for (auto& child : m_expanded) {
         auto score = child->get_score();
         auto eta_a = dirichlet_vector[child_cnt++];
+
         score = score * (1 - epsilon) + epsilon * eta_a;
         child->set_score(score);
     }
 }
 
 void UCTNode::randomize_first_proportionally() {
+    LOCK(get_mutex(), lock);
+
     auto accum = std::uint64_t{0};
     auto accum_vector = std::vector<decltype(accum)>{};
-    for (const auto& child : m_children) {
+    // Only need to consider m_expanded as nothing else has any visits.
+    for (const auto& child : m_expanded) {
         accum += child->get_visits();
         accum_vector.emplace_back(accum);
     }
@@ -232,10 +228,10 @@ void UCTNode::randomize_first_proportionally() {
         return;
     }
 
-    assert(m_children.size() >= index);
+    assert(m_expanded.size() > index);
 
     // Now swap the child at index with the first child
-    std::iter_swap(begin(m_children), begin(m_children) + index);
+    std::iter_swap(begin(m_expanded), begin(m_expanded) + index);
 }
 
 int UCTNode::get_move() const {
@@ -304,16 +300,59 @@ void UCTNode::accumulate_eval(float eval) {
     atomic_add(m_blackevals, (double)eval);
 }
 
-UCTNode* UCTNode::uct_select_child(int color) {
-    UCTNode* best = nullptr;
-    auto best_value = -1000.0;
+// Expand nth child and remove from m_child_scores.
+UCTNode* UCTNode::expand(size_t child) {
+    // Relies on caller to hold a lockode.
+    assert(child < m_child_scores.size());
 
+    // Swap score to the back.
+    std::iter_swap(begin(m_child_scores) + child,
+                   end(m_child_scores) - 1);
+
+    // Add the new node to expanded.
+    m_expanded.emplace_back(std::make_unique<UCTNode>(
+          m_child_scores.back().first, // move
+          m_child_scores.back().second)); // score
+
+    // Remove unexpanded node.
+    m_child_scores.pop_back();
+    return m_expanded.back().get();
+}
+
+void UCTNode::expand_all() {
     LOCK(get_mutex(), lock);
+
+    // Expand all the child nodes.
+    while (m_child_scores.size() > 0) {
+        // Expand and pop last child.
+        expand(m_child_scores.size() - 1);
+    }
+}
+
+// Index of child with highest score.
+size_t UCTNode::best_child() {
+    assert(!m_child_scores.size().empty());
+
+    auto best = size_t{0};
+    auto bestScore = -1.0f;
+    for (auto i = size_t{0}; i < m_child_scores.size(); i++) {
+        auto score = m_child_scores[i].second;
+        if (score > bestScore) {
+            bestScore = score;
+            best = i;
+        }
+    };
+    return best;
+}
+
+UCTNode* UCTNode::uct_select_child(int color) {
+    LOCK(get_mutex(), lock);
+    assert(!m_expanded.size() && !m_child_scores.empty());
 
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
     auto parentvisits = size_t{0};
-    for (const auto& child : m_children) {
+    for (const auto& child : m_expanded) {
         if (child->valid()) {
             parentvisits += child->get_visits();
             if (child->get_visits() > 0) {
@@ -322,15 +361,26 @@ UCTNode* UCTNode::uct_select_child(int color) {
         }
     }
 
+    if (parentvisits == 0) {
+        // sort by score.
+        parentvisits = 1;
+    }
+
     auto numerator = std::sqrt((double)parentvisits);
     auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
     // Estimated eval for unknown nodes = original parent NN eval - reduction
     auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
-    for (const auto& child : m_children) {
-        if (!child->valid()) {
-            continue;
-        }
+    // positive index mean expanded nodes, negative index for unexpanded.
+    auto best_index = 0;
+    auto best_value = -1000.0f;
+
+    FastBoard board;
+    board.reset_board(19);
+
+    for (auto i = size_t{0}; i < m_expanded.size(); i++) {
+        auto child = m_expanded[i].get();
+        if (!child->valid()) continue;
 
         float winrate = fpu_eval;
         if (child->get_visits() > 0) {
@@ -343,13 +393,27 @@ UCTNode* UCTNode::uct_select_child(int color) {
         assert(value > -1000.0);
 
         if (value > best_value) {
+            best_index = i;
             best_value = value;
-            best = child.get();
         }
     }
 
-    assert(best != nullptr);
-    return best;
+    if (!m_child_scores.empty()) {
+        auto best_unexpanded = best_child();
+
+        // Unexpanded child
+        auto winrate = fpu_eval;
+        auto psa = m_child_scores[best_unexpanded].second;
+        auto puct = cfg_puct * psa * numerator;
+        auto value = winrate + puct;
+        assert(value > -1000.0f);
+
+        if (value > best_value) {
+            return expand(best_unexpanded);
+        }
+    }
+
+    return m_expanded[best_index].get();
 }
 
 class NodeComp : public std::binary_function<UCTNode::node_ptr_t&,
@@ -377,64 +441,94 @@ private:
 
 void UCTNode::sort_children(int color) {
     LOCK(get_mutex(), lock);
-    std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color));
+
+    // Because sort depends on visits there's no need to expand all nodes.
+    assert(!m_expanded.empty());
+    std::stable_sort(rbegin(m_expanded), rend(m_expanded), NodeComp(color));
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
     LOCK(get_mutex(), lock);
-    assert(!m_children.empty());
 
-    return *(std::max_element(begin(m_children), end(m_children),
+    // Check if any of m_expanded have visits.
+    auto any_visits = false;
+    for (const auto& child : m_expanded) {
+        if (child->get_visits()) {
+            any_visits = true;
+            break;
+        }
+    }
+
+    if (any_visits == false && !m_child_scores.empty()) {
+        // Expand best child for inclusion in search.
+        expand(best_child());
+    }
+
+    assert(!m_expanded.empty());
+
+    // NodeComp first checks visits so only need to consider m_expanded,
+    return *(std::max_element(begin(m_expanded), end(m_expanded),
                               NodeComp(color))->get());
 }
 
 UCTNode* UCTNode::get_first_child() const {
-    if (m_children.empty()) {
+    if (m_expanded.empty()) {
         return nullptr;
     }
-    return m_children.front().get();
+    return m_expanded.front().get();
 }
 
 const std::vector<UCTNode::node_ptr_t>& UCTNode::get_children() const {
-    return m_children;
+    return m_expanded;
 }
 
 size_t UCTNode::count_nodes() const {
-    auto nodecount = size_t{0};
-    if (m_has_children) {
-        nodecount += m_children.size();
-        for (auto& child : m_children) {
-            nodecount += child->count_nodes();
-        }
+    auto nodecount = m_expanded.size();
+    for (const auto& child : m_expanded) {
+        nodecount += child->count_nodes();
     }
     return nodecount;
 }
 
+size_t UCTNode::count_scores() const {
+    auto count = m_child_scores.size();
+    for (const auto& child : m_expanded) {
+        count += child->count_scores();
+    }
+    return count;
+}
+
 // Used to find new root in UCTSearch
 UCTNode::node_ptr_t UCTNode::find_child(const int move) {
+    LOCK(get_mutex(), lock);
+
     if (m_has_children) {
-        for (auto& child : m_children) {
+        for (auto& child : m_expanded) {
             if (child->get_move() == move) {
                 return std::move(child);
             }
         }
     }
 
-    // Can happen if we resigned or children are not expanded
+    // Can happen if child is not expanded or move was resign.
     return nullptr;
 }
 
-UCTNode* UCTNode::get_nopass_child(FastState& state) const {
-    for (const auto& child : m_children) {
-        /* If we prevent the engine from passing, we must bail out when
-           we only have unreasonable moves to pick, like filling eyes.
-           Note that this knowledge isn't required by the engine,
-           we require it because we're overruling its moves. */
-        if (child->m_move != FastBoard::PASS
-            && !state.board.is_eye(state.get_to_move(), child->m_move)) {
+UCTNode* UCTNode::get_nopass_child(FastState& state) {
+    // Simplify logic by expanding all children. This method is only called
+    // Rarely at root so avoid code complexity at small performance cost.
+    expand_all();
+
+    LOCK(get_mutex(), lock);
+
+    for (const auto& child : m_expanded) {
+        auto child_move = child->get_move();
+        if (child_move != FastBoard::PASS
+            && !state.board.is_eye(state.get_to_move(), child_move)) {
             return child.get();
         }
     }
+
     return nullptr;
 }
 
