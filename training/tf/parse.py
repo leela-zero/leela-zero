@@ -43,7 +43,7 @@ BATCH_SIZE = 512
 
 # Use a random sample of 1/16th of the input data read. This helps
 # improve the spread of games in the shuffle buffer.
-DOWN_SAMPLE = 8
+DOWN_SAMPLE = 16
 
 def remap_vertex(vertex, symmetry):
     """
@@ -107,7 +107,7 @@ class ChunkParser:
         # set the down-sampling rate
         self.sample = sample
 
-        # V2 Format (see 'PackedMove' in Training.h)
+        # V2 Format
         # int32 version (4 bytes)
         # (19*19+1) float32 probabilities (1448 bytes)
         # 19*19*16 packed bit planes (722 bytes)
@@ -184,7 +184,6 @@ class ChunkParser:
         probs = probabilities.tobytes()
         assert(len(probs) == 362 * 4)
 
-
         # Load the game winner color.
         winner = float(text_item[18])
         assert winner == 1.0 or winner == -1.0
@@ -256,7 +255,7 @@ class ChunkParser:
             #print("V2 chunkdata")
             items = [ chunkdata[i:i+self.v2_struct.size]
                         for i in range(0, len(chunkdata), self.v2_struct.size) ]
-            if self.sample > 0:
+            if self.sample > 1:
                 # Downsample to 1/Nth of the items.
                 items = random.sample(items, len(items) // self.sample)
             return items
@@ -266,7 +265,7 @@ class ChunkParser:
 
             result = []
             for i in range(0, len(file_chunkdata), DATA_ITEM_LINES):
-                if self.sample > 0:
+                if self.sample > 1:
                     # Downsample, using only 1/Nth of the items.
                     if random.randint(0, self.sample-1) != 0:
                         continue  # Skip this record.
