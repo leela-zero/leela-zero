@@ -181,11 +181,8 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
         return;
     }
 
-    int movecount = 0;
     for (const auto& node : parent.get_children()) {
-        // Always display at least two moves. In the case there is
-        // only one move searched the user could get an idea why.
-        if (++movecount > 2 && !node->get_visits()) break;
+        if (!node->get_visits()) break;
 
         std::string tmp = state.move_to_text(node->get_move());
         std::string pvstring(tmp);
