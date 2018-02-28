@@ -193,7 +193,7 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: ",
             tmp.c_str(),
             node->get_visits(),
-            node->get_eval(color)*100.0f,
+            node->get_visits() ? node->get_eval(color)*100.0f : 0.0f,
             node->get_score() * 100.0f);
 
         KoState tmpstate = state;
