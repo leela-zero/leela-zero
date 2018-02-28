@@ -181,7 +181,7 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
     }
 
     if (parent.get_children().size() < 2) {
-        // There's a small change only one child has been expanded and debug
+        // There's a small chance only one child has been expanded and debug
         // below would print 0 or 1 children. this should only rarely happen
         // and a small number of extra expand_alls is fine.
         parent.expand_all();

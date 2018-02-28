@@ -118,6 +118,9 @@ bool UCTNode::create_children(std::atomic<int>& score_count,
 
     assert(!nodelist.empty());
 
+    // Relock before modifying
+    lock.lock();
+
     m_child_scores.reserve(nodelist.size());
     for (const auto& node : nodelist) {
         m_child_scores.emplace_back(node.second, node.first);
@@ -341,7 +344,7 @@ size_t UCTNode::best_child_score() {
             bestScore = score;
             best = i;
         }
-    };
+    }
     return best;
 }
 
@@ -467,6 +470,8 @@ UCTNode& UCTNode::get_best_root_child(int color) {
 }
 
 UCTNode* UCTNode::get_first_child() {
+    LOCK(get_mutex(), lock);
+
     if (!m_expanded.empty()) {
         return m_expanded.front().get();
     }
@@ -503,8 +508,7 @@ UCTNode::node_ptr_t UCTNode::find_child(const int move) {
     if (m_has_children) {
         for (auto& child : m_expanded) {
             if (child->get_move() == move) {
-                // This causes child to because null and subsequent calls to
-                // this node to segfault.
+                // Child is now a nullptr, subsequent calls will cause segfault
                 return std::move(child);
             }
         }
