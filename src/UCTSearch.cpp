@@ -44,7 +44,7 @@ UCTSearch::UCTSearch(GameState& g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
-    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -106,7 +106,7 @@ void UCTSearch::update_root() {
 #endif
 
     if (!advance_to_new_rootstate() || !m_root) {
-        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
     }
     // Clear last_rootstate to prevent accidental use.
     m_last_rootstate.reset(nullptr);
@@ -195,7 +195,7 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) (LCB: %5.2f%%) (UCB: %5.2f%%) PV: ",
             tmp.c_str(),
             node->get_visits(),
-            node->get_eval(color)*100.0f,
+            node->get_visits() ? node->get_eval(color)*100.0f : 0.0f,
             node->get_score() * 100.0f,
             binomial_distribution<>::find_lower_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), CI_ALPHA) * 100.0f,
             binomial_distribution<>::find_upper_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), CI_ALPHA) * 100.0f
