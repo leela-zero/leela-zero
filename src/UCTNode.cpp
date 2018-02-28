@@ -197,7 +197,6 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
     for (auto& child : m_expanded) {
         auto score = child->get_score();
         auto eta_a = dirichlet_vector[child_cnt++];
-
         score = score * (1 - epsilon) + epsilon * eta_a;
         child->set_score(score);
     }
@@ -330,7 +329,7 @@ void UCTNode::expand_all() {
 }
 
 // Index of child with highest score.
-size_t UCTNode::best_child() {
+size_t UCTNode::best_child_score() {
     assert(!m_child_scores.empty());
     // Relies on caller to hold a lock.
 
@@ -372,14 +371,10 @@ UCTNode* UCTNode::uct_select_child(int color) {
     // Estimated eval for unknown nodes = original parent NN eval - reduction
     auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
-    auto best_index = 0;
+    UCTNode* best = nullptr;
     auto best_value = -1000.0f;
 
-    FastBoard board;
-    board.reset_board(19);
-
-    for (auto i = size_t{0}; i < m_expanded.size(); i++) {
-        auto child = m_expanded[i].get();
+    for (const auto& child : m_expanded) {
         if (!child->valid()) continue;
 
         float winrate = fpu_eval;
@@ -393,14 +388,14 @@ UCTNode* UCTNode::uct_select_child(int color) {
         assert(value > -1000.0);
 
         if (value > best_value) {
-            best_index = i;
+            best = child.get();
             best_value = value;
         }
     }
 
     if (!m_child_scores.empty()) {
         // Unexpanded child
-        auto best_unexpanded = best_child();
+        auto best_unexpanded = best_child_score();
 
         auto winrate = fpu_eval;
         auto psa = m_child_scores[best_unexpanded].second;
@@ -413,7 +408,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
         }
     }
 
-    return m_expanded[best_index].get();
+    return best;
 }
 
 class NodeComp : public std::binary_function<UCTNode::node_ptr_t&,
@@ -461,7 +456,7 @@ UCTNode& UCTNode::get_best_root_child(int color) {
 
     if (any_visits == false && !m_child_scores.empty()) {
         // Expand best child for inclusion in search.
-        expand(best_child());
+        expand(best_child_score());
     }
 
     assert(!m_expanded.empty());
@@ -471,11 +466,14 @@ UCTNode& UCTNode::get_best_root_child(int color) {
                               NodeComp(color))->get());
 }
 
-UCTNode* UCTNode::get_first_child() const {
-    if (m_expanded.empty()) {
-        return nullptr;
+UCTNode* UCTNode::get_first_child() {
+    if (!m_expanded.empty()) {
+        return m_expanded.front().get();
     }
-    return m_expanded.front().get();
+    if (!m_child_scores.empty()) {
+        return expand(best_child_score());
+    }
+    return nullptr;
 }
 
 const std::vector<UCTNode::node_ptr_t>& UCTNode::get_children() const {
@@ -522,6 +520,7 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) {
     expand_all();
 
     LOCK(get_mutex(), lock);
+    assert(m_child_scores.empty());
 
     for (const auto& child : m_expanded) {
         auto child_move = child->get_move();
@@ -530,7 +529,6 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) {
             return child.get();
         }
     }
-
     return nullptr;
 }
 
