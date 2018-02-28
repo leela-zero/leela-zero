@@ -42,7 +42,7 @@ UCTSearch::UCTSearch(GameState& g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
-    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -104,7 +104,7 @@ void UCTSearch::update_root() {
 #endif
 
     if (!advance_to_new_rootstate() || !m_root) {
-        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f, 0.5f);
+        m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
     }
     // Clear last_rootstate to prevent accidental use.
     m_last_rootstate.reset(nullptr);
@@ -176,12 +176,8 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
     // sort children, put best move on top
     parent.sort_children(color);
 
-
-    int movecount = 0;
     for (const auto& node : parent.get_children()) {
-        // Always display at least two moves. In the case there is
-        // only one move searched the user could get an idea why.
-        if (movecount != 1 && node->get_visits() == 0) break;
+        if (node->get_visits() == 0) break;
 
         std::string move = state.move_to_text(node->get_move());
 
@@ -195,8 +191,6 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
             node->get_eval(color) * 100.0f,
             node->get_score() * 100.0f,
             pv.c_str());
-
-        movecount++;
     }
 }
 
