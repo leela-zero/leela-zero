@@ -56,8 +56,8 @@ SMP::Mutex& UCTNode::get_mutex() {
 }
 
 bool UCTNode::create_children(std::atomic<int>& score_count,
-                              GameState & state,
-                              float & eval) {
+                              GameState& state,
+                              float& eval) {
     // check whether somebody beat us to it (atomic)
     if (has_children()) {
         return false;
@@ -302,8 +302,8 @@ void UCTNode::accumulate_eval(float eval) {
 
 // Expand nth child and remove from m_child_scores.
 UCTNode* UCTNode::expand(size_t child) {
-    // Relies on caller to hold a lockode.
     assert(child < m_child_scores.size());
+    // Relies on caller to hold a lock.
 
     // Swap score to the back.
     std::iter_swap(begin(m_child_scores) + child,
@@ -331,7 +331,8 @@ void UCTNode::expand_all() {
 
 // Index of child with highest score.
 size_t UCTNode::best_child() {
-    assert(!m_child_scores.size().empty());
+    assert(!m_child_scores.empty());
+    // Relies on caller to hold a lock.
 
     auto best = size_t{0};
     auto bestScore = -1.0f;
@@ -347,7 +348,7 @@ size_t UCTNode::best_child() {
 
 UCTNode* UCTNode::uct_select_child(int color) {
     LOCK(get_mutex(), lock);
-    assert(!m_expanded.size() && !m_child_scores.empty());
+    assert(!(m_expanded.empty() && m_child_scores.empty()));
 
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
@@ -371,7 +372,6 @@ UCTNode* UCTNode::uct_select_child(int color) {
     // Estimated eval for unknown nodes = original parent NN eval - reduction
     auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
-    // positive index mean expanded nodes, negative index for unexpanded.
     auto best_index = 0;
     auto best_value = -1000.0f;
 
@@ -399,9 +399,9 @@ UCTNode* UCTNode::uct_select_child(int color) {
     }
 
     if (!m_child_scores.empty()) {
+        // Unexpanded child
         auto best_unexpanded = best_child();
 
-        // Unexpanded child
         auto winrate = fpu_eval;
         auto psa = m_child_scores[best_unexpanded].second;
         auto puct = cfg_puct * psa * numerator;
@@ -505,6 +505,8 @@ UCTNode::node_ptr_t UCTNode::find_child(const int move) {
     if (m_has_children) {
         for (auto& child : m_expanded) {
             if (child->get_move() == move) {
+                // This causes child to because null and subsequent calls to
+                // this node to segfault.
                 return std::move(child);
             }
         }
