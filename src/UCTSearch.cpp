@@ -176,11 +176,17 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
     // sort children, put best move on top
     parent.sort_children(color);
 
+    if (parent.get_first_child()->first_visit()) {
+        return;
+    }
+
+    int movecount = 0;
     for (const auto& node : parent.get_children()) {
-        if (node->get_visits() == 0) break;
+        // Always display at least two moves. In the case there is
+        // only one move searched the user could get an idea why.
+        if (++movecount > 2 && !node->get_visits()) break;
 
         std::string move = state.move_to_text(node->get_move());
-
         FastState tmpstate = state;
         tmpstate.play_move(node->get_move());
         std::string pv = move + " " + get_pv(tmpstate, *node);
@@ -188,7 +194,7 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: %s",
             move.c_str(),
             node->get_visits(),
-            node->get_eval(color) * 100.0f,
+            node->get_visits() ? node->get_eval(color)*100.0f : 0.0f,
             node->get_score() * 100.0f,
             pv.c_str());
     }
