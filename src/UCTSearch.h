@@ -25,8 +25,8 @@
 #include <tuple>
 
 #include "FastBoard.h"
+#include "FastState.h"
 #include "GameState.h"
-#include "KoState.h"
 #include "UCTNode.h"
 
 
@@ -91,8 +91,8 @@ public:
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
-    void dump_stats(KoState& state, UCTNode& parent);
-    std::string get_pv(KoState& state, UCTNode& parent);
+    void dump_stats(FastState& state, UCTNode& parent);
+    std::string get_pv(FastState& state, UCTNode& parent);
     void dump_analysis(int playouts);
     bool should_resign(passflag_t passflag, float bestscore);
     int get_best_move(passflag_t passflag);

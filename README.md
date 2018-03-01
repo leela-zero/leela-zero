@@ -67,7 +67,7 @@ If you prefer a more human style, a network trained from human games is availabl
 ## Requirements
 
 * GCC, Clang or MSVC, any C++14 compiler
-* boost 1.58.x or later (libboost-all-dev on Debian/Ubuntu)
+* Boost 1.58.x or later, headers and program_options library (libboost-dev & libboost-program-options-dev on Debian/Ubuntu)
 * BLAS Library: OpenBLAS (libopenblas-dev) or (optionally) Intel MKL
 * zlib library (zlib1g & zlib1g-dev on Debian/Ubuntu)
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
@@ -87,7 +87,7 @@ source and remove the line that says "#define USE_OPENCL".
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
-    sudo apt install libboost-all-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+    sudo apt install libboost-dev libboost-program-options-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
     make
     cd ..
     wget https://sjeng.org/zero/best_v1.txt.zip
