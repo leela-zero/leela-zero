@@ -27,6 +27,7 @@ import multiprocessing as mp
 import numpy as np
 import queue
 import random
+import shufflebuffer as sb
 import struct
 import sys
 import tensorflow as tf
@@ -96,13 +97,13 @@ class ChunkParser:
         self.prob_reflection_table = [[remap_vertex(vertex, sym) for vertex in range(361)]+[361] for sym in range(8)]
         # Build full 16-plane reflection tables.
         self.full_reflection_table = [
-            [remap_vertex(vertex, sym) + p * 361 for p in range(16) for vertex in range(361) ]
+            np.array([remap_vertex(vertex, sym) + p * 361 for p in range(16) for vertex in range(361) ])
                 for sym in range(8) ]
         # Convert both to np.array. This avoids a conversion step when they're actually used.
         self.prob_reflection_table = [ np.array(x, dtype=np.int64) for x in self.prob_reflection_table ]
         self.full_reflection_table = [ np.array(x, dtype=np.int64) for x in self.full_reflection_table ]
         # Build the all-zeros and all-ones flat planes, used for color-to-move.
-        self.flat_planes = [ b'\0' * 361, b'\1' * 361 ]
+        self.flat_planes = [ b'\1'*361 + b'\0'*361, b'\1'*361 + b'\0'*361 ]
 
         # set the down-sampling rate
         self.sample = sample
@@ -127,9 +128,6 @@ class ChunkParser:
             workers = max(1, mp.cpu_count() - 2)
         print("Using {} worker processes.".format(workers))
 
-        # Spread shuffle buffer over workers.
-        self.shuffle_size = int(shuffle_size / workers)
-
         # Start the child workers running
         self.readers = []
         for _ in range(workers):
@@ -138,6 +136,9 @@ class ChunkParser:
                     args=(chunkdatagen, write)).start()
             self.readers.append(read)
             write.close()
+
+        # Create the shuffle buffer. This is only in the parent.
+        self.sb = sb.ShuffleBuffer(self.v2_struct.size, shuffle_size)
 
     def convert_v1_to_v2(self, text_item):
         """
@@ -194,7 +195,34 @@ class ChunkParser:
         return True, self.v2_struct.pack(version, probs, planes, stm, winner)
         #return True, b''.join([b'\1\0\0\0', probs, planes, b'\0\1'[stm:stm+1], b'\0\1'[winner:winner+1]])
 
-    def convert_v2_to_raw(self, symmetry, content):
+    def v2_apply_symmetry(self, symmetry, content):
+        """
+            Apply a random symmetry to a v2 record.
+        """
+        assert symmetry >= 0 and symmetry < 8
+
+        # unpack the record.
+        (ver, probs, planes, to_move, winner) = self.v2_struct.unpack(content)
+
+        planes = np.unpackbits(np.frombuffer(planes, dtype=np.uint8))
+        # We use the full length reflection tables to apply symmetry
+        # to all 16 planes simultaneously
+        planes = planes[self.full_reflection_table[symmetry]]
+        assert len(planes) == 19*19*16
+        planes = np.packbits(planes)
+        planes = planes.tobytes()
+
+        probs = np.frombuffer(probs, dtype=np.float32)
+        # Apply symmetries to the probabilities.
+        probs = probs[self.prob_reflection_table[symmetry]]
+        assert len(probs) == 362
+        probs = probs.tobytes()
+
+        # repack record.
+        return self.v2_struct.pack(ver, probs, planes, to_move, winner)
+
+
+    def convert_v2_to_tuple(self, content):
         """
             Convert v2 binary training data to packed tensors 
 
@@ -205,46 +233,27 @@ class ChunkParser:
                 byte to_move
                 byte winner
 
-            packed tensor format is
+            packed tensor formats are
                 float32 winner
                 float32*362 probs
                 uint8*6498 planes
         """
-        assert symmetry >= 0 and symmetry < 8
-
         (ver, probs, planes, to_move, winner) = self.v2_struct.unpack(content)
-
+        # Unpack planes.
         planes = np.unpackbits(np.frombuffer(planes, dtype=np.uint8))
-        # We use the full length reflection tables to apply symmetry
-        # to all 16 planes simultaneously
-        planes = planes[self.full_reflection_table[symmetry]]
         assert len(planes) == 19*19*16
-        # Convert the array to a byte string
-        planes = [ planes.tobytes() ]
-
         # Now we add the two final planes, being the 'color to move' planes.
-        # These already a fully symmetric, so we add them directly as byte
-        # strings of length 361.
         stm = to_move
         assert stm == 0 or stm == 1
-        planes.append(self.flat_planes[1 - stm])
-        planes.append(self.flat_planes[stm])
-
-        # Flatten all planes to a single byte string
-        planes = b''.join(planes)
-        assert len(planes) == (18 * 19 * 19)
-
-        probs = np.frombuffer(probs, dtype=np.float32)
-        # Apply symmetries to the probabilities.
-        probs = probs[self.prob_reflection_table[symmetry]]
-        assert len(probs) == 362
+        # Flattern all planes to a single byte string
+        planes = planes.tobytes() + self.flat_planes[stm]
+        assert len(planes) == (18 * 19 * 19), len(planes)
 
         winner = float(winner * 2 - 1)
-        assert winner == 1.0 or winner == -1.0
-
+        assert winner == 1.0 or winner == -1.0, winner
         winner = struct.pack('f', winner)
 
-        return self.raw_struct.pack(winner, probs.tobytes(), planes)
+        return (planes, probs, winner)
 
     def convert_chunkdata_to_v2(self, chunkdata):
         """
@@ -253,12 +262,12 @@ class ChunkParser:
         """
         if chunkdata[0:4] == b'\1\0\0\0':
             #print("V2 chunkdata")
-            items = [ chunkdata[i:i+self.v2_struct.size]
-                        for i in range(0, len(chunkdata), self.v2_struct.size) ]
-            if self.sample > 1:
-                # Downsample to 1/Nth of the items.
-                items = random.sample(items, len(items) // self.sample)
-            return items
+            for i in range(0, len(chunkdata), self.v2_struct.size):
+                if self.sample > 1:
+                    # Downsample, using only 1/Nth of the items.
+                    if random.randint(0, self.sample-1) != 0:
+                        continue  # Skip this record.
+                yield chunkdata[i:i+self.v2_struct.size]
         else:
             #print("V1 chunkdata")
             file_chunkdata = chunkdata.splitlines()
@@ -273,50 +282,51 @@ class ChunkParser:
                 str_items = [str(line, 'ascii') for line in item]
                 success, data = self.convert_v1_to_v2(str_items)
                 if success:
-                    result.append(data)
-            return result
-
+                    yield data
 
     def task(self, chunkdatagen, writer):
         """
             Run in fork'ed process, read data off disk, parsing, shuffling and
-            sending raw data through pipe back to main process.
+            sending v2 data through pipe back to main process.
         """
-        moves = []
         for chunkdata in chunkdatagen:
-            items = self.convert_chunkdata_to_v2(chunkdata)
-            moves.extend(items)
-            if len(moves) <= self.shuffle_size:
-                continue
-            # randomize the order of the loaded moves.
-            random.shuffle(moves)
-            while len(moves) > self.shuffle_size:
-                move = moves.pop()
-                # Pick a random symmetry to apply
+            for item in self.convert_chunkdata_to_v2(chunkdata):
+                # Apply a random symmetry
                 symmetry = random.randrange(8)
-                data = self.convert_v2_to_raw(symmetry, move)
-                writer.send_bytes(data)
-
-    def convert_raw_to_tuple(self, data):
-        """
-            Convert packed tensors to tuple of raw tensors
-        """
-        (winner, probs, planes) = self.raw_struct.unpack(data)
-        return (planes, probs, winner)
+                #item = self.v2_apply_symmetry(symmetry, item)
+                writer.send_bytes(item)
 
     def chunk_gen(self):
         """
-            Read packed tensors from child workers and yield
-            tuples of raw tensors
+            Read v2 records from child workers, shuffle, and yield
+            records.
         """
-        while True:
-            for r in mp.connection.wait(self.readers):
+        while len(self.readers):
+            #for r in mp.connection.wait(self.readers):
+            for r in self.readers:
                 try:
                     s = r.recv_bytes()
+                    s = self.sb.insert_or_replace(s)
+                    if s is None:
+                        continue  # shuffle buffer not yet full
+                    yield s
                 except EOFError:
                     print("Reader EOF")
                     self.readers.remove(r)
-                yield self.convert_raw_to_tuple(s)
+        # drain the shuffle buffer.
+        while True:
+            s = self.sb.extract()
+            if s is None:
+                return
+            yield s
+
+    def tuple_gen(self, gen):
+        """
+            Take a generator producing v2 records and convert them to tuples.
+            applying a random symmetry on the way.
+        """
+        for r in gen:
+            yield self.convert_v2_to_tuple(r)
 
     def batch_gen(self, gen):
         """
@@ -337,7 +347,10 @@ class ChunkParser:
             Read data from child workers and yield batches
             of raw tensors
         """
-        for b in self.batch_gen(self.chunk_gen()):
+        gen = self.chunk_gen()     # read from workers
+        gen = self.tuple_gen(gen)  # convert v2->tuple
+        gen = self.batch_gen(gen)  # assemble into batches
+        for b in gen:
             yield b
 
 def get_chunks(data_prefix):
@@ -345,7 +358,7 @@ def get_chunks(data_prefix):
 
 def build_chunkgen(chunks):
     """
-        generator yeilding chunkdata from chunk files.
+        generator yielding chunkdata from chunk files.
     """
     yield b''  # To ensure that the shuffle happens in child workers.
     while True:
@@ -492,6 +505,7 @@ def main(args):
 
     if not chunks:
         return
+
 
     # The following assumes positions from one game are not
     # spread through chunks.
