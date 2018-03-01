@@ -43,7 +43,7 @@ public:
     ~UCTNode() = default;
     bool first_visit() const;
     bool has_children() const;
-    bool create_children(std::atomic<int>& nodecount,
+    bool create_children(std::atomic<int>& score_count,
                          GameState& state, float& eval);
     float eval_state(GameState& state);
     void kill_superkos(const KoState& state);
@@ -64,18 +64,23 @@ public:
     void update(float eval);
 
     UCTNode* uct_select_child(int color);
-    UCTNode* get_first_child() const;
-    UCTNode* get_nopass_child(FastState& state) const;
+    UCTNode* get_first_child();
+    UCTNode* get_nopass_child(FastState& state);
     const std::vector<node_ptr_t>& get_children() const;
     size_t count_nodes() const;
+    size_t count_scores() const;
     node_ptr_t find_child(const int move);
     void sort_children(int color);
     UCTNode& get_best_root_child(int color);
     SMP::Mutex& get_mutex();
 
+    // Expand out all child_scores.
+    void expand_all();
+
 private:
-    void link_nodelist(std::atomic<int>& nodecount,
-                       std::vector<Network::scored_node>& nodelist);
+    UCTNode* expand(size_t child);
+    size_t best_child_score();
+
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution
     // if you want to add/remove/reorder any variables here.
@@ -98,7 +103,10 @@ private:
 
     // Tree data
     std::atomic<bool> m_has_children{false};
-    std::vector<node_ptr_t> m_children;
+    // (move, score) pairs.
+    std::vector<std::pair<int16_t, float>> m_child_scores;
+    // pointers to expanded nodes.
+    std::vector<node_ptr_t> m_expanded;
 };
 
 #endif

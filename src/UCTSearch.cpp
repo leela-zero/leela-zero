@@ -100,7 +100,7 @@ void UCTSearch::update_root() {
     m_playouts = 0;
 
 #ifndef NDEBUG
-    auto start_nodes = m_root->count_nodes();
+    auto start_nodes = m_root->count_nodes() + m_root->count_scores();
 #endif
 
     if (!advance_to_new_rootstate() || !m_root) {
@@ -110,7 +110,7 @@ void UCTSearch::update_root() {
     m_last_rootstate.reset(nullptr);
 
     // Check how big our search tree (reused or new) is.
-    m_nodes = m_root->count_nodes();
+    m_nodes = m_root->count_nodes() + m_root->count_scores();
 
 #ifndef NDEBUG
     if (m_nodes > 0) {
@@ -175,10 +175,17 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
 
     // sort children, put best move on top
     parent.sort_children(color);
-
-
-    if (parent.get_first_child()->first_visit()) {
+    auto first_child = parent.get_first_child();
+    if (first_child == nullptr || first_child->first_visit()) {
         return;
+    }
+
+    if (parent.get_children().size() < 2) {
+        // There's a small chance only one child has been expanded and debug
+        // below would print 0 or 1 children. this should only rarely happen
+        // and a small number of extra expand_alls is fine.
+        parent.expand_all();
+        parent.sort_children(color);
     }
 
     int movecount = 0;
@@ -264,7 +271,8 @@ bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
 int UCTSearch::get_best_move(passflag_t passflag) {
     int color = m_rootstate.board.get_to_move();
 
-    // Make sure best is first
+    // Expand all and sort for simplicity.
+    m_root->expand_all();
     m_root->sort_children(color);
 
     // Check whether to randomize the best move proportional
@@ -483,8 +491,6 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
 
-    // create a sorted list off legal moves (make sure we
-    // play something legal and decent even in time trouble)
     float root_eval;
     if (!m_root->has_children()) {
         m_root->create_children(m_nodes, m_rootstate, root_eval);
@@ -492,7 +498,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
     } else {
         root_eval = m_root->get_eval(color);
     }
+
+    // Expanding all nodes and removing superkos in root removes many edge cases
+    m_root->expand_all();
     m_root->kill_superkos(m_rootstate);
+
     if (cfg_noise) {
         m_root->dirichlet_noise(0.25f, 0.03f);
     }
@@ -547,10 +557,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
     Time elapsed;
     int elapsed_centis = Time::timediff_centis(start, elapsed);
     if (elapsed_centis+1 > 0) {
-        myprintf("%d visits, %d nodes, %d playouts, %d n/s\n\n",
+        myprintf("%d visits, %d nodes (%d scores), %d playouts, %d n/s\n\n",
                  m_root->get_visits(),
-                 static_cast<int>(m_nodes),
-                 static_cast<int>(m_playouts),
+                 m_root->count_nodes(),
+                 m_root->count_scores(),
+                 m_playouts.load(),
                  (m_playouts * 100) / (elapsed_centis+1));
     }
     int bestmove = get_best_move(passflag);
