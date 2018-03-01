@@ -197,8 +197,10 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
             node->get_visits(),
             node->get_visits() ? node->get_eval(color)*100.0f : 0.0f,
             node->get_score() * 100.0f,
-            binomial_distribution<>::find_lower_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), CI_ALPHA) * 100.0f,
-            binomial_distribution<>::find_upper_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), CI_ALPHA) * 100.0f
+            //binomial_distribution<>::find_lower_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), CI_ALPHA) * 100.0f,
+            //binomial_distribution<>::find_upper_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), CI_ALPHA) * 100.0f
+            node->get_lcb(color) * 100.0f,
+            node->get_ucb(color) * 100.0f
             );
 
         KoState tmpstate = state;

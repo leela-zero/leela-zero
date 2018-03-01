@@ -298,6 +298,14 @@ float UCTNode::get_net_eval(int tomove) const {
     return m_net_eval;
 }
 
+float UCTNode::get_lcb(int color) const {
+    return binomial_distribution<>::find_lower_bound_on_p( get_visits(), floor(get_eval(color) * get_visits()), CI_ALPHA);
+}
+
+float UCTNode::get_ucb(int color) const {
+    return binomial_distribution<>::find_upper_bound_on_p( get_visits(), floor(get_eval(color) * get_visits()), CI_ALPHA);
+}
+
 double UCTNode::get_blackevals() const {
     return m_blackevals;
 }
@@ -362,12 +370,14 @@ public:
                     const UCTNode::node_ptr_t& b) {
         // Calculate the lower confidence bound for each node.
         // Use CI_ALPHA / 2 if calculating double sided bounds.
-        float a_lb = binomial_distribution<>::find_lower_bound_on_p( a->get_visits(), floor(a->get_eval(m_color) * a->get_visits()), CI_ALPHA);
-        float b_lb = binomial_distribution<>::find_lower_bound_on_p( b->get_visits(), floor(b->get_eval(m_color) * b->get_visits()), CI_ALPHA);
+        if (a->get_visits() && b->get_visits()) {
+            float a_lb = a->get_lcb(m_color);
+            float b_lb = b->get_lcb(m_color);
 
-        // Sort on lower confidence bounds
-        if (a_lb != b_lb) {
-            return a_lb < b_lb;
+            // Sort on lower confidence bounds
+            if (a_lb != b_lb) {
+                return a_lb < b_lb;
+            }
         }
 
         // if visits are not same, sort on visits
