@@ -297,6 +297,11 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
         }
     }
 
+    int bsize = BOARD_SIZE;
+    if (bsize == 0) {
+        throw std::runtime_error("Node has 0 sized board");
+    }
+
     char c1 = movestring[0];
     char c2 = movestring[1];
 
@@ -309,14 +314,14 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
         cc1 = c1 - 'a';
     }
     if (c2 >= 'A' && c2 <= 'Z') {
-        cc2 = BOARD_SIZE - 26 - (c2 - 'A') - 1;
+        cc2 = bsize - 26 - (c2 - 'A') - 1;
     } else {
-        cc2 = BOARD_SIZE - (c2 - 'a') - 1;
+        cc2 = bsize - (c2 - 'a') - 1;
     }
 
     // catch illegal SGF
-    if (cc1 < 0 || cc1 >= BOARD_SIZE
-        || cc2 < 0 || cc2 >= BOARD_SIZE) {
+    if (cc1 < 0 || cc1 >= bsize
+        || cc2 < 0 || cc2 >= bsize) {
         throw std::runtime_error("Illegal SGF move");
     }
 

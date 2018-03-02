@@ -750,10 +750,10 @@ void OpenCL_Network::convolve1(int channels, int outputs,
                               cl::Buffer& bufferOutput,
                               cl::Buffer& bufferMerge,
                               weight_slice_t weights) {
-    // The size of the board is the size defined at compile time
+    // fixed for BOARD_SIZExBOARD_SIZE
     constexpr int width = BOARD_SIZE;
     constexpr int height = BOARD_SIZE;
-    constexpr int boardsize = BOARD_SQUARES;
+    constexpr int boardsize = width * height;
     constexpr int rowTiles = BOARD_SIZE;
 
     // Input channel grouping in multiples of 8
