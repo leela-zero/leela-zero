@@ -300,12 +300,12 @@ float UCTNode::get_net_eval(int tomove) const {
 
 // Use CI_ALPHA / 2 if calculating double sided bounds.
 float UCTNode::get_lcb(int color) const {
-    return get_visits() ? binomial_distribution<>::find_lower_bound_on_p( get_visits(), floor(get_eval(color) * get_visits()), CI_ALPHA) : 0.0f;
+    return get_visits() ? binomial_distribution<>::find_lower_bound_on_p( get_visits(), get_eval(color) * get_visits(), CI_ALPHA) : 0.0f;
 }
 
 // Use CI_ALPHA / 2 if calculating double sided bounds.
 float UCTNode::get_ucb(int color) const {
-    return get_visits() ? binomial_distribution<>::find_upper_bound_on_p( get_visits(), floor(get_eval(color) * get_visits()), CI_ALPHA) : 1.0f;
+    return get_visits() ? binomial_distribution<>::find_upper_bound_on_p( get_visits(), get_eval(color) * get_visits(), CI_ALPHA) : 1.0f;
 }
 
 double UCTNode::get_blackevals() const {
