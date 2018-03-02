@@ -49,7 +49,8 @@ static std::string sourceCode_config = R"(
     typedef float net_t;
     #define vload_net_t(offset,p) ((p)[(offset)])
     #define vstore_net_t(data,offset,p) (((p)[(offset)])=(data))
-    #define BOARD_SIZE )" + std::to_string(BOARD_SIZE);
+    #define BOARD_SIZE )" + std::to_string(BOARD_SIZE) +
+    "\n    #define BOARD_SQUARES " + std::to_string(BOARD_SQUARES);
 
 static std::string sourceCode_convolve1 = R"(
     __kernel
@@ -127,7 +128,7 @@ __kernel void merge(
                         __global const net_t * restrict in,
                         __global net_t * restrict out,
                         __private const int channels) {
-        // cl::NDRange global(outputs, BOARD_SIZE*BOARD_SIZE);
+        // cl::NDRange global(outputs, BOARD_SQUARES);
         const int gx = get_global_id(0);
         const int gy = get_global_id(1);
         const int output = gx;
@@ -135,13 +136,12 @@ __kernel void merge(
         const int outputs = get_global_size(0);
         const int width = BOARD_SIZE;
         const int height = BOARD_SIZE;
-        const int boardsize = width * height;
         const int o = output;
         float sum = 0;
         for (int c = 0; c < channels; c++) {
-            sum += vload_net_t((c * boardsize + b) * outputs + o, in);
+            sum += vload_net_t((c * BOARD_SQUARES + b) * outputs + o, in);
         }
-        vstore_net_t(sum, o * boardsize + b, out);
+        vstore_net_t(sum, o * BOARD_SQUARES + b, out);
     }
 )";
 
@@ -750,10 +750,10 @@ void OpenCL_Network::convolve1(int channels, int outputs,
                               cl::Buffer& bufferOutput,
                               cl::Buffer& bufferMerge,
                               weight_slice_t weights) {
-    // fixed for BOARD_SIZExBOARD_SIZE
+    // The size of the board is defined at compile time
     constexpr int width = BOARD_SIZE;
     constexpr int height = BOARD_SIZE;
-    constexpr int boardsize = width * height;
+    constexpr int boardsize = BOARD_SQUARES;
     constexpr int rowTiles = BOARD_SIZE;
 
     // Input channel grouping in multiples of 8

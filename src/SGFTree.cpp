@@ -124,7 +124,9 @@ void SGFTree::populate_states(void) {
             if (!m_properties.count("SZ")) {
                 // No size, but SGF spec defines default size for Go
                 m_properties.insert(std::make_pair("SZ", "19"));
-                valid_size = true;
+                if (19 == BOARD_SIZE) {
+                    valid_size = true;
+                }
             }
         }
     }
@@ -136,7 +138,7 @@ void SGFTree::populate_states(void) {
         std::istringstream strm(size);
         int bsize;
         strm >> bsize;
-        if (bsize <= BOARD_SIZE) {
+        if (bsize == BOARD_SIZE) {
             // Assume 7.5 komi if not specified
             m_state.init_game(bsize, 7.5f);
             valid_size = true;
@@ -158,8 +160,12 @@ void SGFTree::populate_states(void) {
         if (valid_size) {
             bsize = m_state.board.get_boardsize();
         }
-        m_state.init_game(bsize, komi);
-        m_state.set_handicap(handicap);
+        if (bsize == BOARD_SIZE) {
+            m_state.init_game(bsize, komi);
+            m_state.set_handicap(handicap);
+        } else {
+            throw std::runtime_error("Board size not supported.");
+        }
     }
 
     // handicap
