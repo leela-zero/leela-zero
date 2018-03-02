@@ -137,9 +137,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             if (success) {
                 result = SearchResult::from_eval(eval);
             }
-        } else {
-            auto eval = node->eval_state(currstate);
-            result = SearchResult::from_eval(eval);
         }
     }
 
@@ -401,7 +398,7 @@ void UCTSearch::dump_analysis(int playouts) {
 }
 
 bool UCTSearch::is_running() const {
-    return m_run;
+    return m_run && m_nodes < MAX_TREE_SIZE;
 }
 
 bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
