@@ -164,21 +164,6 @@ void UCTNode::kill_superkos(const KoState& state) {
     );
 }
 
-float UCTNode::eval_state(GameState& state) {
-    auto raw_netlist = Network::get_scored_moves(
-        &state, Network::Ensemble::RANDOM_ROTATION, -1, true);
-
-    // DCNN returns winrate as side to move
-    auto net_eval = raw_netlist.second;
-
-    // But we score from black's point of view
-    if (state.board.white_to_move()) {
-        net_eval = 1.0f - net_eval;
-    }
-
-    return net_eval;
-}
-
 void UCTNode::dirichlet_noise(float epsilon, float alpha) {
     auto child_cnt = m_children.size();
 

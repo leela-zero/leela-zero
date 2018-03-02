@@ -137,9 +137,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             if (success) {
                 result = SearchResult::from_eval(eval);
             }
-        } else {
-            auto eval = node->eval_state(currstate);
-            result = SearchResult::from_eval(eval);
         }
     }
 
