@@ -69,6 +69,7 @@ public:
     using movescore_t = std::pair<int, float>;
     using scoredmoves_t = std::vector<movescore_t>;
 
+    int get_boardsize(void) const;
     square_t get_square(int x, int y) const;
     square_t get_square(int vertex) const ;
     int get_vertex(int i, int j) const;
@@ -121,6 +122,7 @@ protected:
     int m_tomove;
     int m_maxsq;
 
+    int m_boardsize;
     int m_squaresize;
 
     int calc_reach_color(int color) const;

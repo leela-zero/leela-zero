@@ -39,7 +39,7 @@ void GameState::init_game(int size, float komi) {
     game_history.clear();
     game_history.emplace_back(std::make_shared<KoState>(*this));
 
-    m_timecontrol.set_boardsize(BOARD_SIZE);
+    m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
 
     m_resigned = FastBoard::EMPTY;
@@ -139,7 +139,8 @@ bool GameState::play_textmove(const std::string& color,
     parsestream >> row;
     row--;
 
-    if (row >= BOARD_SIZE || column >= BOARD_SIZE) {
+    auto boardsize = board.get_boardsize();
+    if (row >= boardsize || column >= boardsize) {
         return false;
     }
 
@@ -182,7 +183,7 @@ TimeControl& GameState::get_timecontrol() {
 
 void GameState::set_timecontrol(int maintime, int byotime,
                                 int byostones, int byoperiods) {
-    TimeControl timecontrol(BOARD_SIZE, maintime, byotime,
+    TimeControl timecontrol(board.get_boardsize(), maintime, byotime,
                             byostones, byoperiods);
 
     m_timecontrol = timecontrol;
@@ -208,10 +209,11 @@ bool GameState::set_fixed_handicap(int handicap) {
         return false;
     }
 
-    int high = BOARD_SIZE >= 13 ? 3 : 2;
-    int mid = BOARD_SIZE / 2;
+    int board_size = board.get_boardsize();
+    int high = board_size >= 13 ? 3 : 2;
+    int mid = board_size / 2;
 
-    int low = BOARD_SIZE - 1 - high;
+    int low = board_size - 1 - high;
     if (handicap >= 2) {
         play_move(FastBoard::BLACK, board.get_vertex(low, low));
         play_move(FastBoard::BLACK, board.get_vertex(high, high));
@@ -249,9 +251,10 @@ bool GameState::set_fixed_handicap(int handicap) {
 }
 
 int GameState::set_fixed_handicap_2(int handicap) {
-    int low = BOARD_SIZE >= 13 ? 3 : 2;
-    int mid = BOARD_SIZE / 2;
-    int high = BOARD_SIZE - 1 - low;
+    int board_size = board.get_boardsize();
+    int low = board_size >= 13 ? 3 : 2;
+    int mid = board_size / 2;
+    int high = board_size - 1 - low;
 
     int interval = (high - mid) / 2;
     int placed = 0;
@@ -280,16 +283,18 @@ int GameState::set_fixed_handicap_2(int handicap) {
 }
 
 bool GameState::valid_handicap(int handicap) {
+    int board_size = board.get_boardsize();
+
     if (handicap < 2 || handicap > 9) {
         return false;
     }
-    if (BOARD_SIZE % 2 == 0 && handicap > 4) {
+    if (board_size % 2 == 0 && handicap > 4) {
         return false;
     }
-    if (BOARD_SIZE == 7 && handicap > 4) {
+    if (board_size == 7 && handicap > 4) {
         return false;
     }
-    if (BOARD_SIZE < 7 && handicap > 0) {
+    if (board_size < 7 && handicap > 0) {
         return false;
     }
 
@@ -297,8 +302,9 @@ bool GameState::valid_handicap(int handicap) {
 }
 
 void GameState::place_free_handicap(int stones) {
-    if (stones > BOARD_SQUARES / 2) {
-        stones = BOARD_SQUARES / 2;
+    int limit = board.get_boardsize() * board.get_boardsize();
+    if (stones > limit / 2) {
+        stones = limit / 2;
     }
 
     int orgstones = stones;

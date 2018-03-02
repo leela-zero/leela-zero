@@ -846,6 +846,9 @@ void Network::softmax(const std::vector<float>& input,
 Network::Netresult Network::get_scored_moves(
     const GameState* state, Ensemble ensemble, int rotation, bool skip_cache) {
     Netresult result;
+    if (state->board.get_boardsize() != BOARD_SIZE) {
+        return result;
+    }
 
     // See if we already have this in the cache.
     if (!skip_cache) {
