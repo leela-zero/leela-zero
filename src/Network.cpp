@@ -750,8 +750,8 @@ void Network::forward_cpu(std::vector<float>& input,
 
     winograd_convolve3(output_channels, input, conv_weights[0], V, M, conv_out);
     batchnorm<BOARD_SQUARES>(output_channels, conv_out,
-                   batchnorm_means[0].data(),
-                   batchnorm_stddivs[0].data());
+                             batchnorm_means[0].data(),
+                             batchnorm_stddivs[0].data());
 
     // Residual tower
     auto conv_in = std::vector<float>(output_channels * width * height);
@@ -763,17 +763,17 @@ void Network::forward_cpu(std::vector<float>& input,
         winograd_convolve3(output_channels, conv_in,
 	                       conv_weights[i], V, M, conv_out);
         batchnorm<BOARD_SQUARES>(output_channels, conv_out,
-                       batchnorm_means[i].data(),
-                       batchnorm_stddivs[i].data());
+                                 batchnorm_means[i].data(),
+                                 batchnorm_stddivs[i].data());
 
         output_channels = conv_biases[i + 1].size();
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
 			               conv_weights[i + 1], V, M, conv_out);
         batchnorm<BOARD_SQUARES>(output_channels, conv_out,
-                       batchnorm_means[i + 1].data(),
-                       batchnorm_stddivs[i + 1].data(),
-                       res.data());
+                                 batchnorm_means[i + 1].data(),
+                                 batchnorm_stddivs[i + 1].data(),
+                                 res.data());
     }
     convolve<1>(OUTPUTS_POLICY, conv_out, conv_pol_w, conv_pol_b, output_pol);
     convolve<1>(OUTPUTS_VALUE, conv_out, conv_val_w, conv_val_b, output_val);
