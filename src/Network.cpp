@@ -629,7 +629,7 @@ void convolve(size_t outputs,
               const std::vector<float>& weights,
               const std::vector<float>& biases,
               std::vector<float>& output) {
-    // fixed for BOARD_SIZExBOARD_SIZE
+    // The size of the board is defined at compile time
     constexpr unsigned int width = BOARD_SIZE;
     constexpr unsigned int height = BOARD_SIZE;
     constexpr unsigned int board_squares = width * height;
