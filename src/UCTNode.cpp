@@ -164,27 +164,12 @@ void UCTNode::kill_superkos(const KoState& state) {
     );
 }
 
-float UCTNode::eval_state(GameState& state) {
-    auto raw_netlist = Network::get_scored_moves(
-        &state, Network::Ensemble::RANDOM_ROTATION, -1, true);
-
-    // DCNN returns winrate as side to move
-    auto net_eval = raw_netlist.second;
-
-    // But we score from black's point of view
-    if (state.board.white_to_move()) {
-        net_eval = 1.0f - net_eval;
-    }
-
-    return net_eval;
-}
-
 void UCTNode::dirichlet_noise(float epsilon, float alpha) {
     auto child_cnt = m_children.size();
 
     auto dirichlet_vector = std::vector<float>{};
     std::gamma_distribution<float> gamma(alpha, 1.0f);
-    for (size_t i = 0; i < child_cnt; i++) {
+    for (auto i = size_t{0}; i < child_cnt; i++) {
         dirichlet_vector.emplace_back(gamma(Random::get_Rng()));
     }
 
@@ -220,7 +205,7 @@ void UCTNode::randomize_first_proportionally() {
 
     auto pick = Random::get_Rng().randuint64(accum);
     auto index = size_t{0};
-    for (size_t i = 0; i < accum_vector.size(); i++) {
+    for (auto i = size_t{0}; i < accum_vector.size(); i++) {
         if (pick < accum_vector[i]) {
             index = i;
             break;

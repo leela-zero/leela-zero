@@ -45,7 +45,6 @@ public:
     bool has_children() const;
     bool create_children(std::atomic<int>& nodecount,
                          GameState& state, float& eval);
-    float eval_state(GameState& state);
     void kill_superkos(const KoState& state);
     void invalidate();
     bool valid() const;
