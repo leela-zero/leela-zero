@@ -93,6 +93,7 @@
     <ClCompile Include="..\..\src\Training.cpp" />
     <ClCompile Include="..\..\src\Tuner.cpp" />
     <ClCompile Include="..\..\src\UCTNode.cpp" />
+    <ClCompile Include="..\..\src\UCTNodeRoot.cpp" />
     <ClCompile Include="..\..\src\UCTSearch.cpp" />
     <ClCompile Include="..\..\src\Utils.cpp" />
     <ClCompile Include="..\..\src\Zobrist.cpp" />
