@@ -27,10 +27,10 @@
 #include <boost/math/distributions/binomial.hpp>
 
 #include "FastBoard.h"
+#include "FastState.h"
 #include "FullBoard.h"
 #include "GTP.h"
 #include "GameState.h"
-#include "KoState.h"
 #include "ThreadPool.h"
 #include "TimeControl.h"
 #include "Timing.h"
@@ -139,9 +139,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             if (success) {
                 result = SearchResult::from_eval(eval);
             }
-        } else {
-            auto eval = node->eval_state(currstate);
-            result = SearchResult::from_eval(eval);
         }
     }
 
@@ -168,7 +165,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
     return result;
 }
 
-void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
+void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
     if (cfg_quiet || !parent.has_children()) {
         return;
     }
@@ -177,7 +174,6 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
 
     // sort children, put best move on top
     parent.sort_children(color);
-
 
     if (parent.get_first_child()->first_visit()) {
         return;
@@ -189,26 +185,19 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
         // only one move searched the user could get an idea why.
         if (++movecount > 2 && !node->get_visits()) break;
 
-        std::string tmp = state.move_to_text(node->get_move());
-        std::string pvstring(tmp);
+        std::string move = state.move_to_text(node->get_move());
+        FastState tmpstate = state;
+        tmpstate.play_move(node->get_move());
+        std::string pv = move + " " + get_pv(tmpstate, *node);
 
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) (LCB: %5.2f%%) (UCB: %5.2f%%) PV: ",
-            tmp.c_str(),
+            move.c_str(),
             node->get_visits(),
             node->get_visits() ? node->get_eval(color)*100.0f : 0.0f,
             node->get_score() * 100.0f,
-            //binomial_distribution<>::find_lower_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), CI_ALPHA) * 100.0f,
-            //binomial_distribution<>::find_upper_bound_on_p( node->get_visits(), floor(node->get_eval(color) * node->get_visits()), CI_ALPHA) * 100.0f
             node->get_lcb(color) * 100.0f,
-            node->get_ucb(color) * 100.0f
-            );
-
-        KoState tmpstate = state;
-
-        tmpstate.play_move(node->get_move());
-        pvstring += " " + get_pv(tmpstate, *node);
-
-        myprintf("%s\n", pvstring.c_str());
+            node->get_ucb(color) * 100.0f,
+            pv.c_str());
     }
 }
 
@@ -377,7 +366,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     return bestmove;
 }
 
-std::string UCTSearch::get_pv(KoState & state, UCTNode& parent) {
+std::string UCTSearch::get_pv(FastState & state, UCTNode& parent) {
     if (!parent.has_children()) {
         return std::string();
     }
@@ -403,7 +392,7 @@ void UCTSearch::dump_analysis(int playouts) {
         return;
     }
 
-    GameState tempstate = m_rootstate;
+    FastState tempstate = m_rootstate;
     int color = tempstate.board.get_to_move();
 
     std::string pvstring = get_pv(tempstate, *m_root);
@@ -413,7 +402,7 @@ void UCTSearch::dump_analysis(int playouts) {
 }
 
 bool UCTSearch::is_running() const {
-    return m_run;
+    return m_run && m_nodes < MAX_TREE_SIZE;
 }
 
 bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
