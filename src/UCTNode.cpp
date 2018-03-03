@@ -211,7 +211,7 @@ void UCTNode::accumulate_eval(float eval) {
 
 UCTNode* UCTNode::uct_select_child(int color) {
     UCTNode* best = nullptr;
-    auto best_value = -1000.0;
+    auto best_unvisited_psa = -1000.0;
 
     LOCK(get_mutex(), lock);
 
@@ -220,27 +220,38 @@ UCTNode* UCTNode::uct_select_child(int color) {
     auto parentvisits = size_t{0};
     for (const auto& child : m_children) {
         if (child->valid()) {
-            parentvisits += child->get_visits();
-            if (child->get_visits() > 0) {
+            if (!child->first_visit()) {
+                parentvisits += child->get_visits();
                 total_visited_policy += child->get_score();
+            } else if (child->get_score() > best_unvisited_psa) {
+                best_unvisited_psa = child->get_score();
+                best = child.get();
             }
         }
     }
 
+    if (parentvisits == 0) {
+        assert(best != nullptr);
+        return best;
+    }
+
     auto numerator = std::sqrt((double)parentvisits);
-    auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
-    // Estimated eval for unknown nodes = original parent NN eval - reduction
-    auto fpu_eval = get_net_eval(color) - fpu_reduction;
+    auto best_value = -1000.0;
+
+    if (best_unvisited_psa > -1000.0) {
+        // Estimated eval for unknown nodes = original parent NN eval - reduction
+        auto fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
+        auto fpu_eval = get_net_eval(color) - fpu_reduction;
+        auto best_unvisited_puct = cfg_puct * best_unvisited_psa * numerator;
+        best_value = fpu_eval + best_unvisited_puct;
+    }
 
     for (const auto& child : m_children) {
-        if (!child->active()) {
+        if (!child->valid() || child->first_visit()) {
             continue;
         }
 
-        float winrate = fpu_eval;
-        if (child->get_visits() > 0) {
-            winrate = child->get_eval(color);
-        }
+        auto winrate = child->get_eval(color);
         auto psa = child->get_score();
         auto denom = 1.0 + child->get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
