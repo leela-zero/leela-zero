@@ -47,7 +47,9 @@ public:
                          GameState& state, float& eval);
     void kill_superkos(const KoState& state);
     void invalidate();
+    void set_active(const bool active);
     bool valid() const;
+    bool active() const;
     int get_move() const;
     int get_visits() const;
     float get_score() const;
@@ -73,6 +75,11 @@ public:
     SMP::Mutex& get_mutex();
 
 private:
+    enum Status {
+        INVALID, // superko
+        PRUNED,
+        ACTIVE
+    };
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist);
     // Note : This class is very size-sensitive as we are going to create
@@ -88,8 +95,7 @@ private:
     float m_score;
     float m_net_eval{0};  // Original net eval for this node (not children).
     std::atomic<double> m_blackevals{0};
-    // node alive (not superko)
-    std::atomic<bool> m_valid{true};
+    std::atomic<Status> m_status{ACTIVE};
     // Is someone adding scores to this node?
     // We don't need to unset this.
     bool m_is_expanding{false};

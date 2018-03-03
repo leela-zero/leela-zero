@@ -313,7 +313,7 @@ UCTNode* UCTNode::uct_select_child(int color) {
     auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
     for (const auto& child : m_children) {
-        if (!child->valid()) {
+        if (!child->active()) {
             continue;
         }
 
@@ -424,9 +424,19 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
 }
 
 void UCTNode::invalidate() {
-    m_valid = false;
+    m_status = INVALID;
+}
+
+void UCTNode::set_active(const bool active) {
+    if (valid()) {
+        m_status = active ? ACTIVE : PRUNED;
+    }
 }
 
 bool UCTNode::valid() const {
-    return m_valid;
+    return m_status != INVALID;
+}
+
+bool UCTNode::active() const {
+    return m_status == ACTIVE;
 }
