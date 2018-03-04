@@ -116,37 +116,36 @@ def resignStats(gsd, resignrate):
             stats[gs.winner].resigned_game_len_sum += gs.resign_movenum
         stats[gs.winner].game_len_sum += gs.total_moves
     stats[2].calcOverall(stats[0], stats[1])
-    print("Black won %d/%d (%0.2f%%)" % (
+    print("Resign rate: %0.2f - Black won %d/%d (%0.2f%%)" % (
+        resignrate,
         stats[0].num_games,
         stats[0].num_games+stats[1].num_games,
         100.0 * stats[0].num_games / (stats[0].num_games+stats[1].num_games)))
     for winner in (0,1,2):
+        win_str = 'Overall   '
         if winner==0:
-            print("Of games Black won:")
+            win_str = 'Black wins'
         elif winner==1:
-            print("Of games White won:")
-        else:
-            print("Of all games:")
+            win_str = 'White wins'
         if stats[winner].num_games == 0:
             print("    No games to report")
             continue
         avg_len = 1.0*stats[winner].game_len_sum/stats[winner].num_games
         resigned_avg_len = 1.0*stats[winner].resigned_game_len_sum/stats[winner].num_games
         avg_reduction = 1.0*(avg_len-resigned_avg_len)/avg_len
-        print("    Incorrect uct resigns = %d/%d (%0.2f%%)" % (
+        print("%s - Incorrect: %d/%d (%0.2f%%) Correct: %d/%d (%0.2f%%) No Resign: %d/%d (%0.2f%%)" % (
+            win_str,
             stats[winner].incorrect_resign_count,
             stats[winner].num_games,
-            100.0 * stats[winner].incorrect_resign_count / stats[winner].num_games))
-        print("    Correct uct resigns = %d/%d (%0.2f%%)" % (
+            100.0 * stats[winner].incorrect_resign_count / stats[winner].num_games,
             stats[winner].correct_resign_count,
             stats[winner].num_games,
-            100.0 * stats[winner].correct_resign_count / stats[winner].num_games))
-        print("    No Resign = %d/%d (%0.2f%%)" % (
+            100.0 * stats[winner].correct_resign_count / stats[winner].num_games,
             stats[winner].no_resign_count,
             stats[winner].num_games,
             100.0 * stats[winner].no_resign_count / stats[winner].num_games))
-        print("    Average game length = %d. Average game length with resigns = %d (%0.2f%% reduction)" % (
-            avg_len, resigned_avg_len, avg_reduction*100))
+        print("%s - Average game length: %d/%d (%0.2f%% reduction)" % (
+            win_str, resigned_avg_len, avg_len, avg_reduction*100))
     print()
 
 if __name__ == "__main__":
@@ -176,7 +175,6 @@ files hash.txt.0 to be in the same directory."""
     resignrates = [float(i) for i in args.resignrates.split(",")]
     print("Total games to analyze: %d" % len(args.data))
     for resignrate in (resignrates):
-        print("Resign rate: %0.2f" % (resignrate))
         gsd = parseGames(args.data, resignrate, args.verbose)
         if gsd:
             resignStats(gsd, resignrate)
