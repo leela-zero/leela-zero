@@ -62,14 +62,18 @@ int main(int argc, char *argv[]) {
     QCommandLineOption keepDebugOption(
         { "d", "debug" }, "Save training and extra debug files after each self-play game.",
                           "output directory");
+    QCommandLineOption noResignOption(
+        { "n", "noResign" },
+               "Force resign percent 0 for analysis, requires debug dir.");
+    QCommandLineOption onlySelfPlayOption(
+        { "o", "onlySelfPlay" },
+               "Only request self play games from server.");
     QCommandLineOption timeoutOption(
         { "t", "timeout" }, "Save running games after the timeout (in minutes) is passed and then exit.",
                           "time in minutes");
-
     QCommandLineOption singleOption(
         { "s", "single" }, "Exit after the first game is completed.",
                           "");
-
     QCommandLineOption maxOption(
         { "m", "maxgames" }, "Exit after the given number of games is completed.",
                           "max number of games");
@@ -78,6 +82,8 @@ int main(int argc, char *argv[]) {
     parser.addOption(gpusOption);
     parser.addOption(keepSgfOption);
     parser.addOption(keepDebugOption);
+    parser.addOption(noResignOption);
+    parser.addOption(onlySelfPlayOption);
     parser.addOption(timeoutOption);
     parser.addOption(singleOption);
     parser.addOption(maxOption);
@@ -108,7 +114,7 @@ int main(int argc, char *argv[]) {
     if(parser.isSet(singleOption)) {
         gamesNum = 1;
         gpusNum = 1;
-        maxNum = 0;      
+        maxNum = 0;
     }
 
     // Map streams
@@ -122,6 +128,13 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
     }
+    if (parser.isSet(noResignOption)) {
+        if (!parser.isSet(keepDebugOption)) {
+            cerr << "Resign analysis requires debug flag for debug output!"
+                 << endl;
+            return EXIT_FAILURE;
+        }
+    }
     if (parser.isSet(keepDebugOption)) {
         if (!QDir().mkpath(parser.value(keepDebugOption))) {
             cerr << "Couldn't create output directory for self-play Debug files!"
@@ -131,7 +144,8 @@ int main(int argc, char *argv[]) {
     }
     Console *cons = nullptr;
     Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, maxNum,
-                                      parser.value(keepSgfOption), parser.value(keepDebugOption));
+                                      parser.value(keepSgfOption), parser.value(keepDebugOption),
+                                      parser.isSet(noResignOption), parser.isSet(onlySelfPlayOption));
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
     QTimer *timer = new QTimer();
     boss->giveAssignments();
