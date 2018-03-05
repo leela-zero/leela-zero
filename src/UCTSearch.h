@@ -92,6 +92,7 @@ public:
 
 private:
     void dump_stats(FastState& state, UCTNode& parent);
+    void tree_stats(const UCTNode& node);
     std::string get_pv(FastState& state, UCTNode& parent);
     void dump_analysis(int playouts);
     bool should_resign(passflag_t passflag, float bestscore);

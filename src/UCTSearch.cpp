@@ -195,6 +195,43 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
             node->get_score() * 100.0f,
             pv.c_str());
     }
+    tree_stats(parent);
+}
+
+void tree_stats_helper(const UCTNode& node, size_t depth,
+                       size_t& nodes, size_t& non_leaf_nodes,
+                       size_t& depth_sum, size_t& max_depth,
+                       size_t& children_count) {
+    nodes += 1;
+    non_leaf_nodes += node.get_visits() > 1;
+    depth_sum += depth;
+    if (depth > max_depth) max_depth = depth;
+
+    for (const auto& child : node.get_children()) {
+        if (!child->first_visit()) children_count += 1;
+
+        tree_stats_helper(*(child.get()), depth+1,
+                          nodes, non_leaf_nodes, depth_sum,
+                          max_depth, children_count);
+    }
+}
+
+void UCTSearch::tree_stats(const UCTNode& node) {
+    size_t nodes = 0;
+    size_t non_leaf_nodes = 0;
+    size_t depth_sum = 0;
+    size_t max_depth = 0;
+    size_t children_count = 0;
+    tree_stats_helper(node, 0,
+                      nodes, non_leaf_nodes, depth_sum,
+                      max_depth, children_count);
+
+    if (nodes > 0) {
+        myprintf("%.1f average depth, %d max depth\n",
+                 (1.0f*depth_sum) / nodes, max_depth);
+        myprintf("%d non leaf nodes, %.2f average children\n",
+                 non_leaf_nodes, (1.0f*children_count) / non_leaf_nodes);
+    }
 }
 
 bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
