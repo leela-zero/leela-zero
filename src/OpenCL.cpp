@@ -752,7 +752,6 @@ void OpenCL_Network::convolve1(int channels, int outputs,
                               weight_slice_t weights) {
     // The size of the board is defined at compile time
     constexpr int width = BOARD_SIZE;
-    constexpr int height = BOARD_SIZE;
     constexpr int boardsize = BOARD_SQUARES;
     constexpr int rowTiles = BOARD_SIZE;
 
@@ -766,7 +765,7 @@ void OpenCL_Network::convolve1(int channels, int outputs,
 
 #ifndef NDEBUG
     // Total output size after reducing
-    size_t outSize = width * height * outputs * sizeof(net_t);
+    size_t outSize = boardsize * outputs * sizeof(net_t);
 
     // Produce channel * output planes and merge them at the end
     size_t mergeSize = (channels >> channelShift) * outSize;
@@ -793,7 +792,7 @@ void OpenCL_Network::convolve1(int channels, int outputs,
                                    cl::NDRange(channelGroup, outputGroup, rowGroup));
     } catch (const cl::Error &e) {
         std::cerr << "Error in convolve1: " << e.what() << ": "
-	        << e.err() << std::endl;
+                  << e.err() << std::endl;
         throw;
     }
 
@@ -810,7 +809,7 @@ void OpenCL_Network::convolve1(int channels, int outputs,
                                    cl::NDRange(std::min(8, outputs), BOARD_SIZE));
     } catch (const cl::Error &e) {
         std::cerr << "Error in merge: " << e.what() << ": "
-	        << e.err() << std::endl;
+                  << e.err() << std::endl;
         throw;
     }
 }
