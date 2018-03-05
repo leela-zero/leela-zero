@@ -486,7 +486,10 @@ int UCTSearch::think(int color, passflag_t passflag) {
     }
     m_root->kill_superkos(m_rootstate);
     if (cfg_noise) {
-        m_root->dirichlet_noise(0.25f, 0.03f);
+        // Adjusting the Dirichlet noise's alpha constant to the board size
+        auto alpha = 0.03f * 361.0f / BOARD_SQUARES;
+
+        m_root->dirichlet_noise(0.25f, alpha);
     }
 
     myprintf("NN eval=%f\n",

@@ -37,7 +37,7 @@ public:
     enum Ensemble {
         DIRECT, RANDOM_ROTATION
     };
-    using BoardPlane = std::bitset<19*19>;
+    using BoardPlane = std::bitset<BOARD_SQUARES>;
     using NNPlanes = std::vector<BoardPlane>;
     using scored_node = std::pair<float, int>;
     using Netresult = std::pair<std::vector<scored_node>, float>;

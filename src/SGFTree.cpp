@@ -136,7 +136,7 @@ void SGFTree::populate_states(void) {
         std::istringstream strm(size);
         int bsize;
         strm >> bsize;
-        if (bsize <= FastBoard::MAXBOARDSIZE) {
+        if (bsize == BOARD_SIZE) {
             // Assume 7.5 komi if not specified
             m_state.init_game(bsize, 7.5f);
             valid_size = true;
@@ -158,8 +158,12 @@ void SGFTree::populate_states(void) {
         if (valid_size) {
             bsize = m_state.board.get_boardsize();
         }
-        m_state.init_game(bsize, komi);
-        m_state.set_handicap(handicap);
+        if (bsize == BOARD_SIZE) {
+            m_state.init_game(bsize, komi);
+            m_state.set_handicap(handicap);
+        } else {
+            throw std::runtime_error("Board size not supported.");
+        }
     }
 
     // handicap

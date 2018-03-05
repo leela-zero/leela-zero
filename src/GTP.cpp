@@ -277,7 +277,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> tmp;
 
         if (!cmdstream.fail()) {
-            if (tmp != 19) {
+            if (tmp != BOARD_SIZE) {
                 gtp_fail_printf(id, "unacceptable size");
             } else {
                 float old_komi = game.get_komi();

@@ -33,7 +33,7 @@
 
 #include "Tuner.h"
 
-static constexpr auto WINOGRAD_P = (19 + 1) * (19 + 1) / 4;
+static constexpr auto WINOGRAD_P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / 4;
 static constexpr auto WINOGRAD_TILE = 4 * 4;
 
 class OpenCL;

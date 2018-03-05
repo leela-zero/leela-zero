@@ -26,11 +26,11 @@
 #include <string>
 
 #include "Utils.h"
+#include "config.h"
 
 using namespace Utils;
 
 const int FastBoard::NBR_SHIFT;
-const int FastBoard::MAXBOARDSIZE;
 const int FastBoard::MAXSQ;
 const int FastBoard::BIG;
 const int FastBoard::PASS;
@@ -50,8 +50,8 @@ int FastBoard::get_boardsize(void) const {
 }
 
 int FastBoard::get_vertex(int x, int y) const {
-    assert(x >= 0 && x < MAXBOARDSIZE);
-    assert(y >= 0 && y < MAXBOARDSIZE);
+    assert(x >= 0 && x < BOARD_SIZE);
+    assert(y >= 0 && y < BOARD_SIZE);
     assert(x >= 0 && x < m_boardsize);
     assert(y >= 0 && y < m_boardsize);
 

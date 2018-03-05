@@ -21,6 +21,7 @@
 
 #include <array>
 
+#include "config.h"
 #include "Timing.h"
 
 class TimeControl {
@@ -28,7 +29,7 @@ public:
     /*
         Initialize time control. Timing info is per GTP and in centiseconds
     */
-    TimeControl(int boardsize = 19,
+    TimeControl(int boardsize = BOARD_SIZE,
                 int maintime = 60 * 60 * 100,
                 int byotime = 0, int byostones = 25,
                 int byoperiods = 0);
