@@ -81,7 +81,7 @@ public:
     node_ptr_t find_child(const int move);
 
 private:
-    enum Status {
+    enum Status : char {
         INVALID, // superko
         PRUNED,
         ACTIVE
@@ -100,8 +100,9 @@ private:
     std::atomic<int> m_visits{0};
     // UCT eval
     float m_score;
-    float m_net_eval{0};  // Original net eval for this node (not children).
-    std::atomic<double> m_blackevals{0};
+    // Original net eval for this node (not children).
+    float m_net_eval{0.0f};
+    std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
     // Is someone adding scores to this node?
     // We don't need to unset this.
