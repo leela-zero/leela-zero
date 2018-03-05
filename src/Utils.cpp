@@ -58,6 +58,7 @@ bool Utils::input_pending(void) {
 
     if (pipe) {
         if (!PeekNamedPipe(inh, NULL, 0, NULL, &dw, NULL)) {
+            cfg_quiet = false;
             myprintf("Nothing at other end - exiting\n");
             exit(EXIT_FAILURE);
         }
@@ -65,6 +66,7 @@ bool Utils::input_pending(void) {
         return dw;
     } else {
         if (!GetNumberOfConsoleInputEvents(inh, &dw)) {
+            cfg_quiet = false;
             myprintf("Nothing at other end - exiting\n");
             exit(EXIT_FAILURE);
         }
