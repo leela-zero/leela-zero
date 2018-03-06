@@ -40,7 +40,9 @@ public:
                const int ver,
                const int maxGame,
                const QString& keep,
-               const QString& debug);
+               const QString& debug,
+               const bool noResign,
+               const bool onlySelfPlay);
     ~Management() = default;
     void giveAssignments();
     void incMoves() { m_movesMade++; }
@@ -70,6 +72,8 @@ private:
     QAtomicInt m_movesMade;
     QString m_keepPath;
     QString m_debugPath;
+    bool m_noResign;
+    bool m_onlySelfPlay;
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
     int m_storeGames;

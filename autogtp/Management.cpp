@@ -42,7 +42,9 @@ Management::Management(const int gpus,
                        const int ver,
                        const int maxGames,
                        const QString& keep,
-                       const QString& debug)
+                       const QString& debug,
+                       const bool noResign,
+                       const bool onlySelfPlay)
 
     : m_syncMutex(),
     m_gamesThreads(gpus * games),
@@ -54,6 +56,8 @@ Management::Management(const int gpus,
     m_gamesPlayed(0),
     m_keepPath(keep),
     m_debugPath(debug),
+    m_noResign(noResign),
+    m_onlySelfPlay(onlySelfPlay),
     m_version(ver),
     m_fallBack(Order::Error),
     m_gamesLeft(maxGames),
@@ -125,7 +129,7 @@ void Management::giveAssignments() {
                 m_gamesThreads[thread_index]->order(getWork(finfo));
             } else {
                 m_gamesThreads[thread_index]->order(getWork());
-            }            
+            }
             m_gamesThreads[thread_index]->start();
         }
     }
@@ -249,7 +253,13 @@ QString Management::getOptionsString(const QJsonObject &opt, const QString &rnd)
     QString options;
     options.append(getOption(opt, "playouts", " -p ", ""));
     options.append(getOption(opt, "visits", " -v ", ""));
-    options.append(getOption(opt, "resignation_percent", " -r ", "1"));
+    if (m_noResign) {
+        // Allow server to still override if necessary.
+        options.append(
+                getOption(opt, "resignation_percent_override", " -r ", "0"));
+    } else {
+        options.append(getOption(opt, "resignation_percent", " -r ", "0"));
+    }
     options.append(getOption(opt, "randomcnt", " -m ", "30"));
     options.append(getOption(opt, "threads", " -t ", "1"));
     options.append(getBoolOption(opt, "dumbpass", " -d ", true));
@@ -309,7 +319,7 @@ Order Management::getWorkInternal(bool tuning) {
 #endif
     prog_cmdline.append(" -s -J");
     prog_cmdline.append(" http://zero.sjeng.org/get-task/");
-    if (tuning) {
+    if (tuning || m_onlySelfPlay) {
         prog_cmdline.append("0");
     } else {
         prog_cmdline.append(QString::number(AUTOGTP_VERSION));
@@ -591,8 +601,8 @@ void Management::sendAllGames() {
         QLockFile lf(fileInfo.fileName()+".lock");
         if (!lf.tryLock(10)) {
             continue;
-        }        
-        QFile file (fileInfo.fileName());        
+        }
+        QFile file (fileInfo.fileName());
         if (!file.open(QFile::ReadOnly)) {
             continue;
         }
@@ -730,7 +740,7 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
 http://zero.sjeng.org/submit
 */
 
-void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l) { 
+void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l) {
     QTextStream(stdout) << "Uploading game: " << r["file"] << ".sgf for network " << l["network"] << endl;
     archiveFiles(r["file"]);
     gzipFile(r["file"] + ".sgf");
