@@ -51,12 +51,21 @@ def remap_vertex(vertex, symmetry):
         y = 19 - y - 1
     return y * 19 + x
 
+# Interface for a chunk data source.
+class ChunkDataSrc:
+    def __init__(self, items):
+        self.items = items
+    def next(self):
+        if not self.items:
+            return None
+        return self.items.pop()
+
 class ChunkParser:
-    def __init__(self, chunkdatagen, shuffle_size=1, sample=1, buffer_size=1, batch_size=256, workers=None):
+    def __init__(self, chunkdatasrc, shuffle_size=1, sample=1, buffer_size=1, batch_size=256, workers=None):
         """
             Read data and yield batches of raw tensors.
 
-            'chunkdatagen' is a generator yeilding chunkdata
+            'chunkdatasrc' is an object yeilding chunkdata
             'shuffle_size' is the size of the shuffle buffer.
             'sample' is the rate to down-sample.
             'workers' is the number of child workers to use.
@@ -98,6 +107,26 @@ class ChunkParser:
         self.sample = sample
         # set the mini-batch size
         self.batch_size = batch_size
+        # set number of elements in the shuffle buffer.
+        self.shuffle_size = shuffle_size
+        # Start worker processes, leave 2 for TensorFlow
+        if workers is None:
+            workers = max(1, mp.cpu_count() - 2)
+        print("Using {} worker processes.".format(workers))
+
+        # Start the child workers running
+        self.readers = []
+        for _ in range(workers):
+            read, write = mp.Pipe(duplex=False)
+            mp.Process(target=self.task,
+                    args=(chunkdatasrc, write)).start()
+            self.readers.append(read)
+            write.close()
+        self.init_structs()
+
+    def init_structs(self):
+        # struct.Struct doesn't pickle, so it needs to be separately
+        # constructed in workers.
 
         # V2 Format
         # int32 version (4 bytes)
@@ -113,23 +142,6 @@ class ChunkParser:
         # uint*6498 planes
         # (order is to ensure that no padding is required to make float32 be 32-bit aligned)
         self.raw_struct = struct.Struct('4s1448s6498s')
-
-        # Start worker processes, leave 2 for TensorFlow
-        if workers is None:
-            workers = max(1, mp.cpu_count() - 2)
-        print("Using {} worker processes.".format(workers))
-
-        # Start the child workers running
-        self.readers = []
-        for _ in range(workers):
-            read, write = mp.Pipe(duplex=False)
-            mp.Process(target=self.task,
-                    args=(chunkdatagen, write)).start()
-            self.readers.append(read)
-            write.close()
-
-        # Create the shuffle buffer. This is only in the parent.
-        self.sb = sb.ShuffleBuffer(self.v2_struct.size, shuffle_size)
 
     def convert_v1_to_v2(self, text_item):
         """
@@ -275,12 +287,16 @@ class ChunkParser:
                 if success:
                     yield data
 
-    def task(self, chunkdatagen, writer):
+    def task(self, chunkdatasrc, writer):
         """
-            Run in fork'ed process, read data off disk, parsing, shuffling and
+            Run in fork'ed process, read data from chunkdatasrc, parsing, shuffling and
             sending v2 data through pipe back to main process.
         """
-        for chunkdata in chunkdatagen:
+        self.init_structs()
+        while True:
+            chunkdata = chunkdatasrc.next()
+            if chunkdata is None:
+                break
             for item in self.convert_chunkdata_to_v2(chunkdata):
                 # Apply a random symmetry
                 symmetry = random.randrange(8)
@@ -292,12 +308,13 @@ class ChunkParser:
             Read v2 records from child workers, shuffle, and yield
             records.
         """
+        sbuff = sb.ShuffleBuffer(self.v2_struct.size, self.shuffle_size)
         while len(self.readers):
             #for r in mp.connection.wait(self.readers):
             for r in self.readers:
                 try:
                     s = r.recv_bytes()
-                    s = self.sb.insert_or_replace(s)
+                    s = sbuff.insert_or_replace(s)
                     if s is None:
                         continue  # shuffle buffer not yet full
                     yield s
@@ -306,7 +323,7 @@ class ChunkParser:
                     self.readers.remove(r)
         # drain the shuffle buffer.
         while True:
-            s = self.sb.extract()
+            s = sbuff.extract()
             if s is None:
                 return
             yield s
@@ -396,8 +413,8 @@ class ChunkParserTest(unittest.TestCase):
         chunkdata = ''.join(items).encode('ascii')
 
         # feed batch_size copies into parser
-        parser = ChunkParser(
-                (chunkdata for _ in range(batch_size*2)),
+        chunkdatasrc = ChunkDataSrc([chunkdata for _ in range(batch_size*2)])
+        parser = ChunkParser(chunkdatasrc,
                 shuffle_size=1, workers=1,batch_size=batch_size)
 
         # Get one batch from the parser.
