@@ -247,7 +247,7 @@ QString Management::getBoolOption(const QJsonObject &ob, const QString &key, con
 
 QString Management::getOptionsString(const QJsonObject &opt, const QString &rnd) {
     QString options;
-    options.append(getOption(opt, "playouts", " -p ", "1600"));
+    options.append(getOption(opt, "playouts", " -p ", ""));
     options.append(getOption(opt, "visits", " -v ", ""));
     options.append(getOption(opt, "resignation_percent", " -r ", "1"));
     options.append(getOption(opt, "randomcnt", " -m ", "30"));

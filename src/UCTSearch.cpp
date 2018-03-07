@@ -20,6 +20,7 @@
 #include "UCTSearch.h"
 
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -194,6 +195,43 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
             node->get_visits() ? node->get_eval(color)*100.0f : 0.0f,
             node->get_score() * 100.0f,
             pv.c_str());
+    }
+    tree_stats(parent);
+}
+
+void tree_stats_helper(const UCTNode& node, size_t depth,
+                       size_t& nodes, size_t& non_leaf_nodes,
+                       size_t& depth_sum, size_t& max_depth,
+                       size_t& children_count) {
+    nodes += 1;
+    non_leaf_nodes += node.get_visits() > 1;
+    depth_sum += depth;
+    if (depth > max_depth) max_depth = depth;
+
+    for (const auto& child : node.get_children()) {
+        if (!child->first_visit()) children_count += 1;
+
+        tree_stats_helper(*(child.get()), depth+1,
+                          nodes, non_leaf_nodes, depth_sum,
+                          max_depth, children_count);
+    }
+}
+
+void UCTSearch::tree_stats(const UCTNode& node) {
+    size_t nodes = 0;
+    size_t non_leaf_nodes = 0;
+    size_t depth_sum = 0;
+    size_t max_depth = 0;
+    size_t children_count = 0;
+    tree_stats_helper(node, 0,
+                      nodes, non_leaf_nodes, depth_sum,
+                      max_depth, children_count);
+
+    if (nodes > 0) {
+        myprintf("%.1f average depth, %d max depth\n",
+                 (1.0f*depth_sum) / nodes, max_depth);
+        myprintf("%d non leaf nodes, %.2f average children\n",
+                 non_leaf_nodes, (1.0f*children_count) / non_leaf_nodes);
     }
 }
 
@@ -401,48 +439,49 @@ bool UCTSearch::is_running() const {
     return m_run && m_nodes < MAX_TREE_SIZE;
 }
 
-bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
-    auto visits = m_root->get_visits();
-    auto playouts = static_cast<int>(m_playouts);
-    auto stop = playouts >= m_maxplayouts
-                || visits >= m_maxvisits
-                || elapsed_centis >= time_for_move;
+int UCTSearch::est_playouts_left(int elapsed_centis, int time_for_move) const
+{
+    auto playouts = m_playouts.load();
+    const auto playouts_left = std::min(m_maxplayouts - playouts,
+                                        m_maxvisits - m_root->get_visits());
 
-    if (stop || cfg_timemanage == TimeManagement::OFF) {
-        return stop;
+    // Wait for at least 1 second and 100 playouts
+    // so we get a reliable playout_rate.
+    if (elapsed_centis < 100 || playouts < 100) {
+        return playouts_left;
     }
+    const auto playout_rate = 1.0f * playouts / elapsed_centis;
+    const auto time_left = time_for_move - elapsed_centis;
+    return std::min(playouts_left, static_cast<int>(std::ceil(playout_rate * time_left)));
+}
 
+size_t UCTSearch::prune_noncontenders(int elapsed_centis, int time_for_move) {
     auto Nfirst = 0;
-    auto Nsecond = 0;
     for (const auto& node : m_root->get_children()) {
         if (node->valid()) {
-             auto N = node->get_visits();
-             if (N > Nfirst) {
-                 Nsecond = Nfirst;
-                 Nfirst = N;
-             } else if (N > Nsecond) {
-                 Nsecond = N;
+             Nfirst = std::max(Nfirst, node->get_visits());
+        }
+    }
+    const auto min_required_visits = Nfirst - est_playouts_left(elapsed_centis, time_for_move);
+    auto pruned_nodes = size_t{0};
+    for (const auto& node : m_root->get_children()) {
+        if (node->valid()) {
+             const auto has_enough_visits = node->get_visits() >= min_required_visits;
+             node->set_active(has_enough_visits);
+             if (!has_enough_visits) {
+                 ++pruned_nodes;
              }
         }
     }
-    if ((m_maxplayouts - playouts < Nfirst - Nsecond)
-        || (m_maxvisits - visits < Nfirst - Nsecond)) {
-        stop = true;
-    } else if (elapsed_centis > 100 && playouts > 100) {
-        // Wait for at least 1 second and 100 playouts
-        // so we get a reliable playout_rate.
-        auto playout_rate = 1.0f * playouts / elapsed_centis;
-        auto time_left = time_for_move - elapsed_centis;
-        auto est_playouts_left = playout_rate * time_left;
-        if (est_playouts_left < Nfirst - Nsecond) {
-            stop = true;
-            myprintf("%.1fs left\n", time_left/100.0f);
-        }
-    }
-    if (stop) {
-        myprintf("Stopping early.\n");
-    }
-    return stop;
+
+    assert(pruned_nodes < m_root->get_children().size());
+    return pruned_nodes;
+}
+
+bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
+    return m_playouts >= m_maxplayouts
+           || m_root->get_visits() >= m_maxvisits
+           || elapsed_centis >= time_for_move;
 }
 
 void UCTWorker::operator()() {
@@ -486,7 +525,10 @@ int UCTSearch::think(int color, passflag_t passflag) {
     }
     m_root->kill_superkos(m_rootstate);
     if (cfg_noise) {
-        m_root->dirichlet_noise(0.25f, 0.03f);
+        // Adjusting the Dirichlet noise's alpha constant to the board size
+        auto alpha = 0.03f * 361.0f / BOARD_SQUARES;
+
+        m_root->dirichlet_noise(0.25f, alpha);
     }
 
     myprintf("NN eval=%f\n",
@@ -520,7 +562,19 @@ int UCTSearch::think(int color, passflag_t passflag) {
         }
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(elapsed_centis, time_for_move);
+        if (keeprunning && cfg_timemanage == TimeManagement::ON) {
+            if (prune_noncontenders(elapsed_centis, time_for_move) == m_root->get_children().size() - 1) {
+                myprintf("%.1fs left\n", (time_for_move - elapsed_centis)/100.0f);
+                myprintf("Stopping early.\n");
+                keeprunning = false;
+            }
+        }
     } while(keeprunning);
+
+    // reactivate all pruned root children
+    for (const auto& node : m_root->get_children()) {
+        node->set_active(true);
+    }
 
     // stop the search
     m_run = false;

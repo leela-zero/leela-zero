@@ -112,7 +112,7 @@ static void parse_commandline(int argc, char *argv[]) {
                   .options(all).positional(p_desc).run(), vm);
         po::notify(vm);
     }  catch(const boost::program_options::error& e) {
-        myprintf("ERROR: %s\n", e.what());
+        printf("ERROR: %s\n", e.what());
         license_blurb();
         std::cout << v_desc << std::endl;
         exit(EXIT_FAILURE);
@@ -163,7 +163,7 @@ static void parse_commandline(int argc, char *argv[]) {
     if (vm.count("weights")) {
         cfg_weightsfile = vm["weights"].as<std::string>();
     } else {
-        myprintf("A network weights file is required to use the program.\n");
+        printf("A network weights file is required to use the program.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -205,9 +205,9 @@ static void parse_commandline(int argc, char *argv[]) {
     if (vm.count("playouts")) {
         cfg_max_playouts = vm["playouts"].as<int>();
         if (!vm.count("noponder")) {
-            myprintf("Nonsensical options: Playouts are restricted but "
-                     "thinking on the opponent's time is still allowed. "
-                     "Add --noponder if you want a weakened engine.\n");
+            printf("Nonsensical options: Playouts are restricted but "
+                   "thinking on the opponent's time is still allowed. "
+                   "Add --noponder if you want a weakened engine.\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -233,7 +233,7 @@ static void parse_commandline(int argc, char *argv[]) {
         } else if (tm == "off") {
             cfg_timemanage = TimeManagement::OFF;
         } else {
-            myprintf("Invalid timemanage value.\n");
+            printf("Invalid timemanage value.\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -345,7 +345,7 @@ int main (int argc, char *argv[]) {
 
     /* set board limits */
     auto komi = 7.5f;
-    maingame->init_game(19, komi);
+    maingame->init_game(BOARD_SIZE, komi);
 
     if (cfg_benchmark) {
         cfg_quiet = false;

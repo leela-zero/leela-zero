@@ -38,16 +38,27 @@ public:
 
     using node_ptr_t = std::unique_ptr<UCTNode>;
 
+    // Defined in UCTNode.cpp
     explicit UCTNode(int vertex, float score);
     UCTNode() = delete;
     ~UCTNode() = default;
-    bool first_visit() const;
-    bool has_children() const;
+
     bool create_children(std::atomic<int>& nodecount,
                          GameState& state, float& eval);
-    void kill_superkos(const KoState& state);
+
+    const std::vector<node_ptr_t>& get_children() const;
+    void sort_children(int color);
+    UCTNode& get_best_root_child(int color);
+    UCTNode* uct_select_child(int color);
+
+    size_t count_nodes() const;
+    SMP::Mutex& get_mutex();
+    bool first_visit() const;
+    bool has_children() const;
     void invalidate();
+    void set_active(const bool active);
     bool valid() const;
+    bool active() const;
     int get_move() const;
     int get_visits() const;
     float get_score() const;
@@ -58,23 +69,26 @@ public:
     void accumulate_eval(float eval);
     void virtual_loss(void);
     void virtual_loss_undo(void);
-    void dirichlet_noise(float epsilon, float alpha);
-    void randomize_first_proportionally();
     void update(float eval);
 
-    UCTNode* uct_select_child(int color);
+    // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch
+    void kill_superkos(const KoState& state);
+    void dirichlet_noise(float epsilon, float alpha);
+    void randomize_first_proportionally();
+
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    const std::vector<node_ptr_t>& get_children() const;
-    size_t count_nodes() const;
     node_ptr_t find_child(const int move);
-    void sort_children(int color);
-    UCTNode& get_best_root_child(int color);
-    SMP::Mutex& get_mutex();
 
 private:
+    enum Status : char {
+        INVALID, // superko
+        PRUNED,
+        ACTIVE
+    };
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist);
+
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution
     // if you want to add/remove/reorder any variables here.
@@ -86,10 +100,10 @@ private:
     std::atomic<int> m_visits{0};
     // UCT eval
     float m_score;
-    float m_net_eval{0};  // Original net eval for this node (not children).
-    std::atomic<double> m_blackevals{0};
-    // node alive (not superko)
-    std::atomic<bool> m_valid{true};
+    // Original net eval for this node (not children).
+    float m_net_eval{0.0f};
+    std::atomic<double> m_blackevals{0.0};
+    std::atomic<Status> m_status{ACTIVE};
     // Is someone adding scores to this node?
     // We don't need to unset this.
     bool m_is_expanding{false};

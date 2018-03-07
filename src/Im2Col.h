@@ -27,9 +27,8 @@ template <unsigned long filter_size>
 void im2col(const int channels,
             const std::vector<net_t>& input,
             std::vector<float>& output) {
-    constexpr unsigned int height = 19;
-    constexpr unsigned int width = 19;
-    constexpr unsigned int channel_size = height * width;
+    constexpr unsigned int height = BOARD_SIZE;
+    constexpr unsigned int width = BOARD_SIZE;
 
     constexpr int pad = (filter_size / 2);
     constexpr unsigned int output_h = height + 2 * pad - filter_size  + 1;
@@ -38,7 +37,7 @@ void im2col(const int channels,
     const net_t* data_im = input.data();
     float* data_col = output.data();
 
-    for (int channel = channels; channel--; data_im += channel_size) {
+    for (int channel = channels; channel--; data_im += BOARD_SQUARES) {
         for (unsigned int kernel_row = 0; kernel_row < filter_size; kernel_row++) {
             for (unsigned int kernel_col = 0; kernel_col < filter_size; kernel_col++) {
                 int input_row = -pad + kernel_row;
@@ -70,8 +69,7 @@ template <>
 void im2col<1>(const int channels,
                const std::vector<net_t>& input,
                std::vector<float>& output) {
-    constexpr unsigned int boardsize = 19;
-    auto outSize = size_t{channels * boardsize * boardsize};
+    auto outSize = size_t{channels * static_cast<size_t>(BOARD_SQUARES)};
     assert(output.size() == outSize);
     std::copy(begin(input), begin(input) + outSize, begin(output));
 }

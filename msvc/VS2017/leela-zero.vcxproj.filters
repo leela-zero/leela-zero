@@ -143,6 +143,9 @@
     <ClCompile Include="..\..\src\UCTNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\UCTNodeRoot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\UCTSearch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

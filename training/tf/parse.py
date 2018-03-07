@@ -50,16 +50,24 @@ DOWN_SAMPLE = 16
 def get_chunks(data_prefix):
     return glob.glob(data_prefix + "*.gz")
 
-def build_chunkgen(chunks):
+class FileDataSrc:
     """
-        generator yielding chunkdata from chunk files.
+        data source yielding chunkdata from chunk files.
     """
-    yield b''  # To ensure that the shuffle happens in child workers.
-    while len(chunks):
-        random.shuffle(chunks)
-        for filename in chunks:
-            with gzip.open(filename, 'rb') as chunk_file:
-                yield chunk_file.read()
+    def __init__(self, chunks):
+        self.chunks = chunks
+        random.shuffle(self.chunks)
+        self.done = []
+    def next(self):
+        if not self.chunks:
+            self.chunks = self.done
+            random.shuffle(self.chunks)
+        if not self.chunks:
+            return None
+        filename = self.chunks.pop()
+        self.done.append(filename)
+        with gzip.open(filename, 'rb') as chunk_file:
+            return chunk_file.read()
 
 def benchmark(parser):
     """
@@ -122,7 +130,7 @@ def main(args):
     print("Training with {0} chunks, validating on {1} chunks".format(
         len(training), len(test)))
 
-    train_parser = ChunkParser(build_chunkgen(training),
+    train_parser = ChunkParser(FileDataSrc(training),
             shuffle_size=1<<19, sample=DOWN_SAMPLE, batch_size=BATCH_SIZE)
     #benchmark(train_parser)
     dataset = tf.data.Dataset.from_generator(
@@ -131,7 +139,7 @@ def main(args):
     dataset = dataset.prefetch(4)
     train_iterator = dataset.make_one_shot_iterator()
 
-    test_parser = ChunkParser(build_chunkgen(test), batch_size=BATCH_SIZE)
+    test_parser = ChunkParser(FileDataSrc(test), batch_size=BATCH_SIZE)
     dataset = tf.data.Dataset.from_generator(
         test_parser.parse, output_types=(tf.string, tf.string, tf.string))
     dataset = dataset.map(_parse_function)
@@ -150,5 +158,6 @@ def main(args):
         tfprocess.process(BATCH_SIZE)
 
 if __name__ == "__main__":
+    mp.set_start_method('spawn')
     main(sys.argv[1:])
     mp.freeze_support()
