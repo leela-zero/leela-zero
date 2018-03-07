@@ -38,14 +38,9 @@ public:
     static constexpr int NBR_MASK = (1 << NBR_SHIFT) - 1;
 
     /*
-        largest board supported
-    */
-    static constexpr int MAXBOARDSIZE = 19;
-
-    /*
         highest existing square
     */
-    static constexpr int MAXSQ = ((MAXBOARDSIZE + 2) * (MAXBOARDSIZE + 2));
+    static constexpr int MAXSQ = ((BOARD_SIZE + 2) * (BOARD_SIZE + 2));
 
     /*
         infinite score

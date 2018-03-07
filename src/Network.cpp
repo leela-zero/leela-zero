@@ -73,8 +73,8 @@ static std::vector<float> conv_pol_b;
 static std::array<float, 2> bn_pol_w1;
 static std::array<float, 2> bn_pol_w2;
 
-static std::array<float, 261364> ip_pol_w;
-static std::array<float, 362> ip_pol_b;
+static std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> ip_pol_w;
+static std::array<float, BOARD_SQUARES + 1> ip_pol_b;
 
 // Value head
 static std::vector<float> conv_val_w;
@@ -82,14 +82,14 @@ static std::vector<float> conv_val_b;
 static std::array<float, 1> bn_val_w1;
 static std::array<float, 1> bn_val_w2;
 
-static std::array<float, 92416> ip1_val_w;
+static std::array<float, BOARD_SQUARES * 256> ip1_val_w;
 static std::array<float, 256> ip1_val_b;
 
 static std::array<float, 256> ip2_val_w;
 static std::array<float, 1> ip2_val_b;
 
 // Rotation helper
-static std::array<std::array<int, 361>, 8> rotate_nn_idx_table;
+static std::array<std::array<int, BOARD_SQUARES>, 8> rotate_nn_idx_table;
 
 void Network::benchmark(const GameState * state, int iterations) {
     int cpus = cfg_num_threads;
@@ -321,7 +321,7 @@ std::pair<int, int> Network::load_network_file(std::string filename) {
 void Network::initialize(void) {
     // Prepare rotation table
     for(auto s = 0; s < 8; s++) {
-        for(auto v = 0; v < 19 * 19; v++) {
+        for(auto v = 0; v < BOARD_SQUARES; v++) {
             rotate_nn_idx_table[s][v] = rotate_nn_idx(v, s);
         }
     }
@@ -439,8 +439,8 @@ void Network::initialize(void) {
 void Network::winograd_transform_in(const std::vector<float>& in,
                                     std::vector<float>& V,
                                     const int C) {
-    constexpr auto W = 19;
-    constexpr auto H = 19;
+    constexpr auto W = BOARD_SIZE;
+    constexpr auto H = BOARD_SIZE;
     constexpr auto wtiles = (W + 1) / 2;
     constexpr auto P = wtiles * wtiles;
 
@@ -526,7 +526,7 @@ void Network::winograd_sgemm(const std::vector<float>& U,
                              std::vector<float>& V,
                              std::vector<float>& M,
                              const int C, const int K) {
-    constexpr auto P = (19 + 1) * (19 + 1) / WINOGRAD_ALPHA;
+    constexpr auto P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / WINOGRAD_ALPHA;
 
     for (auto b = 0; b < WINOGRAD_TILE; b++) {
         auto offset_u = b * K * C;
@@ -546,8 +546,8 @@ void Network::winograd_sgemm(const std::vector<float>& U,
 void Network::winograd_transform_out(const std::vector<float>& M,
                                      std::vector<float>& Y,
                                      const int K) {
-    constexpr auto W = 19;
-    constexpr auto H = 19;
+    constexpr auto W = BOARD_SIZE;
+    constexpr auto H = BOARD_SIZE;
     constexpr auto wtiles = (W + 1) / 2;
     constexpr auto P = wtiles * wtiles;
 
@@ -629,9 +629,9 @@ void convolve(size_t outputs,
               const std::vector<float>& weights,
               const std::vector<float>& biases,
               std::vector<float>& output) {
-    // fixed for 19x19
-    constexpr unsigned int width = 19;
-    constexpr unsigned int height = 19;
+    // The size of the board is defined at compile time
+    constexpr unsigned int width = BOARD_SIZE;
+    constexpr unsigned int height = BOARD_SIZE;
     constexpr unsigned int board_squares = width * height;
     constexpr unsigned int filter_len = filter_size * filter_size;
     const auto input_channels = weights.size() / (biases.size() * filter_len);
@@ -642,9 +642,9 @@ void convolve(size_t outputs,
     im2col<filter_size>(input_channels, input, col);
 
     // Weight shape (output, input, filter_size, filter_size)
-    // 96 22 3 3
-    // outputs[96,19x19] = weights[96,22x3x3] x col[22x3x3,19x19]
+    // 96 18 3 3
     // C←αAB + βC
+    // outputs[96,19x19] = weights[96,18x3x3] x col[18x3x3,19x19]
     // M Number of rows in matrices A and C.
     // N Number of columns in matrices B and C.
     // K Number of columns in matrix A; number of rows in matrix B.
@@ -732,8 +732,8 @@ void Network::forward_cpu(std::vector<float>& input,
                           std::vector<float>& output_pol,
                           std::vector<float>& output_val) {
     // Input convolution
-    constexpr int width = 19;
-    constexpr int height = 19;
+    constexpr int width = BOARD_SIZE;
+    constexpr int height = BOARD_SIZE;
     constexpr int tiles = (width + 1) * (height + 1) / 4;
     // Calculate output channels
     const auto output_channels = conv_biases[0].size();
@@ -749,9 +749,9 @@ void Network::forward_cpu(std::vector<float>& input,
     auto M = std::vector<float>(WINOGRAD_TILE * output_channels * tiles);
 
     winograd_convolve3(output_channels, input, conv_weights[0], V, M, conv_out);
-    batchnorm<361>(output_channels, conv_out,
-                   batchnorm_means[0].data(),
-                   batchnorm_stddivs[0].data());
+    batchnorm<BOARD_SQUARES>(output_channels, conv_out,
+                             batchnorm_means[0].data(),
+                             batchnorm_stddivs[0].data());
 
     // Residual tower
     auto conv_in = std::vector<float>(output_channels * width * height);
@@ -762,18 +762,18 @@ void Network::forward_cpu(std::vector<float>& input,
         std::copy(begin(conv_in), end(conv_in), begin(res));
         winograd_convolve3(output_channels, conv_in,
 	                       conv_weights[i], V, M, conv_out);
-        batchnorm<361>(output_channels, conv_out,
-                       batchnorm_means[i].data(),
-                       batchnorm_stddivs[i].data());
+        batchnorm<BOARD_SQUARES>(output_channels, conv_out,
+                                 batchnorm_means[i].data(),
+                                 batchnorm_stddivs[i].data());
 
         output_channels = conv_biases[i + 1].size();
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
 			               conv_weights[i + 1], V, M, conv_out);
-        batchnorm<361>(output_channels, conv_out,
-                       batchnorm_means[i + 1].data(),
-                       batchnorm_stddivs[i + 1].data(),
-                       res.data());
+        batchnorm<BOARD_SQUARES>(output_channels, conv_out,
+                                 batchnorm_means[i + 1].data(),
+                                 batchnorm_stddivs[i + 1].data(),
+                                 res.data());
     }
     convolve<1>(OUTPUTS_POLICY, conv_out, conv_pol_w, conv_pol_b, output_pol);
     convolve<1>(OUTPUTS_VALUE, conv_out, conv_val_w, conv_val_b, output_val);
@@ -846,7 +846,7 @@ void Network::softmax(const std::vector<float>& input,
 Network::Netresult Network::get_scored_moves(
     const GameState* state, Ensemble ensemble, int rotation, bool skip_cache) {
     Netresult result;
-    if (state->board.get_boardsize() != 19) {
+    if (state->board.get_boardsize() != BOARD_SIZE) {
         return result;
     }
 
@@ -880,8 +880,8 @@ Network::Netresult Network::get_scored_moves_internal(
     const GameState* state, NNPlanes & planes, int rotation) {
     assert(rotation >= 0 && rotation <= 7);
     assert(INPUT_CHANNELS == planes.size());
-    constexpr int width = 19;
-    constexpr int height = 19;
+    constexpr int width = BOARD_SIZE;
+    constexpr int height = BOARD_SIZE;
     const auto convolve_channels = conv_pol_w.size() / conv_pol_b.size();
     std::vector<net_t> input_data;
     std::vector<net_t> output_data(convolve_channels * width * height);
@@ -896,7 +896,7 @@ Network::Netresult Network::get_scored_moves_internal(
     for (int c = 0; c < INPUT_CHANNELS; ++c) {
         for (int h = 0; h < height; ++h) {
             for (int w = 0; w < width; ++w) {
-                auto rot_idx = rotate_nn_idx_table[rotation][h * 19 + w];
+                auto rot_idx = rotate_nn_idx_table[rotation][h * BOARD_SIZE + w];
                 input_data.emplace_back(net_t(planes[c][rot_idx]));
             }
         }
@@ -919,14 +919,14 @@ Network::Netresult Network::get_scored_moves_internal(
 #endif
 
     // Get the moves
-    batchnorm<361>(OUTPUTS_POLICY, policy_data, bn_pol_w1.data(), bn_pol_w2.data());
-    innerproduct<OUTPUTS_POLICY*361, 362>(policy_data, ip_pol_w, ip_pol_b, policy_out);
+    batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data, bn_pol_w1.data(), bn_pol_w2.data());
+    innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1>(policy_data, ip_pol_w, ip_pol_b, policy_out);
     softmax(policy_out, softmax_data, cfg_softmax_temp);
     std::vector<float>& outputs = softmax_data;
 
     // Now get the score
-    batchnorm<361>(OUTPUTS_VALUE, value_data, bn_val_w1.data(), bn_val_w2.data());
-    innerproduct<361, 256>(value_data, ip1_val_w, ip1_val_b, winrate_data);
+    batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data, bn_val_w1.data(), bn_val_w2.data());
+    innerproduct<BOARD_SQUARES, 256>(value_data, ip1_val_w, ip1_val_b, winrate_data);
     innerproduct<256, 1>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
 
     // Sigmoid
@@ -934,11 +934,11 @@ Network::Netresult Network::get_scored_moves_internal(
 
     std::vector<scored_node> result;
     for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
-        if (idx < 19*19) {
+        if (idx < BOARD_SQUARES) {
             auto val = outputs[idx];
             auto rot_idx = rotate_nn_idx_table[rotation][idx];
-            auto x = rot_idx % 19;
-            auto y = rot_idx / 19;
+            auto x = rot_idx % BOARD_SIZE;
+            auto y = rot_idx / BOARD_SIZE;
             auto rot_vtx = state->board.get_vertex(x, y);
             if (state->board.get_square(rot_vtx) == FastBoard::EMPTY) {
                 result.emplace_back(val, rot_vtx);
@@ -956,8 +956,8 @@ void Network::show_heatmap(const FastState * state, Netresult& result, bool topm
     std::vector<std::string> display_map;
     std::string line;
 
-    for (unsigned int y = 0; y < 19; y++) {
-        for (unsigned int x = 0; x < 19; x++) {
+    for (unsigned int y = 0; y < BOARD_SIZE; y++) {
+        for (unsigned int x = 0; x < BOARD_SIZE; x++) {
             int vtx = state->board.get_vertex(x, y);
 
             auto item = std::find_if(moves.cbegin(), moves.cend(),
@@ -973,7 +973,7 @@ void Network::show_heatmap(const FastState * state, Netresult& result, bool topm
             }
 
             line += boost::str(boost::format("%3d ") % int(score * 1000));
-            if (x == 18) {
+            if (x == BOARD_SIZE - 1) {
                 display_map.push_back(line);
                 line.clear();
             }
@@ -1007,8 +1007,8 @@ void Network::show_heatmap(const FastState * state, Netresult& result, bool topm
 void Network::fill_input_plane_pair(const FullBoard& board,
                                     BoardPlane& black, BoardPlane& white) {
     auto idx = 0;
-    for (int j = 0; j < 19; j++) {
-        for(int i = 0; i < 19; i++) {
+    for (int j = 0; j < BOARD_SIZE; j++) {
+        for(int i = 0; i < BOARD_SIZE; i++) {
             int vtx = board.get_vertex(i, j);
             auto color = board.get_square(vtx);
             if (color != FastBoard::EMPTY) {
@@ -1051,10 +1051,10 @@ void Network::gather_features(const GameState* state, NNPlanes & planes) {
 }
 
 int Network::rotate_nn_idx(const int vertex, int symmetry) {
-    assert(vertex >= 0 && vertex < 19*19);
+    assert(vertex >= 0 && vertex < BOARD_SQUARES);
     assert(symmetry >= 0 && symmetry < 8);
-    int x = vertex % 19;
-    int y = vertex / 19;
+    int x = vertex % BOARD_SIZE;
+    int y = vertex / BOARD_SIZE;
     int newx;
     int newy;
 
@@ -1068,17 +1068,17 @@ int Network::rotate_nn_idx(const int vertex, int symmetry) {
         newy = y;
     } else if (symmetry == 1) {
         newx = x;
-        newy = 19 - y - 1;
+        newy = BOARD_SIZE - y - 1;
     } else if (symmetry == 2) {
-        newx = 19 - x - 1;
+        newx = BOARD_SIZE - x - 1;
         newy = y;
     } else {
         assert(symmetry == 3);
-        newx = 19 - x - 1;
-        newy = 19 - y - 1;
+        newx = BOARD_SIZE - x - 1;
+        newy = BOARD_SIZE - y - 1;
     }
 
-    int newvtx = (newy * 19) + newx;
-    assert(newvtx >= 0 && newvtx < 19*19);
+    int newvtx = (newy * BOARD_SIZE) + newx;
+    assert(newvtx >= 0 && newvtx < BOARD_SQUARES);
     return newvtx;
 }

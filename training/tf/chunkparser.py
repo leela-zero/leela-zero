@@ -65,7 +65,7 @@ class ChunkParser:
         """
             Read data and yield batches of raw tensors.
 
-            'chunkdatasrc' is a generator yeilding chunkdata
+            'chunkdatasrc' is an object yeilding chunkdata
             'shuffle_size' is the size of the shuffle buffer.
             'sample' is the rate to down-sample.
             'workers' is the number of child workers to use.

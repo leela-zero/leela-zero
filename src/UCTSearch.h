@@ -86,12 +86,15 @@ public:
     void set_visit_limit(int visits);
     void ponder();
     bool is_running() const;
+    int est_playouts_left(int elapsed_centis, int time_for_move) const;
+    size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0);
     bool stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
     void increment_playouts();
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
     void dump_stats(FastState& state, UCTNode& parent);
+    void tree_stats(const UCTNode& node);
     std::string get_pv(FastState& state, UCTNode& parent);
     void dump_analysis(int playouts);
     bool should_resign(passflag_t passflag, float bestscore);
