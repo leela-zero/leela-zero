@@ -885,14 +885,12 @@ Network::Netresult Network::get_scored_moves(
                 Netresult tmpresult = get_scored_moves_internal(state, planes, r_list[r]);
                 result.second += tmpresult.second;
 
-                // Post-increment c for the extra PASS move
-                for (int c = 0; c < BOARD_SIZE * BOARD_SIZE; c++) {
+                for (u_int c = 0; c < result.first.size(); ++c) {
                     result.first[c].first += tmpresult.first[c].first;
                 }
             }
 
-            // Post-increment c for the extra PASS move
-            for (int c = 0; c < BOARD_SIZE * BOARD_SIZE; c++) {
+            for (u_int c = 0; c < result.first.size(); ++c) {
                 result.first[c].first /= rotation;
             }
 
