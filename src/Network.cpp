@@ -31,6 +31,7 @@
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/home/x3.hpp>
+#include <random>
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -863,6 +864,40 @@ Network::Netresult Network::get_scored_moves(
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
         result = get_scored_moves_internal(state, planes, rotation);
+    } else if (ensemble == MULTI) {
+        // MULTI rotation is the # of random rotations to provide
+        assert(rotation >= 1 && rotation <= 8);
+        if (rotation == 1) {
+            auto rand_rot = Random::get_Rng().randfix<8>();
+            result = get_scored_moves_internal(state, planes, rand_rot);
+        } else {
+            std::vector<int> r_list{0, 1, 2, 3, 4, 5, 6, 7};
+
+            if (rotation < 8) {
+                std::random_device rd;
+                std::mt19937 g(rd());
+                std::shuffle(r_list.begin(), r_list.end(), g);
+            }
+
+            result = get_scored_moves_internal(state, planes, r_list[0]);
+
+            for (int r = 1; r < rotation; ++r) {
+                Netresult tmpresult = get_scored_moves_internal(state, planes, r_list[r]);
+                result.second += tmpresult.second;
+
+                // Post-increment c for the extra PASS move
+                for (int c = 0; c < BOARD_SIZE * BOARD_SIZE; c++) {
+                    result.first[c].first += tmpresult.first[c].first;
+                }
+            }
+
+            // Post-increment c for the extra PASS move
+            for (int c = 0; c < BOARD_SIZE * BOARD_SIZE; c++) {
+                result.first[c].first /= rotation;
+            }
+
+            result.second /= rotation;
+        }
     } else {
         assert(ensemble == RANDOM_ROTATION);
         assert(rotation == -1);
