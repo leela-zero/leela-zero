@@ -973,7 +973,9 @@ Network::Netresult Network::get_scored_moves_internal(
             auto x = rot_idx % BOARD_SIZE;
             auto y = rot_idx / BOARD_SIZE;
             auto rot_vtx = state->board.get_vertex(x, y);
-            result.emplace_back(val, rot_vtx);
+            if (state->board.get_square(rot_vtx) == FastBoard::EMPTY) {
+                result.emplace_back(val, rot_vtx);
+            }
         } else {
             result.emplace_back(outputs[idx], FastBoard::PASS);
         }
