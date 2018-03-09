@@ -237,7 +237,6 @@ UCTNode* UCTNode::uct_select_child(int color) {
 
     auto numerator = std::sqrt((double)parentvisits);
     auto best_value = -DBL_MAX;
-    auto best_unvisited_value = -DBL_MAX;
 
     if (best_unvisited_psa > -DBL_MAX) {
         // Estimated eval for unknown nodes = original parent NN eval - reduction
