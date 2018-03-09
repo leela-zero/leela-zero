@@ -26,6 +26,7 @@
 #include <functional>
 #include <iterator>
 #include <limits>
+#include <cfloat>
 #include <numeric>
 #include <utility>
 #include <vector>
