@@ -615,13 +615,16 @@ void UCTSearch::ponder() {
     for (int i = 1; i < cpus; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
+    auto keeprunning = true;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = play_simulation(*currstate, m_root.get());
         if (result.valid()) {
             increment_playouts();
         }
-    } while(!Utils::input_pending() && is_running());
+        keeprunning  = is_running();
+        keeprunning &= !stop_thinking(0, 1);
+    } while(!Utils::input_pending() && keeprunning);
 
     // stop the search
     m_run = false;
@@ -638,7 +641,7 @@ void UCTSearch::set_playout_limit(int playouts) {
                                       decltype(m_maxplayouts)>::value,
                   "Inconsistent types for playout amount.");
     if (playouts == 0) {
-        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max();
+        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max()/2;
     } else {
         m_maxplayouts = playouts;
     }
@@ -649,7 +652,7 @@ void UCTSearch::set_visit_limit(int visits) {
                                       decltype(m_maxvisits)>::value,
                   "Inconsistent types for visits amount.");
     if (visits == 0) {
-        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max();
+        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max()/2;
     } else {
         m_maxvisits = visits;
     }
