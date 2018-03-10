@@ -29,10 +29,14 @@ import sys
 import tensorflow as tf
 import time
 
-# Sane values are from 4096 to 64 or so. The maximum depends on the amount
-# of RAM in your GPU and the network size. You need to adjust the learning rate
-# if you change this.
+# Sane values are from 4096 to 64 or so.
+# You need to adjust the learning rate if you change this. Should be
+# a multiple of RAM_BATCH_SIZE
 BATCH_SIZE = 512
+# Number of examples in a GPU batch. Higher values are more efficient.
+# The maximum depends on the amount of RAM in your GPU and the network size.
+# Must be smaller than BATCH_SIZE.
+RAM_BATCH_SIZE = 128
 
 # Use a random sample input data read. This helps improve the spread of
 # games in the shuffle buffer.
@@ -71,7 +75,7 @@ def benchmark(parser):
         for _ in range(batch):
             next(gen)
         end = time.time()
-        print("{} pos/sec {} secs".format( BATCH_SIZE * batch / (end - start), (end - start)))
+        print("{} pos/sec {} secs".format( RAM_BATCH_SIZE * batch / (end - start), (end - start)))
 
 def benchmark1(t):
     """
@@ -85,25 +89,12 @@ def benchmark1(t):
                 feed_dict={t.training: True, t.handle: t.train_handle})
 
         end = time.time()
-        print("{} pos/sec {} secs".format( BATCH_SIZE * batch / (end - start), (end - start)))
+        print("{} pos/sec {} secs".format( RAM_BATCH_SIZE * batch / (end - start), (end - start)))
 
 
 def split_chunks(chunks, test_ratio):
     splitpoint = 1 + int(len(chunks) * (1.0 - test_ratio))
     return (chunks[:splitpoint], chunks[splitpoint:])
-
-def _parse_function(planes, probs, winner):
-    planes = tf.decode_raw(planes, tf.uint8)
-    probs = tf.decode_raw(probs, tf.float32)
-    winner = tf.decode_raw(winner, tf.float32)
-
-    planes = tf.to_float(planes)
-
-    planes = tf.reshape(planes, (BATCH_SIZE, 18, 19*19))
-    probs = tf.reshape(probs, (BATCH_SIZE, 19*19 + 1))
-    winner = tf.reshape(winner, (BATCH_SIZE, 1))
-
-    return (planes, probs, winner)
 
 def main():
     parser = argparse.ArgumentParser(description='Train network from game data.')
@@ -111,7 +102,9 @@ def main():
     parser.add_argument("restorepref", help='Training snapshot prefix', nargs='?', type=str)
     parser.add_argument("--train", '-t', help="Training file prefix", type=str)
     parser.add_argument("--test", help="Test file prefix", type=str)
-    parser.add_argument("--restore", help="Prefix of tensorflow snapshot to restore from", type=str)
+    parser.add_argument("--restore", type=str, help="Prefix of tensorflow snapshot to restore from")
+    parser.add_argument("--logbase", default='leelalogs', type=str, help="Log file prefix (for tensorboard)")
+    parser.add_argument("--sample", default=DOWN_SAMPLE, type=int, help="Rate of data down-sampling to use")
     args = parser.parse_args()
 
     train_data_prefix = args.train or args.trainpref
@@ -133,32 +126,25 @@ def main():
         len(training), len(test)))
 
     train_parser = ChunkParser(FileDataSrc(training),
-            shuffle_size=1<<20, sample=DOWN_SAMPLE, batch_size=BATCH_SIZE)
-    #benchmark(train_parser)
-    dataset = tf.data.Dataset.from_generator(
-        train_parser.parse, output_types=(tf.string, tf.string, tf.string))
-    dataset = dataset.map(_parse_function)
+                               shuffle_size=1<<20, # 2.2GB of RAM.
+                               sample=args.sample,
+                               batch_size=RAM_BATCH_SIZE).parse()
 
-    dataset = dataset.prefetch(4)
-    train_iterator = dataset.make_one_shot_iterator()
-
-    test_parser = ChunkParser(FileDataSrc(test), batch_size=BATCH_SIZE)
-    dataset = tf.data.Dataset.from_generator(
-        test_parser.parse, output_types=(tf.string, tf.string, tf.string))
-    dataset = dataset.map(_parse_function)
-
-    dataset = dataset.prefetch(4)
-    test_iterator = dataset.make_one_shot_iterator()
+    test_parser = ChunkParser(FileDataSrc(test),
+                              shuffle_size=1<<16,
+                              sample=args.sample,
+                              batch_size=RAM_BATCH_SIZE).parse()
 
     tfprocess = TFProcess()
-    tfprocess.init(dataset, train_iterator, test_iterator)
+    tfprocess.init(RAM_BATCH_SIZE,
+                   logbase=args.logbase,
+                   macrobatch=BATCH_SIZE // RAM_BATCH_SIZE)
 
     #benchmark1(tfprocess)
 
     if restore_prefix:
         tfprocess.restore(restore_prefix)
-    while True:
-        tfprocess.process(BATCH_SIZE)
+    tfprocess.process(train_parser, test_parser)
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
