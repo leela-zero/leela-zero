@@ -391,6 +391,15 @@ std::string UCTSearch::get_pv(KoState & state, UCTNode& parent) {
     return res;
 }
 
+float UCTSearch::get_winrate()
+{
+	GameState tempstate = m_rootstate;
+	int color = tempstate.board.get_to_move();
+	std::string pvstring = get_pv(tempstate, *m_root);
+	float winrate = 100.0f * m_root->get_eval(color);
+	return winrate;
+}
+
 void UCTSearch::dump_analysis(int playouts) {
     if (cfg_quiet) {
         return;

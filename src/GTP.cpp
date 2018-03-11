@@ -70,6 +70,8 @@ std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
 std::string cfg_options_str;
+int cfg_max_handicap;
+bool cfg_reverse_board_for_net;
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
@@ -79,6 +81,7 @@ void GTP::setup_default_parameters() {
     cfg_max_visits = std::numeric_limits<decltype(cfg_max_visits)>::max();
     cfg_timemanage = TimeManagement::AUTO;
     cfg_lagbuffer_cs = 100;
+	cfg_max_handicap = 13;
 #ifdef USE_OPENCL
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;
@@ -105,6 +108,7 @@ void GTP::setup_default_parameters() {
     std::uint64_t seed2 = std::chrono::high_resolution_clock::
         now().time_since_epoch().count();
     cfg_rng_seed = seed1 ^ seed2;
+	//cfg_max_handicap = std::numeric_limits<decltype(cfg_max_handicap)>::max();;
 }
 
 const std::string GTP::s_commands[] = {
@@ -131,6 +135,7 @@ const std::string GTP::s_commands[] = {
     "set_free_handicap",
     "loadsgf",
     "printsgf",
+	"kgs-chat",
     "kgs-genmove_cleanup",
     "kgs-time_settings",
     "kgs-game_over",
@@ -231,7 +236,10 @@ bool GTP::execute(GameState & game, std::string xinput) {
         gtp_printf(id, PROGRAM_NAME);
         return true;
     } else if (command == "version") {
-        gtp_printf(id, PROGRAM_VERSION);
+		std::string outversion = " with weightfile " + cfg_weightsfile.substr(0, 8);
+		outversion = PROGRAM_VERSION + outversion;
+		gtp_printf(id, outversion.c_str());
+
         return true;
     } else if (command == "quit") {
         gtp_printf(id, "");
@@ -350,15 +358,50 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 gtp_fail_printf(id, "syntax error");
                 return 1;
             }
-            // start thinking
-            {
-                game.set_to_move(who);
-                int move = search->think(who);
-                game.play_move(move);
-
-                std::string vertex = game.move_to_text(move);
-                gtp_printf(id, "%s", vertex.c_str());
-            }
+			game.set_to_move(who);
+			// if handi > cfg_max_handicap
+			int move = FastBoard::RESIGN;
+			if (game.get_handicap() <= cfg_max_handicap)
+			{
+				// Support some handicap games
+				bool isgoodgame = false;
+				cfg_reverse_board_for_net = false;
+				// LZ white, 0 and 1 handicap
+				if (who == FastBoard::WHITE && game.get_handicap() == 0 && game.get_komi() > 0.0f)
+				{
+					isgoodgame = true;
+					if (game.get_komi() < 7.5f)
+					{
+						cfg_reverse_board_for_net = true;
+					}
+				}
+				// LZ white, more than 1 stone
+				if (who == FastBoard::WHITE && game.get_handicap() > 1 && game.get_handicap() <= cfg_max_handicap  && game.get_komi() + game.get_handicap() >= 7.5f)
+				{
+					isgoodgame = true;
+					// do not invert board for handicap, this leads to ladders ...
+				}
+				// LZ black, 0 and 1 handicap
+				if (who == FastBoard::BLACK && game.get_handicap() == 0 && game.get_komi() > 0.0f && game.get_komi() <= 7.5f)
+				{
+					isgoodgame = true;
+				}
+				// LZ black, more than 1 stone
+				if (who == FastBoard::BLACK && game.get_komi() <= 7.5f && game.get_handicap() <= cfg_max_handicap && game.get_komi() > 0.0f)
+				{
+					isgoodgame = true;
+				}
+				if (isgoodgame)
+				{
+					// start thinking
+					move = search->think(who);
+				}
+			}
+			
+			game.play_move(move);
+			std::string vertex = game.move_to_text(move);
+            gtp_printf(id, "%s", vertex.c_str());
+            
             if (cfg_allow_pondering) {
                 // now start pondering
                 if (!game.has_resigned()) {
@@ -612,10 +655,24 @@ bool GTP::execute(GameState & game, std::string xinput) {
         // kgs-chat (game|private) Name Message
         std::istringstream cmdstream(command);
         std::string tmp;
-
         cmdstream >> tmp; // eat kgs-chat
         cmdstream >> tmp; // eat game|private
-        cmdstream >> tmp; // eat player name
+		if (tmp == "private")
+		{
+			cmdstream >> tmp; // eat player name
+			cmdstream >> tmp; // eat message
+			if (tmp == "wr")
+			{
+				// 100 - because it's LZ-opponents turn, when this code is running 
+				std::string outkgschat = "Winrate: " + std::to_string(100 - search.get()->get_winrate());
+				gtp_printf(id, outkgschat.c_str());
+				gtp_printf(id, "end answer from lz");
+				do {
+					cmdstream >> tmp; // eat message
+				} while (!cmdstream.fail());
+				return true;
+			}
+		}
         do {
             cmdstream >> tmp; // eat message
         } while (!cmdstream.fail());

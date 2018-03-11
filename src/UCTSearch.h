@@ -89,6 +89,7 @@ public:
     bool stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
     void increment_playouts();
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
+	float get_winrate();
 
 private:
     void dump_stats(KoState& state, UCTNode& parent);

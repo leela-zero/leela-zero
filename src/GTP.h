@@ -40,6 +40,7 @@ extern int cfg_noise;
 extern int cfg_random_cnt;
 extern std::uint64_t cfg_rng_seed;
 extern bool cfg_dumbpass;
+extern bool cfg_reverse_board_for_net;
 #ifdef USE_OPENCL
 extern std::vector<int> cfg_gpus;
 extern bool cfg_sgemm_exhaustive;
@@ -53,6 +54,7 @@ extern std::string cfg_weightsfile;
 extern FILE* cfg_logfile_handle;
 extern bool cfg_quiet;
 extern std::string cfg_options_str;
+extern int cfg_max_handicap;
 
 /*
     A list of all valid GTP2 commands is defined here:
