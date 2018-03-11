@@ -81,7 +81,7 @@ void GTP::setup_default_parameters() {
     cfg_max_visits = std::numeric_limits<decltype(cfg_max_visits)>::max();
     cfg_timemanage = TimeManagement::AUTO;
     cfg_lagbuffer_cs = 100;
-	cfg_max_handicap = 13;
+	cfg_max_handicap = 99;
 #ifdef USE_OPENCL
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;
@@ -108,7 +108,6 @@ void GTP::setup_default_parameters() {
     std::uint64_t seed2 = std::chrono::high_resolution_clock::
         now().time_since_epoch().count();
     cfg_rng_seed = seed1 ^ seed2;
-	//cfg_max_handicap = std::numeric_limits<decltype(cfg_max_handicap)>::max();;
 }
 
 const std::string GTP::s_commands[] = {
@@ -364,32 +363,36 @@ bool GTP::execute(GameState & game, std::string xinput) {
 			if (game.get_handicap() <= cfg_max_handicap)
 			{
 				// Support some handicap games
-				bool isgoodgame = false;
+				bool isgoodgame = true;
 				cfg_reverse_board_for_net = false;
-				// LZ white, 0 and 1 handicap
-				if (who == FastBoard::WHITE && game.get_handicap() == 0 && game.get_komi() > 0.0f)
+				if (cfg_max_handicap < 99)
 				{
-					isgoodgame = true;
-					if (game.get_komi() < 7.5f)
+					// this is only for use in KGS where resigning is correct to decline a game
+					// LZ white, 0 and 1 handicap
+					isgoodgame = false;
+					if (who == FastBoard::WHITE && game.get_handicap() == 0 && game.get_komi() > 0.0f)
 					{
-						cfg_reverse_board_for_net = true;
+						if (game.get_komi() < 7.5f)
+						{
+							cfg_reverse_board_for_net = true;
+						}
 					}
-				}
-				// LZ white, more than 1 stone
-				if (who == FastBoard::WHITE && game.get_handicap() > 1 && game.get_handicap() <= cfg_max_handicap  && game.get_komi() + game.get_handicap() >= 7.5f)
-				{
-					isgoodgame = true;
-					// do not invert board for handicap, this leads to ladders ...
-				}
-				// LZ black, 0 and 1 handicap
-				if (who == FastBoard::BLACK && game.get_handicap() == 0 && game.get_komi() > 0.0f && game.get_komi() <= 7.5f)
-				{
-					isgoodgame = true;
-				}
-				// LZ black, more than 1 stone
-				if (who == FastBoard::BLACK && game.get_komi() <= 7.5f && game.get_handicap() <= cfg_max_handicap && game.get_komi() > 0.0f)
-				{
-					isgoodgame = true;
+					// LZ white, more than 1 stone
+					if (who == FastBoard::WHITE && game.get_handicap() > 1 && game.get_handicap() <= cfg_max_handicap && game.get_komi() + game.get_handicap() >= 7.5f)
+					{
+						isgoodgame = true;
+						// do not invert board for handicap, this leads to ladders ...
+					}
+					// LZ black, 0 and 1 handicap
+					if (who == FastBoard::BLACK && game.get_handicap() == 0 && game.get_komi() > 0.0f && game.get_komi() <= 7.5f)
+					{
+						isgoodgame = true;
+					}
+					// LZ black, more than 1 stone
+					if (who == FastBoard::BLACK && game.get_komi() <= 7.5f && game.get_handicap() <= cfg_max_handicap && game.get_komi() > 0.0f)
+					{
+						isgoodgame = true;
+					}
 				}
 				if (isgoodgame)
 				{

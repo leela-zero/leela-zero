@@ -83,7 +83,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("quiet,q", "Disable all diagnostic output.")
         ("noponder", "Disable thinking on opponent's time.")
 		("maxhandi,x", po::value<int>()->default_value(cfg_max_handicap),
-			         "Maximum handicap stones, more will resign as first move (usefull for KGS).")
+			         "Maximum handicap stones, more will resign as first move (a must for KGS). Enables also inversion of net for playing w at 0.5 komi. ")
 #ifdef USE_OPENCL
         ("gpu",  po::value<std::vector<int> >(),
                 "ID of the OpenCL device(s) to use (disables autodetection).")
