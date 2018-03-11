@@ -28,8 +28,8 @@
 
 // Test should fail about this often from distribution not looking uniform.
 // Increasing this allows better detection of bad RNG but increase the chance
-// of test failure with acceptable RNG implemantation. On my system RNG seems
-// to be a tiny bit not random and test fail about twice as often as predicted.
+// of test failure with acceptable RNG implementation. On my system RNG seems
+// to be a tiny bit non-random and test fails about twice as often as predicted.
 constexpr auto ALPHA = 0.0001;
 
 using namespace Utils;

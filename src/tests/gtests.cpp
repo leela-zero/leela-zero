@@ -81,7 +81,7 @@ public:
 
 class LeelaTest: public ::testing::Test {
 public:
-    LeelaTest( ) {
+    LeelaTest() {
         // Reset engine parameters
         GTP::setup_default_parameters();
         cfg_max_playouts = 1;
