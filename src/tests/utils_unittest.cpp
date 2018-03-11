@@ -48,13 +48,16 @@ TEST(UtilsTest, CeilMultiple) {
     EXPECT_EQ(ceilMultiple(0, 3), (size_t)0);
     EXPECT_EQ(ceilMultiple(3, 3), (size_t)3);
     EXPECT_EQ(ceilMultiple(9, 3), (size_t)9);
-
+    
     // Requires rounding up
     EXPECT_EQ(ceilMultiple(3, 5), (size_t)5);
     EXPECT_EQ(ceilMultiple(6, 5), (size_t)10);
     EXPECT_EQ(ceilMultiple(9, 5), (size_t)10);
+    EXPECT_EQ(ceilMultiple(12, 5), (size_t)15);
+    EXPECT_EQ(ceilMultiple(13, 5), (size_t)15);
     EXPECT_EQ(ceilMultiple(23, 5), (size_t)25);
     EXPECT_EQ(ceilMultiple(99, 100), (size_t)100);
+    EXPECT_EQ(ceilMultiple(149, 10), (size_t)150);
 }
 
 double randomlyDistributedProbability(std::vector<short> values, double expected) {

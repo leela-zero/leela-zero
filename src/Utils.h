@@ -44,13 +44,14 @@ namespace Utils {
 
     template<typename T>
     T rotl(const T x, const int k) {
-	    return (x << k) | (x >> (std::numeric_limits<T>::digits - k));
+        return (x << k) | (x >> (std::numeric_limits<T>::digits - k));
     }
 
     inline bool is7bit(int c) {
         return c >= 0 && c <= 127;
     }
 
+    /* Returns the smallest multiple of b that is larger than a */
     size_t ceilMultiple(size_t a, size_t b);
 }
 
