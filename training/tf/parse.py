@@ -33,7 +33,8 @@ import unittest
 
 # Sane values are from 4096 to 64 or so.
 # You need to adjust the learning rate if you change this. Should be
-# a multiple of RAM_BATCH_SIZE
+# a multiple of RAM_BATCH_SIZE. NB: It's rare that large batch sizes are
+# actually required.
 BATCH_SIZE = 512
 # Number of examples in a GPU batch. Higher values are more efficient.
 # The maximum depends on the amount of RAM in your GPU and the network size.
@@ -52,8 +53,8 @@ class FileDataSrc:
         data source yielding chunkdata from chunk files.
     """
     def __init__(self, chunks):
-        self.chunks = []
         self.done = chunks
+        self.chunks = []
     def next(self):
         if not self.chunks:
             self.chunks, self.done = self.done, self.chunks
