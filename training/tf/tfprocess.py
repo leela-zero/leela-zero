@@ -352,7 +352,7 @@ class TFProcess:
             return tf.layers.batch_normalization(
                     net,
                     epsilon=1e-5, axis=1, fused=True,
-                    center=True, scale=True,
+                    center=False, scale=False,
                     training=self.training)
 
 
