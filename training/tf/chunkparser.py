@@ -303,7 +303,7 @@ class ChunkParser:
                 item = self.v2_apply_symmetry(symmetry, item)
                 writer.send_bytes(item)
 
-    def chunk_gen(self):
+    def v2_gen(self):
         """
             Read v2 records from child workers, shuffle, and yield
             records.
@@ -355,7 +355,7 @@ class ChunkParser:
             Read data from child workers and yield batches
             of raw tensors
         """
-        gen = self.chunk_gen()     # read from workers
+        gen = self.v2_gen()        # read from workers
         gen = self.tuple_gen(gen)  # convert v2->tuple
         gen = self.batch_gen(gen)  # assemble into batches
         for b in gen:

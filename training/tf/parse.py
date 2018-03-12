@@ -19,32 +19,23 @@
 
 from tfprocess import TFProcess
 from chunkparser import ChunkParser
-import binascii
+import argparse
 import glob
 import gzip
-import itertools
-import math
 import multiprocessing as mp
-import numpy as np
-import queue
 import random
 import shufflebuffer as sb
-import struct
 import sys
 import tensorflow as tf
 import time
-import threading
-
-# 16 planes, 1 side to move, 1 x 362 probs, 1 winner = 19 lines
-DATA_ITEM_LINES = 16 + 1 + 1 + 1
 
 # Sane values are from 4096 to 64 or so. The maximum depends on the amount
 # of RAM in your GPU and the network size. You need to adjust the learning rate
 # if you change this.
 BATCH_SIZE = 512
 
-# Use a random sample of 1/16th of the input data read. This helps
-# improve the spread of games in the shuffle buffer.
+# Use a random sample input data read. This helps improve the spread of
+# games in the shuffle buffer.
 DOWN_SAMPLE = 16
 
 def get_chunks(data_prefix):
@@ -114,28 +105,40 @@ def _parse_function(planes, probs, winner):
 
     return (planes, probs, winner)
 
-def main(args):
-    train_data_prefix = args.pop(0)
+def main():
+    parser = argparse.ArgumentParser(description='Train network from game data.')
+    parser.add_argument("trainpref", help='Training file prefix', nargs='?', type=str)
+    parser.add_argument("restorepref", help='Training snapshot prefix', nargs='?', type=str)
+    parser.add_argument("--train", '-t', help="Training file prefix", type=str)
+    parser.add_argument("--test", help="Test file prefix", type=str)
+    parser.add_argument("--restore", help="Prefix of tensorflow snapshot to restore from", type=str)
+    args = parser.parse_args()
 
-    chunks = get_chunks(train_data_prefix)
-    print("Found {0} chunks".format(len(chunks)))
+    train_data_prefix = args.train or args.trainpref
+    restore_prefix = args.restore or args.restorepref
 
-    if not chunks:
+    training = get_chunks(train_data_prefix)
+    if not args.test:
+        # Generate test by taking 10% of the training chunks.
+        random.shuffle(training)
+        training, test = split_chunks(training, 0.1)
+    else:
+        test = get_chunks(args.test)
+
+    if not training:
+        print("No data to train on!")
         return
 
-    # The following assumes positions from one game are not
-    # spread through chunks.
-    random.shuffle(chunks)
-    training, test = split_chunks(chunks, 0.1)
     print("Training with {0} chunks, validating on {1} chunks".format(
         len(training), len(test)))
 
     train_parser = ChunkParser(FileDataSrc(training),
-            shuffle_size=1<<19, sample=DOWN_SAMPLE, batch_size=BATCH_SIZE)
+            shuffle_size=1<<20, sample=DOWN_SAMPLE, batch_size=BATCH_SIZE)
     #benchmark(train_parser)
     dataset = tf.data.Dataset.from_generator(
         train_parser.parse, output_types=(tf.string, tf.string, tf.string))
     dataset = dataset.map(_parse_function)
+
     dataset = dataset.prefetch(4)
     train_iterator = dataset.make_one_shot_iterator()
 
@@ -143,6 +146,7 @@ def main(args):
     dataset = tf.data.Dataset.from_generator(
         test_parser.parse, output_types=(tf.string, tf.string, tf.string))
     dataset = dataset.map(_parse_function)
+
     dataset = dataset.prefetch(4)
     test_iterator = dataset.make_one_shot_iterator()
 
@@ -151,13 +155,12 @@ def main(args):
 
     #benchmark1(tfprocess)
 
-    if args:
-        restore_file = args.pop(0)
-        tfprocess.restore(restore_file)
+    if restore_prefix:
+        tfprocess.restore(restore_prefix)
     while True:
         tfprocess.process(BATCH_SIZE)
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
-    main(sys.argv[1:])
+    main()
     mp.freeze_support()
