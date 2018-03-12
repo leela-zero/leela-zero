@@ -15,6 +15,8 @@
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <cassert>
+
 #include "config.h"
 
 #ifdef USE_OPENCL
@@ -22,7 +24,6 @@
 #include "Random.h"
 #include "OpenCLScheduler.h"
 
-thread_local auto current_thread_gpu_num = size_t{0};
 OpenCLScheduler opencl;
 
 void OpenCLScheduler::initialize(const int channels) {
@@ -38,22 +39,18 @@ void OpenCLScheduler::initialize(const int channels) {
 
             // Clear thread data on every init call.  We don't know which GPU
             // this thread will be eventually be assigned to
-            opencl_thread_data = ThreadData();
+            if (opencl_thread_data != nullptr) {
+                opencl_thread_data = nullptr;
+            }
 
             // starting next GPU, let's not dump full list of GPUs
             silent = true;
         }
 
         for(size_t gnum = 0; gnum < m_networks.size(); gnum++) {
-            // launch the worker thread.  2 threads so that we can fully
-            // utilize GPU, since the worker thread consists of some CPU
-            // work for task preparation.
-            constexpr auto num_threads = 2;
-            for(auto i = 0; i < num_threads; i++) {
-                m_threadpool.add_thread([gnum] {
-                    current_thread_gpu_num = gnum;
-                });
-            }
+            // two instances for optimal scalability
+            m_thread_data.emplace_back( new ThreadData(gnum) );
+            m_thread_data.emplace_back( new ThreadData(gnum) );
         }
     } else {
         auto opencl = std::make_unique<OpenCL>();
@@ -73,10 +70,29 @@ void OpenCLScheduler::forward(const std::vector<net_t>& input,
         return;
     }
 
-    auto f = m_threadpool.add_task([this, &input, &output_pol, &output_val]{
-        m_networks[current_thread_gpu_num]->forward(input, output_pol, output_val);
-    });
+    // On multi-gpu situations you shouldn't have a thread context to start with.
+    assert(opencl_thread_data == nullptr);
 
-    f.get();
+    // acquire a thread context.
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+        if (m_thread_data.empty()) {
+            m_cv.wait(lk, [this]() { return !m_thread_data.empty(); });
+        }
+        
+        assert(!m_thread_data.empty());
+        opencl_thread_data = std::move(m_thread_data.front());
+        m_thread_data.pop_front();
+    }
+
+    // run it.
+    m_networks[opencl_thread_data->m_gpu_num]->forward(input, output_pol, output_val);
+
+    // ...and release the thread context
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+        m_thread_data.push_back(std::move(opencl_thread_data));
+        m_cv.notify_one();
+    }
 }
 #endif

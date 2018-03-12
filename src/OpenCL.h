@@ -69,6 +69,10 @@ private:
     cl::Buffer m_pinnedOutBuffer_pol;
     cl::Buffer m_pinnedOutBuffer_val;
     bool m_buffers_allocated{false};
+
+public:
+    int m_gpu_num;
+    ThreadData(int gpu_num) : m_gpu_num(gpu_num) {}
 };
 
 class OpenCL_Network {
@@ -200,7 +204,7 @@ private:
     bool m_init_ok{false};
 };
 
-extern thread_local ThreadData opencl_thread_data;
+extern thread_local std::unique_ptr<ThreadData> opencl_thread_data;
 extern const std::string sourceCode_sgemm;
 
 #endif

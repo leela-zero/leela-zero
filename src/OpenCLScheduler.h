@@ -49,7 +49,9 @@ private:
 
     std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
     std::vector<std::unique_ptr<OpenCL>> m_opencl;
-    Utils::ThreadPool m_threadpool;
+    std::deque<std::unique_ptr<ThreadData>> m_thread_data;
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
 };
 
 extern OpenCLScheduler opencl;
