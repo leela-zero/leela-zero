@@ -50,7 +50,7 @@ after each game. You can just close the autogtp window to stop it.
 ## macOS and Linux
 
 Follow the instructions below to compile the leelaz binary, then go into
-the autogtp subdirectory and follow the instructions there to build the
+the autogtp subdirectory and follow [the instructions there](autogtp/README.md) to build the
 autogtp binary. Copy the leelaz binary into the autogtp dir, and launch
 autogtp.
 
