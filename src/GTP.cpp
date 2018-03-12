@@ -51,6 +51,7 @@ int cfg_num_threads;
 int cfg_max_threads;
 int cfg_max_playouts;
 int cfg_max_visits;
+int cfg_num_evals;
 TimeManagement::enabled_t cfg_timemanage;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
@@ -85,6 +86,7 @@ void GTP::setup_default_parameters() {
 #endif
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
     cfg_max_visits = std::numeric_limits<decltype(cfg_max_visits)>::max();
+    cfg_num_evals = 1;
     cfg_timemanage = TimeManagement::AUTO;
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL

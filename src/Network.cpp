@@ -31,6 +31,7 @@
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/home/x3.hpp>
+#include <random>
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -863,9 +864,40 @@ Network::Netresult Network::get_scored_moves(
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
         result = get_scored_moves_internal(state, planes, rotation);
+    } else if (ensemble == MULTI && rotation > 1) {
+        // MULTI rotation is the # of random rotations to provide
+        assert(rotation >= 1 && rotation <= 8);
+        std::vector<int> r_list{0, 1, 2, 3, 4, 5, 6, 7};
+        // Need to account for extra 2 in m_squaresize.
+        float policy[(BOARD_SIZE + 2) * (BOARD_SIZE + 1)] = {0};
+
+        if (rotation < 8) {
+            std::random_device rd;
+            std::mt19937 g(rd());
+            std::shuffle(r_list.begin(), r_list.end(), g);
+        }
+
+        result = get_scored_moves_internal(state, planes, r_list[0]);
+
+        for (int r = 1; r < rotation; ++r) {
+            Netresult tmpresult = get_scored_moves_internal(state, planes, r_list[r]);
+            result.second += tmpresult.second;
+
+            for (auto res : tmpresult.first) {
+                // +1 to account for PASS
+                policy[res.second + 1] += res.first;
+            }
+        }
+
+        for (size_t c = 0; c < result.first.size(); c++) {
+            result.first[c].first += policy[result.first[c].second + 1];
+            result.first[c].first /= rotation;
+        }
+
+        result.second /= rotation;
     } else {
-        assert(ensemble == RANDOM_ROTATION);
-        assert(rotation == -1);
+        assert((ensemble == RANDOM_ROTATION && rotation == -1) ||
+               (ensemble == MULTI && rotation == 1));
         auto rand_rot = Random::get_Rng().randfix<8>();
         result = get_scored_moves_internal(state, planes, rand_rot);
     }
