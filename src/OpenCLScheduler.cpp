@@ -15,11 +15,12 @@
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <cassert>
 
 #include "config.h"
 
 #ifdef USE_OPENCL
+#include <cassert>
+
 #include "GTP.h"
 #include "Random.h"
 #include "OpenCLScheduler.h"
@@ -28,34 +29,33 @@ OpenCLScheduler opencl;
 
 void OpenCLScheduler::initialize(const int channels) {
     // multi-gpu?
-    if (!cfg_gpus.empty()) {
+    if (cfg_gpus.size() >= 2) {
         auto silent{false};
-        for(auto gpu : cfg_gpus) {
+        int gnum = 0;
+
+        // on a multi-gpu situation, we are going to maintain a thread data pool.
+        for (auto gpu : cfg_gpus) {
+            // create opencl thread data explicitly here with the right 'gnum'.
+            opencl_thread_data = std::make_unique<ThreadData>(gnum);
+
             auto opencl = std::make_unique<OpenCL>();
             auto net = std::make_unique<OpenCL_Network>(*opencl);
             opencl->initialize(channels, {gpu}, silent);
             m_opencl.push_back(std::move(opencl));
             m_networks.push_back(std::move(net));
 
-            // Clear thread data on every init call.  We don't know which GPU
-            // this thread will be eventually be assigned to
-            if (opencl_thread_data != nullptr) {
-                opencl_thread_data = nullptr;
-            }
-
             // starting next GPU, let's not dump full list of GPUs
             silent = true;
-        }
 
-        for(size_t gnum = 0; gnum < m_networks.size(); gnum++) {
-            // two instances for optimal scalability
+            m_thread_data.push_back(std::move(opencl_thread_data));
             m_thread_data.emplace_back( new ThreadData(gnum) );
-            m_thread_data.emplace_back( new ThreadData(gnum) );
+
+            gnum++;
         }
     } else {
         auto opencl = std::make_unique<OpenCL>();
         auto net = std::make_unique<OpenCL_Network>(*opencl);
-        opencl->initialize(channels, {});
+        opencl->initialize(channels, cfg_gpus);
 
         m_opencl.push_back(std::move(opencl));
         m_networks.push_back(std::move(net));
