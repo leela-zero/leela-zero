@@ -60,7 +60,7 @@ class FileDataSrc:
         self.done = []
     def next(self):
         if not self.chunks:
-            self.chunks = self.done
+            self.chunks, self.done = self.done, self.chunks
             random.shuffle(self.chunks)
         if not self.chunks:
             return None
