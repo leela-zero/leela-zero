@@ -55,19 +55,22 @@ class FileDataSrc:
         data source yielding chunkdata from chunk files.
     """
     def __init__(self, chunks):
-        self.chunks = chunks
-        random.shuffle(self.chunks)
-        self.done = []
+        self.chunks = []
+        self.done = chunks
     def next(self):
         if not self.chunks:
-            self.chunks = self.done
+            self.chunks, self.done = self.done, self.chunks
             random.shuffle(self.chunks)
         if not self.chunks:
             return None
-        filename = self.chunks.pop()
-        self.done.append(filename)
-        with gzip.open(filename, 'rb') as chunk_file:
-            return chunk_file.read()
+        while len(self.chunks):
+            filename = self.chunks.pop()
+            try:
+                with gzip.open(filename, 'rb') as chunk_file:
+                    self.done.append(filename)
+                    return chunk_file.read()
+            except:
+                print("failed to parse {}".format(filename))
 
 def benchmark(parser):
     """
