@@ -60,10 +60,11 @@ static void parse_commandline(int argc, char *argv[]) {
         ("threads,t", po::value<int>()->default_value(cfg_num_threads),
                       "Number of threads to use.")
         ("playouts,p", po::value<int>(),
-                       "Weaken engine by limiting the number of playouts."
+                       "Weaken engine by limiting the number of playouts. "
                        "Requires --noponder.")
         ("visits,v", po::value<int>(),
-                     "Weaken engine by limiting the number of visits.")
+                     "Weaken engine by limiting the number of visits. "
+                     "Requires --noponder.")
         ("timemanage", po::value<std::string>()->default_value("auto"),
                        "[auto|on|off] Enable extra time management features.\n"
                        "auto = off when using -m, otherwise on")
@@ -204,16 +205,19 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("playouts")) {
         cfg_max_playouts = vm["playouts"].as<int>();
-        if (!vm.count("noponder")) {
-            printf("Nonsensical options: Playouts are restricted but "
-                   "thinking on the opponent's time is still allowed. "
-                   "Add --noponder if you want a weakened engine.\n");
-            exit(EXIT_FAILURE);
-        }
     }
 
     if (vm.count("visits")) {
         cfg_max_visits = vm["visits"].as<int>();
+    }
+
+    if (vm.count("playouts") || vm.count("visits")) {
+        if (!vm.count("noponder")) {
+            printf("Nonsensical options: Playouts/visits are restricted but "
+                   "thinking on the opponent's time is still allowed. Add "
+                   "--noponder if you want a weakened engine.\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (vm.count("resignpct")) {
