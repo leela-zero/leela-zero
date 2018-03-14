@@ -144,6 +144,7 @@ const std::string GTP::s_commands[] = {
     "kgs-time_settings",
     "kgs-game_over",
     "heatmap",
+    "heatmaps",
     ""
 };
 
@@ -512,6 +513,14 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         std::string vertex = game.move_to_text(move);
         myprintf("%s\n", vertex.c_str());
+        return true;
+    } else if (command.find("heatmaps") == 0) {
+        for (int rotation=0; rotation<8; rotation++) {
+            auto vec = Network::get_scored_moves(
+                &game, Network::Ensemble::DIRECT, rotation, true);
+            Network::show_heatmap(&game, vec, false);
+        }
+        gtp_printf(id, "");
         return true;
     } else if (command.find("heatmap") == 0) {
         std::istringstream cmdstream(command);
