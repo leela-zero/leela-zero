@@ -670,6 +670,7 @@ void convolve(size_t outputs,
 
 template<unsigned int inputs,
          unsigned int outputs,
+         bool ReLU,
          size_t W, size_t B>
 void innerproduct(const std::vector<float>& input,
                   const std::array<float, W>& weights,
@@ -689,7 +690,7 @@ void innerproduct(const std::vector<float>& input,
 
     for (unsigned int o = 0; o < outputs; o++) {
         float val = biases[o] + output[o];
-        if (outputs == 256) {
+        if (ReLU) {
             val = lambda_ReLU(val);
         }
         output[o] = val;
@@ -920,14 +921,14 @@ Network::Netresult Network::get_scored_moves_internal(
 
     // Get the moves
     batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data, bn_pol_w1.data(), bn_pol_w2.data());
-    innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1>(policy_data, ip_pol_w, ip_pol_b, policy_out);
+    innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1, false>(policy_data, ip_pol_w, ip_pol_b, policy_out);
     softmax(policy_out, softmax_data, cfg_softmax_temp);
     std::vector<float>& outputs = softmax_data;
 
     // Now get the score
     batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data, bn_val_w1.data(), bn_val_w2.data());
-    innerproduct<BOARD_SQUARES, 256>(value_data, ip1_val_w, ip1_val_b, winrate_data);
-    innerproduct<256, 1>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
+    innerproduct<BOARD_SQUARES, 256, true>(value_data, ip1_val_w, ip1_val_b, winrate_data);
+    innerproduct<256, 1, false>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
 
     // Sigmoid
     auto winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;

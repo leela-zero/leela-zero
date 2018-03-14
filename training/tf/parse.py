@@ -23,11 +23,14 @@ import argparse
 import glob
 import gzip
 import multiprocessing as mp
+import os
 import random
 import shufflebuffer as sb
 import sys
 import tensorflow as tf
 import time
+import unittest
+
 
 # Sane values are from 4096 to 64 or so.
 # You need to adjust the learning rate if you change this. Should be
@@ -55,14 +58,18 @@ class FileDataSrc:
         self.chunks = []
     def next(self):
         if not self.chunks:
-            self.chunks = self.done
+            self.chunks, self.done = self.done, self.chunks
             random.shuffle(self.chunks)
         if not self.chunks:
             return None
-        filename = self.chunks.pop()
-        self.done.append(filename)
-        with gzip.open(filename, 'rb') as chunk_file:
-            return chunk_file.read()
+        while len(self.chunks):
+            filename = self.chunks.pop()
+            try:
+                with gzip.open(filename, 'rb') as chunk_file:
+                    self.done.append(filename)
+                    return chunk_file.read()
+            except:
+                print("failed to parse {}".format(filename))
 
 def benchmark(parser):
     """
@@ -150,3 +157,37 @@ if __name__ == "__main__":
     mp.set_start_method('spawn')
     main()
     mp.freeze_support()
+
+# Tests.
+# To run: python3 -m unittest parse.TestParse
+class TestParse(unittest.TestCase):
+    def test_datasrc(self):
+        # create chunk files
+        num_chunks = 3
+        chunks = []
+        for x in range(num_chunks):
+            filename = '/tmp/parse-unittest-chunk'+str(x)+'.gz'
+            chunk_file = gzip.open(filename, 'w', 1)
+            chunk_file.write(bytes(x))
+            chunk_file.close()
+            chunks.append(filename)
+        # create a data src, passing a copy of the
+        # list of chunks.
+        ds = FileDataSrc(list(chunks))
+        # get sample of 200 chunks from the data src
+        counts={}
+        for _ in range(200):
+            data = ds.next()
+            if data in counts:
+                counts[data] += 1
+            else:
+                counts[data] = 1
+        # Every chunk appears at least thrice. Note! This is probabilistic
+        # but the probably of false failure is < 1e-9
+        for x in range(num_chunks):
+            self.assertGreater(counts[bytes(x)], 3)
+        # check that there are no stray chunks
+        self.assertEqual(len(counts.keys()), num_chunks)
+        # clean up: remove temp files.
+        for c in chunks:
+            os.remove(c)

@@ -593,11 +593,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
     Time elapsed;
     int elapsed_centis = Time::timediff_centis(start, elapsed);
     if (elapsed_centis+1 > 0) {
-        myprintf("%d visits, %d nodes, %d playouts, %d n/s\n\n",
+        myprintf("%d visits, %d nodes, %d playouts, %.0f n/s\n\n",
                  m_root->get_visits(),
                  static_cast<int>(m_nodes),
                  static_cast<int>(m_playouts),
-                 (m_playouts * 100) / (elapsed_centis+1));
+                 (m_playouts * 100.0) / (elapsed_centis+1));
     }
     int bestmove = get_best_move(passflag);
 
@@ -615,13 +615,16 @@ void UCTSearch::ponder() {
     for (int i = 1; i < cpus; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
+    auto keeprunning = true;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = play_simulation(*currstate, m_root.get());
         if (result.valid()) {
             increment_playouts();
         }
-    } while(!Utils::input_pending() && is_running());
+        keeprunning  = is_running();
+        keeprunning &= !stop_thinking(0, 1);
+    } while(!Utils::input_pending() && keeprunning);
 
     // stop the search
     m_run = false;
@@ -638,7 +641,9 @@ void UCTSearch::set_playout_limit(int playouts) {
                                       decltype(m_maxplayouts)>::value,
                   "Inconsistent types for playout amount.");
     if (playouts == 0) {
-        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max();
+        // Divide max by 2 to prevent overflow when multithreading.
+        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max()
+                        / 2;
     } else {
         m_maxplayouts = playouts;
     }
@@ -649,7 +654,9 @@ void UCTSearch::set_visit_limit(int visits) {
                                       decltype(m_maxvisits)>::value,
                   "Inconsistent types for visits amount.");
     if (visits == 0) {
-        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max();
+        // Divide max by 2 to prevent overflow when multithreading.
+        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max()
+                      / 2;
     } else {
         m_maxvisits = visits;
     }
