@@ -92,6 +92,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
 
     auto legal_sum = 0.0f;
     for (const auto& node : raw_netlist.first) {
+        if (node.first < 0.001f) continue;
         auto vertex = node.second;
         if (state.is_move_legal(to_move, vertex)) {
             nodelist.emplace_back(node);
