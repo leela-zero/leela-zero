@@ -24,25 +24,7 @@
 #include "Utils.h"
 #include "FastBoard.h"
 
-
 using namespace Utils;
-
-TEST(FastBoardTest, FBCeilMultiple) {
-    // Equal to a multiple
-    EXPECT_EQ(ceilMultiple(0, 1), (size_t)0);
-    EXPECT_EQ(ceilMultiple(0, 3), (size_t)0);
-
-    EXPECT_EQ(ceilMultiple(6,  1), (size_t)6);
-    EXPECT_EQ(ceilMultiple(23, 1), (size_t)23);
-
-    EXPECT_EQ(ceilMultiple(2, 2), (size_t)2);
-    EXPECT_EQ(ceilMultiple(4, 2), (size_t)4);
-    EXPECT_EQ(ceilMultiple(6, 2), (size_t)6);
-    EXPECT_EQ(ceilMultiple(0, 3), (size_t)0);
-    EXPECT_EQ(ceilMultiple(3, 3), (size_t)3);
-    EXPECT_EQ(ceilMultiple(9, 3), (size_t)9);
-
-}
 
 TEST(FastBoardTest, Board3x3) {
     FastBoard b;
