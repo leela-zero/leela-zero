@@ -9,7 +9,7 @@ A Go program with no human provided knowledge. Using MCTS (but without
 Monte Carlo playouts) and a deep residual convolutional neural network stack.
 
 This is a fairly faithful reimplementation of the system described
-in the Alpha Go Zero paper "[Mastering the Game of Go without Human Knowledge](https://storage.googleapis.com/deepmind-media/alphago/AlphaGoNaturePaper.pdf)".
+in the Alpha Go Zero paper "[Mastering the Game of Go without Human Knowledge](https://deepmind.com/documents/119/agz_unformatted_nature.pdf)".
 For all intents and purposes, it is an open source AlphaGo Zero.
 
 # Wait, what?
@@ -50,7 +50,7 @@ after each game. You can just close the autogtp window to stop it.
 ## macOS and Linux
 
 Follow the instructions below to compile the leelaz binary, then go into
-the autogtp subdirectory and follow the instructions there to build the
+the autogtp subdirectory and follow [the instructions there](autogtp/README.md) to build the
 autogtp binary. Copy the leelaz binary into the autogtp dir, and launch
 autogtp.
 
@@ -286,8 +286,14 @@ If interrupted, training can be resumed with:
 http://zero.sjeng.org
 * Watch Leela Zero's training games live in a GUI:
 https://github.com/fsparv/LeelaWatcher
+* GUI and study tool for Leela Zero:
+https://github.com/CamWagner/lizzie
 * Stockfish chess engine ported to Leela Zero framework:
 https://github.com/glinscott/leela-chess
+* Original Alpha Go (Lee Sedol) paper:
+https://storage.googleapis.com/deepmind-media/alphago/AlphaGoNaturePaper.pdf
+* Newer Alpha Zero (Go, Chess, Shogi) paper:
+https://arxiv.org/pdf/1712.01815.pdf
 
 # License
 

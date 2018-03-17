@@ -82,7 +82,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
         ("quiet,q", "Disable all diagnostic output.")
         ("noponder", "Disable thinking on opponent's time.")
-        ("benchmark", "Test network and exit. Default args:\n-p1600 --noponder "
+        ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
 #ifdef USE_OPENCL
         ("gpu",  po::value<std::vector<int> >(),
@@ -276,7 +276,7 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_num_threads = 1;
         }
         if (!vm.count("playouts") && !vm.count("visits")) {
-            cfg_max_playouts = 1600; // Default to self-play and match values.
+            cfg_max_visits = 3200; // Default to self-play and match values.
         }
     }
 
