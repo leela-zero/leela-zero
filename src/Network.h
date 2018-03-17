@@ -42,10 +42,10 @@ public:
     using scored_node = std::pair<float, int>;
     using Netresult = std::pair<std::vector<scored_node>, float>;
 
-    static Netresult get_scored_moves(const GameState* state,
-                                      Ensemble ensemble,
-                                      int rotation = -1,
-                                      bool skip_cache = false);
+    static Netresult get_scored_moves(const GameState* const state,
+                                      const Ensemble ensemble,
+                                      const int rotation = -1,
+                                      const bool skip_cache = false);
     // File format version
     static constexpr auto FORMAT_VERSION = 1;
     static constexpr auto INPUT_MOVES = 8;
@@ -58,17 +58,17 @@ public:
     static constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 
     static void initialize();
-    static void benchmark(const GameState * state, int iterations = 1600);
-    static void show_heatmap(const FastState * state, Netresult & netres,
-                             bool topmoves);
+    static void benchmark(const GameState * const state, const int iterations = 1600);
+    static void show_heatmap(const FastState * const state, const Netresult & netres,
+                             const bool topmoves);
     static void softmax(const std::vector<float>& input,
                         std::vector<float>& output,
-                        float temperature = 1.0f);
+                        const float temperature = 1.0f);
 
-    static void gather_features(const GameState* state, NNPlanes& planes);
+    static void gather_features(const GameState* const state, NNPlanes& planes);
 private:
     static std::pair<int, int> load_v1_network(std::ifstream& wtfile);
-    static std::pair<int, int> load_network_file(std::string filename);
+    static std::pair<int, int> load_network_file(const std::string& filename);
     static void process_bn_var(std::vector<float>& weights,
                                const float epsilon=1e-5f);
 
@@ -90,15 +90,15 @@ private:
                                    std::vector<float>& M,
                                    std::vector<float>& output);
     static void winograd_sgemm(const std::vector<float>& U,
-                               std::vector<float>& V,
+                               const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
     static int rotate_nn_idx(const int vertex, int symmetry);
     static void fill_input_plane_pair(
       const FullBoard& board, BoardPlane& black, BoardPlane& white);
     static Netresult get_scored_moves_internal(
-      const GameState* state, NNPlanes & planes, int rotation);
+      const GameState* const state, const NNPlanes & planes, const int rotation);
 #if defined(USE_BLAS)
-    static void forward_cpu(std::vector<float>& input,
+    static void forward_cpu(const std::vector<float>& input,
                             std::vector<float>& output_pol,
                             std::vector<float>& output_val);
 
