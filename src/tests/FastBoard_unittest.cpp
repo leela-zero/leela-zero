@@ -21,10 +21,8 @@
 #include <limits>
 #include <vector>
 
-#include "Utils.h"
 #include "FastBoard.h"
 
-using namespace Utils;
 
 TEST(FastBoardTest, Board3x3) {
     FastBoard b;
@@ -33,4 +31,34 @@ TEST(FastBoardTest, Board3x3) {
         "\n   a b c \n 3 . . .  3\n 2 . . .  2\n 1 . . .  1\n   a b c \n\n",  
         b.serialize_board()
     );
+}
+
+TEST(FastBoardTest, MakeBlackMoveOn19x19) {
+    FastBoard b;
+    b.reset_board(19);
+    b.set_square(b.get_vertex(2, 1), FastBoard::BLACK);
+    
+    const char *expected = "\n"
+        "   a b c d e f g h j k l m n o p q r s t \n"
+        "19 . . . . . . . . . . . . . . . . . . . 19\n"
+        "18 . . . . . . . . . . . . . . . . . . . 18\n"
+        "17 . . . . . . . . . . . . . . . . . . . 17\n"
+        "16 . . . + . . . . . + . . . . . + . . . 16\n"
+        "15 . . . . . . . . . . . . . . . . . . . 15\n"
+        "14 . . . . . . . . . . . . . . . . . . . 14\n"
+        "13 . . . . . . . . . . . . . . . . . . . 13\n"
+        "12 . . . . . . . . . . . . . . . . . . . 12\n"
+        "11 . . . . . . . . . . . . . . . . . . . 11\n"
+        "10 . . . + . . . . . + . . . . . + . . . 10\n"
+        " 9 . . . . . . . . . . . . . . . . . . .  9\n"
+        " 8 . . . . . . . . . . . . . . . . . . .  8\n"
+        " 7 . . . . . . . . . . . . . . . . . . .  7\n"
+        " 6 . . . . . . . . . . . . . . . . . . .  6\n" 
+        " 5 . . . . . . . . . . . . . . . . . . .  5\n"
+        " 4 . . . + . . . . . + . . . . . + . . .  4\n"
+        " 3 . . . . . . . . . . . . . . . . . . .  3\n"
+        " 2 . . X . . . . . . . . . . . . . . . .  2\n"
+        " 1 . . . . . . . . . . . . . . . . . . .  1\n"
+        "   a b c d e f g h j k l m n o p q r s t \n\n";
+    EXPECT_EQ(expected, b.serialize_board());
 }
