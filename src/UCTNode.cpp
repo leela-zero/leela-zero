@@ -90,9 +90,14 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
 
     std::vector<Network::scored_node> nodelist;
 
+    auto min_psa = 0.0f;
+    if (!cfg_noise && cfg_random_cnt == 0) {
+        // Trimming should only be used for matches with no randomness.
+        min_psa = 0.001f;
+    }
     auto legal_sum = 0.0f;
     for (const auto& node : raw_netlist.first) {
-        if (node.first < 0.001f) continue;
+        if (node.first < min_psa) continue;
         auto vertex = node.second;
         if (state.is_move_legal(to_move, vertex)) {
             nodelist.emplace_back(node);
