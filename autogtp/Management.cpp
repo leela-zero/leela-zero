@@ -34,6 +34,8 @@
 constexpr int RETRY_DELAY_MIN_SEC = 30;
 constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 3;           // Stop retrying after 3 times
+
+const QString server_url = "https://zero.sjeng.org/";
 const QString Leelaz_min_version = "0.12";
 
 Management::Management(const int gpus,
@@ -324,7 +326,7 @@ Order Management::getWorkInternal(bool tuning) {
     prog_cmdline.append(".exe");
 #endif
     prog_cmdline.append(" -s -J");
-    prog_cmdline.append(" https://zero.sjeng.org/get-task/");
+    prog_cmdline.append(" "+server_url+"get-task/");
     if (tuning) {
         prog_cmdline.append("0");
     } else {
@@ -533,7 +535,7 @@ void Management::fetchNetwork(const QString &net, const QString &hash) {
     // Use the filename from the server.
     prog_cmdline.append(" -s -J -o " + name + " ");
     prog_cmdline.append(" -w %{filename_effective}");
-    prog_cmdline.append(" https://zero.sjeng.org/" + name);
+    prog_cmdline.append(" "+server_url + name);
 
     QProcess curl;
     curl.start(prog_cmdline);
@@ -697,7 +699,7 @@ bool Management::sendCurl(const QStringList &lines) {
 -F options_hash=c2e3
 -F random_seed=0
 -F sgf=@file
-http://zero.sjeng.org/submit-match
+https://zero.sjeng.org/submit-match
 */
 
 void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString,QString> &l) {
@@ -720,7 +722,7 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
     prog_cmdline.append("-F options_hash="+ l["optHash"]);
     prog_cmdline.append("-F random_seed="+ l["rndSeed"]);
     prog_cmdline.append("-F sgf=@"+ r["file"] + ".sgf.gz");
-    prog_cmdline.append("https://zero.sjeng.org/submit-match");
+    prog_cmdline.append(server_url+"submit-match");
 
     bool sent = false;
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
@@ -756,7 +758,7 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
 -F random_seed=1
 -F sgf=@file
 -F trainingdata=@data_file
-http://zero.sjeng.org/submit
+https://zero.sjeng.org/submit
 */
 
 void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l) {
@@ -772,7 +774,7 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
     prog_cmdline.append("-F random_seed="+ l["rndSeed"]);
     prog_cmdline.append("-F sgf=@" + r["file"] + ".sgf.gz");
     prog_cmdline.append("-F trainingdata=@" + r["file"] + ".txt.0.gz");
-    prog_cmdline.append("https://zero.sjeng.org/submit");
+    prog_cmdline.append(server_url+"submit");
 
     bool sent = false;
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
