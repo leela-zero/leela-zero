@@ -32,6 +32,7 @@
 #include <string>
 #include <vector>
 
+#include "Eliza.h"
 #include "FastBoard.h"
 #include "FullBoard.h"
 #include "GameState.h"
@@ -143,6 +144,7 @@ const std::string GTP::s_commands[] = {
     "kgs-genmove_cleanup",
     "kgs-time_settings",
     "kgs-game_over",
+    "kgs-chat",
     "heatmap",
     ""
 };
@@ -620,16 +622,17 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("kgs-chat") == 0) {
         // kgs-chat (game|private) Name Message
         std::istringstream cmdstream(command);
-        std::string tmp;
+        std::string tmp, mode, player, message, answer;
 
         cmdstream >> tmp; // eat kgs-chat
-        cmdstream >> tmp; // eat game|private
-        cmdstream >> tmp; // eat player name
-        do {
-            cmdstream >> tmp; // eat message
-        } while (!cmdstream.fail());
+        cmdstream >> mode; // eat game|private
+        cmdstream >> player; // eat player name
+        message = cmdstream.str();
 
-        gtp_fail_printf(id, "I'm a go bot, not a chat bot.");
+        MB::eliza el;
+        answer = el.respond(input);
+
+        gtp_printf(id, "%s", answer.c_str());
         return true;
     } else if (command.find("kgs-game_over") == 0) {
         // Do nothing. Particularly, don't ponder.
