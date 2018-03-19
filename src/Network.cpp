@@ -91,10 +91,9 @@ static std::array<float, 1> ip2_val_b;
 // Rotation helper
 static std::array<std::array<int, BOARD_SQUARES>, 8> rotate_nn_idx_table;
 
-void Network::benchmark(const GameState * const state, const int iterations) {
+void Network::benchmark(const GameState* const state, const int iterations) {
     const auto cpus = cfg_num_threads;
     const auto iters_per_thread = (iterations + (cpus - 1)) / cpus;
-
     const Time start;
 
     ThreadGroup tg(thread_pool);
@@ -104,11 +103,11 @@ void Network::benchmark(const GameState * const state, const int iterations) {
                 get_scored_moves(state, Ensemble::RANDOM_ROTATION, -1, true);
             }
         });
-    };
+    }
     tg.wait_all();
 
     const Time end;
-    const auto elapsed = Time::timediff_seconds(start,end);
+    const auto elapsed = Time::timediff_seconds(start, end);
     myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
              iterations, elapsed, int(iterations / elapsed));
 }
@@ -441,34 +440,30 @@ void Network::winograd_transform_in(const std::vector<float>& in,
                                     const int C) {
     constexpr auto W = BOARD_SIZE;
     constexpr auto H = BOARD_SIZE;
-    constexpr auto wtiles = (W + 1) / 2;
-    constexpr auto P = wtiles * wtiles;
+    constexpr auto WTILES = (W + 1) / 2;
+    constexpr auto P = WTILES * WTILES;
+
+    std::array<std::array<float, W + 2>, H + 2> in_pad;
+    for (auto xin = 0; xin < W + 2; xin++) {
+        in_pad[0][xin]     = 0.0f;
+        in_pad[H + 1][xin] = 0.0f;
+    }
+    for (auto yin = 1; yin < H + 1; yin++) {
+        in_pad[yin][0]     = 0.0f;
+        in_pad[yin][W + 1] = 0.0f;
+    }
 
     for (auto ch = 0; ch < C; ch++) {
-        for (auto block_y = 0; block_y < wtiles; block_y++) {
-            for (auto block_x = 0; block_x < wtiles; block_x++) {
-
-                // Tiles overlap by 2
-                const auto yin = 2 * block_y - 1;
-                const auto xin = 2 * block_x - 1;
-
-                // Cache input tile and handle zero padding
-                using WinogradTile =
-                    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
-                WinogradTile x;
-
-                for (auto i = 0; i < WINOGRAD_ALPHA; i++) {
-                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
-                        if ((yin + i) >= 0 && (xin + j) >= 0
-                            && (yin + i) < H && (xin + j) < W) {
-                            x[i][j] = in[ch*(W*H) + (yin+i)*W + (xin+j)];
-                        } else {
-                            x[i][j] = 0.0f;
-                        }
-                    }
-                }
-
-                const auto offset = ch*P + block_y*wtiles + block_x;
+        for (auto yin = 0; yin < H; yin++) {
+            for (auto xin = 0; xin < W; xin++) {
+                in_pad[yin + 1][xin + 1] = in[ch*(W*H) + yin*W + xin];
+            }
+        }
+        for (auto block_y = 0; block_y < WTILES; block_y++) {
+            // Tiles overlap by 2
+            const auto yin = 2 * block_y;
+            for (auto block_x = 0; block_x < WTILES; block_x++) {
+                const auto xin = 2 * block_x;
 
                 // Calculates transpose(B).x.B
                 // B = [[ 1.0,  0.0,  0.0,  0.0],
@@ -476,24 +471,26 @@ void Network::winograd_transform_in(const std::vector<float>& in,
                 //      [-1.0,  1.0,  1.0,  0.0],
                 //      [ 0.0,  0.0,  0.0, -1.0]]
 
+                using WinogradTile =
+                    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
                 WinogradTile T1, T2;
 
-                T1[0][0] = x[0][0] - x[2][0];
-                T1[0][1] = x[0][1] - x[2][1];
-                T1[0][2] = x[0][2] - x[2][2];
-                T1[0][3] = x[0][3] - x[2][3];
-                T1[1][0] = x[1][0] + x[2][0];
-                T1[1][1] = x[1][1] + x[2][1];
-                T1[1][2] = x[1][2] + x[2][2];
-                T1[1][3] = x[1][3] + x[2][3];
-                T1[2][0] = x[2][0] - x[1][0];
-                T1[2][1] = x[2][1] - x[1][1];
-                T1[2][2] = x[2][2] - x[1][2];
-                T1[2][3] = x[2][3] - x[1][3];
-                T1[3][0] = x[1][0] - x[3][0];
-                T1[3][1] = x[1][1] - x[3][1];
-                T1[3][2] = x[1][2] - x[3][2];
-                T1[3][3] = x[1][3] - x[3][3];
+                T1[0][0] = in_pad[yin + 0][xin + 0] - in_pad[yin + 2][xin + 0];
+                T1[0][1] = in_pad[yin + 0][xin + 1] - in_pad[yin + 2][xin + 1];
+                T1[0][2] = in_pad[yin + 0][xin + 2] - in_pad[yin + 2][xin + 2];
+                T1[0][3] = in_pad[yin + 0][xin + 3] - in_pad[yin + 2][xin + 3];
+                T1[1][0] = in_pad[yin + 1][xin + 0] + in_pad[yin + 2][xin + 0];
+                T1[1][1] = in_pad[yin + 1][xin + 1] + in_pad[yin + 2][xin + 1];
+                T1[1][2] = in_pad[yin + 1][xin + 2] + in_pad[yin + 2][xin + 2];
+                T1[1][3] = in_pad[yin + 1][xin + 3] + in_pad[yin + 2][xin + 3];
+                T1[2][0] = in_pad[yin + 2][xin + 0] - in_pad[yin + 1][xin + 0];
+                T1[2][1] = in_pad[yin + 2][xin + 1] - in_pad[yin + 1][xin + 1];
+                T1[2][2] = in_pad[yin + 2][xin + 2] - in_pad[yin + 1][xin + 2];
+                T1[2][3] = in_pad[yin + 2][xin + 3] - in_pad[yin + 1][xin + 3];
+                T1[3][0] = in_pad[yin + 1][xin + 0] - in_pad[yin + 3][xin + 0];
+                T1[3][1] = in_pad[yin + 1][xin + 1] - in_pad[yin + 3][xin + 1];
+                T1[3][2] = in_pad[yin + 1][xin + 2] - in_pad[yin + 3][xin + 2];
+                T1[3][3] = in_pad[yin + 1][xin + 3] - in_pad[yin + 3][xin + 3];
 
                 T2[0][0] = T1[0][0] - T1[0][2];
                 T2[0][1] = T1[0][1] + T1[0][2];
@@ -512,6 +509,7 @@ void Network::winograd_transform_in(const std::vector<float>& in,
                 T2[3][2] = T1[3][2] - T1[3][1];
                 T2[3][3] = T1[3][1] - T1[3][3];
 
+                const auto offset = ch * P + block_y * WTILES + block_x;
                 for (auto i = 0; i < WINOGRAD_ALPHA; i++) {
                     for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
                         V[(i*WINOGRAD_ALPHA + j)*C*P + offset] = T2[i][j];
@@ -548,21 +546,23 @@ void Network::winograd_transform_out(const std::vector<float>& M,
                                      const int K) {
     constexpr auto W = BOARD_SIZE;
     constexpr auto H = BOARD_SIZE;
-    constexpr auto wtiles = (W + 1) / 2;
-    constexpr auto P = wtiles * wtiles;
+    constexpr auto WTILES = (W + 1) / 2;
+    constexpr auto P = WTILES * WTILES;
 
     for (auto k = 0; k < K; k++) {
-        for (auto block_x = 0; block_x < wtiles; block_x++) {
-            for (auto block_y = 0; block_y < wtiles; block_y++) {
-
-                const auto x = 2 * block_x;
+        const auto kHW = k * W * H;
+        for (auto block_x = 0; block_x < WTILES; block_x++) {
+            const auto x = 2 * block_x;
+            for (auto block_y = 0; block_y < WTILES; block_y++) {
                 const auto y = 2 * block_y;
 
-                const auto b = block_y * wtiles + block_x;
-                std::array<float, WINOGRAD_TILE> temp_m;
+                const auto b = block_y * WTILES + block_x;
+                using WinogradTile =
+                    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
+                WinogradTile temp_m;
                 for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++) {
                     for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
-                        temp_m[xi*WINOGRAD_ALPHA + nu] =
+                        temp_m[xi][nu] = 
                             M[xi*(WINOGRAD_ALPHA*K*P) + nu*(K*P)+ k*P + b];
                     }
                 }
@@ -573,34 +573,30 @@ void Network::winograd_transform_out(const std::vector<float>& M,
                 //        [1.0, -1.0],
                 //        [0.0, -1.0]]
 
-                const auto o11 =
-                    temp_m[0*4 + 0] + temp_m[0*4 + 1] + temp_m[0*4 + 2] +
-                    temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] +
-                    temp_m[2*4 + 0] + temp_m[2*4 + 1] + temp_m[2*4 + 2];
+                const std::array<std::array<float, 2>, 2> o = {
+                    temp_m[0][0] + temp_m[0][1] + temp_m[0][2] +
+                    temp_m[1][0] + temp_m[1][1] + temp_m[1][2] +
+                    temp_m[2][0] + temp_m[2][1] + temp_m[2][2],
+                    temp_m[0][1] - temp_m[0][2] - temp_m[0][3] +
+                    temp_m[1][1] - temp_m[1][2] - temp_m[1][3] +
+                    temp_m[2][1] - temp_m[2][2] - temp_m[2][3],
+                    temp_m[1][0] + temp_m[1][1] + temp_m[1][2] -
+                    temp_m[2][0] - temp_m[2][1] - temp_m[2][2] -
+                    temp_m[3][0] - temp_m[3][1] - temp_m[3][2],
+                    temp_m[1][1] - temp_m[1][2] - temp_m[1][3] -
+                    temp_m[2][1] + temp_m[2][2] + temp_m[2][3] -
+                    temp_m[3][1] + temp_m[3][2] + temp_m[3][3]
+                };
 
-                const auto o12 =
-                    temp_m[0*4 + 1] - temp_m[0*4 + 2] - temp_m[0*4 + 3] +
-                    temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] +
-                    temp_m[2*4 + 1] - temp_m[2*4 + 2] - temp_m[2*4 + 3];
-
-                const auto o21 =
-                    temp_m[1*4 + 0] + temp_m[1*4 + 1] + temp_m[1*4 + 2] -
-                    temp_m[2*4 + 0] - temp_m[2*4 + 1] - temp_m[2*4 + 2] -
-                    temp_m[3*4 + 0] - temp_m[3*4 + 1] - temp_m[3*4 + 2];
-
-                const auto o22 =
-                    temp_m[1*4 + 1] - temp_m[1*4 + 2] - temp_m[1*4 + 3] -
-                    temp_m[2*4 + 1] + temp_m[2*4 + 2] + temp_m[2*4 + 3] -
-                    temp_m[3*4 + 1] + temp_m[3*4 + 2] + temp_m[3*4 + 3];
-
-                Y[k*(H*W) + (y)*W + (x)] = o11;
+                const auto y_ind = kHW + (y)*W + (x);
+                Y[y_ind] = o[0][0];
                 if (x + 1 < W) {
-                    Y[k*(H*W) + (y)*W + (x+1)] = o12;
+                    Y[y_ind + 1] = o[0][1];
                 }
                 if (y + 1 < H) {
-                    Y[k*(H*W) + (y+1)*W + (x)] = o21;
+                    Y[y_ind + W] = o[1][0];
                     if (x + 1 < W) {
-                        Y[k*(H*W) + (y+1)*W + (x+1)] = o22;
+                        Y[y_ind + W + 1] = o[1][1];
                     }
                 }
             }
@@ -662,8 +658,7 @@ void convolve(const size_t outputs,
 
     for (unsigned int o = 0; o < outputs; o++) {
         for (unsigned int b = 0; b < board_squares; b++) {
-            output[(o * board_squares) + b] =
-                biases[o] + output[(o * board_squares) + b];
+            output[(o * board_squares) + b] += biases[o];
         }
     }
 }
@@ -685,9 +680,8 @@ void innerproduct(const std::vector<float>& input,
                 &input[0], 1,
                 0.0f, &output[0], 1);
 
-    const auto lambda_ReLU = [](auto val) { return (val > 0.0f) ?
-                                            val : 0.0f; };
-
+    const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
+                                                          val : 0.0f; };
     for (unsigned int o = 0; o < outputs; o++) {
         auto val = biases[o] + output[o];
         if (ReLU) {
@@ -704,26 +698,24 @@ void batchnorm(const size_t channels,
                const float* const stddivs,
                const float* const eltwise = nullptr)
 {
-    const auto lambda_ReLU = [](auto val) { return (val > 0.0f) ?
-                                            val : 0.0f; };
-
+    const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
+                                                          val : 0.0f; };
     for (auto c = size_t{0}; c < channels; ++c) {
         const auto mean = means[c];
         const auto scale_stddiv = stddivs[c];
 
         if (eltwise == nullptr) {
             // Classical BN
-            auto arr = &data[c * spatial_size];
+            const auto arr = &data[c * spatial_size];
             for (auto b = size_t{0}; b < spatial_size; b++) {
                 arr[b] = lambda_ReLU(scale_stddiv * (arr[b] - mean));
             }
         } else {
             // BN + residual add
-            auto arr = &data[c * spatial_size];
+            const auto arr = &data[c * spatial_size];
             const auto res = &eltwise[c * spatial_size];
             for (auto b = size_t{0}; b < spatial_size; b++) {
-                arr[b] = lambda_ReLU(res[b] +
-                                     (scale_stddiv * (arr[b] - mean)));
+                arr[b] = lambda_ReLU((scale_stddiv * (arr[b] - mean)) + res[b]);
             }
         }
     }
@@ -741,9 +733,8 @@ void Network::forward_cpu(const std::vector<float>& input,
     //input_channels is the maximum number of input channels of any convolution.
     //Residual blocks are identical, but the first convolution might be bigger
     //when the network has very few filters
-    const auto input_channels = std::max(
-            static_cast<size_t>(output_channels),
-            static_cast<size_t>(INPUT_CHANNELS));
+    const auto input_channels = std::max(static_cast<size_t>(output_channels),
+                                         static_cast<size_t>(INPUT_CHANNELS));
     auto conv_out = std::vector<float>(output_channels * width * height);
 
     auto V = std::vector<float>(WINOGRAD_TILE * input_channels * tiles);
@@ -760,7 +751,6 @@ void Network::forward_cpu(const std::vector<float>& input,
     for (auto i = size_t{1}; i < conv_weights.size(); i += 2) {
         auto output_channels = conv_biases[i].size();
         std::swap(conv_out, conv_in);
-        std::copy(cbegin(conv_in), cend(conv_in), begin(res));
         winograd_convolve3(output_channels, conv_in,
                            conv_weights[i], V, M, conv_out);
         batchnorm<BOARD_SQUARES>(output_channels, conv_out,
@@ -768,6 +758,7 @@ void Network::forward_cpu(const std::vector<float>& input,
                                  batchnorm_stddivs[i].data());
 
         output_channels = conv_biases[i + 1].size();
+        std::swap(conv_in, res);
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
                            conv_weights[i + 1], V, M, conv_out);
@@ -793,16 +784,16 @@ T relative_difference(const T a, const T b) {
 
     if (fa > small_number && fb > small_number) {
         // Handle sign difference
-        if (((a < 0) != (b < 0)) && (a != 0) && (b != 0)) {
+        if ((a < 0) != (b < 0)) {
             return std::numeric_limits<T>::max();
         }
+    } else {
+        // Handle underflow
+        fa = std::max(fa, small_number);
+        fb = std::max(fb, small_number);
     }
 
-    // Handle underflow
-    fa = std::max(fa, small_number);
-    fb = std::max(fb, small_number);
-
-    return std::max(fabs((fa - fb) / fa), fabs((fa - fb) / fb));
+    return fabs(fa - fb) / std::min(fa, fb);
 }
 
 void compare_net_outputs(std::vector<float>& data,
@@ -828,14 +819,12 @@ void Network::softmax(const std::vector<float>& input,
                       const float temperature) {
     assert(&input != &output);
 
-    auto alpha = *std::max_element(cbegin(input),
-                                   cbegin(input) + output.size());
-    alpha /= temperature;
-
+    const auto alpha = *std::max_element(cbegin(input),
+                                         cbegin(input) + output.size());
     auto denom = 0.0f;
     auto helper = std::vector<float>(output.size());
     for (auto i = size_t{0}; i < output.size(); i++) {
-        auto val   = std::exp((input[i]/temperature) - alpha);
+        auto val   = std::exp((input[i] - alpha) / temperature);
         helper[i]  = val;
         denom     += val;
     }
@@ -851,11 +840,11 @@ Network::Netresult Network::get_scored_moves(
         return result;
     }
 
-    // See if we already have this in the cache.
     if (!skip_cache) {
-      if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
-        return result;
-      }
+        // See if we already have this in the cache.
+        if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
+            return result;
+        }
     }
 
     NNPlanes planes;
@@ -897,7 +886,7 @@ Network::Netresult Network::get_scored_moves_internal(
     for (auto c = 0; c < INPUT_CHANNELS; ++c) {
         for (auto h = 0; h < height; ++h) {
             for (auto w = 0; w < width; ++w) {
-                const auto rot_idx = rotate_nn_idx_table[rotation][h * BOARD_SIZE + w];
+                const auto rot_idx = rotate_nn_idx_table[rotation][h * width + w];
                 input_data.emplace_back(net_t(planes[c][rot_idx]));
             }
         }
@@ -936,13 +925,12 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<scored_node> result;
     for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
         if (idx < BOARD_SQUARES) {
-            const auto val = outputs[idx];
             const auto rot_idx = rotate_nn_idx_table[rotation][idx];
             const auto x = rot_idx % BOARD_SIZE;
             const auto y = rot_idx / BOARD_SIZE;
             const auto rot_vtx = state->board.get_vertex(x, y);
             if (state->board.get_square(rot_vtx) == FastBoard::EMPTY) {
-                result.emplace_back(val, rot_vtx);
+                result.emplace_back(outputs[idx], rot_vtx);
             }
         } else {
             result.emplace_back(outputs[idx], FastBoard::PASS);
@@ -952,7 +940,7 @@ Network::Netresult Network::get_scored_moves_internal(
     return std::make_pair(result, winrate_sig);
 }
 
-void Network::show_heatmap(const FastState * const state, const Netresult& result, const bool topmoves) {
+void Network::show_heatmap(const FastState* const state, const Netresult& result, const bool topmoves) {
     auto moves = result.first;
     std::vector<std::string> display_map;
     std::string line;
@@ -966,19 +954,18 @@ void Network::show_heatmap(const FastState * const state, const Netresult& resul
                 return test_item.second == vtx;
             });
 
-            auto score = 0.0f;
+            auto score = 0;
             // Non-empty squares won't be scored
             if (item != moves.cend()) {
-                score = item->first;
+                score = int(item->first * 1000);
                 assert(vtx == item->second);
             }
 
-            line += boost::str(boost::format("%3d ") % int(score * 1000));
-            if (x == BOARD_SIZE - 1) {
-                display_map.push_back(line);
-                line.clear();
-            }
+            line += boost::str(boost::format("%3d ") % score);
         }
+
+        display_map.push_back(line);
+        line.clear();
     }
 
     for (int i = display_map.size() - 1; i >= 0; --i) {
