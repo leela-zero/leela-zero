@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\CL\cl2.hpp" />
     <ClInclude Include="..\..\src\config.h" />
+    <ClInclude Include="..\..\src\Eliza.h" />
     <ClInclude Include="..\..\src\FastBoard.h" />
     <ClInclude Include="..\..\src\FastState.h" />
     <ClInclude Include="..\..\src\FullBoard.h" />
@@ -48,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <ClCompile Include="..\..\src\Eliza.cpp" />
     <ClCompile Include="..\..\src\FastBoard.cpp" />
     <ClCompile Include="..\..\src\FastState.cpp" />
     <ClCompile Include="..\..\src\FullBoard.cpp" />
