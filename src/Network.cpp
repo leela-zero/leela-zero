@@ -999,13 +999,8 @@ void Network::fill_input_plane_pair(const FullBoard& board,
         for(auto i = 0; i < BOARD_SIZE; i++) {
             const auto vtx = board.get_vertex(i, j);
             const auto color = board.get_square(vtx);
-            if (color != FastBoard::EMPTY) {
-                if (color == FastBoard::BLACK) {
-                    black[idx] = true;
-                } else {
-                    white[idx] = true;
-                }
-            }
+            black[idx] = color == FastBoard::BLACK;
+            white[idx] = color == FastBoard::WHITE;
             idx++;
         }
     }
@@ -1024,17 +1019,24 @@ void Network::gather_features(const GameState* const state, NNPlanes & planes) {
 
     if (blacks_move) {
         black_to_move.set();
+        white_to_move.reset();
     } else {
+        black_to_move.reset();
         white_to_move.set();
     }
 
     const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
     // Go back in time, fill history boards
-    for (auto h = size_t{0}; h < moves; h++) {
+    auto h = size_t{0};
+    for (; h < moves; ++h) {
         // collect white, black occupation planes
         fill_input_plane_pair(state->get_past_board(h),
                               planes[black_offset + h],
                               planes[white_offset + h]);
+    }
+    for (; h < INPUT_MOVES; ++h) {
+        planes[black_offset + h].reset();
+        planes[white_offset + h].reset();
     }
 }
 
