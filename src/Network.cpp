@@ -680,18 +680,14 @@ void innerproduct(const std::vector<float>& input,
                 &input[0], 1,
                 0.0f, &output[0], 1);
 
-    if (ReLU) {
-        const auto lambda_ReLU = [](auto val) { return (val > 0.0f) ?
-                                                        val : 0.0f; };
-        for (unsigned int o = 0; o < outputs; o++) {
-            auto val = biases[o] + output[o];
+    const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
+                                                          val : 0.0f; };
+    for (unsigned int o = 0; o < outputs; o++) {
+        auto val = biases[o] + output[o];
+        if (ReLU) {
             val = lambda_ReLU(val);
-            output[o] = val;
-        }    
-    } else {
-        for (unsigned int o = 0; o < outputs; o++) {
-            output[o] += biases[o];
         }
+        output[o] = val;
     }
 }
 
@@ -702,27 +698,20 @@ void batchnorm(const size_t channels,
                const float* const stddivs,
                const float* const eltwise = nullptr)
 {
-    if (eltwise == nullptr) {
-        // Classical BN
-        const auto lambda_ReLU = [](auto stddiv, auto val) { return (val > 0.0f) ?
-                                                            stddiv * val : 0.0f; };
-        for (auto c = size_t{0}; c < channels; ++c) {
-            const auto mean = means[c];
-            const auto scale_stddiv = stddivs[c];
+    const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
+                                                          val : 0.0f; };
+    for (auto c = size_t{0}; c < channels; ++c) {
+        const auto mean = means[c];
+        const auto scale_stddiv = stddivs[c];
 
+        if (eltwise == nullptr) {
+            // Classical BN
             const auto arr = &data[c * spatial_size];
             for (auto b = size_t{0}; b < spatial_size; b++) {
-                arr[b] = lambda_ReLU(scale_stddiv, (arr[b] - mean));
+                arr[b] = lambda_ReLU(scale_stddiv * (arr[b] - mean));
             }
-        }
-    } else {
-        // BN + residual add
-        const auto lambda_ReLU = [](auto val) { return (val > 0.0f) ?
-                                                        val : 0.0f; };
-        for (auto c = size_t{0}; c < channels; ++c) {
-            const auto mean = means[c];
-            const auto scale_stddiv = stddivs[c];
-
+        } else {
+            // BN + residual add
             const auto arr = &data[c * spatial_size];
             const auto res = &eltwise[c * spatial_size];
             for (auto b = size_t{0}; b < spatial_size; b++) {
