@@ -84,6 +84,13 @@ std::string eliza::respond(const std::string& input) const {
 }
 
 void eliza::add_responses() {
+    responds_to("Hi")
+        .with("Hi!");
+
+    responds_to("How strong")
+        .with("Play with me to see how strong I am.")
+        .with("I should be strong enough to teach you something.");
+
     responds_to("Can you (.*)")
         .with("Don't you believe that I can %1%?")
         .with("You want me to be able to %1%?");
