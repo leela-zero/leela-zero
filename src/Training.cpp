@@ -82,7 +82,6 @@ std::istream& operator>> (std::istream& stream, TimeStep& timestep) {
     stream >> timestep.child_uct_winrate;
     stream >> timestep.bestmove_visits;
     return stream;
-    
 }
 
 std::string OutputChunker::gen_chunk_name(void) const {
@@ -143,7 +142,6 @@ void Training::clear_training() {
 void Training::record(GameState& state, UCTNode& root) {
     auto step = TimeStep{};
     step.to_move = state.board.get_to_move();
-    step.planes = Network::NNPlanes{};
     Network::gather_features(&state, step.planes);
 
     auto result =
@@ -315,7 +313,6 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
 
         auto step = TimeStep{};
         step.to_move = to_move;
-        step.planes = Network::NNPlanes{};
         Network::gather_features(&state, step.planes);
 
         step.probabilities.resize(BOARD_SQUARES + 1);
