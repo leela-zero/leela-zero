@@ -93,13 +93,15 @@ static std::array<std::array<int, BOARD_SQUARES>, 8> rotate_nn_idx_table;
 
 void Network::benchmark(const GameState* const state, const int iterations) {
     const auto cpus = cfg_num_threads;
-    const auto iters_per_thread = (iterations + (cpus - 1)) / cpus;
     const Time start;
 
     ThreadGroup tg(thread_pool);
+    std::atomic<int> runcount{0};
+
     for (auto i = 0; i < cpus; i++) {
-        tg.add_task([iters_per_thread, state]() {
-            for (auto loop = 0; loop < iters_per_thread; loop++) {
+        tg.add_task([&runcount, iterations, state]() {
+            while (runcount < iterations) {
+                runcount++;
                 get_scored_moves(state, Ensemble::RANDOM_ROTATION, -1, true);
             }
         });
@@ -109,7 +111,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
     const Time end;
     const auto elapsed = Time::timediff_seconds(start, end);
     myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
-             iterations, elapsed, int(iterations / elapsed));
+             runcount.load(), elapsed, int(runcount.load() / elapsed));
 }
 
 void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
