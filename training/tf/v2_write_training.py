@@ -16,6 +16,7 @@
 #
 
 from chunkparser import ChunkParser
+import glob
 import gzip
 import itertools
 import multiprocessing as mp
