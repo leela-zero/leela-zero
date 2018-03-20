@@ -25,8 +25,6 @@
 #include <queue>
 #include <sstream>
 #include <string>
-#include <cstdarg>
-#include <cstdio>
 
 #include "Utils.h"
 #include "config.h"
