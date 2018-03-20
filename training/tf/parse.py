@@ -138,7 +138,7 @@ def main():
                                batch_size=RAM_BATCH_SIZE).parse()
 
     test_parser = ChunkParser(FileDataSrc(test),
-                              shuffle_size=1<<16,
+                              shuffle_size=1<<19,
                               sample=args.sample,
                               batch_size=RAM_BATCH_SIZE).parse()
 
