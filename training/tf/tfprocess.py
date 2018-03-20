@@ -20,6 +20,8 @@ import os
 import numpy as np
 import time
 import tensorflow as tf
+from shutil import copyfile
+from average_weights import swa
 
 def weight_variable(shape):
     """Xavier initialization"""
@@ -78,6 +80,18 @@ class TFProcess:
         self.z_ = next_batch[2] # tf.placeholder(tf.float32, [None, 1])
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
+
+        # Output weight file with averaged weights
+        self.swa_enabled = True
+        # Nets to skip
+        # Output net number n is used for averaging if n % c == 0
+        self.swa_c = 1
+
+        # Filename for initial averaged network
+        self.prev_swa = None
+
+        # Nets written to disk
+        self.output_nets = 0
 
         # Calculate loss on policy head
         cross_entropy = \
@@ -239,6 +253,22 @@ class TFProcess:
             leela_path = path + "-" + str(steps) + ".txt"
             self.save_leelaz_weights(leela_path)
             print("Leela weights saved to {}".format(leela_path))
+
+            if self.swa_enabled and self.output_nets % self.swa_c == 0:
+                n = self.output_nets // self.swa_c
+
+                path = os.path.join(os.getcwd(), "leelaz-swa")
+                swa_path = path + "-" + str(n+1) + "-" + str(steps) + ".txt"
+
+                if self.prev_swa == None or not os.path.isfile(self.prev_swa):
+                    # Average of one network is the network itself
+                    copyfile(leela_path, swa_path)
+                else:
+                    swa([self.prev_swa, leela_path], swa_path, weights=[n, 1])
+                print("Wrote averaged network to {}".format(swa_path))
+                self.prev_swa = swa_path
+
+            self.output_nets += 1
 
     def save_leelaz_weights(self, filename):
         with open(filename, "w") as file:
