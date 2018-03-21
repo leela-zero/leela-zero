@@ -48,6 +48,7 @@ TEST(UtilsTest, CeilMultiple) {
     EXPECT_EQ(ceilMultiple(0, 3), (size_t)0);
     EXPECT_EQ(ceilMultiple(3, 3), (size_t)3);
     EXPECT_EQ(ceilMultiple(9, 3), (size_t)9);
+    EXPECT_EQ(ceilMultiple(5, 5), (size_t)5);
     
     // Requires rounding up
     EXPECT_EQ(ceilMultiple(3, 5), (size_t)5);
