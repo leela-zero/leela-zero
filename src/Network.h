@@ -61,9 +61,6 @@ public:
     static void benchmark(const GameState * const state, const int iterations = 1600);
     static void show_heatmap(const FastState * const state, const Netresult & netres,
                              const bool topmoves);
-    static void softmax(const std::vector<float>& input,
-                        std::vector<float>& output,
-                        const float temperature = 1.0f);
 
     static void gather_features(const GameState* const state, NNPlanes& planes);
 private:
