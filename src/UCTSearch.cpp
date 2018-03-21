@@ -25,6 +25,7 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+#include <algorithm>
 
 #include "FastBoard.h"
 #include "FastState.h"
@@ -247,7 +248,7 @@ bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
     }
 
     const auto visits = m_root->get_visits();
-    if (visits < std::min(500, std::min(cfg_max_visits, cfg_max_playouts)))  {
+    if (visits < std::min({500, cfg_max_visits, cfg_max_playouts}))  {
         // low visits
         return false;
     }
