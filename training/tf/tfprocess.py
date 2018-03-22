@@ -350,6 +350,7 @@ class TFProcess:
                 self.save_leelaz_weights(leela_path)
                 print("Leela weights saved to {}".format(leela_path))
                 # Things have likely changed enough that stats are no longer valid.
+<<<<<<< 7f4140194cc580e1d36945b83a7a584cd5fc4bc4
 
             if self.swa_enabled:
                 self.save_swa_network(steps, path, leela_path)
@@ -357,6 +358,8 @@ class TFProcess:
             save_path = self.saver.save(self.session, path, global_step=steps)
             print("Model saved in file: {}".format(save_path))
 
+=======
+>>>>>>> Support training on large mini-batches.
 
     def save_leelaz_weights(self, filename):
         with open(filename, "w") as file:
@@ -404,7 +407,10 @@ class TFProcess:
         # a unique scope that we can store, and use to look them back up
         # later on.
         scope = self.get_batchnorm_key()
+<<<<<<< 7f4140194cc580e1d36945b83a7a584cd5fc4bc4
         self.weights.append(scope + "/batch_normalization/beta:0")
+=======
+>>>>>>> Support training on large mini-batches.
         self.weights.append(scope + "/batch_normalization/moving_mean:0")
         self.weights.append(scope + "/batch_normalization/moving_variance:0")
         with tf.variable_scope(scope):

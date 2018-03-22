@@ -23,12 +23,12 @@ import argparse
 import glob
 import gzip
 import multiprocessing as mp
+import os
 import random
 import shufflebuffer as sb
 import sys
 import tensorflow as tf
 import time
-import threading
 import unittest
 
 # Sane values are from 4096 to 64 or so.
