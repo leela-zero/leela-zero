@@ -392,8 +392,9 @@ void Network::initialize() {
                                     m_ceil, k_ceil);
 
         // Winograd filter transformation changes filter size to 4x4
-        opencl_net->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS, channels,
-                Upad, batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
+        opencl_net->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
+            channels, Upad,
+            batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
         weight_index++;
 
         // residual blocks
@@ -564,7 +565,7 @@ void Network::winograd_transform_out(const std::vector<float>& M,
                 WinogradTile temp_m;
                 for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++) {
                     for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
-                        temp_m[xi][nu] = 
+                        temp_m[xi][nu] =
                             M[xi*(WINOGRAD_ALPHA*K*P) + nu*(K*P)+ k*P + b];
                     }
                 }
@@ -733,9 +734,9 @@ void Network::forward_cpu(const std::vector<float>& input,
     constexpr auto tiles = (width + 1) * (height + 1) / 4;
     // Calculate output channels
     const auto output_channels = conv_biases[0].size();
-    //input_channels is the maximum number of input channels of any convolution.
-    //Residual blocks are identical, but the first convolution might be bigger
-    //when the network has very few filters
+    // input_channels is the maximum number of input channels of any
+    // convolution. Residual blocks are identical, but the first convolution
+    // might be bigger when the network has very few filters
     const auto input_channels = std::max(static_cast<size_t>(output_channels),
                                          static_cast<size_t>(INPUT_CHANNELS));
     auto conv_out = std::vector<float>(output_channels * width * height);
@@ -817,29 +818,30 @@ void compare_net_outputs(std::vector<float>& data,
 }
 #endif
 
-template <size_t output_size>
 std::vector<float> softmax(const std::vector<float>& input,
                            const float temperature = 1.0f) {
-    std::vector<float> output(output_size);
+    auto output = std::vector<float>{};
+    output.reserve(input.size());
 
-    const auto alpha = *std::max_element(cbegin(input),
-                                         cbegin(input) + output_size);
+    const auto alpha = *std::max_element(cbegin(input), cend(input));
     auto denom = 0.0f;
-    auto helper = std::vector<float>(output_size);
-    for (auto i = size_t{0}; i < output_size; i++) {
-        auto val   = std::exp((input[i] - alpha) / temperature);
-        helper[i]  = val;
-        denom     += val;
+
+    for (const auto in_val : input) {
+        auto val = std::exp((in_val - alpha) / temperature);
+        denom += val;
+        output.push_back(val);
     }
-    for (auto i = size_t{0}; i < output_size; i++) {
-        output[i] = helper[i] / denom;
+
+    for (auto& out : output) {
+        out /= denom;
     }
 
     return output;
 }
 
 Network::Netresult Network::get_scored_moves(
-    const GameState* const state, const Ensemble ensemble, const int rotation, const bool skip_cache) {
+    const GameState* const state, const Ensemble ensemble,
+    const int rotation, const bool skip_cache) {
     Netresult result;
     if (state->board.get_boardsize() != BOARD_SIZE) {
         return result;
@@ -908,14 +910,20 @@ Network::Netresult Network::get_scored_moves_internal(
 #endif
 
     // Get the moves
-    batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data, bn_pol_w1.data(), bn_pol_w2.data());
-    const auto policy_out = innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1, false>(policy_data, ip_pol_w, ip_pol_b);
-    const auto outputs = softmax<BOARD_SQUARES + 1>(policy_out, cfg_softmax_temp);
+    batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data,
+        bn_pol_w1.data(), bn_pol_w2.data());
+    const auto policy_out =
+        innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1, false>(
+            policy_data, ip_pol_w, ip_pol_b);
+    const auto outputs = softmax(policy_out, cfg_softmax_temp);
 
     // Now get the score
-    batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data, bn_val_w1.data(), bn_val_w2.data());
-    const auto winrate_data = innerproduct<BOARD_SQUARES, 256, true>(value_data, ip1_val_w, ip1_val_b);
-    const auto winrate_out = innerproduct<256, 1, false>(winrate_data, ip2_val_w, ip2_val_b);
+    batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data,
+        bn_val_w1.data(), bn_val_w2.data());
+    const auto winrate_data =
+        innerproduct<BOARD_SQUARES, 256, true>(value_data, ip1_val_w, ip1_val_b);
+    const auto winrate_out =
+        innerproduct<256, 1, false>(winrate_data, ip2_val_w, ip2_val_b);
 
     // Sigmoid
     const auto winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
@@ -938,7 +946,9 @@ Network::Netresult Network::get_scored_moves_internal(
     return std::make_pair(result, winrate_sig);
 }
 
-void Network::show_heatmap(const FastState* const state, const Netresult& result, const bool topmoves) {
+void Network::show_heatmap(const FastState* const state,
+                           const Netresult& result,
+                           const bool topmoves) {
     auto moves = result.first;
     std::vector<std::string> display_map;
     std::string line;
