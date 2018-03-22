@@ -563,6 +563,24 @@ int UCTSearch::think(int color, passflag_t passflag) {
                 keeprunning = false;
             }
         }
+
+        // tree trimming in master thread
+        if (m_nodes > MAX_TREE_SIZE * 3 / 4) {
+            auto old_nodes = m_nodes.load();
+            auto threshold = 1;
+            while (m_nodes > MAX_TREE_SIZE / 2
+                   && threshold > 0) {
+                m_root->trim_tree(threshold, m_nodes);
+                if (old_nodes > m_nodes) {
+#ifndef NDEBUG
+                    myprintf("Pruned %ld tree nodes at threshold v=%d.\n",
+                        old_nodes - m_nodes, threshold);
+#endif
+                    old_nodes = m_nodes;
+                }
+                threshold <<= 1;
+            }
+        }
     } while(keeprunning);
 
     // reactivate all pruned root children
