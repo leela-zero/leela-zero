@@ -21,7 +21,7 @@
 #include "config.h"
 
 #include <vector>
-#include <list>
+#include <deque>
 #include <future>
 
 #include "OpenCL.h"
@@ -50,7 +50,9 @@ private:
 
     std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
     std::vector<std::unique_ptr<OpenCL>> m_opencl;
-    std::vector<std::list<std::unique_ptr<ThreadData>>> m_thread_data;
+
+    typedef std::deque<std::unique_ptr<ThreadData>> ThreadDataQueue;
+    std::vector<std::unique_ptr<ThreadDataQueue>> m_thread_data;
     int m_thread_data_count = 0;
     int m_thread_data_recently_scheduled = 0;
     std::mutex m_mutex;

@@ -36,7 +36,6 @@ void OpenCLScheduler::initialize(const int channels) {
         m_thread_data_count = 0;
         // on a multi-gpu situation, we are going to maintain a thread data pool.
 
-        m_thread_data.resize(cfg_gpus.size());
         for (auto gpu : cfg_gpus) {
             // create opencl thread data explicitly here with the right 'gnum'.
             opencl_thread_data = std::make_unique<ThreadData>(gnum);
@@ -50,8 +49,9 @@ void OpenCLScheduler::initialize(const int channels) {
             // starting next GPU, let's not dump full list of GPUs
             silent = true;
 
-            m_thread_data[gnum].push_back(std::move(opencl_thread_data));
-            m_thread_data[gnum].emplace_back( new ThreadData(gnum) );
+            m_thread_data.emplace_back(new ThreadDataQueue());
+            m_thread_data[gnum]->push_back(std::move(opencl_thread_data));
+            m_thread_data[gnum]->emplace_back( new ThreadData(gnum) );
 
             m_thread_data_count += 2;
             gnum++;
@@ -90,7 +90,7 @@ void OpenCLScheduler::forward(const std::vector<net_t>& input,
         // while trying to avoid the most recently scheduled thread.
         for(auto i = size_t{0}; i<m_thread_data.size(); i++) {
             auto gnum = (i + m_thread_data_recently_scheduled + 1) % m_thread_data.size();
-            auto sz = m_thread_data[gnum].size();
+            auto sz = m_thread_data[gnum]->size();
             if (sz > max_gnum_cnt) {
                 max_gnum = gnum;
                 max_gnum_cnt = sz;
@@ -98,8 +98,8 @@ void OpenCLScheduler::forward(const std::vector<net_t>& input,
         }
        
         assert(max_gnum_cnt > 0); 
-        opencl_thread_data = std::move(m_thread_data[max_gnum].front());
-        m_thread_data[max_gnum].pop_front();
+        opencl_thread_data = std::move(m_thread_data[max_gnum]->front());
+        m_thread_data[max_gnum]->pop_front();
         m_thread_data_recently_scheduled = max_gnum;
         m_thread_data_count--;
     }
@@ -113,7 +113,7 @@ void OpenCLScheduler::forward(const std::vector<net_t>& input,
         std::lock_guard<std::mutex> lk(m_mutex);
 
         int gnum = opencl_thread_data->m_gpu_num;
-        m_thread_data[gnum].push_back(std::move(opencl_thread_data));
+        m_thread_data[gnum]->push_back(std::move(opencl_thread_data));
         m_thread_data_count++;
         m_cv.notify_one();
     }
