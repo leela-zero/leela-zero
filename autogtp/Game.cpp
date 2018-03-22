@@ -355,10 +355,14 @@ bool Game::fixSgf(QString& weightFile, bool resignation) {
     if (match.hasMatch()) {
         playerName = match.captured(0);
     }
-    playerName = "PW" + playerName.remove(0, 2);
+    QString player2 = "PW" + playerName.mid(2);
     playerName += weightFile.left(8);
+    player2 += weightFile.left(8);
     playerName += "]";
-    sgfData.replace(re, playerName);
+    player2 += "]";
+    QRegularExpression lec("PB\\[Leela Zero \\S+ networks\\]");
+    sgfData.replace(lec, playerName);
+    sgfData.replace(re, player2);
 
     if(resignation) {
         QRegularExpression oldResult("RE\\[B\\+.*\\]");
