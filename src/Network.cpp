@@ -668,12 +668,11 @@ void convolve(const size_t outputs,
 template<unsigned int inputs,
          unsigned int outputs,
          bool ReLU,
-         size_t W, size_t B>
-void innerproduct(const std::vector<float>& input,
-                  const std::array<float, W>& weights,
-                  const std::array<float, B>& biases,
-                  std::vector<float>& output) {
-    assert(B == outputs);
+         size_t W>
+std::vector<float> innerproduct(const std::vector<float>& input,
+                                const std::array<float, W>& weights,
+                                const std::array<float, outputs>& biases) {
+    std::vector<float> output(outputs);
 
     cblas_sgemv(CblasRowMajor, CblasNoTrans,
                 // M     K
@@ -691,6 +690,8 @@ void innerproduct(const std::vector<float>& input,
         }
         output[o] = val;
     }
+
+    return output;
 }
 
 template <size_t spatial_size>
@@ -816,23 +817,25 @@ void compare_net_outputs(std::vector<float>& data,
 }
 #endif
 
-void Network::softmax(const std::vector<float>& input,
-                      std::vector<float>& output,
-                      const float temperature) {
-    assert(&input != &output);
+template <size_t output_size>
+std::vector<float> softmax(const std::vector<float>& input,
+                           const float temperature = 1.0f) {
+    std::vector<float> output(output_size);
 
     const auto alpha = *std::max_element(cbegin(input),
-                                         cbegin(input) + output.size());
+                                         cbegin(input) + output_size);
     auto denom = 0.0f;
-    auto helper = std::vector<float>(output.size());
-    for (auto i = size_t{0}; i < output.size(); i++) {
+    auto helper = std::vector<float>(output_size);
+    for (auto i = size_t{0}; i < output_size; i++) {
         auto val   = std::exp((input[i] - alpha) / temperature);
         helper[i]  = val;
         denom     += val;
     }
-    for (auto i = size_t{0}; i < output.size(); i++) {
+    for (auto i = size_t{0}; i < output_size; i++) {
         output[i] = helper[i] / denom;
     }
+
+    return output;
 }
 
 Network::Netresult Network::get_scored_moves(
@@ -874,15 +877,9 @@ Network::Netresult Network::get_scored_moves_internal(
     assert(INPUT_CHANNELS == planes.size());
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
-    const auto convolve_channels = conv_pol_w.size() / conv_pol_b.size();
     std::vector<net_t> input_data;
-    std::vector<net_t> output_data(convolve_channels * width * height);
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
-    std::vector<float> policy_out((width * height) + 1);
-    std::vector<float> softmax_data((width * height) + 1);
-    std::vector<float> winrate_data(256);
-    std::vector<float> winrate_out(1);
     // Data layout is input_data[(c * height + h) * width + w]
     input_data.reserve(INPUT_CHANNELS * width * height);
     for (auto c = 0; c < INPUT_CHANNELS; ++c) {
@@ -912,14 +909,13 @@ Network::Netresult Network::get_scored_moves_internal(
 
     // Get the moves
     batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data, bn_pol_w1.data(), bn_pol_w2.data());
-    innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1, false>(policy_data, ip_pol_w, ip_pol_b, policy_out);
-    softmax(policy_out, softmax_data, cfg_softmax_temp);
-    auto& outputs = softmax_data;
+    const auto policy_out = innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1, false>(policy_data, ip_pol_w, ip_pol_b);
+    const auto outputs = softmax<BOARD_SQUARES + 1>(policy_out, cfg_softmax_temp);
 
     // Now get the score
     batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data, bn_val_w1.data(), bn_val_w2.data());
-    innerproduct<BOARD_SQUARES, 256, true>(value_data, ip1_val_w, ip1_val_b, winrate_data);
-    innerproduct<256, 1, false>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
+    const auto winrate_data = innerproduct<BOARD_SQUARES, 256, true>(value_data, ip1_val_w, ip1_val_b);
+    const auto winrate_out = innerproduct<256, 1, false>(winrate_data, ip2_val_w, ip2_val_b);
 
     // Sigmoid
     const auto winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
