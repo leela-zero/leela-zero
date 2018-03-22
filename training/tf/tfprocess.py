@@ -48,6 +48,28 @@ def conv2d(x, W):
     return tf.nn.conv2d(x, W, data_format='NCHW',
                         strides=[1, 1, 1, 1], padding='SAME')
 
+def read_weights(filename):
+    """ Read weights from file to array """
+    weights = []
+    version = None
+
+    with open(filename, 'r') as f:
+        for e, line in enumerate(f):
+            if e == 0:
+                #Version
+                version = int(line.strip())
+                if version != 1:
+                    raise ValueError("Unknown version {}".format(line.strip()))
+            else:
+                weights.append(list(map(float, line.split(' '))))
+            if e == 2:
+                channels = len(line.split(' '))
+    blocks = e - (4 + 14)
+    if blocks % 8 != 0:
+        raise ValueError("Inconsistent number of weights in the file")
+    blocks //= 8
+    return version, blocks, channels, weights
+
 class TFProcess:
     def __init__(self):
         # Network structure
@@ -90,6 +112,9 @@ class TFProcess:
         # Filename for initial averaged network
         self.prev_swa = None
 
+        # Recalculate SWA weight batchnorm means and variances
+        self.swa_recalc_bn = True
+
         # Nets written to disk
         self.output_nets = 0
 
@@ -113,10 +138,14 @@ class TFProcess:
         # want to reduce the factor in front of self.mse_loss here.
         loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss + self.reg_term
 
+        self.lr = tf.placeholder(tf.float32)
+
         # You need to change the learning rate here if you are training
         # from a self-play training set, for example start with 0.005 instead.
+        self.learning_rate = 0.05
+
         opt_op = tf.train.MomentumOptimizer(
-            learning_rate=0.05, momentum=0.9, use_nesterov=True)
+            learning_rate=self.lr, momentum=0.9, use_nesterov=True)
 
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(self.update_ops):
@@ -190,7 +219,8 @@ class TFProcess:
         policy_loss, mse_loss, reg_term, _, _ = self.session.run(
             [self.policy_loss, self.mse_loss, self.reg_term, self.train_op,
                 self.next_batch],
-            feed_dict={self.training: True, self.handle: self.train_handle})
+            feed_dict={self.training: True, self.handle: self.train_handle,
+                self.lr: self.learning_rate})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
         # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
@@ -264,9 +294,31 @@ class TFProcess:
                     # Average of one network is the network itself
                     copyfile(leela_path, swa_path)
                 else:
-                    swa([self.prev_swa, leela_path], swa_path, weights=[n, 1])
-                print("Wrote averaged network to {}".format(swa_path))
+                    if self.swa_recalc_bn:
+                        swa([self.prev_swa, leela_path], 'swa_temp.txt', weights=[n, 1])
+                    else:
+                        swa([self.prev_swa, leela_path], swa_path, weights=[n, 1])
                 self.prev_swa = swa_path
+
+                if n > 0 and self.swa_recalc_bn:
+                    # Load SWA weights for batch norm recalculation
+                    version, blocks, channels, weights = read_weights('swa_temp.txt')
+                    self.replace_weights(weights)
+
+                    print("Recalculating SWA batch normalization")
+                    for _ in range(1000):
+                        self.session.run(
+                            [self.policy_loss, self.mse_loss, self.reg_term, self.train_op,
+                                self.next_batch],
+                            feed_dict={self.training: True, self.handle: self.train_handle,
+                                self.lr: 0})
+
+                    self.save_leelaz_weights(swa_path)
+
+                    # Now load again the training weights
+                    version, blocks, channels, weights = read_weights(leela_path)
+                    self.replace_weights(weights)
+                print("Wrote averaged network to {}".format(swa_path))
 
             self.output_nets += 1
 
