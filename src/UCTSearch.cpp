@@ -134,7 +134,8 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             result = SearchResult::from_score(score);
         } else if (m_nodes < MAX_TREE_SIZE) {
             float eval;
-            auto success = node->create_children(m_nodes, currstate, eval);
+            float percent = m_nodes / ((float)MAX_TREE_SIZE);
+            auto success = node->create_children(m_nodes, currstate, eval, percent);
             if (success) {
                 result = SearchResult::from_eval(eval);
             }

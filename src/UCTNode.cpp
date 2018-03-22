@@ -53,7 +53,8 @@ SMP::Mutex& UCTNode::get_mutex() {
 
 bool UCTNode::create_children(std::atomic<int>& nodecount,
                               GameState& state,
-                              float& eval) {
+                              float& eval,
+                              float percent) {
     // check whether somebody beat us to it (atomic)
     if (has_children()) {
         return false;
@@ -112,12 +113,13 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         }
     }
 
-    link_nodelist(nodecount, nodelist);
+    link_nodelist(nodecount, nodelist, percent);
     return true;
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
-                            std::vector<Network::scored_node>& nodelist) {
+                            std::vector<Network::scored_node>& nodelist,
+                            float percent) {
     if (nodelist.empty()) {
         return;
     }
@@ -127,8 +129,19 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
 
     LOCK(get_mutex(), lock);
 
+    float min_psa = 0.0f;
+    if (percent > 0.5f) {
+        float max_psa = nodelist[0].first;
+        if (percent > 0.95f) {
+            min_psa = max_psa * 0.01f;
+        } else {
+            min_psa = max_psa * 0.001f;
+        }
+    }
+
     m_children.reserve(nodelist.size());
     for (const auto& node : nodelist) {
+        if (node.first < min_psa) continue;
         m_children.emplace_back(
             std::make_unique<UCTNode>(node.second, node.first)
         );
