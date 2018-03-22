@@ -39,6 +39,7 @@ public:
                const QStringList& gpuslist,
                const int ver,
                const int maxGame,
+               const bool delNetworks,
                const QString& keep,
                const QString& debug);
     ~Management() = default;
@@ -75,8 +76,10 @@ private:
     int m_storeGames;
     QList<QFileInfo> m_storedFiles;
     Order m_fallBack;
+    Order m_lastMatch;
     int m_gamesLeft;
     int m_threadsLeft;
+    bool m_delNetworks;
     QLockFile *m_lockFile;
 
     Order getWorkInternal(bool tuning);
@@ -89,7 +92,7 @@ private:
     void checkStoredGames();
     QFileInfo getNextStored();
     bool networkExists(const QString &name);
-    void fetchNetwork(const QString &name);
+    void fetchNetwork(const QString &net);
     void printTimingInfo(float duration);
     void runTuningProcess(const QString &tuneCmdLine);
     void gzipFile(const QString &fileName);
