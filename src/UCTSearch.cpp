@@ -246,12 +246,6 @@ bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
         return false;
     }
 
-    const auto visits = m_root->get_visits();
-    if (visits < std::min(500, cfg_max_playouts))  {
-        // low visits
-        return false;
-    }
-
     const size_t board_squares = m_rootstate.board.get_boardsize()
                                * m_rootstate.board.get_boardsize();
     const auto move_threshold = board_squares / 4;
