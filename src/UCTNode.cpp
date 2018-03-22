@@ -77,7 +77,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     lock.unlock();
 
     const auto raw_netlist = Network::get_scored_moves(
-        &state, Network::Ensemble::MULTI, cfg_num_evals);
+        &state, Network::Ensemble::MULTI, 1);
 
     // DCNN returns winrate as side to move
     m_net_eval = raw_netlist.second;

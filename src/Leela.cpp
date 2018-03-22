@@ -64,8 +64,6 @@ static void parse_commandline(int argc, char *argv[]) {
                        "Requires --noponder.")
         ("visits,v", po::value<int>(),
                      "Weaken engine by limiting the number of visits.")
-        ("evals,e", po::value<int>()->default_value(cfg_num_evals),
-                    "Randomly rotated network evals per node (1-8)")
         ("timemanage", po::value<std::string>()->default_value("auto"),
                        "[auto|on|off] Enable extra time management features.\n"
                        "auto = off when using -m, otherwise on")
@@ -216,15 +214,6 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("visits")) {
         cfg_max_visits = vm["visits"].as<int>();
-    }
-
-    if (vm.count("evals")) {
-        cfg_num_evals = vm["evals"].as<int>();
-        if (cfg_num_evals < 1 || cfg_num_evals > 8) {
-            printf("Nonsensical options: Network evals per node must "
-                   "be between 1 and 8.\n");
-            exit(EXIT_FAILURE);
-        }
     }
 
     if (vm.count("resignpct")) {
