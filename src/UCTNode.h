@@ -45,7 +45,7 @@ public:
 
     bool create_children(std::atomic<int>& nodecount,
                          GameState& state, float& eval,
-                         float percent = 0.0f);
+                         float mem_full = 0.0f);
 
     const std::vector<node_ptr_t>& get_children() const;
     void sort_children(int color);
@@ -89,7 +89,7 @@ private:
     };
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist,
-                       float percent);
+                       float mem_full);
 
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution

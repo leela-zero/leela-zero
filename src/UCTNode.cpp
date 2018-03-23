@@ -54,7 +54,7 @@ SMP::Mutex& UCTNode::get_mutex() {
 bool UCTNode::create_children(std::atomic<int>& nodecount,
                               GameState& state,
                               float& eval,
-                              float percent) {
+                              float mem_full) {
     // check whether somebody beat us to it (atomic)
     if (has_children()) {
         return false;
@@ -113,13 +113,13 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         }
     }
 
-    link_nodelist(nodecount, nodelist, percent);
+    link_nodelist(nodecount, nodelist, mem_full);
     return true;
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
                             std::vector<Network::scored_node>& nodelist,
-                            float percent) {
+                            float mem_full) {
     if (nodelist.empty()) {
         return;
     }
@@ -129,10 +129,13 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
 
     LOCK(get_mutex(), lock);
 
-    float min_psa = 0.0f;
-    if (percent > 0.5f) {
-        float max_psa = nodelist[0].first;
-        if (percent > 0.95f) {
+    auto min_psa = 0.0f;
+    // If we are halfway through our memory budget, start trimming
+    // moves with very low policy priors.
+    if (mem_full > 0.5f) {
+        auto max_psa = nodelist[0].first;
+        // Memory is almost exhausted, trim more aggressively.
+        if (mem_full > 0.95f) {
             min_psa = max_psa * 0.01f;
         } else {
             min_psa = max_psa * 0.001f;
