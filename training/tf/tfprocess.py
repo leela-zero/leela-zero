@@ -109,14 +109,18 @@ class TFProcess:
         # Output net number n is used for averaging if n % c == 0
         self.swa_c = 1
 
+        # Maximum number of nets to average
+        # Set to None to disable the limit
+        self.swa_max_n = 16
+
         # Filename for initial averaged network
-        self.prev_swa = None
+        self.prev_swa = tf.Variable('', trainable=False)
 
         # Recalculate SWA weight batchnorm means and variances
         self.swa_recalc_bn = True
 
         # Nets written to disk
-        self.output_nets = 0
+        self.output_nets = tf.Variable(0, trainable=False)
 
         # Calculate loss on policy head
         cross_entropy = \
@@ -138,14 +142,10 @@ class TFProcess:
         # want to reduce the factor in front of self.mse_loss here.
         loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss + self.reg_term
 
-        self.lr = tf.placeholder(tf.float32)
-
         # You need to change the learning rate here if you are training
         # from a self-play training set, for example start with 0.005 instead.
-        self.learning_rate = 0.05
-
         opt_op = tf.train.MomentumOptimizer(
-            learning_rate=self.lr, momentum=0.9, use_nesterov=True)
+            learning_rate=0.05, momentum=0.9, use_nesterov=True)
 
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(self.update_ops):
@@ -219,8 +219,7 @@ class TFProcess:
         policy_loss, mse_loss, reg_term, _, _ = self.session.run(
             [self.policy_loss, self.mse_loss, self.reg_term, self.train_op,
                 self.next_batch],
-            feed_dict={self.training: True, self.handle: self.train_handle,
-                self.lr: self.learning_rate})
+            feed_dict={self.training: True, self.handle: self.train_handle})
         steps = tf.train.global_step(self.session, self.global_step)
         # Keep running averages
         # Google's paper scales MSE by 1/4 to a [0, 1] range, so do the same to
@@ -278,27 +277,28 @@ class TFProcess:
             print("step {}, policy={:g} training accuracy={:g}%, mse={:g}".\
                 format(steps, sum_policy, sum_accuracy*100.0, sum_mse))
             path = os.path.join(os.getcwd(), "leelaz-model")
-            save_path = self.saver.save(self.session, path, global_step=steps)
-            print("Model saved in file: {}".format(save_path))
             leela_path = path + "-" + str(steps) + ".txt"
             self.save_leelaz_weights(leela_path)
             print("Leela weights saved to {}".format(leela_path))
 
-            if self.swa_enabled and self.output_nets % self.swa_c == 0:
-                n = self.output_nets // self.swa_c
+            prev_swa, output_nets = self.session.run([self.prev_swa, self.output_nets])
 
-                path = os.path.join(os.getcwd(), "leelaz-swa")
-                swa_path = path + "-" + str(n+1) + "-" + str(steps) + ".txt"
+            if self.swa_enabled and output_nets % self.swa_c == 0:
+                n = output_nets // self.swa_c
+                if self.swa_max_n != None:
+                    n = min(n, self.swa_max_n)
 
-                if self.prev_swa == None or not os.path.isfile(self.prev_swa):
+                swa_path = os.path.join(os.getcwd(), "leelaz-swa") +\
+                    "-" + str(n+1) + "-" + str(steps) + ".txt"
+
+                if not os.path.isfile(prev_swa):
                     # Average of one network is the network itself
                     copyfile(leela_path, swa_path)
                 else:
                     if self.swa_recalc_bn:
-                        swa([self.prev_swa, leela_path], 'swa_temp.txt', weights=[n, 1])
+                        swa([prev_swa, leela_path], 'swa_temp.txt', weights=[n, 1])
                     else:
-                        swa([self.prev_swa, leela_path], swa_path, weights=[n, 1])
-                self.prev_swa = swa_path
+                        swa([prev_swa, leela_path], swa_path, weights=[n, 1])
 
                 if n > 0 and self.swa_recalc_bn:
                     # Load SWA weights for batch norm recalculation
@@ -306,21 +306,24 @@ class TFProcess:
                     self.replace_weights(weights)
 
                     print("Recalculating SWA batch normalization")
-                    for _ in range(1000):
+                    for _ in range(200):
                         self.session.run(
-                            [self.policy_loss, self.mse_loss, self.reg_term, self.train_op,
-                                self.next_batch],
-                            feed_dict={self.training: True, self.handle: self.train_handle,
-                                self.lr: 0})
+                            [self.policy_loss, self.mse_loss, self.reg_term, self.next_batch],
+                            feed_dict={self.training: True, self.handle: self.train_handle})
 
                     self.save_leelaz_weights(swa_path)
 
                     # Now load again the training weights
                     version, blocks, channels, weights = read_weights(leela_path)
                     self.replace_weights(weights)
+
+                self.session.run(tf.assign(self.prev_swa, swa_path))
                 print("Wrote averaged network to {}".format(swa_path))
 
-            self.output_nets += 1
+            self.session.run(tf.assign(self.output_nets, output_nets + 1))
+            save_path = self.saver.save(self.session, path, global_step=steps)
+            print("Model saved in file: {}".format(save_path))
+
 
     def save_leelaz_weights(self, filename):
         with open(filename, "w") as file:
