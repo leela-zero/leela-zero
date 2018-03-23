@@ -202,13 +202,21 @@ class TFProcess:
         # Initialize all variables
         self.session.run(tf.global_variables_initializer())
 
+    def assign(self, var, values):
+        try:
+            self.session.run(tf.assign(var, values))
+        except:
+            print("Failed to assign {}: var shape {}, values shape {}".format(
+                var.name, var.shape, values.shape))
+            raise
+
     def replace_weights(self, new_weights):
         for e, weights in enumerate(self.weights):
             # Keyed batchnorm weights
             if isinstance(weights, str):
                 work_weights = tf.get_default_graph().get_tensor_by_name(weights)
                 new_weight = tf.constant(new_weights[e])
-                self.session.run(tf.assign(work_weights, new_weight))
+                self.assign(work_weights, new_weight)
             elif weights.shape.ndims == 4:
                 # Convolution weights need a transpose
                 #
@@ -220,7 +228,7 @@ class TFProcess:
                 s = weights.shape.as_list()
                 shape = [s[i] for i in [3, 2, 0, 1]]
                 new_weight = tf.constant(new_weights[e], shape=shape)
-                self.session.run(weights.assign(tf.transpose(new_weight, [2, 3, 1, 0])))
+                self.assign(weights, tf.transpose(new_weight, [2, 3, 1, 0]))
             elif weights.shape.ndims == 2:
                 # Fully connected layers are [in, out] in TF
                 #
@@ -229,11 +237,11 @@ class TFProcess:
                 s = weights.shape.as_list()
                 shape = [s[i] for i in [1, 0]]
                 new_weight = tf.constant(new_weights[e], shape=shape)
-                self.session.run(weights.assign(tf.transpose(new_weight, [1, 0])))
+                self.assign(weights, tf.transpose(new_weight, [1, 0]))
             else:
                 # Biases, batchnorm etc
                 new_weight = tf.constant(new_weights[e], shape=weights.shape)
-                self.session.run(weights.assign(new_weight))
+                self.assign(weights, new_weight)
         #This should result in identical file to the starting one
         #self.save_leelaz_weights('restored.txt')
 
@@ -370,24 +378,24 @@ class TFProcess:
         return net
 
     def residual_block(self, inputs, channels):
+        net = inputs
+        orig = tf.identity(net)
+
         # First convnet weights
         W_conv_1 = weight_variable([3, 3, channels, channels])
         b_conv_1 = bn_bias_variable([channels])
         self.weights.append(W_conv_1)
         self.weights.append(b_conv_1)
 
+        net = conv2d(net, W_conv_1)
+        net = self.batch_norm(net)
+        net = tf.nn.relu(net)
+
         # Second convnet weights
         W_conv_2 = weight_variable([3, 3, channels, channels])
         b_conv_2 = bn_bias_variable([channels])
         self.weights.append(W_conv_2)
         self.weights.append(b_conv_2)
-
-        # Construct network
-        net = inputs
-        orig = tf.identity(net)
-        net = conv2d(net, W_conv_1)
-        net = self.batch_norm(net)
-        net = tf.nn.relu(net)
 
         net = conv2d(net, W_conv_2)
         net = self.batch_norm(net)
