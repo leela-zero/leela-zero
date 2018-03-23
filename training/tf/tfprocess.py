@@ -21,7 +21,6 @@ import numpy as np
 import time
 import tensorflow as tf
 from shutil import copyfile
-from average_weights import swa
 
 def weight_variable(shape):
     """Xavier initialization"""
@@ -48,27 +47,28 @@ def conv2d(x, W):
     return tf.nn.conv2d(x, W, data_format='NCHW',
                         strides=[1, 1, 1, 1], padding='SAME')
 
-def read_weights(filename):
-    """ Read weights from file to array """
-    weights = []
-    version = None
 
-    with open(filename, 'r') as f:
-        for e, line in enumerate(f):
-            if e == 0:
-                #Version
-                version = int(line.strip())
-                if version != 1:
-                    raise ValueError("Unknown version {}".format(line.strip()))
-            else:
-                weights.append(list(map(float, line.split(' '))))
-            if e == 2:
-                channels = len(line.split(' '))
-    blocks = e - (4 + 14)
-    if blocks % 8 != 0:
-        raise ValueError("Inconsistent number of weights in the file")
-    blocks //= 8
-    return version, blocks, channels, weights
+# Restore session from checkpoint. It silently ignore mis-matches
+# between the checkpoint and the graph. Specifically
+# 1. values in the checkpoint for which there is no corresponding variable.
+# 2. variables in the graph for which there is no specified value in the
+#    checkpoint.
+# 3. values where the checkpoint shape differs from the variable shape.
+# (variables without a value in the checkpoint are left at their default
+# initialized value)
+def optimistic_restore(session, save_file, graph=tf.get_default_graph()):
+    reader = tf.train.NewCheckpointReader(save_file)
+    saved_shapes = reader.get_variable_to_shape_map()
+    var_names = sorted([(var.name, var.name.split(':')[0]) for var in tf.global_variables()
+                            if var.name.split(':')[0] in saved_shapes])
+    restore_vars = []
+    for var_name, saved_var_name in var_names:
+        curr_var = graph.get_tensor_by_name(var_name)
+        var_shape = curr_var.get_shape().as_list()
+        if var_shape == saved_shapes[saved_var_name]:
+            restore_vars.append(curr_var)
+    opt_saver = tf.train.Saver(restore_vars)
+    opt_saver.restore(session, save_file)
 
 class TFProcess:
     def __init__(self):
@@ -78,6 +78,16 @@ class TFProcess:
 
         # For exporting
         self.weights = []
+
+        # Output weight file with averaged weights
+        self.swa_enabled = True
+        # Net sampling rate (e.g 2 == every 2nd network).
+        self.swa_c = 1
+        # Take an exponentially weighted moving average over this
+        # many networks.
+        self.swa_max_n = 16
+        # Recalculate SWA weight batchnorm means and variances
+        self.swa_recalc_bn = True
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
         config = tf.ConfigProto(gpu_options=gpu_options)
@@ -103,25 +113,25 @@ class TFProcess:
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
 
-        # Output weight file with averaged weights
-        self.swa_enabled = True
-
-        # Nets to skip
-        # Output net number n is used for averaging if n % c == 0
-        self.swa_c = 1
-
-        # Maximum number of nets to average
-        # Set to None to disable the limit
-        self.swa_max_n = 16
-
-        # Filename for initial averaged network
-        self.prev_swa = tf.Variable('', trainable=False)
-
-        # Recalculate SWA weight batchnorm means and variances
-        self.swa_recalc_bn = True
-
-        # Nets written to disk
-        self.output_nets = tf.Variable(0, trainable=False)
+        if self.swa_enabled == True:
+            # Count of networks accumulated into SWA
+            self.swa_count = tf.Variable(0., name='swa_count', trainable=False)
+            # Count of networks to skip
+            self.swa_skip = tf.Variable(self.swa_c, name='swa_skip', trainable=False)
+            # Build the SWA variables and accumulators
+            accum=[]
+            load=[]
+            n = self.swa_count
+            for w in self.weights:
+                if isinstance(w, str):
+                    w = tf.get_default_graph().get_tensor_by_name(w)
+                name = w.name.split(':')[0]
+                var = tf.Variable(tf.zeros(shape=w.shape), name='swa/'+name, trainable=False)
+                accum.append(tf.assign(var, var * (n / (n + 1.)) + w * (1. / (n + 1.))))
+                load.append(tf.assign(w, var))
+            with tf.control_dependencies(accum):
+                self.swa_accum_op = tf.assign_add(n, 1.)
+            self.swa_load_op = tf.group(*load)
 
         # Calculate loss on policy head
         cross_entropy = \
@@ -141,7 +151,7 @@ class TFProcess:
 
         # For training from a (smaller) dataset of strong players, you will
         # want to reduce the factor in front of self.mse_loss here.
-        loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss + self.reg_term
+        self.loss = 1.0 * self.policy_loss + 1.0 * self.mse_loss + self.reg_term
 
         # You need to change the learning rate here if you are training
         # from a self-play training set, for example start with 0.005 instead.
@@ -151,7 +161,7 @@ class TFProcess:
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(self.update_ops):
             self.train_op = \
-                opt_op.minimize(loss, global_step=self.global_step)
+                opt_op.minimize(self.loss, global_step=self.global_step)
 
         correct_prediction = \
             tf.equal(tf.argmax(self.y_conv, 1), tf.argmax(self.y_, 1))
@@ -211,7 +221,7 @@ class TFProcess:
 
     def restore(self, file):
         print("Restoring from {0}".format(file))
-        self.saver.restore(self.session, file)
+        optimistic_restore(self.session, file)
 
     def process(self, batch_size):
         if not self.time_start:
@@ -283,12 +293,9 @@ class TFProcess:
             self.save_leelaz_weights(leela_path)
             print("Leela weights saved to {}".format(leela_path))
 
-            prev_swa, output_nets = self.session.run([self.prev_swa, self.output_nets])
-            if self.swa_enabled and output_nets % self.swa_c == 0:
-                self.save_swa_network(steps, path, leela_path,
-                                      prev_swa, output_nets)
+            if self.swa_enabled:
+                self.save_swa_network(steps, path, leela_path)
 
-            self.session.run(tf.assign(self.output_nets, output_nets + 1))
             save_path = self.saver.save(self.session, path, global_step=steps)
             print("Model saved in file: {}".format(save_path))
 
@@ -434,38 +441,57 @@ class TFProcess:
 
         return h_fc1, h_fc3
 
-    def save_swa_network(self, steps, path, leela_path, prev_swa, output_nets):
-        n = output_nets // self.swa_c
+    def snap_save(self):
+        # Save a snapshot of all the variables in the current graph.
+        if not hasattr(self, 'save_op'):
+            save_ops = []
+            rest_ops = []
+            for var in self.weights:
+                if isinstance(var, str):
+                    var = tf.get_default_graph().get_tensor_by_name(var)
+                name = var.name.split(':')[0]
+                v = tf.Variable(var, name='save/'+name, trainable=False)
+                save_ops.append(tf.assign(v, var))
+                rest_ops.append(tf.assign(var, v))
+            self.save_op = tf.group(*save_ops)
+            self.restore_op = tf.group(*rest_ops)
+        self.session.run(self.save_op)
+
+    def snap_restore(self):
+        # Restore variables in the current graph from the snapshot.
+        self.session.run(self.restore_op)
+
+    def save_swa_network(self, steps, path, leela_path):
+        # Sample 1 in self.swa_c of the networks. Compute in this way so
+        # that it's safe to change the value of self.swa_c
+        rem = self.session.run(tf.assign_add(self.swa_skip, -1))
+        if rem > 0:
+            return
+        self.swa_skip.load(self.swa_c, self.session)
+
+        # Add the current weight vars to the running average.
+        num = self.session.run(self.swa_accum_op)
+
         if self.swa_max_n != None:
-            n = min(n, self.swa_max_n)
+            num = min(num, self.swa_max_n)
+            self.swa_count.load(float(num), self.session)
 
-        swa_path = path + "-swa-" + str(n + 1) + "-" + str(steps) + ".txt"
+        swa_path = path + "-swa-" + str(num) + "-" + str(steps) + ".txt"
 
-        if not os.path.isfile(prev_swa):
-            # Average of one network is the network itself
-            copyfile(leela_path, swa_path)
-        else:
-            if self.swa_recalc_bn:
-                swa([prev_swa, leela_path], 'swa_temp.txt', weights=[n, 1])
-            else:
-                swa([prev_swa, leela_path], swa_path, weights=[n, 1])
-
-        if n > 0 and self.swa_recalc_bn:
-            # Load SWA weights for batch norm recalculation
-            version, blocks, channels, weights = read_weights('swa_temp.txt')
-            self.replace_weights(weights)
-
+        # save the current network.
+        self.snap_save()
+        # Copy the swa weights into the current network.
+        self.session.run(self.swa_load_op)
+        if self.swa_recalc_bn:
             print("Recalculating SWA batch normalization")
-            for _ in range(200):
+            self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            for _ in range(400):
                 self.session.run(
-                    [self.policy_loss, self.mse_loss, self.reg_term, self.next_batch],
+                    [self.loss, self.update_ops, self.next_batch],
                     feed_dict={self.training: True, self.handle: self.train_handle})
 
-            self.save_leelaz_weights(swa_path)
+        self.save_leelaz_weights(swa_path)
+        # restore the saved network.
+        self.snap_restore()
 
-            # Now load again the training weights
-            version, blocks, channels, weights = read_weights(leela_path)
-            self.replace_weights(weights)
-
-        self.session.run(tf.assign(self.prev_swa, swa_path))
         print("Wrote averaged network to {}".format(swa_path))
