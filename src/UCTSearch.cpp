@@ -144,7 +144,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
     }
 
     if (node->has_children() && !result.valid()) {
-        auto next = node->uct_select_child(color);
+        auto next = node->uct_select_child(color, node == m_root.get());
 
         if (next != nullptr) {
             auto move = next->get_move();
