@@ -247,8 +247,18 @@ class TFProcess:
         # Initialize all variables
         self.session.run(tf.global_variables_initializer())
 
+    def assign(self, var, values):
+        try:
+            self.session.run(tf.assign(var, values))
+        except:
+            print("Failed to assign {}: var shape {}, values shape {}".format(
+                var.name, var.shape, values.shape))
+            raise
+
     def replace_weights(self, new_weights):
         for e, weights in enumerate(self.weights):
+            if isinstance(weights, str):
+                weights = tf.get_default_graph().get_tensor_by_name(weights)
             if weights.name.endswith('/batch_normalization/beta:0'):
                 # Batch norm beta is written as bias before the batch normalization
                 # in the weight file for backwards compatibility reasons.
@@ -268,7 +278,7 @@ class TFProcess:
                 s = weights.shape.as_list()
                 shape = [s[i] for i in [3, 2, 0, 1]]
                 new_weight = tf.constant(new_weights[e], shape=shape)
-                self.session.run(weights.assign(tf.transpose(new_weight, [2, 3, 1, 0])))
+                self.assign(weights, tf.transpose(new_weight, [2, 3, 1, 0]))
             elif weights.shape.ndims == 2:
                 # Fully connected layers are [in, out] in TF
                 #
@@ -277,11 +287,11 @@ class TFProcess:
                 s = weights.shape.as_list()
                 shape = [s[i] for i in [1, 0]]
                 new_weight = tf.constant(new_weights[e], shape=shape)
-                self.session.run(weights.assign(tf.transpose(new_weight, [1, 0])))
+                self.assign(weights, tf.transpose(new_weight, [1, 0]))
             else:
                 # Biases, batchnorm etc
                 new_weight = tf.constant(new_weights[e], shape=weights.shape)
-                self.session.run(tf.assign(weights, new_weight))
+                self.assign(weights, new_weight)
         #This should result in identical file to the starting one
         #self.save_leelaz_weights('restored.txt')
 
@@ -350,16 +360,12 @@ class TFProcess:
                 self.save_leelaz_weights(leela_path)
                 print("Leela weights saved to {}".format(leela_path))
                 # Things have likely changed enough that stats are no longer valid.
-<<<<<<< 7f4140194cc580e1d36945b83a7a584cd5fc4bc4
 
-            if self.swa_enabled:
-                self.save_swa_network(steps, path, leela_path)
+                if self.swa_enabled:
+                    self.save_swa_network(steps, path, leela_path)
 
-            save_path = self.saver.save(self.session, path, global_step=steps)
-            print("Model saved in file: {}".format(save_path))
-
-=======
->>>>>>> Support training on large mini-batches.
+                save_path = self.saver.save(self.session, path, global_step=steps)
+                print("Model saved in file: {}".format(save_path))
 
     def save_leelaz_weights(self, filename):
         with open(filename, "w") as file:
@@ -407,10 +413,7 @@ class TFProcess:
         # a unique scope that we can store, and use to look them back up
         # later on.
         scope = self.get_batchnorm_key()
-<<<<<<< 7f4140194cc580e1d36945b83a7a584cd5fc4bc4
         self.weights.append(scope + "/batch_normalization/beta:0")
-=======
->>>>>>> Support training on large mini-batches.
         self.weights.append(scope + "/batch_normalization/moving_mean:0")
         self.weights.append(scope + "/batch_normalization/moving_variance:0")
         with tf.variable_scope(scope):
@@ -435,24 +438,24 @@ class TFProcess:
         return net
 
     def residual_block(self, inputs, channels):
+        net = inputs
+        orig = tf.identity(net)
+
         # First convnet weights
         W_conv_1 = weight_variable([3, 3, channels, channels])
         b_conv_1 = bn_bias_variable([channels])
         self.weights.append(W_conv_1)
         self.weights.append(b_conv_1)
 
+        net = conv2d(net, W_conv_1)
+        net = self.batch_norm(net)
+        net = tf.nn.relu(net)
+
         # Second convnet weights
         W_conv_2 = weight_variable([3, 3, channels, channels])
         b_conv_2 = bn_bias_variable([channels])
         self.weights.append(W_conv_2)
         self.weights.append(b_conv_2)
-
-        # Construct network
-        net = inputs
-        orig = tf.identity(net)
-        net = conv2d(net, W_conv_1)
-        net = self.batch_norm(net)
-        net = tf.nn.relu(net)
 
         net = conv2d(net, W_conv_2)
         net = self.batch_norm(net)
