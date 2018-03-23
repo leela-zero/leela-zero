@@ -133,8 +133,10 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
         } else if (m_nodes < MAX_TREE_SIZE) {
+            auto mem_full_pct = m_nodes / static_cast<float>(MAX_TREE_SIZE);
             float eval;
-            auto success = node->create_children(m_nodes, currstate, eval);
+            auto success =
+                node->create_children(m_nodes, currstate, eval, mem_full_pct);
             if (success) {
                 result = SearchResult::from_eval(eval);
             }
