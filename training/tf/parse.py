@@ -136,7 +136,7 @@ def main(args):
         len(training), len(test)))
 
     train_parser = ChunkParser(FileDataSrc(training),
-            shuffle_size=1<<19, sample=DOWN_SAMPLE, batch_size=BATCH_SIZE)
+        shuffle_size=1<<19, sample=DOWN_SAMPLE, batch_size=BATCH_SIZE)
     #benchmark(train_parser)
     dataset = tf.data.Dataset.from_generator(
         train_parser.parse, output_types=(tf.string, tf.string, tf.string))
@@ -144,7 +144,8 @@ def main(args):
     dataset = dataset.prefetch(4)
     train_iterator = dataset.make_one_shot_iterator()
 
-    test_parser = ChunkParser(FileDataSrc(test), batch_size=BATCH_SIZE)
+    test_parser = ChunkParser(FileDataSrc(test),
+        shuffle_size=1<<19, sample=DOWN_SAMPLE, batch_size=BATCH_SIZE)
     dataset = tf.data.Dataset.from_generator(
         test_parser.parse, output_types=(tf.string, tf.string, tf.string))
     dataset = dataset.map(_parse_function)
