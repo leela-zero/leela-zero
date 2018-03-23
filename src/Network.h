@@ -35,7 +35,7 @@
 class Network {
 public:
     enum Ensemble {
-        DIRECT, MULTI, RANDOM_ROTATION
+        DIRECT, MULTI_AVG, RANDOM_ROTATION
     };
     using BoardPlane = std::bitset<BOARD_SQUARES>;
     using NNPlanes = std::vector<BoardPlane>;

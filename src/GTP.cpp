@@ -144,7 +144,6 @@ const std::string GTP::s_commands[] = {
     "kgs-time_settings",
     "kgs-game_over",
     "heatmap",
-    "heatmaps",
     ""
 };
 
@@ -514,26 +513,30 @@ bool GTP::execute(GameState & game, std::string xinput) {
         std::string vertex = game.move_to_text(move);
         myprintf("%s\n", vertex.c_str());
         return true;
-    } else if (command.find("heatmaps") == 0) {
-        for (int rotation=0; rotation<8; rotation++) {
-            auto vec = Network::get_scored_moves(
-                &game, Network::Ensemble::DIRECT, rotation, true);
-            Network::show_heatmap(&game, vec, false);
-        }
-        gtp_printf(id, "");
-        return true;
     } else if (command.find("heatmap") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        int rotation;
+        std::string rotation;
 
         cmdstream >> tmp;   // eat heatmap
         cmdstream >> rotation;
 
         if (!cmdstream.fail()) {
-            auto vec = Network::get_scored_moves(
-                &game, Network::Ensemble::DIRECT, rotation, true);
-            Network::show_heatmap(&game, vec, false);
+            if (rotation == "all") {
+                for (int r=0; r<8; r++) {
+                    auto vec = Network::get_scored_moves(
+                        &game, Network::Ensemble::DIRECT, r, true);
+                    Network::show_heatmap(&game, vec, false);
+                }
+            } else if (rotation == "average" || rotation == "avg") {
+                auto vec = Network::get_scored_moves(
+                    &game, Network::Ensemble::MULTI_AVG, 8, true);
+                Network::show_heatmap(&game, vec, false);
+            } else {
+                auto vec = Network::get_scored_moves(
+                    &game, Network::Ensemble::DIRECT, std::stoi(rotation), true);
+                Network::show_heatmap(&game, vec, false);
+            }
         } else {
             auto vec = Network::get_scored_moves(
                 &game, Network::Ensemble::DIRECT, 0, true);

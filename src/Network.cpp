@@ -861,8 +861,8 @@ Network::Netresult Network::get_scored_moves(
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
         result = get_scored_moves_internal(state, planes, rotation);
-    } else if (ensemble == MULTI && rotation > 1) {
-        // MULTI rotation is the # of random rotations to provide
+    } else if (ensemble == MULTI_AVG && rotation > 1) {
+        // MULTI_AVG rotation is the # of random rotations to provide
         assert(rotation >= 1 && rotation <= 8);
         std::vector<int> r_list{0, 1, 2, 3, 4, 5, 6, 7};
         // Need to account for extra 2 in m_squaresize.
@@ -894,7 +894,7 @@ Network::Netresult Network::get_scored_moves(
         result.second /= rotation;
     } else {
         assert((ensemble == RANDOM_ROTATION && rotation == -1) ||
-               (ensemble == MULTI && rotation == 1));
+               (ensemble == MULTI_AVG && rotation == 1));
         const auto rand_rot = Random::get_Rng().randfix<8>();
         result = get_scored_moves_internal(state, planes, rand_rot);
     }
