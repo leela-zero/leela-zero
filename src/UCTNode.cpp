@@ -148,11 +148,11 @@ int UCTNode::get_move() const {
 }
 
 void UCTNode::virtual_loss() {
-    m_virtual_loss += VIRTUAL_LOSS_COUNT;
+    m_active_cpus++;
 }
 
 void UCTNode::virtual_loss_undo() {
-    m_virtual_loss -= VIRTUAL_LOSS_COUNT;
+    m_active_cpus--;
 }
 
 void UCTNode::update(float eval) {
@@ -180,7 +180,7 @@ float UCTNode::get_eval(int tomove) const {
     // Due to the use of atomic updates and virtual losses, it is
     // possible for the visit count to change underneath us. Make sure
     // to return a consistent result to the caller by caching the values.
-    auto virtual_loss = int{m_virtual_loss};
+    auto virtual_loss = m_active_cpus.load() * VIRTUAL_LOSS_COUNT;
     auto visits = get_visits() + virtual_loss;
     assert(visits > 0);
     auto blackeval = get_blackevals();
@@ -320,4 +320,32 @@ bool UCTNode::valid() const {
 
 bool UCTNode::active() const {
     return m_status == ACTIVE;
+}
+
+void UCTNode::trim_tree(int threshold, std::atomic<int>& nodecount) {
+    for (auto& child : m_children) {
+        // First descend if possible
+        if (!child->first_visit()) {
+            child->trim_tree(threshold, nodecount);
+        }
+    }
+    // See if we could possibly get exclusivity on this node
+    if (m_active_cpus) {
+        return;
+    }
+    // Now none of our children can be selected via uct_select_node
+    LOCK(get_mutex(), lock);
+    // Recheck for active threads
+    if (!m_active_cpus) {
+        // And we know from m_active_cpus that no-one was
+        // traversing us either.
+        for (auto& child : m_children) {
+            if (child->get_visits() <= threshold && child->has_children()) {
+                nodecount -= child->m_children.size();
+                child->m_children.clear();
+                child->m_has_children = false;
+                child->m_is_expanding = false;
+            }
+        }
+    }
 }
