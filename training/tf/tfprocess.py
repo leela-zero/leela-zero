@@ -21,6 +21,7 @@ import os
 import random
 import tensorflow as tf
 import time
+import unittest
 
 def weight_variable(shape):
     """Xavier initialization"""
@@ -445,3 +446,36 @@ class TFProcess:
         h_fc3 = tf.nn.tanh(tf.add(tf.matmul(h_fc2, W_fc3), b_fc3))
 
         return h_fc1, h_fc3
+
+
+#
+# Unit tests for TFProcess.
+def gen_block(size, f_in, f_out):
+    return [ [1.1] * size * size * f_in * f_out, # conv
+             [-.1] * f_out,  # bias weights
+             [-.2] * f_out,  # batch norm mean
+             [-.3] * f_out ] # batch norm var
+
+class TFProcessTest(unittest.TestCase):
+    def can_replace_weights(self):
+        tfprocess = TFProcess()
+        tfprocess.init(batch_size=1)
+        # use known data to test replace_weights() works.
+        data = gen_block(3, 18, tfprocess.RESIDUAL_FILTERS) # input conv
+        for _ in range(tfprocess.RESIDUAL_BLOCKS):
+            data.extend(gen_block(3, tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
+            data.extend(gen_block(3, tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
+        # policy
+        data.extend(gen_block(1, tfprocess.RESIDUAL_FILTERS, 2))
+        data.append([0.4] * 2*19*19 * (19*19+1))
+        data.append([0.5] * (19*19+1))
+        # value
+        data.extend(gen_block(1, tfprocess.RESIDUAL_FILTERS, 1))
+        data.append([0.6] * 19*19 * 256)
+        data.append([0.7] * 256)
+        data.append([0.8] * 256)
+        data.append([0.9] * 1)
+        tfprocess.replace_weights(data)
+
+if __name__ == '__main__':
+    unittest.main()
