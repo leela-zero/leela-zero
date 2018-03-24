@@ -47,7 +47,24 @@ public:
                          GameState& state, float& eval,
                          float mem_full = 0.0f);
 
-    const std::vector<node_ptr_t>& get_children() const;
+    class children_wrapper {
+    private:
+        uint32_t m_size;
+        node_ptr_t* m_ptr;
+    public:
+        children_wrapper(uint32_t size_, node_ptr_t * ptr_) : m_size(size_), m_ptr(ptr_) {}
+        node_ptr_t * begin() {
+            return m_ptr;
+        }
+        node_ptr_t * end() {
+            return m_ptr + m_size;
+        }
+        uint32_t size() {
+            return m_size;
+        }
+    };
+
+    children_wrapper get_children() const;
     void sort_children(int color);
     UCTNode& get_best_root_child(int color);
     UCTNode* uct_select_child(int color, bool is_root);
@@ -112,8 +129,8 @@ private:
     SMP::Mutex m_nodemutex;
 
     // Tree data
-    std::atomic<bool> m_has_children{false};
-    std::vector<node_ptr_t> m_children;
+    std::atomic<uint32_t> m_children_size{0};
+    std::unique_ptr<node_ptr_t[]> m_children;
 };
 
 #endif

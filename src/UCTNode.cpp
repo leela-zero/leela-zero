@@ -142,20 +142,19 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
         }
     }
 
-    m_children.reserve(nodelist.size());
+    m_children = std::make_unique<node_ptr_t[]>(nodelist.size());
+    auto cnt = size_t{0};
     for (const auto& node : nodelist) {
         if (node.first < min_psa) continue;
-        m_children.emplace_back(
-            std::make_unique<UCTNode>(node.second, node.first)
-        );
+        m_children[cnt++] = std::make_unique<UCTNode>(node.second, node.first);
     }
 
-    nodecount += m_children.size();
-    m_has_children = true;
+    nodecount += cnt;
+    m_children_size = cnt;
 }
 
-const std::vector<UCTNode::node_ptr_t>& UCTNode::get_children() const {
-    return m_children;
+UCTNode::children_wrapper UCTNode::get_children() const {
+    return children_wrapper(m_children_size.load(), m_children.get());
 }
 
 
@@ -177,7 +176,7 @@ void UCTNode::update(float eval) {
 }
 
 bool UCTNode::has_children() const {
-    return m_has_children;
+    return m_children_size > 0;
 }
 
 float UCTNode::get_score() const {
@@ -234,7 +233,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
     auto parentvisits = size_t{0};
-    for (const auto& child : m_children) {
+    for (const auto& child : get_children()) {
         if (child->valid()) {
             parentvisits += child->get_visits();
             if (child->get_visits() > 0) {
@@ -254,7 +253,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     // Estimated eval for unknown nodes = original parent NN eval - reduction
     auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
-    for (const auto& child : m_children) {
+    for (const auto& child : get_children()) {
         if (!child->active()) {
             continue;
         }
@@ -304,22 +303,24 @@ private:
 
 void UCTNode::sort_children(int color) {
     LOCK(get_mutex(), lock);
-    std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color));
+    auto iter_begin = std::reverse_iterator<node_ptr_t*>(m_children.get() + m_children_size);
+    auto iter_end = std::reverse_iterator<node_ptr_t*>(m_children.get());
+    std::stable_sort(iter_begin, iter_end, NodeComp(color));
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
     LOCK(get_mutex(), lock);
-    assert(!m_children.empty());
+    assert(m_children_size != 0);
 
-    return *(std::max_element(begin(m_children), end(m_children),
+    return *(std::max_element(m_children.get(), m_children.get() + m_children_size,
                               NodeComp(color))->get());
 }
 
 size_t UCTNode::count_nodes() const {
     auto nodecount = size_t{0};
-    if (m_has_children) {
-        nodecount += m_children.size();
-        for (auto& child : m_children) {
+    if (m_children_size > 0) {
+        nodecount += m_children_size;
+        for (const auto & child : get_children()) {
             nodecount += child->count_nodes();
         }
     }
