@@ -77,7 +77,7 @@ bool UCTSearch::advance_to_new_rootstate() {
     for (auto i = 0; i < depth; i++) {
         test->forward_move();
         const auto move = test->get_last_move();
-        m_root = m_root->find_child(move);
+        m_root.reset(m_root->find_child(move));
         if (!m_root) {
             // Tree hasn't been expanded this far
             return false;
@@ -211,11 +211,16 @@ void tree_stats_helper(const UCTNode& node, size_t depth,
     if (depth > max_depth) max_depth = depth;
 
     for (const auto& child : node.get_children()) {
-        if (!child->first_visit()) children_count += 1;
-
-        tree_stats_helper(*(child.get()), depth+1,
+        if (child.get_visits() > 0) {
+            children_count += 1;
+            tree_stats_helper(*(child.get()), depth+1,
                           nodes, non_leaf_nodes, depth_sum,
                           max_depth, children_count);
+        } else {
+            nodes += 1;
+            depth_sum += depth+1;
+            if(depth+1 > max_depth) max_depth = depth+1;
+        }
     }
 }
 
@@ -465,6 +470,7 @@ size_t UCTSearch::prune_noncontenders(int elapsed_centis, int time_for_move) {
         if (node->valid()) {
             const auto has_enough_visits =
                 node->get_visits() >= min_required_visits;
+
             node->set_active(has_enough_visits);
             if (!has_enough_visits) {
                 ++pruned_nodes;
@@ -541,6 +547,14 @@ int UCTSearch::think(int color, passflag_t passflag) {
     } else {
         root_eval = m_root->get_eval(color);
     }
+
+    // Now that the new root is installed...
+    // There are a lot of special cases where root nodes assumes all childs are expanded.
+    // it won't be a waste of memory by so much so go ahead and expand it.
+    for (const auto& node : m_root->get_children()) {
+        node.expand();
+    }
+
     m_root->kill_superkos(m_rootstate);
     if (cfg_noise) {
         // Adjust the Dirichlet noise's alpha constant to the board size

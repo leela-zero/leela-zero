@@ -141,12 +141,13 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
     return nullptr;
 }
 
-// Used to find new root in UCTSearch
-UCTNode::node_ptr_t UCTNode::find_child(const int move) {
+// Used to find new root in UCTSearch.
+// BEWARE : caller is now responsible of freeing the return value
+UCTNode* UCTNode::find_child(const int move) {
     if (m_has_children) {
         for (auto& child : m_children) {
             if (child->get_move() == move) {
-                return std::move(child);
+                return child.release();
             }
         }
     }

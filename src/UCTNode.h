@@ -24,10 +24,90 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <cassert>
+#include <cstring>
 
 #include "GameState.h"
 #include "Network.h"
 #include "SMP.h"
+
+class UCTNode;
+
+// 'lazy-initializable' version of std::unique_ptr<UCTNode>.
+// When a UCTNodePointer is constructed, the constructor arguments are stored instead
+// of constructing the actual UCTNode instance.  Later when the UCTNode is needed,
+// the external code calls expand() which actually constructs the UCTNode.
+// Basically, this is a 'tagged union' of:
+//  - std::unique_ptr<UCTNode> pointer;
+//  - std::pair<float, std::int16_t> args;
+
+// WARNING : expand() is not thread-safe and hence has to be protected by an external lock.
+
+class UCTNodePointer {
+private:
+    // the raw storage used here.
+    // if bit 0 is 0, m_data is the actual pointer.
+    // if bit 0 is 1, bit [31:16] is the vertex value, bit [63:32] is the score.
+    // (I really wanted to use C-style bit fields and unions, but those aren't portable)
+    mutable uint64_t m_data = 1;
+
+    bool _expanded() const {
+        return (m_data & 1ULL) == 0;
+    } 
+    UCTNode * _readptr() const {
+        assert(_expanded());
+        return reinterpret_cast<UCTNode*>(m_data);
+    }
+
+    std::int16_t _vertex() const {
+        assert(!_expanded());
+        std::uint16_t x = static_cast<std::uint16_t>( (m_data >> 16) & 0xffff);
+        return static_cast<std::int16_t>(x);
+    }
+    float _score() const {
+        static_assert(sizeof(float) == sizeof(std::uint32_t), "This code assumes floats are 32-bit");
+        assert(!_expanded());
+        std::uint32_t x = static_cast<std::uint32_t>( (m_data >> 32) & 0xffffffffLL);
+        float ret;
+        std::memcpy(&ret, &x, sizeof(ret));
+        return ret;
+    }
+public:
+    ~UCTNodePointer();
+    UCTNodePointer(UCTNodePointer&& n);
+    UCTNodePointer(std::int16_t vertex, float score);
+    UCTNodePointer(const UCTNodePointer&) = delete;
+    
+    // methods from std::unique_ptr<UCTNode>
+    typename std::add_lvalue_reference<UCTNode>::type operator*() const{
+        return *_readptr();
+    }
+    UCTNode* operator->() const {
+        return _readptr();
+    }
+    UCTNode* get() const {
+        return _readptr();
+    }
+    UCTNodePointer& operator=(UCTNodePointer&& n);
+    UCTNode * release() {
+        auto ret = _readptr();
+        m_data = 1;
+        return ret;
+    }
+
+    // construct UCTNode instance from the vertex/score pair
+    void expand() const;
+
+    // proxy of UCTNode methods which can be called without constructing UCTNode
+    bool valid() const;
+    int get_visits() const;
+    float get_score() const;
+    bool active() const;
+    int get_move() const;
+    // this can only be called if it is an expanded pointer
+    float get_eval(int tomove) const; 
+};
+
 
 class UCTNode {
 public:
@@ -35,9 +115,6 @@ public:
     // to it to encourage other CPUs to explore other parts of the
     // search tree.
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
-
-    using node_ptr_t = std::unique_ptr<UCTNode>;
-
     // Defined in UCTNode.cpp
     explicit UCTNode(int vertex, float score);
     UCTNode() = delete;
@@ -47,7 +124,7 @@ public:
                          GameState& state, float& eval,
                          float mem_full = 0.0f);
 
-    const std::vector<node_ptr_t>& get_children() const;
+    const std::vector<UCTNodePointer>& get_children() const;
     void sort_children(int color);
     UCTNode& get_best_root_child(int color);
     UCTNode* uct_select_child(int color, bool is_root);
@@ -77,7 +154,7 @@ public:
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    node_ptr_t find_child(const int move);
+    UCTNode* find_child(const int move);
 
 private:
     enum Status : char {
@@ -113,7 +190,71 @@ private:
 
     // Tree data
     std::atomic<bool> m_has_children{false};
-    std::vector<node_ptr_t> m_children;
+    std::vector<UCTNodePointer> m_children;
 };
 
+
+inline UCTNodePointer::~UCTNodePointer() {
+    if (_expanded()) {
+        delete _readptr();
+    }
+}
+
+inline UCTNodePointer::UCTNodePointer(UCTNodePointer&& n) {
+    if (_expanded()) {
+        delete _readptr();
+    }
+    m_data = n.m_data;
+    n.m_data = 1; // non-expanded garbage
+}
+
+inline UCTNodePointer::UCTNodePointer(std::int16_t vertex, float score) {
+    std::uint32_t i_score;
+    std::uint16_t i_vertex = static_cast<std::uint16_t>(vertex);
+    std::memcpy(&i_score, &score, sizeof(i_score));
+    
+    m_data = (static_cast<std::uint64_t>(i_score) << 32) | (static_cast<std::uint64_t>(i_vertex) << 16) | 1ULL;
+}
+
+inline UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
+    if( _expanded() ) {
+        delete _readptr();
+    }
+    m_data = n.m_data;
+    n.m_data = 1;
+    
+    return *this;
+}
+
+inline void UCTNodePointer::expand() const {
+    if(_expanded()) return;
+
+    m_data = reinterpret_cast<std::uint64_t>(new UCTNode(_vertex(), _score()));
+}
+    
+inline bool UCTNodePointer::valid() const {
+    if (_expanded()) return _readptr()->valid();
+    else return true;
+}
+inline int UCTNodePointer::get_visits() const {
+    if (_expanded()) return _readptr()->get_visits();
+    else return 0;
+}
+inline float UCTNodePointer::get_score() const {
+    if (_expanded()) return _readptr()->get_score();
+    else return _score();
+}
+inline bool UCTNodePointer::active() const {
+    if (_expanded()) return _readptr()->active();
+    else return true;
+}
+inline float UCTNodePointer::get_eval(int tomove) const {
+    // this can only be called if it is an expanded pointer
+    assert(_expanded());
+    return _readptr()->get_eval(tomove);
+}
+inline int UCTNodePointer::get_move() const {
+    if (_expanded()) return _readptr()->get_move();
+    return _vertex();
+}
 #endif
