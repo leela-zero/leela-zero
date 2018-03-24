@@ -401,7 +401,13 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     auto leela_name = std::string{PROGRAM_NAME};
     leela_name.append(" " + std::string(PROGRAM_VERSION));
     if (!cfg_weightsfile.empty()) {
-        leela_name.append(" " + cfg_weightsfile.substr(0, 8));
+        auto pos = cfg_weightsfile.find_last_of("\\/");
+        if (std::string::npos == pos) {
+            pos = 0;
+        } else {
+            ++pos;
+        }
+        leela_name.append(" " + cfg_weightsfile.substr(pos, 8));
     }
 
     if (compcolor == FastBoard::WHITE) {
