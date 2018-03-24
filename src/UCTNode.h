@@ -96,11 +96,15 @@ public:
     UCTNode* get_nopass_child(FastState& state) const;
     node_ptr_t find_child(const int move);
 
+    bool is_expanding() const;
+    void set_expanding();
 private:
     enum Status : char {
         INVALID, // superko
         PRUNED,
-        ACTIVE
+        ACTIVE,
+        PRUNED_EXPANDING,
+        ACTIVE_EXPANDING
     };
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist,
@@ -114,23 +118,25 @@ private:
 
     // Move
     std::int16_t m_move;
+
     // UCT
     std::atomic<std::int16_t> m_virtual_loss{0};
     std::atomic<int> m_visits{0};
+
     // UCT eval
     float m_score;
+
     // Original net eval for this node (not children).
     float m_net_eval{0.0f};
     std::atomic<double> m_blackevals{0.0};
-    std::atomic<Status> m_status{ACTIVE};
-    // Is someone adding scores to this node?
-    // We don't need to unset this.
-    bool m_is_expanding{false};
-    SMP::Mutex m_nodemutex;
 
     // Tree data
-    std::atomic<uint32_t> m_children_size{0};
     std::unique_ptr<node_ptr_t[]> m_children;
+    std::atomic<uint16_t> m_children_size{0};
+
+    // Other flags
+    SMP::Mutex m_nodemutex;
+    std::atomic<Status> m_status{ACTIVE};
 };
 
 #endif

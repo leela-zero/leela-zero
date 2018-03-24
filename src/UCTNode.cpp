@@ -70,11 +70,11 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         return false;
     }
     // Someone else is running the expansion
-    if (m_is_expanding) {
+    if (is_expanding()) {
         return false;
     }
     // We'll be the one queueing this node for expansion, stop others
-    m_is_expanding = true;
+    set_expanding();
     lock.unlock();
 
     const auto raw_netlist = Network::get_scored_moves(
@@ -333,7 +333,33 @@ void UCTNode::invalidate() {
 
 void UCTNode::set_active(const bool active) {
     if (valid()) {
-        m_status = active ? ACTIVE : PRUNED;
+        Status xchg_dest = !active ? ACTIVE : PRUNED;
+        if(active) {
+            m_status.compare_exchange_strong(xchg_dest, ACTIVE);
+        } else {
+            m_status.compare_exchange_strong(xchg_dest, PRUNED);
+        }
+
+        xchg_dest = !active ? ACTIVE_EXPANDING : PRUNED_EXPANDING;
+        if (active) {
+            m_status.compare_exchange_strong(xchg_dest, ACTIVE_EXPANDING);
+        } else {
+            m_status.compare_exchange_strong(xchg_dest, PRUNED_EXPANDING);
+        }
+    }
+}
+
+void UCTNode::set_expanding() {
+    while (valid()) {
+        Status xchg_dest = ACTIVE;
+        if (m_status.compare_exchange_strong(xchg_dest, ACTIVE_EXPANDING)) {
+            return;
+        }
+        
+        xchg_dest = PRUNED;
+        if (m_status.compare_exchange_strong(xchg_dest, PRUNED_EXPANDING)) {
+            return;
+        }
     }
 }
 
@@ -342,5 +368,9 @@ bool UCTNode::valid() const {
 }
 
 bool UCTNode::active() const {
-    return m_status == ACTIVE;
+    return m_status == ACTIVE || m_status == ACTIVE_EXPANDING;
+}
+
+bool UCTNode::is_expanding() const {
+    return (m_status == ACTIVE_EXPANDING) || (m_status == PRUNED_EXPANDING);
 }
