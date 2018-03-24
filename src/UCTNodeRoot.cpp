@@ -39,15 +39,15 @@
  */
 
 UCTNode* UCTNode::get_first_child() const {
-    if (m_children.empty()) {
+    if (m_children_size == 0) {
         return nullptr;
     }
 
-    return m_children.front().get();
+    return m_children[0].get();
 }
 
 void UCTNode::kill_superkos(const KoState& state) {
-    for (auto& child : m_children) {
+    for (const auto& child : get_children()) {
         auto move = child->get_move();
         if (move != FastBoard::PASS) {
             KoState mystate = state;
@@ -61,15 +61,18 @@ void UCTNode::kill_superkos(const KoState& state) {
     }
 
     // Now do the actual deletion.
-    m_children.erase(
-        std::remove_if(begin(m_children), end(m_children),
-                       [](const auto &child) { return !child->valid(); }),
-        end(m_children)
+
+    auto newend = std::remove_if(m_children.get(), m_children.get() + m_children_size,
+        [](const auto& child) { return !child->valid(); }
     );
+    for(auto x = newend; x < m_children.get() + m_children_size; x++) {
+        x->reset();
+    }
+    m_children_size = newend - m_children.get();
 }
 
 void UCTNode::dirichlet_noise(float epsilon, float alpha) {
-    auto child_cnt = m_children.size();
+    auto child_cnt = m_children_size.load();
 
     auto dirichlet_vector = std::vector<float>{};
     std::gamma_distribution<float> gamma(alpha, 1.0f);
@@ -91,7 +94,7 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
     }
 
     child_cnt = 0;
-    for (auto& child : m_children) {
+    for (const auto& child : get_children()) {
         auto score = child->get_score();
         auto eta_a = dirichlet_vector[child_cnt++];
         score = score * (1 - epsilon) + epsilon * eta_a;
@@ -102,7 +105,7 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 void UCTNode::randomize_first_proportionally() {
     auto accum = std::uint64_t{0};
     auto accum_vector = std::vector<decltype(accum)>{};
-    for (const auto& child : m_children) {
+    for (const auto& child : get_children()) {
         accum += child->get_visits();
         accum_vector.emplace_back(accum);
     }
@@ -121,14 +124,14 @@ void UCTNode::randomize_first_proportionally() {
         return;
     }
 
-    assert(m_children.size() >= index);
+    assert(m_children_size >= index);
 
     // Now swap the child at index with the first child
-    std::iter_swap(begin(m_children), begin(m_children) + index);
+    std::swap(m_children[0], m_children[index]);
 }
 
 UCTNode* UCTNode::get_nopass_child(FastState& state) const {
-    for (const auto& child : m_children) {
+    for (const auto& child : get_children()) {
         /* If we prevent the engine from passing, we must bail out when
            we only have unreasonable moves to pick, like filling eyes.
            Note that this knowledge isn't required by the engine,
@@ -143,11 +146,9 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
 
 // Used to find new root in UCTSearch
 UCTNode::node_ptr_t UCTNode::find_child(const int move) {
-    if (m_has_children) {
-        for (auto& child : m_children) {
-            if (child->get_move() == move) {
-                return std::move(child);
-            }
+    for (auto& child : get_children()) {
+        if (child->get_move() == move) {
+            return std::move(child);
         }
     }
 

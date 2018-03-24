@@ -78,7 +78,7 @@ public:
         on 64-bits.
     */
     static constexpr auto MAX_TREE_SIZE =
-        (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
+        (sizeof(void*) == 4 ? 25'000'000 : 10'000'000);
 
     UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
