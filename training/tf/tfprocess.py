@@ -84,7 +84,8 @@ class TFProcess:
         # Net sampling rate (e.g 2 == every 2nd network).
         self.swa_c = 1
         # Take an exponentially weighted moving average over this
-        # many networks.
+        # many networks. Under the SWA assumptions, this will reduce
+        # the distance to the optimal value by a factor of 1/sqrt(n)
         self.swa_max_n = 16
         # Recalculate SWA weight batchnorm means and variances
         self.swa_recalc_bn = True
@@ -483,9 +484,8 @@ class TFProcess:
         # Copy the swa weights into the current network.
         self.session.run(self.swa_load_op)
         if self.swa_recalc_bn:
-            print("Recalculating SWA batch normalization")
-            self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-            for _ in range(400):
+            print("Refining SWA batch normalization")
+            for _ in range(200):
                 self.session.run(
                     [self.loss, self.update_ops, self.next_batch],
                     feed_dict={self.training: True, self.handle: self.train_handle})
