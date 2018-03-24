@@ -16,15 +16,27 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#undef NDEBUG
+#include <cassert>
 #include <cstddef>
 #include <gtest/gtest.h>
 #include <limits>
 #include <vector>
 
-#include "FastBoard.h"
+#include "FastBoard.h" 
 
+FastBoard create_filled_3x3() {
+    FastBoard b;
+    b.reset_board(3);
+    b.set_square(1, 1, FastBoard::BLACK);
+    b.set_square(2, 1, FastBoard::BLACK);
+    b.set_square(0, 1, FastBoard::WHITE);
+    b.set_square(1, 0, FastBoard::WHITE);
+    b.set_square(2, 2, FastBoard::BLACK);
+    return b;
+  }
 
-FastBoard createSemiFilled5x5() {
+FastBoard create_filled_5x5() {
     FastBoard b;
     b.reset_board(5);
     b.set_square(1, 1, FastBoard::BLACK);
@@ -38,8 +50,7 @@ FastBoard createSemiFilled5x5() {
     return b;
 }
 
-
-FastBoard createSemiFilled9x9() {
+FastBoard create_filled_9x9() {
     FastBoard b;
     b.reset_board(9);
     b.set_square(5, 4, FastBoard::WHITE);
@@ -57,15 +68,15 @@ FastBoard createSemiFilled9x9() {
 }
 
 /*
-         a b c d e
-       5 . . O O .  5
-       4 . . O . O  4
-       3 O O O O .  3
-       2 . . O . .  2
-       1 . . O . .  1
-         a b c d e
+      a b c d e
+    5 . . O O .  5
+    4 . . O . O  4
+    3 O O O O .  3
+    2 . . O . .  2
+    1 . . O . .  1
+      a b c d e
 */
-FastBoard create5x5AllWhiteField() {
+FastBoard create_5x5_all_white_field() {
     FastBoard b;
     b.reset_board(5);
     b.set_square(1, 2, FastBoard::WHITE);
@@ -90,7 +101,6 @@ TEST(FastBoardTest, Board3x3) {
         " 3 . . .  3\n"
         " 2 . . .  2\n"
         " 1 . . .  1\n"
-        
         "   a b c \n\n";
     
     EXPECT_EQ(expected,  b.serialize_board());
@@ -147,6 +157,7 @@ TEST(FastBoardTest, GetXYFromVertex) {
     EXPECT_EQ(std::make_pair(2, 3), b.get_xy(87));
     EXPECT_EQ(std::make_pair(18, 18), b.get_xy(418));
     
+    //assert(3 > 5); this fails
     EXPECT_EQ(std::make_pair(6, -1), b.get_xy(7)); // should fail
     //ASSERT_DEATH({ b.get_xy(7);}, "failed assertion");
 }
@@ -163,7 +174,7 @@ TEST(FastBoardTest, GetSquare) {
 }
 
 TEST(FastBoardTest, SemiFilled5x5Board) {
-    FastBoard b = createSemiFilled5x5();
+    FastBoard b = create_filled_5x5();
     
     const char *expected = "\n"
         "   a b c d e \n"
@@ -177,20 +188,21 @@ TEST(FastBoardTest, SemiFilled5x5Board) {
     EXPECT_EQ(expected,  b.serialize_board());
 }
 
+// Results will make more sense in FullBuard test
 TEST(FastBoardTest, CountRealLibertiesOn5x5) {
-    FastBoard b = createSemiFilled5x5();
+    FastBoard b = create_filled_5x5();
     EXPECT_EQ(2, b.count_pliberties(b.get_vertex(0, 0)));
     EXPECT_EQ(4, b.count_pliberties(b.get_vertex(1, 1)));
     EXPECT_EQ(4, b.count_pliberties(b.get_vertex(2, 1)));
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(3, 1))); // ?
-    EXPECT_EQ(3, b.count_pliberties(b.get_vertex(4, 1))); // ?
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(2, 2))); // ? 
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(3, 2))); // ?
+    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(3, 1)));
+    EXPECT_EQ(3, b.count_pliberties(b.get_vertex(4, 1)));
+    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(2, 2)));
+    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(3, 2)));
     EXPECT_EQ(3, b.count_pliberties(b.get_vertex(0, 3)));
 }
 
 TEST(FastBoardTest, SemiFilled9x9Board) {
-    FastBoard b = createSemiFilled9x9();
+    FastBoard b = create_filled_9x9();
     
     const char *expected = "\n"
         "   a b c d e f g h j \n"
@@ -209,7 +221,7 @@ TEST(FastBoardTest, SemiFilled9x9Board) {
 }
 
 TEST(FastBoardTest, CountRealLibertiesOn9x9) {
-    FastBoard b = createSemiFilled5x5();
+    FastBoard b = create_filled_5x5();
     
     EXPECT_EQ(2, b.count_pliberties(b.get_vertex(0, 0)));
     EXPECT_EQ(4, b.count_pliberties(b.get_vertex(1, 2)));
@@ -218,6 +230,7 @@ TEST(FastBoardTest, CountRealLibertiesOn9x9) {
     EXPECT_EQ(0, b.count_pliberties(b.get_vertex(5, 4)));
 }
 
+// Results will make more sense in FullBuard test
 TEST(FastBoardTest, IsSuicideWhenNotForBlack) {
     FastBoard b;
     b.reset_board(5);  
@@ -226,12 +239,103 @@ TEST(FastBoardTest, IsSuicideWhenNotForBlack) {
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(2, 1), FastBoard::BLACK));
 }
 
+// Results will make more sense in FullBuard test
 TEST(FastBoardTest, IsSuicideWhenForBlackInAllWhiteField) {
-    FastBoard b = create5x5AllWhiteField();
+    FastBoard b = create_5x5_all_white_field();
 
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(1, 1), FastBoard::BLACK));
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(3, 3), FastBoard::BLACK));
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(4, 4), FastBoard::BLACK));
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(4, 2), FastBoard::BLACK));
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(4, 4), FastBoard::BLACK));
+}
+
+TEST(FastBoardTest, CalcAreaScore) {
+    FastBoard b = create_filled_5x5();
+    EXPECT_EQ(-6.5, b.area_score(6.5F)); 
+    EXPECT_EQ(-.5, b.area_score(0.5F));
+    EXPECT_EQ(-9.0, b.area_score(9.0F)); 
+}
+
+TEST(FastBoardTest, CalcAreaScoreOnWhiteField) {
+    FastBoard b = create_5x5_all_white_field();
+    EXPECT_EQ(-31.5, b.area_score(6.5F)); 
+    EXPECT_EQ(-25.5, b.area_score(0.5F));
+    EXPECT_EQ(-34.0, b.area_score(9.0F)); 
+}
+
+TEST(FastBoardTest, CalcAreaScoreOnSemiFilled9x9) {
+    FastBoard b = create_filled_9x9();
+    EXPECT_EQ(-7.5, b.area_score(6.5F)); 
+    EXPECT_EQ(-1.5, b.area_score(0.5F));
+    EXPECT_EQ(-10.0, b.area_score(9.0F)); 
+}
+
+TEST(FastBoardTest, ToMove) {
+    FastBoard b = create_filled_5x5();
+    EXPECT_EQ(FastBoard::BLACK, b.get_to_move());
+    EXPECT_EQ(true, b.black_to_move());
+    b.set_to_move(FastBoard::WHITE);
+    EXPECT_EQ(FastBoard::WHITE, b.get_to_move());
+    EXPECT_EQ(false, b.black_to_move());
+}
+
+TEST(FastBoardTest, MoveToText) {
+    FastBoard b = create_filled_3x3();
+    EXPECT_EQ("B1", b.move_to_text(b.get_vertex(1, 0)));
+    EXPECT_EQ("A2", b.move_to_text(b.get_vertex(0, 1)));
+    EXPECT_EQ("pass", b.move_to_text(FastBoard::PASS));
+    EXPECT_EQ("resign", b.move_to_text(FastBoard::RESIGN));
+}
+
+TEST(FastBoardTest, MoveToTextSgf) {
+    FastBoard b = create_filled_3x3();
+    EXPECT_EQ("bc", b.move_to_text_sgf(b.get_vertex(1, 0)));
+    EXPECT_EQ("ab", b.move_to_text_sgf(b.get_vertex(0, 1)));
+    EXPECT_EQ("ca", b.move_to_text_sgf(b.get_vertex(2, 2)));
+    EXPECT_EQ("tt", b.move_to_text_sgf(FastBoard::PASS));
+    EXPECT_EQ("tt", b.move_to_text_sgf(FastBoard::RESIGN));
+}
+
+TEST(FastBoardTest, GetStoneList) {
+    FastBoard emptyBoard;
+    emptyBoard.reset_board(3);
+    EXPECT_EQ("", emptyBoard.get_stone_list());
+    
+    FastBoard b = create_filled_5x5();
+    EXPECT_EQ("A4 B2 C2 C3 C4 C5 D2 D3", b.get_stone_list());
+    
+    FastBoard whiteFieldBoard = create_5x5_all_white_field();
+    EXPECT_EQ("A3 B3 C1 C2 C3 C4 C5 D3 D5 E4", whiteFieldBoard.get_stone_list());
+}
+
+TEST(FastBoardTest, StarPoint9x9) {
+    
+    EXPECT_EQ(true, FastBoard::starpoint(9, 2, 2)); 
+    EXPECT_EQ(true, FastBoard::starpoint(9, 4, 4)); 
+    EXPECT_EQ(false, FastBoard::starpoint(9, 5, 5));
+    EXPECT_EQ(false, FastBoard::starpoint(9, 3, 4)); 
+}
+
+TEST(FastBoardTest, StarPoint13x13) {
+    
+    EXPECT_EQ(false, FastBoard::starpoint(13, 2, 2));
+    EXPECT_EQ(true, FastBoard::starpoint(13, 3, 3));
+    EXPECT_EQ(false, FastBoard::starpoint(13, 4, 4));
+    EXPECT_EQ(true, FastBoard::starpoint(13, 6, 6));
+    EXPECT_EQ(false, FastBoard::starpoint(13, 2, 3)); 
+    EXPECT_EQ(false, FastBoard::starpoint(13, 8, 8)); 
+}
+
+TEST(FastBoardTest, StarPoint19x19) {
+    
+    EXPECT_EQ(false, FastBoard::starpoint(19, 2, 2)); 
+    EXPECT_EQ(false, FastBoard::starpoint(19, 4, 4)); 
+    EXPECT_EQ(false, FastBoard::starpoint(19, 2, 3)); 
+    EXPECT_EQ(true, FastBoard::starpoint(19, 3, 3)); 
+    EXPECT_EQ(true, FastBoard::starpoint(19, 15, 15)); 
+    EXPECT_EQ(false, FastBoard::starpoint(19, 14, 14)); 
+    EXPECT_EQ(false, FastBoard::starpoint(19, 3, 14)); 
+    EXPECT_EQ(true, FastBoard::starpoint(19, 3, 15)); 
+    EXPECT_EQ(true, FastBoard::starpoint(19, 3, 9)); 
 }
