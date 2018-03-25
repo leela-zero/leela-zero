@@ -517,29 +517,29 @@ bool GTP::execute(GameState & game, std::string xinput) {
         std::istringstream cmdstream(command);
         std::string tmp;
         std::string rotation;
+        Network::Netresult vec;
 
         cmdstream >> tmp;   // eat heatmap
         cmdstream >> rotation;
 
-        if (!cmdstream.fail()) {
-            if (rotation == "all") {
-                for (int r=0; r<8; r++) {
-                    auto vec = Network::get_scored_moves(
-                        &game, Network::Ensemble::DIRECT, r, true);
-                    Network::show_heatmap(&game, vec, false);
-                }
-            } else if (rotation == "average" || rotation == "avg") {
-                auto vec = Network::get_scored_moves(
-                    &game, Network::Ensemble::MULTI_AVG, 8, true);
-                Network::show_heatmap(&game, vec, false);
-            } else {
-                auto vec = Network::get_scored_moves(
-                    &game, Network::Ensemble::DIRECT, std::stoi(rotation), true);
+        if (!cmdstream.fail() && rotation == "all") {
+            for (int r=0; r<8; r++) {
+                vec = Network::get_scored_moves(
+                    &game, Network::Ensemble::DIRECT, r, true);
                 Network::show_heatmap(&game, vec, false);
             }
         } else {
-            auto vec = Network::get_scored_moves(
-                &game, Network::Ensemble::DIRECT, 0, true);
+            if (cmdstream.fail()) {
+                vec = Network::get_scored_moves(
+                    &game, Network::Ensemble::DIRECT, 0, true);
+            } else if (rotation == "average" || rotation == "avg") {
+                vec = Network::get_scored_moves(
+                    &game, Network::Ensemble::MULTI_AVG, 8, true);
+            } else {
+                vec = Network::get_scored_moves(
+                    &game, Network::Ensemble::DIRECT, std::stoi(rotation), true);
+            }
+
             Network::show_heatmap(&game, vec, false);
         }
         gtp_printf(id, "");
