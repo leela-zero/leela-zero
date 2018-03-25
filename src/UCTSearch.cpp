@@ -214,12 +214,12 @@ void tree_stats_helper(const UCTNode& node, size_t depth,
         if (child.get_visits() > 0) {
             children_count += 1;
             tree_stats_helper(*(child.get()), depth+1,
-                          nodes, non_leaf_nodes, depth_sum,
-                          max_depth, children_count);
+                              nodes, non_leaf_nodes, depth_sum,
+                              max_depth, children_count);
         } else {
             nodes += 1;
             depth_sum += depth+1;
-            if(depth+1 > max_depth) max_depth = depth+1;
+            if (depth+1 > max_depth) max_depth = depth+1;
         }
     }
 }

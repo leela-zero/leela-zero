@@ -217,7 +217,7 @@ inline UCTNodePointer::UCTNodePointer(std::int16_t vertex, float score) {
 }
 
 inline UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
-    if( _expanded() ) {
+    if ( _expanded() ) {
         delete _readptr();
     }
     m_data = n.m_data;
@@ -227,7 +227,7 @@ inline UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
 }
 
 inline void UCTNodePointer::expand() const {
-    if(_expanded()) return;
+    if (_expanded()) return;
 
     m_data = reinterpret_cast<std::uint64_t>(new UCTNode(_vertex(), _score()));
 }
@@ -255,6 +255,6 @@ inline float UCTNodePointer::get_eval(int tomove) const {
 }
 inline int UCTNodePointer::get_move() const {
     if (_expanded()) return _readptr()->get_move();
-    return _vertex();
+    else return _vertex();
 }
 #endif

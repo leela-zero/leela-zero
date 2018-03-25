@@ -311,7 +311,7 @@ UCTNode& UCTNode::get_best_root_child(int color) {
     assert(!m_children.empty());
 
     auto ret = std::max_element(begin(m_children), end(m_children),
-                              NodeComp(color));
+                                NodeComp(color));
     ret->expand();
     return *(ret->get());
 }
@@ -321,7 +321,7 @@ size_t UCTNode::count_nodes() const {
     if (m_has_children) {
         nodecount += m_children.size();
         for (auto& child : m_children) {
-            if(child.get_visits() > 0) {
+            if (child.get_visits() > 0) {
                 nodecount += child->count_nodes();
             }
         }
