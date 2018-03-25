@@ -31,7 +31,6 @@
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/home/x3.hpp>
-#include <random>
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -869,9 +868,7 @@ Network::Netresult Network::get_scored_moves(
         std::vector<float> policy[(BOARD_SIZE + 2) * (BOARD_SIZE + 1)] = {0};
 
         if (rotation < 8) {
-            std::random_device rd;
-            std::mt19937 g(rd());
-            std::shuffle(r_list.begin(), r_list.end(), g);
+            std::shuffle(r_list.begin(), r_list.end(), Random::get_Rng());
         }
 
         result = get_scored_moves_internal(state, planes, r_list[0]);
