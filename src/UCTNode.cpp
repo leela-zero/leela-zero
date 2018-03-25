@@ -209,7 +209,7 @@ float UCTNode::get_eval(int tomove) const {
     if (tomove == FastBoard::WHITE) {
         blackeval += static_cast<double>(virtual_loss);
     }
-    auto score = static_cast<float>(blackeval / (double)visits);
+    auto score = static_cast<float>(blackeval / double(visits));
     if (tomove == FastBoard::WHITE) {
         score = 1.0f - score;
     }
@@ -228,7 +228,7 @@ double UCTNode::get_blackevals() const {
 }
 
 void UCTNode::accumulate_eval(float eval) {
-    atomic_add(m_blackevals, (double)eval);
+    atomic_add(m_blackevals, double(eval));
 }
 
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
@@ -249,7 +249,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
     }
 
-    auto numerator = std::sqrt((double)parentvisits);
+    auto numerator = std::sqrt(double(parentvisits));
     auto fpu_reduction = 0.0f;
     // Lower the expected eval for moves that are likely not the best.
     // Do not do this if we have introduced noise at this node exactly

@@ -219,7 +219,7 @@ void  Management::printTimingInfo(float duration) {
         << total_time_min.count() << " minutes = "
         << total_time_s.count() / m_gamesPlayed << " seconds/game, "
         << total_time_millis.count() / m_movesMade.load()  << " ms/move"
-        << ", last game took " << (int) duration << " seconds." << endl;
+        << ", last game took " << int(duration) << " seconds." << endl;
 }
 
 QString Management::getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue) {

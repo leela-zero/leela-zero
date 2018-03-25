@@ -42,10 +42,10 @@ void im2col(const int channels,
             for (unsigned int kernel_col = 0; kernel_col < filter_size; kernel_col++) {
                 int input_row = -pad + kernel_row;
                 for (int output_rows = output_h; output_rows; output_rows--) {
-                    if ((unsigned)input_row < height) {
+                    if (unsigned(input_row) < height) {
                         int input_col = -pad + kernel_col;
                         for (int output_col = output_w; output_col; output_col--) {
-                            if ((unsigned)input_col < width) {
+                            if (unsigned(input_col) < width) {
                                 *(data_col++) =
                                     data_im[input_row * width + input_col];
                             } else {
