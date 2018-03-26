@@ -340,19 +340,22 @@ Order Management::getWorkInternal(bool tuning) {
     QMap<QString,QString> parameters;
     QJsonObject ob = doc.object();
     //checking client version
+    int required_version = 0;
     if (ob.contains("required_client_version")) {
-        if (ob.value("required_client_version").toString().toInt() > m_version) {
-            QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
-            QTextStream(stdout) << ' ' <<  endl;
-            QTextStream(stdout)
-                << "Server requires client version " << ob.value("required_client_version").toString()
-                << " but we are version " << m_version << endl;
-            QTextStream(stdout)
-                << "Check https://github.com/gcp/leela-zero for updates." << endl;
-            exit(EXIT_FAILURE);
-        }
+        required_version = ob.value("required_client_version").toString().toInt()
+    } else if (ob.contains("minimum_autogtp_version") {
+        required_version = ob.value("minimum_autogtp_version").toString().toInt()
     }
-
+    if(required_version > m_version) {
+        QTextStream(stdout) << "Required client version: " << required_version << endl;
+        QTextStream(stdout) << ' ' <<  endl;
+        QTextStream(stdout)
+            << "Server requires client version " << required_version
+            << " but we are version " << m_version << endl;
+        QTextStream(stdout)
+            << "Check https://github.com/gcp/leela-zero for updates." << endl;
+        exit(EXIT_FAILURE);
+    }
     //passing leela version
     QString leelazVersion = Leelaz_min_version;
     if (ob.contains("leelaz_version")) {
