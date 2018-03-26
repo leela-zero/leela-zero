@@ -34,7 +34,7 @@
 constexpr int RETRY_DELAY_MIN_SEC = 30;
 constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 3;           // Stop retrying after 3 times
-const QString Leelaz_min_version = "0.11";
+const QString Leelaz_min_version = "0.12";
 
 Management::Management(const int gpus,
                        const int games,
@@ -342,9 +342,9 @@ Order Management::getWorkInternal(bool tuning) {
     //checking client version
     int required_version = 0;
     if (ob.contains("required_client_version")) {
-        required_version = ob.value("required_client_version").toString().toInt()
-    } else if (ob.contains("minimum_autogtp_version") {
-        required_version = ob.value("minimum_autogtp_version").toString().toInt()
+        required_version = ob.value("required_client_version").toString().toInt();
+    } else if (ob.contains("minimum_autogtp_version")) {
+        required_version = ob.value("minimum_autogtp_version").toString().toInt();
     }
     if(required_version > m_version) {
         QTextStream(stdout) << "Required client version: " << required_version << endl;
@@ -360,6 +360,8 @@ Order Management::getWorkInternal(bool tuning) {
     QString leelazVersion = Leelaz_min_version;
     if (ob.contains("leelaz_version")) {
         leelazVersion = ob.value("leelaz_version").toString();
+    } else if (ob.contains("minimum_leelaz_version")) {
+        leelazVersion = ob.value("minimum_leelaz_version").toString();
     }
     parameters["leelazVer"] = leelazVersion;
 
