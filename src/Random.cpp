@@ -36,7 +36,7 @@ Random::Random(std::uint64_t seed) {
     if (seed == 0) {
         size_t thread_id =
             std::hash<std::thread::id>()(std::this_thread::get_id());
-        seedrandom(cfg_rng_seed ^ (std::uint64_t)thread_id);
+        seedrandom(cfg_rng_seed ^ std::uint64_t(thread_id));
     } else {
         seedrandom(seed);
     }
