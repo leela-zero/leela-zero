@@ -20,6 +20,8 @@ import os
 import numpy as np
 import time
 import tensorflow as tf
+from shutil import copyfile
+from average_weights import swa
 
 def weight_variable(shape):
     """Xavier initialization"""
@@ -45,6 +47,28 @@ def bn_bias_variable(shape):
 def conv2d(x, W):
     return tf.nn.conv2d(x, W, data_format='NCHW',
                         strides=[1, 1, 1, 1], padding='SAME')
+
+def read_weights(filename):
+    """ Read weights from file to array """
+    weights = []
+    version = None
+
+    with open(filename, 'r') as f:
+        for e, line in enumerate(f):
+            if e == 0:
+                #Version
+                version = int(line.strip())
+                if version != 1:
+                    raise ValueError("Unknown version {}".format(line.strip()))
+            else:
+                weights.append(list(map(float, line.split(' '))))
+            if e == 2:
+                channels = len(line.split(' '))
+    blocks = e - (4 + 14)
+    if blocks % 8 != 0:
+        raise ValueError("Inconsistent number of weights in the file")
+    blocks //= 8
+    return version, blocks, channels, weights
 
 class TFProcess:
     def __init__(self):
@@ -78,6 +102,26 @@ class TFProcess:
         self.z_ = next_batch[2] # tf.placeholder(tf.float32, [None, 1])
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
+
+        # Output weight file with averaged weights
+        self.swa_enabled = True
+
+        # Nets to skip
+        # Output net number n is used for averaging if n % c == 0
+        self.swa_c = 1
+
+        # Maximum number of nets to average
+        # Set to None to disable the limit
+        self.swa_max_n = 16
+
+        # Filename for initial averaged network
+        self.prev_swa = tf.Variable('', trainable=False)
+
+        # Recalculate SWA weight batchnorm means and variances
+        self.swa_recalc_bn = True
+
+        # Nets written to disk
+        self.output_nets = tf.Variable(0, trainable=False)
 
         # Calculate loss on policy head
         cross_entropy = \
@@ -233,12 +277,21 @@ class TFProcess:
             self.test_writer.add_summary(test_summaries, steps)
             print("step {}, policy={:g} training accuracy={:g}%, mse={:g}".\
                 format(steps, sum_policy, sum_accuracy*100.0, sum_mse))
+
             path = os.path.join(os.getcwd(), "leelaz-model")
-            save_path = self.saver.save(self.session, path, global_step=steps)
-            print("Model saved in file: {}".format(save_path))
             leela_path = path + "-" + str(steps) + ".txt"
             self.save_leelaz_weights(leela_path)
             print("Leela weights saved to {}".format(leela_path))
+
+            prev_swa, output_nets = self.session.run([self.prev_swa, self.output_nets])
+            if self.swa_enabled and output_nets % self.swa_c == 0:
+                self.save_swa_network(steps, path, leela_path,
+                                      prev_swa, output_nets)
+
+            self.session.run(tf.assign(self.output_nets, output_nets + 1))
+            save_path = self.saver.save(self.session, path, global_step=steps)
+            print("Model saved in file: {}".format(save_path))
+
 
     def save_leelaz_weights(self, filename):
         with open(filename, "w") as file:
@@ -380,3 +433,39 @@ class TFProcess:
         h_fc3 = tf.nn.tanh(tf.add(tf.matmul(h_fc2, W_fc3), b_fc3))
 
         return h_fc1, h_fc3
+
+    def save_swa_network(self, steps, path, leela_path, prev_swa, output_nets):
+        n = output_nets // self.swa_c
+        if self.swa_max_n != None:
+            n = min(n, self.swa_max_n)
+
+        swa_path = path + "-swa-" + str(n + 1) + "-" + str(steps) + ".txt"
+
+        if not os.path.isfile(prev_swa):
+            # Average of one network is the network itself
+            copyfile(leela_path, swa_path)
+        else:
+            if self.swa_recalc_bn:
+                swa([prev_swa, leela_path], 'swa_temp.txt', weights=[n, 1])
+            else:
+                swa([prev_swa, leela_path], swa_path, weights=[n, 1])
+
+        if n > 0 and self.swa_recalc_bn:
+            # Load SWA weights for batch norm recalculation
+            version, blocks, channels, weights = read_weights('swa_temp.txt')
+            self.replace_weights(weights)
+
+            print("Recalculating SWA batch normalization")
+            for _ in range(200):
+                self.session.run(
+                    [self.policy_loss, self.mse_loss, self.reg_term, self.next_batch],
+                    feed_dict={self.training: True, self.handle: self.train_handle})
+
+            self.save_leelaz_weights(swa_path)
+
+            # Now load again the training weights
+            version, blocks, channels, weights = read_weights(leela_path)
+            self.replace_weights(weights)
+
+        self.session.run(tf.assign(self.prev_swa, swa_path))
+        print("Wrote averaged network to {}".format(swa_path))
