@@ -68,8 +68,6 @@ public:
     float get_net_eval(int tomove) const;
     float get_lcb(int color) const;
     float get_ucb(int color) const;
-    double get_blackevals() const;
-    void accumulate_eval(float eval);
     void virtual_loss(void);
     void virtual_loss_undo(void);
     void update(float eval);
