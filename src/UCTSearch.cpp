@@ -636,6 +636,13 @@ void UCTSearch::ponder() {
 
     m_run = true;
     int cpus = cfg_num_threads;
+
+    // There are a lot of special cases where root nodes assumes all childs are expanded.
+    // it won't be a waste of memory by so much so go ahead and expand it.
+    for (const auto& node : m_root->get_children()) {
+        node.expand();
+    }
+
     ThreadGroup tg(thread_pool);
     for (int i = 1; i < cpus; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
