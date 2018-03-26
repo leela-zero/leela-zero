@@ -74,6 +74,10 @@ int main(int argc, char *argv[]) {
         { "m", "maxgames" }, "Exit after the given number of games is completed.",
                           "max number of games");
 
+    QCommandLineOption eraseOption(
+        { "e", "erase" }, "Erase old networks when new ones are available.",
+                          "");
+
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(keepSgfOption);
@@ -81,6 +85,7 @@ int main(int argc, char *argv[]) {
     parser.addOption(timeoutOption);
     parser.addOption(singleOption);
     parser.addOption(maxOption);
+    parser.addOption(eraseOption);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
@@ -130,8 +135,14 @@ int main(int argc, char *argv[]) {
         }
     }
     Console *cons = nullptr;
+    if (!QDir().mkpath("networks")) {
+        cerr << "Couldn't create the directory for the networks files!"
+             << endl;
+        return EXIT_FAILURE;
+    }
     Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, maxNum,
-                                      parser.value(keepSgfOption), parser.value(keepDebugOption));
+                                      parser.isSet(eraseOption), parser.value(keepSgfOption),
+                                      parser.value(keepDebugOption));
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
     QTimer *timer = new QTimer();
     boss->giveAssignments();
