@@ -146,7 +146,8 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
 UCTNode* UCTNode::find_child(const int move) {
     if (m_has_children) {
         for (auto& child : m_children) {
-            if (child->get_move() == move) {
+            if (child.get_move() == move) {
+                child.expand(); // no guarantee that this is a non-expanded node
                 return child.release();
             }
         }
