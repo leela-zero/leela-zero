@@ -174,7 +174,7 @@ void SGFTree::populate_states(void) {
         float handicap;
         strm >> handicap;
         has_handicap = (handicap > 0.0f);
-        m_state.set_handicap((int)handicap);
+        m_state.set_handicap(int(handicap));
     }
 
     // result

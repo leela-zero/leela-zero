@@ -57,7 +57,7 @@ bool UCTSearch::advance_to_new_rootstate() {
     }
 
     auto depth =
-        (int) (m_rootstate.get_movenum() - m_last_rootstate->get_movenum());
+        int(m_rootstate.get_movenum() - m_last_rootstate->get_movenum());
 
     if (depth < 0) {
         return false;

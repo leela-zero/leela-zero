@@ -34,7 +34,7 @@
 constexpr int RETRY_DELAY_MIN_SEC = 30;
 constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour
 constexpr int MAX_RETRIES = 3;           // Stop retrying after 3 times
-const QString Leelaz_min_version = "0.11";
+const QString Leelaz_min_version = "0.12";
 
 Management::Management(const int gpus,
                        const int games,
@@ -219,7 +219,7 @@ void  Management::printTimingInfo(float duration) {
         << total_time_min.count() << " minutes = "
         << total_time_s.count() / m_gamesPlayed << " seconds/game, "
         << total_time_millis.count() / m_movesMade.load()  << " ms/move"
-        << ", last game took " << (int) duration << " seconds." << endl;
+        << ", last game took " << int(duration) << " seconds." << endl;
 }
 
 QString Management::getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue) {
@@ -340,23 +340,28 @@ Order Management::getWorkInternal(bool tuning) {
     QMap<QString,QString> parameters;
     QJsonObject ob = doc.object();
     //checking client version
+    int required_version = 0;
     if (ob.contains("required_client_version")) {
-        if (ob.value("required_client_version").toString().toInt() > m_version) {
-            QTextStream(stdout) << "Required client version: " << ob.value("required_client_version").toString() << endl;
-            QTextStream(stdout) << ' ' <<  endl;
-            QTextStream(stdout)
-                << "Server requires client version " << ob.value("required_client_version").toString()
-                << " but we are version " << m_version << endl;
-            QTextStream(stdout)
-                << "Check https://github.com/gcp/leela-zero for updates." << endl;
-            exit(EXIT_FAILURE);
-        }
+        required_version = ob.value("required_client_version").toString().toInt();
+    } else if (ob.contains("minimum_autogtp_version")) {
+        required_version = ob.value("minimum_autogtp_version").toString().toInt();
     }
-
+    if(required_version > m_version) {
+        QTextStream(stdout) << "Required client version: " << required_version << endl;
+        QTextStream(stdout) << ' ' <<  endl;
+        QTextStream(stdout)
+            << "Server requires client version " << required_version
+            << " but we are version " << m_version << endl;
+        QTextStream(stdout)
+            << "Check https://github.com/gcp/leela-zero for updates." << endl;
+        exit(EXIT_FAILURE);
+    }
     //passing leela version
     QString leelazVersion = Leelaz_min_version;
     if (ob.contains("leelaz_version")) {
         leelazVersion = ob.value("leelaz_version").toString();
+    } else if (ob.contains("minimum_leelaz_version")) {
+        leelazVersion = ob.value("minimum_leelaz_version").toString();
     }
     parameters["leelazVer"] = leelazVersion;
 
