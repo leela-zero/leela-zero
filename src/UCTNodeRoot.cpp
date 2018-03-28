@@ -143,12 +143,12 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
 
 // Used to find new root in UCTSearch.
 // BEWARE : caller is now responsible of freeing the return value
-UCTNode* UCTNode::find_child(const int move) {
+std::unique_ptr<UCTNode> UCTNode::find_child(const int move) {
     if (m_has_children) {
         for (auto& child : m_children) {
             if (child.get_move() == move) {
-                child.expand(); // no guarantee that this is a non-expanded node
-                return child.release();
+                child.inflate(); // no guarantee that this is a non-inflated node
+                return std::unique_ptr<UCTNode>(child.release());
             }
         }
     }
@@ -156,3 +156,10 @@ UCTNode* UCTNode::find_child(const int move) {
     // Can happen if we resigned or children are not expanded
     return nullptr;
 }
+
+void UCTNode::inflate_all_children() {
+    for (const auto& node : get_children()) {
+        node.inflate();
+    }
+}
+

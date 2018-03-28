@@ -77,7 +77,7 @@ bool UCTSearch::advance_to_new_rootstate() {
     for (auto i = 0; i < depth; i++) {
         test->forward_move();
         const auto move = test->get_last_move();
-        m_root.reset(m_root->find_child(move));
+        m_root = m_root->find_child(move);
         if (!m_root) {
             // Tree hasn't been expanded this far
             return false;
@@ -549,11 +549,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
     }
 
     // Now that the new root is installed...
-    // There are a lot of special cases where root nodes assumes all childs are expanded.
-    // it won't be a waste of memory by so much so go ahead and expand it.
-    for (const auto& node : m_root->get_children()) {
-        node.expand();
-    }
+    // There are a lot of special cases where root nodes assumes all childs are inflated.
+    // it won't be a waste of memory by so much so go ahead and inflate it.
+    m_root->inflate_all_children();
 
     m_root->kill_superkos(m_rootstate);
     if (cfg_noise) {
@@ -637,11 +635,9 @@ void UCTSearch::ponder() {
     m_run = true;
     int cpus = cfg_num_threads;
 
-    // There are a lot of special cases where root nodes assumes all childs are expanded.
-    // it won't be a waste of memory by so much so go ahead and expand it.
-    for (const auto& node : m_root->get_children()) {
-        node.expand();
-    }
+    // There are a lot of special cases where root nodes assumes all childs are .
+    // it won't be a waste of memory by so much so go ahead and inflate it.
+    m_root->inflate_all_children();
 
     ThreadGroup tg(thread_pool);
     for (int i = 1; i < cpus; i++) {

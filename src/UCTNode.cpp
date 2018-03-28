@@ -280,7 +280,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     }
 
     assert(best != nullptr);
-    best->expand();
+    best->inflate();
     return best->get();
 }
 
@@ -318,7 +318,7 @@ UCTNode& UCTNode::get_best_root_child(int color) {
 
     auto ret = std::max_element(begin(m_children), end(m_children),
                                 NodeComp(color));
-    ret->expand();
+    ret->inflate();
     return *(ret->get());
 }
 

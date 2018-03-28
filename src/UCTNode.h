@@ -36,12 +36,12 @@ class UCTNode;
 // 'lazy-initializable' version of std::unique_ptr<UCTNode>.
 // When a UCTNodePointer is constructed, the constructor arguments are stored instead
 // of constructing the actual UCTNode instance.  Later when the UCTNode is needed,
-// the external code calls expand() which actually constructs the UCTNode.
+// the external code calls inflate() which actually constructs the UCTNode.
 // Basically, this is a 'tagged union' of:
 //  - std::unique_ptr<UCTNode> pointer;
 //  - std::pair<float, std::int16_t> args;
 
-// WARNING : expand() is not thread-safe and hence has to be protected by an external lock.
+// WARNING : inflate() is not thread-safe and hence has to be protected by an external lock.
 
 class UCTNodePointer {
 private:
@@ -51,23 +51,21 @@ private:
     // (I really wanted to use C-style bit fields and unions, but those aren't portable)
     mutable uint64_t m_data = 1;
 
-    bool _expanded() const {
-        return (m_data & 1ULL) == 0;
-    } 
-    UCTNode * _readptr() const {
-        assert(_expanded());
+
+    UCTNode * read_ptr() const {
+        assert(is_inflated());
         return reinterpret_cast<UCTNode*>(m_data);
     }
 
-    std::int16_t _vertex() const {
-        assert(!_expanded());
-        std::uint16_t x = static_cast<std::uint16_t>( (m_data >> 16) & 0xffff);
-        return static_cast<std::int16_t>(x);
+    std::int16_t read_vertex() const {
+        assert(!is_inflated());
+        return static_cast<std::int16_t>(m_data >> 16);
     }
-    float _score() const {
-        static_assert(sizeof(float) == sizeof(std::uint32_t), "This code assumes floats are 32-bit");
-        assert(!_expanded());
-        std::uint32_t x = static_cast<std::uint32_t>( (m_data >> 32) & 0xffffffffLL);
+    float read_score() const {
+        static_assert(sizeof(float) == 4, "This code assumes floats are 32-bit");
+        assert(!is_inflated());
+
+        auto x = static_cast<std::uint32_t>(m_data >> 32);
         float ret;
         std::memcpy(&ret, &x, sizeof(ret));
         return ret;
@@ -77,26 +75,30 @@ public:
     UCTNodePointer(UCTNodePointer&& n);
     UCTNodePointer(std::int16_t vertex, float score);
     UCTNodePointer(const UCTNodePointer&) = delete;
-    
+
+    bool is_inflated() const {
+        return (m_data & 1ULL) == 0;
+    } 
+
     // methods from std::unique_ptr<UCTNode>
     typename std::add_lvalue_reference<UCTNode>::type operator*() const{
-        return *_readptr();
+        return *read_ptr();
     }
     UCTNode* operator->() const {
-        return _readptr();
+        return read_ptr();
     }
     UCTNode* get() const {
-        return _readptr();
+        return read_ptr();
     }
     UCTNodePointer& operator=(UCTNodePointer&& n);
     UCTNode * release() {
-        auto ret = _readptr();
+        auto ret = read_ptr();
         m_data = 1;
         return ret;
     }
 
     // construct UCTNode instance from the vertex/score pair
-    void expand() const;
+    void inflate() const;
 
     // proxy of UCTNode methods which can be called without constructing UCTNode
     bool valid() const;
@@ -104,7 +106,7 @@ public:
     float get_score() const;
     bool active() const;
     int get_move() const;
-    // this can only be called if it is an expanded pointer
+    // this can only be called if it is an inflated pointer
     float get_eval(int tomove) const; 
 };
 
@@ -154,7 +156,10 @@ public:
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    UCTNode* find_child(const int move);
+    std::unique_ptr<UCTNode> find_child(const int move);
+    
+    void inflate_all_children();
+
 
 private:
     enum Status : char {
@@ -195,30 +200,30 @@ private:
 
 
 inline UCTNodePointer::~UCTNodePointer() {
-    if (_expanded()) {
-        delete _readptr();
+    if (is_inflated()) {
+        delete read_ptr();
     }
 }
 
 inline UCTNodePointer::UCTNodePointer(UCTNodePointer&& n) {
-    if (_expanded()) {
-        delete _readptr();
+    if (is_inflated()) {
+        delete read_ptr();
     }
     m_data = n.m_data;
-    n.m_data = 1; // non-expanded garbage
+    n.m_data = 1; // non-inflated garbage
 }
 
 inline UCTNodePointer::UCTNodePointer(std::int16_t vertex, float score) {
     std::uint32_t i_score;
-    std::uint16_t i_vertex = static_cast<std::uint16_t>(vertex);
+    auto i_vertex = static_cast<std::uint16_t>(vertex);
     std::memcpy(&i_score, &score, sizeof(i_score));
     
     m_data = (static_cast<std::uint64_t>(i_score) << 32) | (static_cast<std::uint64_t>(i_vertex) << 16) | 1ULL;
 }
 
 inline UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
-    if ( _expanded() ) {
-        delete _readptr();
+    if ( is_inflated() ) {
+        delete read_ptr();
     }
     m_data = n.m_data;
     n.m_data = 1;
@@ -226,35 +231,35 @@ inline UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
     return *this;
 }
 
-inline void UCTNodePointer::expand() const {
-    if (_expanded()) return;
+inline void UCTNodePointer::inflate() const {
+    if (is_inflated()) return;
 
-    m_data = reinterpret_cast<std::uint64_t>(new UCTNode(_vertex(), _score()));
+    m_data = reinterpret_cast<std::uint64_t>(new UCTNode(read_vertex(), read_score()));
 }
     
 inline bool UCTNodePointer::valid() const {
-    if (_expanded()) return _readptr()->valid();
-    else return true;
+    if (is_inflated()) return read_ptr()->valid();
+    return true;
 }
 inline int UCTNodePointer::get_visits() const {
-    if (_expanded()) return _readptr()->get_visits();
-    else return 0;
+    if (is_inflated()) return read_ptr()->get_visits();
+    return 0;
 }
 inline float UCTNodePointer::get_score() const {
-    if (_expanded()) return _readptr()->get_score();
-    else return _score();
+    if (is_inflated()) return read_ptr()->get_score();
+    return read_score();
 }
 inline bool UCTNodePointer::active() const {
-    if (_expanded()) return _readptr()->active();
-    else return true;
+    if (is_inflated()) return read_ptr()->active();
+    return true;
 }
 inline float UCTNodePointer::get_eval(int tomove) const {
-    // this can only be called if it is an expanded pointer
-    assert(_expanded());
-    return _readptr()->get_eval(tomove);
+    // this can only be called if it is an inflated pointer
+    assert(is_inflated());
+    return read_ptr()->get_eval(tomove);
 }
 inline int UCTNodePointer::get_move() const {
-    if (_expanded()) return _readptr()->get_move();
-    else return _vertex();
+    if (is_inflated()) return read_ptr()->get_move();
+    return read_vertex();
 }
 #endif
