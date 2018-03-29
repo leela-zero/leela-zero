@@ -53,8 +53,8 @@ class FileDataSrc:
         data source yielding chunkdata from chunk files.
     """
     def __init__(self, chunks):
-        self.done = chunks
         self.chunks = []
+        self.done = chunks
     def next(self):
         if not self.chunks:
             self.chunks, self.done = self.done, self.chunks

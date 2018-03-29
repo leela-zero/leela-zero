@@ -204,18 +204,18 @@ class TFProcess:
         grad_ops=[]
         clear_var=[]
         with tf.control_dependencies(self.update_ops):
-            self.grad_op_real = opt.compute_gradients(loss)
-            for (g, v) in self.grad_op_real:
-                if g is None:
-                    total_grad.append((g,v))
-                name = v.name.split(':')[0]
-                gsum = tf.get_variable(name='gsum/'+name,
-                                       shape=g.shape,
-                                       trainable=False,
-                                       initializer=tf.zeros_initializer)
-                total_grad.append((gsum, v))
-                grad_ops.append(tf.assign_add(gsum, g))
-                clear_var.append(gsum)
+            self.grad_op_real = opt.compute_gradients(self.loss)
+        for (g, v) in self.grad_op_real:
+            if g is None:
+                total_grad.append((g,v))
+            name = v.name.split(':')[0]
+            gsum = tf.get_variable(name='gsum/'+name,
+                                   shape=g.shape,
+                                   trainable=False,
+                                   initializer=tf.zeros_initializer)
+            total_grad.append((gsum, v))
+            grad_ops.append(tf.assign_add(gsum, g))
+            clear_var.append(gsum)
         # Op to compute gradients and add to running total in 'gsum/'
         self.grad_op = tf.group(*grad_ops)
 
@@ -267,7 +267,7 @@ class TFProcess:
                 # Weight file order: bias, means, variances
                 var = tf.constant(new_weights[e + 2], shape=weights.shape)
                 new_beta = tf.divide(bias, tf.sqrt(var + tf.constant(1e-5)))
-                self.session.run(tf.assign(weights, new_beta))
+                self.assign(weights, new_beta)
             elif weights.shape.ndims == 4:
                 # Convolution weights need a transpose
                 #
@@ -413,24 +413,27 @@ class TFProcess:
         # The weights are internal to the batchnorm layer, so apply
         # a unique scope that we can store, and use to look them back up
         # later on.
+
         scope = self.get_batchnorm_key()
-        self.weights.append(scope + "/batch_normalization/beta:0")
-        self.weights.append(scope + "/batch_normalization/moving_mean:0")
-        self.weights.append(scope + "/batch_normalization/moving_variance:0")
         with tf.variable_scope(scope):
-            return tf.layers.batch_normalization(
+            net = tf.layers.batch_normalization(
                     net,
                     epsilon=1e-5, axis=1, fused=True,
-                    center=False, scale=False,
+                    center=True, scale=False,
                     training=self.training)
+
+        for v in ['beta', 'moving_mean', 'moving_variance' ]:
+            name = scope + '/batch_normalization/' + v + ':0'
+            var = tf.get_default_graph().get_tensor_by_name(name)
+            self.weights.append(var)
+
+        return net
 
 
     def conv_block(self, inputs, filter_size, input_channels, output_channels):
         W_conv = weight_variable([filter_size, filter_size,
                                   input_channels, output_channels])
-        b_conv = bn_bias_variable([output_channels])
         self.weights.append(W_conv)
-        self.weights.append(b_conv)
 
         net = inputs
         net = conv2d(net, W_conv)
@@ -444,9 +447,7 @@ class TFProcess:
 
         # First convnet weights
         W_conv_1 = weight_variable([3, 3, channels, channels])
-        b_conv_1 = bn_bias_variable([channels])
         self.weights.append(W_conv_1)
-        self.weights.append(b_conv_1)
 
         net = conv2d(net, W_conv_1)
         net = self.batch_norm(net)
@@ -454,9 +455,7 @@ class TFProcess:
 
         # Second convnet weights
         W_conv_2 = weight_variable([3, 3, channels, channels])
-        b_conv_2 = bn_bias_variable([channels])
         self.weights.append(W_conv_2)
-        self.weights.append(b_conv_2)
 
         net = conv2d(net, W_conv_2)
         net = self.batch_norm(net)
@@ -570,7 +569,7 @@ def gen_block(size, f_in, f_out):
              [-.3] * f_out ] # batch norm var
 
 class TFProcessTest(unittest.TestCase):
-    def can_replace_weights(self):
+    def test_can_replace_weights(self):
         tfprocess = TFProcess()
         tfprocess.init(batch_size=1)
         # use known data to test replace_weights() works.
