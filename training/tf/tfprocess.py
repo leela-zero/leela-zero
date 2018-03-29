@@ -363,7 +363,7 @@ class TFProcess:
                 # Things have likely changed enough that stats are no longer valid.
 
                 if self.swa_enabled:
-                    self.save_swa_network(steps, path, leela_path)
+                    self.save_swa_network(steps, path, leela_path, train_data)
 
                 save_path = self.saver.save(self.session, path, global_step=steps)
                 print("Model saved in file: {}".format(save_path))
@@ -526,7 +526,7 @@ class TFProcess:
         # Restore variables in the current graph from the snapshot.
         self.session.run(self.restore_op)
 
-    def save_swa_network(self, steps, path, leela_path):
+    def save_swa_network(self, steps, path, leela_path, data):
         # Sample 1 in self.swa_c of the networks. Compute in this way so
         # that it's safe to change the value of self.swa_c
         rem = self.session.run(tf.assign_add(self.swa_skip, -1))
@@ -550,9 +550,12 @@ class TFProcess:
         if self.swa_recalc_bn:
             print("Refining SWA batch normalization")
             for _ in range(200):
+                batch = next(data)
                 self.session.run(
-                    [self.loss, self.update_ops, self.next_batch],
-                    feed_dict={self.training: True, self.handle: self.train_handle})
+                    [self.loss, self.update_ops],
+                    feed_dict={self.training: True,
+                               self.planes: batch[0], self.probs: batch[1],
+                               self.winner: batch[2]})
 
         self.save_leelaz_weights(swa_path)
         # restore the saved network.
