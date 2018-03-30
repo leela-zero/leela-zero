@@ -856,17 +856,14 @@ Network::Netresult Network::get_scored_moves(
         }
     }
 
-    NNPlanes planes;
-    gather_features(state, planes);
-
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
-        result = get_scored_moves_internal(state, planes, rotation);
+        result = get_scored_moves_internal(state, rotation);
     } else {
         assert(ensemble == RANDOM_ROTATION);
         assert(rotation == -1);
         const auto rand_rot = Random::get_Rng().randfix<8>();
-        result = get_scored_moves_internal(state, planes, rand_rot);
+        result = get_scored_moves_internal(state, rand_rot);
     }
 
     // Insert result into cache.
@@ -876,24 +873,17 @@ Network::Netresult Network::get_scored_moves(
 }
 
 Network::Netresult Network::get_scored_moves_internal(
-    const GameState* const state, const NNPlanes & planes, const int rotation) {
+    const GameState* const state, const int rotation) {
     assert(rotation >= 0 && rotation <= 7);
-    assert(INPUT_CHANNELS == planes.size());
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
-    std::vector<net_t> input_data;
+
+    std::vector<net_t> input_data(INPUT_CHANNELS * width * height);
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
-    // Data layout is input_data[(c * height + h) * width + w]
-    input_data.reserve(INPUT_CHANNELS * width * height);
-    for (auto c = 0; c < INPUT_CHANNELS; ++c) {
-        for (auto h = 0; h < height; ++h) {
-            for (auto w = 0; w < width; ++w) {
-                const auto rot_idx = rotate_nn_idx_table[rotation][h * width + w];
-                input_data.emplace_back(net_t(planes[c][rot_idx]));
-            }
-        }
-    }
+
+    gather_features_vector(state, input_data, rotation);
+
 #ifdef USE_OPENCL
     opencl.forward(input_data, policy_data, value_data);
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
@@ -1046,6 +1036,45 @@ void Network::gather_features(const GameState* const state, NNPlanes & planes) {
                               planes[black_offset + h],
                               planes[white_offset + h]);
     }
+}
+
+void Network::get_player_input_moves(const GameState* const state, 
+                                     std::vector<net_t>& input_data, 
+                                     const int rotation, 
+                                     const int color)
+{
+    const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
+
+    for (auto c = size_t{0}; c < moves; c++) {
+        auto const board = state->get_past_board(c);
+        for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
+            const auto rot_idx = rotate_nn_idx_table[rotation][idx];
+            const auto x = rot_idx % BOARD_SIZE;
+            const auto y = rot_idx / BOARD_SIZE;
+            const auto rot_vtx = board.get_vertex(x, y);
+            input_data.emplace_back(net_t(color == board.get_square(rot_vtx)));
+        }
+    }
+    for (auto c = moves; c < INPUT_MOVES; c++) {
+        input_data.insert(input_data.cend(), BOARD_SQUARES, net_t(false));
+    }
+}
+
+void Network::gather_features_vector(const GameState* const state,
+                                     std::vector<net_t>& input_data, 
+                                     const int rotation) {
+    assert(rotation >= 0 && rotation <= 7);
+    constexpr auto width = BOARD_SIZE;
+    constexpr auto height = BOARD_SIZE;
+    const auto to_move = state->get_to_move();
+    const auto blacks_move = to_move == FastBoard::BLACK;
+    const auto not_to_move = blacks_move ? FastBoard::WHITE : FastBoard::BLACK;
+
+    get_player_input_moves(state, input_data, rotation, to_move);
+    get_player_input_moves(state, input_data, rotation, not_to_move);
+
+    input_data.insert(input_data.cend(), BOARD_SQUARES, net_t(blacks_move));
+    input_data.insert(input_data.cend(), BOARD_SQUARES, net_t(!blacks_move));
 }
 
 int Network::rotate_nn_idx(const int vertex, int symmetry) {

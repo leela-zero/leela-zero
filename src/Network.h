@@ -92,9 +92,16 @@ private:
                                std::vector<float>& M, const int C, const int K);
     static int rotate_nn_idx(const int vertex, int symmetry);
     static void fill_input_plane_pair(
-      const FullBoard& board, BoardPlane& black, BoardPlane& white);
-    static Netresult get_scored_moves_internal(
-      const GameState* const state, const NNPlanes & planes, const int rotation);
+        const FullBoard& board, BoardPlane& black, BoardPlane& white);
+    static void get_player_input_moves(const GameState* const state,
+                                       std::vector<net_t>& input_data,
+                                       const int rotation, 
+                                       const int color);
+    static void gather_features_vector(const GameState* const state,
+                                       std::vector<net_t>& input_data, 
+                                       const int rotation);
+    static Netresult get_scored_moves_internal(const GameState* const state, 
+                                               const int rotation);
 #if defined(USE_BLAS)
     static void forward_cpu(const std::vector<float>& input,
                             std::vector<float>& output_pol,
