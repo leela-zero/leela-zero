@@ -153,6 +153,8 @@ if __name__ == "__main__":
         default=10, type=float)
     parser.add_argument("--verify", help="Verify that output matches. Noise must be disabled.",
             default=False, action='store_true')
+    parser.add_argument("--add_inputs", help="Adds input planes to network",
+            default=0, type=int)
 
     args = parser.parse_args()
     new_blocks = args.blocks
@@ -218,6 +220,16 @@ if __name__ == "__main__":
     #widened network doesn't match the original one.
     rand = list(range(channels))
     rand.extend(np.random.randint(0, channels, new_channels))
+
+    if args.add_inputs > 0:
+        w_in_new = np.array(w_input[0]).reshape(channels, input_planes, 3, 3)
+        noise = np.random.normal(0, noise_std, [channels, args.add_inputs, 3, 3])
+        w_in_new = np.append(w_in_new, noise, axis=1)
+
+        input_planes = input_planes + args.add_inputs
+        print("Output will have {} input planes".format(input_planes))
+
+        w_input[0] = w_in_new.flatten()
 
     #Input
     w_wider, conv_next = conv_bn_wider(w_input, [w_convs[0][0]], input_planes,
