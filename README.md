@@ -127,7 +127,7 @@ source and remove the line that says "#define USE_OPENCL".
 
     # Use stand alone directory to keep source dir clean
     mkdir build && cd build
-    cmake ..
+    cmake -DCMAKE_BUILD_TYPE=Debug ..
     make leelaz
     make tests
     ./tests
