@@ -190,6 +190,10 @@ std::vector<float> Network::zeropad_U(const std::vector<float>& U,
     return Upad;
 }
 
+// Weight File Format Dependent: 
+//   - For weight file format upgrades/changes, please also do a PR to gcp/leela-zero-server
+//   - https://github.com/gcp/leela-zero-server/blob/e0e92617c3d746fa5c5c24a995a9ce4d37ae0dcb/server.js#L547-L556
+//	 
 std::pair<int, int> Network::load_v1_network(std::ifstream& wtfile) {
     // Count size of the network
     myprintf("Detecting residual layers...");
