@@ -58,6 +58,7 @@ public:
     static constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 
     static void initialize();
+    static void init_rotation_table(const GameState& state);
     static void benchmark(const GameState * const state,
                           const int iterations = 1600);
     static void show_heatmap(const FastState * const state,
@@ -91,12 +92,15 @@ private:
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
     static int rotate_nn_idx(const int vertex, int symmetry);
+
+    static int get_board_vertex(const GameState& state,
+                                const int x, const int y, int rotation);
     static void fill_input_plane_pair(
         const FullBoard& board, BoardPlane& black, BoardPlane& white);
-    static void get_player_input_moves(const GameState* const state,
-                                       std::vector<net_t>& input_data,
-                                       const int rotation, 
-                                       const int color);
+    static void get_input_moves(const GameState* const state,
+                                std::vector<net_t>& input_data,
+                                const int rotation, 
+                                const int color);
     static void gather_features_vector(const GameState* const state,
                                        std::vector<net_t>& input_data, 
                                        const int rotation);

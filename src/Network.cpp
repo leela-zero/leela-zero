@@ -89,7 +89,7 @@ static std::array<float, 256> ip2_val_w;
 static std::array<float, 1> ip2_val_b;
 
 // Rotation helper
-static std::array<std::array<int, BOARD_SQUARES>, 8> rotate_nn_idx_table;
+static std::array<std::array<int, BOARD_SQUARES>, 8> rotate_nn_idx_vtx_table;
 
 void Network::benchmark(const GameState* const state, const int iterations) {
     const auto cpus = cfg_num_threads;
@@ -320,13 +320,6 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
 }
 
 void Network::initialize() {
-    // Prepare rotation table
-    for(auto s = 0; s < 8; s++) {
-        for(auto v = 0; v < BOARD_SQUARES; v++) {
-            rotate_nn_idx_table[s][v] = rotate_nn_idx(v, s);
-        }
-    }
-
     // Load network from file
     size_t channels, residual_blocks;
     std::tie(channels, residual_blocks) = load_network_file(cfg_weightsfile);
@@ -435,6 +428,17 @@ void Network::initialize() {
 #endif
 #endif
 #endif
+}
+
+void Network::init_rotation_table(const GameState& state) {
+    for (auto r = 0; r < 8; r++) {
+        for (auto y = 0; y < BOARD_SIZE; y++) {
+            for (auto x = 0; x < BOARD_SIZE; x++) {
+                rotate_nn_idx_vtx_table[r][y * BOARD_SIZE + x] =
+                    get_board_vertex(state, x, y, r);
+            }
+        }
+    }
 }
 
 #ifdef USE_BLAS
@@ -878,12 +882,13 @@ Network::Netresult Network::get_scored_moves_internal(
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
 
-    std::vector<net_t> input_data(INPUT_CHANNELS * width * height);
+    std::vector<net_t> input_data;
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
-
+    
+    input_data.reserve(INPUT_CHANNELS * width * height);
     gather_features_vector(state, input_data, rotation);
-
+    
 #ifdef USE_OPENCL
     opencl.forward(input_data, policy_data, value_data);
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
@@ -923,10 +928,7 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<scored_node> result;
     for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
         if (idx < BOARD_SQUARES) {
-            const auto rot_idx = rotate_nn_idx_table[rotation][idx];
-            const auto x = rot_idx % BOARD_SIZE;
-            const auto y = rot_idx / BOARD_SIZE;
-            const auto rot_vtx = state->board.get_vertex(x, y);
+            const auto rot_vtx = rotate_nn_idx_vtx_table[rotation][idx];
             if (state->board.get_square(rot_vtx) == FastBoard::EMPTY) {
                 result.emplace_back(outputs[idx], rot_vtx);
             }
@@ -1038,21 +1040,20 @@ void Network::gather_features(const GameState* const state, NNPlanes & planes) {
     }
 }
 
-void Network::get_player_input_moves(const GameState* const state, 
-                                     std::vector<net_t>& input_data, 
-                                     const int rotation, 
-                                     const int color)
+void Network::get_input_moves(const GameState* const state, 
+                              std::vector<net_t>& input_data, 
+                              const int rotation, 
+                              const int color)
 {
+    assert(rotation >= 0 && rotation <= 7);
     const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
 
     for (auto c = size_t{0}; c < moves; c++) {
         auto const board = state->get_past_board(c);
         for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
-            const auto rot_idx = rotate_nn_idx_table[rotation][idx];
-            const auto x = rot_idx % BOARD_SIZE;
-            const auto y = rot_idx / BOARD_SIZE;
-            const auto rot_vtx = board.get_vertex(x, y);
-            input_data.emplace_back(net_t(color == board.get_square(rot_vtx)));
+            const auto rot_vtx = rotate_nn_idx_vtx_table[rotation][idx];
+            const auto color_at_vtx = (color == board.get_square(rot_vtx));
+            input_data.emplace_back(net_t(color_at_vtx));
         }
     }
     for (auto c = moves; c < INPUT_MOVES; c++) {
@@ -1063,49 +1064,48 @@ void Network::get_player_input_moves(const GameState* const state,
 void Network::gather_features_vector(const GameState* const state,
                                      std::vector<net_t>& input_data, 
                                      const int rotation) {
-    assert(rotation >= 0 && rotation <= 7);
-    constexpr auto width = BOARD_SIZE;
-    constexpr auto height = BOARD_SIZE;
     const auto to_move = state->get_to_move();
     const auto blacks_move = to_move == FastBoard::BLACK;
     const auto not_to_move = blacks_move ? FastBoard::WHITE : FastBoard::BLACK;
 
-    get_player_input_moves(state, input_data, rotation, to_move);
-    get_player_input_moves(state, input_data, rotation, not_to_move);
+    get_input_moves(state, input_data, rotation, to_move);
+    get_input_moves(state, input_data, rotation, not_to_move);
 
     input_data.insert(input_data.cend(), BOARD_SQUARES, net_t(blacks_move));
     input_data.insert(input_data.cend(), BOARD_SQUARES, net_t(!blacks_move));
 }
 
-int Network::rotate_nn_idx(const int vertex, int symmetry) {
-    assert(vertex >= 0 && vertex < BOARD_SQUARES);
-    assert(symmetry >= 0 && symmetry < 8);
-    auto x = vertex % BOARD_SIZE;
-    auto y = vertex / BOARD_SIZE;
-    int newx;
-    int newy;
+int Network::get_board_vertex(const GameState& state, 
+                              const int x, const int y, int rotation) {
+    assert(x >= 0 && x < BOARD_SIZE);
+    assert(y >= 0 && y < BOARD_SIZE);
+    assert(rotation >= 0 && rotation <= 7);
 
-    if (symmetry >= 4) {
-        std::swap(x, y);
-        symmetry -= 4;
+    auto newx = x;
+    auto newy = y;
+
+    if (rotation >= 4) {
+        std::swap(newx, newy);
+        rotation -= 4;
     }
 
-    if (symmetry == 0) {
-        newx = x;
-        newy = y;
-    } else if (symmetry == 1) {
-        newx = x;
-        newy = BOARD_SIZE - y - 1;
-    } else if (symmetry == 2) {
-        newx = BOARD_SIZE - x - 1;
-        newy = y;
-    } else {
-        assert(symmetry == 3);
-        newx = BOARD_SIZE - x - 1;
-        newy = BOARD_SIZE - y - 1;
+    switch (rotation) {
+    case 3:
+        newx = BOARD_SIZE - newx - 1;
+        newy = BOARD_SIZE - newy - 1;
+        break;
+    case 2:
+        newx = BOARD_SIZE - newx - 1;
+        break;
+    case 1:
+        newy = BOARD_SIZE - newy - 1;
+        break;
+    default:
+        assert(rotation == 0);
+        break;
     }
 
-    const auto newvtx = (newy * BOARD_SIZE) + newx;
-    assert(newvtx >= 0 && newvtx < BOARD_SQUARES);
+    const auto newvtx = state.board.get_vertex(newx, newy);
     return newvtx;
 }
+
