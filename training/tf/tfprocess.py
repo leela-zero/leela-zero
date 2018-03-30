@@ -20,7 +20,6 @@ import os
 import numpy as np
 import time
 import tensorflow as tf
-from shutil import copyfile
 
 def weight_variable(shape):
     """Xavier initialization"""
@@ -36,12 +35,6 @@ def weight_variable(shape):
 def bias_variable(shape):
     initial = tf.constant(0.0, shape=shape)
     return tf.Variable(initial)
-
-# No point in learning bias weights as they are cancelled
-# out by the BatchNorm layers's mean adjustment.
-def bn_bias_variable(shape):
-    initial = tf.constant(0.0, shape=shape)
-    return tf.Variable(initial, trainable=False)
 
 def conv2d(x, W):
     return tf.nn.conv2d(x, W, data_format='NCHW',
@@ -124,8 +117,6 @@ class TFProcess:
             load=[]
             n = self.swa_count
             for w in self.weights:
-                if isinstance(w, str):
-                    w = tf.get_default_graph().get_tensor_by_name(w)
                 name = w.name.split(':')[0]
                 var = tf.Variable(tf.zeros(shape=w.shape), name='swa/'+name, trainable=False)
                 accum.append(tf.assign(var, var * (n / (n + 1.)) + w * (1. / (n + 1.))))
@@ -187,11 +178,14 @@ class TFProcess:
 
     def replace_weights(self, new_weights):
         for e, weights in enumerate(self.weights):
-            # Keyed batchnorm weights
-            if isinstance(weights, str):
-                work_weights = tf.get_default_graph().get_tensor_by_name(weights)
-                new_weight = tf.constant(new_weights[e])
-                self.session.run(tf.assign(work_weights, new_weight))
+            if weights.name.endswith('/batch_normalization/beta:0'):
+                # Batch norm beta is written as bias before the batch normalization
+                # in the weight file for backwards compatibility reasons.
+                bias = tf.constant(new_weights[e], shape=weights.shape)
+                # Weight file order: bias, means, variances
+                var = tf.constant(new_weights[e + 2], shape=weights.shape)
+                new_beta = tf.divide(bias, tf.sqrt(var + tf.constant(1e-5)))
+                self.session.run(tf.assign(weights, new_beta))
             elif weights.shape.ndims == 4:
                 # Convolution weights need a transpose
                 #
@@ -216,7 +210,7 @@ class TFProcess:
             else:
                 # Biases, batchnorm etc
                 new_weight = tf.constant(new_weights[e], shape=weights.shape)
-                self.session.run(weights.assign(new_weight))
+                self.session.run(tf.assign(weights, new_weight))
         #This should result in identical file to the starting one
         #self.save_leelaz_weights('restored.txt')
 
@@ -309,9 +303,12 @@ class TFProcess:
                 # Newline unless last line (single bias)
                 file.write("\n")
                 work_weights = None
-                # Keyed batchnorm weights
-                if isinstance(weights, str):
-                    work_weights = tf.get_default_graph().get_tensor_by_name(weights)
+                if weights.name.endswith('/batch_normalization/beta:0'):
+                    # Batch norm beta needs to be converted to biases before
+                    # the batch norm for backwards compatibility reasons
+                    var_key = weights.name.replace('beta', 'moving_variance')
+                    var = tf.get_default_graph().get_tensor_by_name(var_key)
+                    work_weights = tf.multiply(weights, tf.sqrt(var + tf.constant(1e-5)))
                 elif weights.shape.ndims == 4:
                     # Convolution weights need a transpose
                     #
@@ -342,52 +339,51 @@ class TFProcess:
     def conv_block(self, inputs, filter_size, input_channels, output_channels):
         W_conv = weight_variable([filter_size, filter_size,
                                   input_channels, output_channels])
-        b_conv = bn_bias_variable([output_channels])
-        self.weights.append(W_conv)
-        self.weights.append(b_conv)
         # The weights are internal to the batchnorm layer, so apply
         # a unique scope that we can store, and use to look them back up
         # later on.
         weight_key = self.get_batchnorm_key()
-        self.weights.append(weight_key + "/batch_normalization/moving_mean:0")
-        self.weights.append(weight_key + "/batch_normalization/moving_variance:0")
 
         with tf.variable_scope(weight_key):
             h_bn = \
                 tf.layers.batch_normalization(
                     conv2d(inputs, W_conv),
                     epsilon=1e-5, axis=1, fused=True,
-                    center=False, scale=False,
+                    center=True, scale=False,
                     training=self.training)
         h_conv = tf.nn.relu(h_bn)
+
+        beta_key = weight_key + "/batch_normalization/beta:0"
+        mean_key = weight_key + "/batch_normalization/moving_mean:0"
+        var_key = weight_key + "/batch_normalization/moving_variance:0"
+
+        beta = tf.get_default_graph().get_tensor_by_name(beta_key)
+        mean = tf.get_default_graph().get_tensor_by_name(mean_key)
+        var = tf.get_default_graph().get_tensor_by_name(var_key)
+
+        self.weights.append(W_conv)
+        self.weights.append(beta)
+        self.weights.append(mean)
+        self.weights.append(var)
+
         return h_conv
 
     def residual_block(self, inputs, channels):
         # First convnet
         orig = tf.identity(inputs)
         W_conv_1 = weight_variable([3, 3, channels, channels])
-        b_conv_1 = bn_bias_variable([channels])
-        self.weights.append(W_conv_1)
-        self.weights.append(b_conv_1)
         weight_key_1 = self.get_batchnorm_key()
-        self.weights.append(weight_key_1 + "/batch_normalization/moving_mean:0")
-        self.weights.append(weight_key_1 + "/batch_normalization/moving_variance:0")
 
         # Second convnet
         W_conv_2 = weight_variable([3, 3, channels, channels])
-        b_conv_2 = bn_bias_variable([channels])
-        self.weights.append(W_conv_2)
-        self.weights.append(b_conv_2)
         weight_key_2 = self.get_batchnorm_key()
-        self.weights.append(weight_key_2 + "/batch_normalization/moving_mean:0")
-        self.weights.append(weight_key_2 + "/batch_normalization/moving_variance:0")
 
         with tf.variable_scope(weight_key_1):
             h_bn1 = \
                 tf.layers.batch_normalization(
                     conv2d(inputs, W_conv_1),
                     epsilon=1e-5, axis=1, fused=True,
-                    center=False, scale=False,
+                    center=True, scale=False,
                     training=self.training)
         h_out_1 = tf.nn.relu(h_bn1)
         with tf.variable_scope(weight_key_2):
@@ -395,9 +391,36 @@ class TFProcess:
                 tf.layers.batch_normalization(
                     conv2d(h_out_1, W_conv_2),
                     epsilon=1e-5, axis=1, fused=True,
-                    center=False, scale=False,
+                    center=True, scale=False,
                     training=self.training)
         h_out_2 = tf.nn.relu(tf.add(h_bn2, orig))
+
+        beta_key_1 = weight_key_1 + "/batch_normalization/beta:0"
+        mean_key_1 = weight_key_1 + "/batch_normalization/moving_mean:0"
+        var_key_1 = weight_key_1 + "/batch_normalization/moving_variance:0"
+
+        beta_1 = tf.get_default_graph().get_tensor_by_name(beta_key_1)
+        mean_1 = tf.get_default_graph().get_tensor_by_name(mean_key_1)
+        var_1 = tf.get_default_graph().get_tensor_by_name(var_key_1)
+
+        beta_key_2 = weight_key_2 + "/batch_normalization/beta:0"
+        mean_key_2 = weight_key_2 + "/batch_normalization/moving_mean:0"
+        var_key_2 = weight_key_2 + "/batch_normalization/moving_variance:0"
+
+        beta_2 = tf.get_default_graph().get_tensor_by_name(beta_key_2)
+        mean_2 = tf.get_default_graph().get_tensor_by_name(mean_key_2)
+        var_2 = tf.get_default_graph().get_tensor_by_name(var_key_2)
+
+        self.weights.append(W_conv_1)
+        self.weights.append(beta_1)
+        self.weights.append(mean_1)
+        self.weights.append(var_1)
+
+        self.weights.append(W_conv_2)
+        self.weights.append(beta_2)
+        self.weights.append(mean_2)
+        self.weights.append(var_2)
+
         return h_out_2
 
     def construct_net(self, planes):
@@ -477,7 +500,7 @@ class TFProcess:
             num = min(num, self.swa_max_n)
             self.swa_count.load(float(num), self.session)
 
-        swa_path = path + "-swa-" + str(num) + "-" + str(steps) + ".txt"
+        swa_path = path + "-swa-" + str(int(num)) + "-" + str(steps) + ".txt"
 
         # save the current network.
         self.snap_save()
