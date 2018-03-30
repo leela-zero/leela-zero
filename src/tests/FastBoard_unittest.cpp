@@ -157,9 +157,8 @@ TEST(FastBoardTest, GetXYFromVertex) {
     EXPECT_EQ(std::make_pair(2, 3), b.get_xy(87));
     EXPECT_EQ(std::make_pair(18, 18), b.get_xy(418));
     
-    //assert(3 > 5); this fails
-    EXPECT_EQ(std::make_pair(6, -1), b.get_xy(7)); // should fail
-    //ASSERT_DEATH({ b.get_xy(7);}, "failed assertion");
+    // Negative test to check assertion
+    ASSERT_DEATH({ b.get_xy(7);}, ".*FastBoard.cpp.* Assertion `y >= 0 && y < m_boardsize' failed.");
 }
 
 TEST(FastBoardTest, GetSquare) {
@@ -220,14 +219,15 @@ TEST(FastBoardTest, SemiFilled9x9Board) {
     EXPECT_EQ(expected,  b.serialize_board());
 }
 
+// Results will make more sense in FullBuard test
 TEST(FastBoardTest, CountRealLibertiesOn9x9) {
-    FastBoard b = create_filled_5x5();
+    FastBoard b = create_filled_9x9();
     
     EXPECT_EQ(2, b.count_pliberties(b.get_vertex(0, 0)));
     EXPECT_EQ(4, b.count_pliberties(b.get_vertex(1, 2)));
-    EXPECT_EQ(3, b.count_pliberties(b.get_vertex(4, 3)));
-    EXPECT_EQ(2, b.count_pliberties(b.get_vertex(4, 4))); 
-    EXPECT_EQ(0, b.count_pliberties(b.get_vertex(5, 4)));
+    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(4, 3)));
+    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(4, 4))); 
+    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(5, 4)));
 }
 
 // Results will make more sense in FullBuard test
