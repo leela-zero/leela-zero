@@ -17,26 +17,27 @@ with open(sys.argv[1], 'r') as f:
         if e == 2:
             channels = len(line.split(' '))
             print("Channels", channels)
+
     blocks = e - (4 + 14)
     if blocks % 8 != 0:
         raise ValueError("Inconsistent number of weights in the file")
     blocks //= 8
     print("Blocks", blocks)
 
-x = [
-    tf.placeholder(tf.float32, [None, 18, 19 * 19]),
-    tf.placeholder(tf.float32, [None, 362]),
-    tf.placeholder(tf.float32, [None, 1])
-    ]
+    x = [
+        tf.placeholder(tf.float32, [None, 18, 19 * 19]),
+        tf.placeholder(tf.float32, [None, 362]),
+        tf.placeholder(tf.float32, [None, 1])
+        ]
 
-tfprocess = TFProcess()
-tfprocess.init_net(x)
-if tfprocess.RESIDUAL_BLOCKS != blocks:
-    raise ValueError("Number of blocks in tensorflow model doesn't match "\
-            "number of blocks in input network")
-if tfprocess.RESIDUAL_FILTERS != channels:
-    raise ValueError("Number of filters in tensorflow model doesn't match "\
-            "number of filters in input network")
-tfprocess.replace_weights(weights)
-path = os.path.join(os.getcwd(), "leelaz-model")
-save_path = tfprocess.saver.save(tfprocess.session, path, global_step=0)
+    tfprocess = TFProcess()
+    tfprocess.init_net(x)
+    if tfprocess.RESIDUAL_BLOCKS != blocks:
+        raise ValueError("Number of blocks in tensorflow model doesn't match "\
+                "number of blocks in input network")
+    if tfprocess.RESIDUAL_FILTERS != channels:
+        raise ValueError("Number of filters in tensorflow model doesn't match "\
+                "number of filters in input network")
+    tfprocess.replace_weights(weights)
+    path = os.path.join(os.getcwd(), "leelaz-model")
+    save_path = tfprocess.saver.save(tfprocess.session, path, global_step=0)

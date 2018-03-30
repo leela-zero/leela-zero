@@ -44,12 +44,13 @@ public:
     ~UCTNode() = default;
 
     bool create_children(std::atomic<int>& nodecount,
-                         GameState& state, float& eval);
+                         GameState& state, float& eval,
+                         float mem_full = 0.0f);
 
     const std::vector<node_ptr_t>& get_children() const;
     void sort_children(int color);
     UCTNode& get_best_root_child(int color);
-    UCTNode* uct_select_child(int color);
+    UCTNode* uct_select_child(int color, bool is_root);
 
     size_t count_nodes() const;
     SMP::Mutex& get_mutex();
@@ -65,8 +66,6 @@ public:
     void set_score(float score);
     float get_eval(int tomove) const;
     float get_net_eval(int tomove) const;
-    double get_blackevals() const;
-    void accumulate_eval(float eval);
     void virtual_loss(void);
     void virtual_loss_undo(void);
     void update(float eval);
@@ -87,7 +86,10 @@ private:
         ACTIVE
     };
     void link_nodelist(std::atomic<int>& nodecount,
-                       std::vector<Network::scored_node>& nodelist);
+                       std::vector<Network::scored_node>& nodelist,
+                       float mem_full);
+    double get_blackevals() const;
+    void accumulate_eval(float eval);
 
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution
