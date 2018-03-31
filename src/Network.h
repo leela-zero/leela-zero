@@ -91,12 +91,9 @@ private:
     static void winograd_sgemm(const std::vector<float>& U,
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
-    static int rotate_nn_idx(const int vertex, int symmetry);
 
     static int get_board_vertex(const GameState& state,
                                 const int x, const int y, int rotation);
-    static void fill_input_plane_pair(
-        const FullBoard& board, BoardPlane& black, BoardPlane& white);
     static void get_input_moves(const GameState* const state,
                                 std::vector<net_t>& input_data,
                                 const int rotation, 

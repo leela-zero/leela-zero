@@ -886,7 +886,6 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
     
-    input_data.reserve(INPUT_CHANNELS * width * height);
     gather_features_vector(state, input_data, rotation);
     
 #ifdef USE_OPENCL
@@ -994,49 +993,17 @@ void Network::show_heatmap(const FastState* const state,
     }
 }
 
-void Network::fill_input_plane_pair(const FullBoard& board,
-                                    BoardPlane& black, BoardPlane& white) {
-    auto idx = 0;
-    for (auto j = 0; j < BOARD_SIZE; j++) {
-        for(auto i = 0; i < BOARD_SIZE; i++) {
-            const auto vtx = board.get_vertex(i, j);
-            const auto color = board.get_square(vtx);
-            if (color != FastBoard::EMPTY) {
-                if (color == FastBoard::BLACK) {
-                    black[idx] = true;
-                } else {
-                    white[idx] = true;
-                }
-            }
-            idx++;
-        }
-    }
-}
-
-void Network::gather_features(const GameState* const state, NNPlanes & planes) {
+void Network::gather_features(const GameState* const state, NNPlanes& planes) {
+    
+    std::vector<net_t>features_vector;
+    gather_features_vector(state, features_vector, 0);
+    
     planes.resize(INPUT_CHANNELS);
-    auto& black_to_move = planes[2 * INPUT_MOVES];
-    auto& white_to_move = planes[2 * INPUT_MOVES + 1];
 
-    const auto to_move = state->get_to_move();
-    const auto blacks_move = to_move == FastBoard::BLACK;
-
-    const auto black_offset = blacks_move ? 0 : INPUT_MOVES;
-    const auto white_offset = blacks_move ? INPUT_MOVES : 0;
-
-    if (blacks_move) {
-        black_to_move.set();
-    } else {
-        white_to_move.set();
-    }
-
-    const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
-    // Go back in time, fill history boards
-    for (auto h = size_t{0}; h < moves; h++) {
-        // collect white, black occupation planes
-        fill_input_plane_pair(state->get_past_board(h),
-                              planes[black_offset + h],
-                              planes[white_offset + h]);
+    for (auto c = size_t{0}; c < INPUT_CHANNELS; c++) {
+        for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
+            planes[c][idx] = bool(features_vector[c * BOARD_SQUARES + idx]);
+        }
     }
 }
 
@@ -1052,8 +1019,8 @@ void Network::get_input_moves(const GameState* const state,
         auto const board = state->get_past_board(c);
         for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
             const auto rot_vtx = rotate_nn_idx_vtx_table[rotation][idx];
-            const auto color_at_vtx = (color == board.get_square(rot_vtx));
-            input_data.emplace_back(net_t(color_at_vtx));
+            const auto color_is_at_vtx = (color == board.get_square(rot_vtx));
+            input_data.emplace_back(net_t(color_is_at_vtx));
         }
     }
     for (auto c = moves; c < INPUT_MOVES; c++) {
@@ -1067,6 +1034,8 @@ void Network::gather_features_vector(const GameState* const state,
     const auto to_move = state->get_to_move();
     const auto blacks_move = to_move == FastBoard::BLACK;
     const auto not_to_move = blacks_move ? FastBoard::WHITE : FastBoard::BLACK;
+
+    input_data.reserve(INPUT_CHANNELS * BOARD_SQUARES);
 
     get_input_moves(state, input_data, rotation, to_move);
     get_input_moves(state, input_data, rotation, not_to_move);
