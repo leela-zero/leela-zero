@@ -529,15 +529,12 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 Network::show_heatmap(&game, vec, false);
             }
         } else {
-            if (cmdstream.fail()) {
-                vec = Network::get_scored_moves(
-                    &game, Network::Ensemble::DIRECT, 0, true);
-            } else if (rotation == "average" || rotation == "avg") {
+            if (!cmdstream.fail() && (rotation == "average" || rotation == "avg")) {
                 vec = Network::get_scored_moves(
                     &game, Network::Ensemble::MULTI_AVG, 8, true);
             } else {
                 vec = Network::get_scored_moves(
-                    &game, Network::Ensemble::DIRECT, std::stoi(rotation), true);
+                    &game, Network::Ensemble::DIRECT, cmdstream.fail() ? 0 : std::stoi(rotation), true);
             }
 
             Network::show_heatmap(&game, vec, false);
