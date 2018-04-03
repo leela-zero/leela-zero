@@ -119,7 +119,8 @@ class ChunkParser:
         for _ in range(workers):
             read, write = mp.Pipe(duplex=False)
             mp.Process(target=self.task,
-                    args=(chunkdatasrc, write)).start()
+                       args=(chunkdatasrc, write),
+                       daemon=True).start()
             self.readers.append(read)
             write.close()
         self.init_structs()
