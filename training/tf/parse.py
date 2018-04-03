@@ -19,34 +19,30 @@
 
 from tfprocess import TFProcess
 from chunkparser import ChunkParser
-import binascii
+import argparse
 import glob
 import gzip
-import itertools
-import math
 import multiprocessing as mp
-import numpy as np
 import os
-import queue
 import random
 import shufflebuffer as sb
-import struct
 import sys
 import tensorflow as tf
 import time
-import threading
 import unittest
 
-# 16 planes, 1 side to move, 1 x 362 probs, 1 winner = 19 lines
-DATA_ITEM_LINES = 16 + 1 + 1 + 1
-
-# Sane values are from 4096 to 64 or so. The maximum depends on the amount
-# of RAM in your GPU and the network size. You need to adjust the learning rate
-# if you change this.
+# Sane values are from 4096 to 64 or so.
+# You need to adjust the learning rate if you change this. Should be
+# a multiple of RAM_BATCH_SIZE. NB: It's rare that large batch sizes are
+# actually required.
 BATCH_SIZE = 512
+# Number of examples in a GPU batch. Higher values are more efficient.
+# The maximum depends on the amount of RAM in your GPU and the network size.
+# Must be smaller than BATCH_SIZE.
+RAM_BATCH_SIZE = 128
 
-# Use a random sample of 1/16th of the input data read. This helps
-# improve the spread of games in the shuffle buffer.
+# Use a random sample input data read. This helps improve the spread of
+# games in the shuffle buffer.
 DOWN_SAMPLE = 16
 
 def get_chunks(data_prefix):
@@ -85,7 +81,8 @@ def benchmark(parser):
         for _ in range(batch):
             next(gen)
         end = time.time()
-        print("{} pos/sec {} secs".format( BATCH_SIZE * batch / (end - start), (end - start)))
+        print("{} pos/sec {} secs".format(
+            RAM_BATCH_SIZE * batch / (end - start), (end - start)))
 
 def benchmark1(t):
     """
@@ -99,73 +96,74 @@ def benchmark1(t):
                 feed_dict={t.training: True, t.handle: t.train_handle})
 
         end = time.time()
-        print("{} pos/sec {} secs".format( BATCH_SIZE * batch / (end - start), (end - start)))
+        print("{} pos/sec {} secs".format(
+            RAM_BATCH_SIZE * batch / (end - start), (end - start)))
 
 
 def split_chunks(chunks, test_ratio):
     splitpoint = 1 + int(len(chunks) * (1.0 - test_ratio))
     return (chunks[:splitpoint], chunks[splitpoint:])
 
-def _parse_function(planes, probs, winner):
-    planes = tf.decode_raw(planes, tf.uint8)
-    probs = tf.decode_raw(probs, tf.float32)
-    winner = tf.decode_raw(winner, tf.float32)
+def main():
+    parser = argparse.ArgumentParser(
+        description='Train network from game data.')
+    parser.add_argument("trainpref",
+        help='Training file prefix', nargs='?', type=str)
+    parser.add_argument("restorepref",
+        help='Training snapshot prefix', nargs='?', type=str)
+    parser.add_argument("--train", '-t',
+        help="Training file prefix", type=str)
+    parser.add_argument("--test", help="Test file prefix", type=str)
+    parser.add_argument("--restore", type=str,
+        help="Prefix of tensorflow snapshot to restore from")
+    parser.add_argument("--logbase", default='leelalogs', type=str,
+        help="Log file prefix (for tensorboard)")
+    parser.add_argument("--sample", default=DOWN_SAMPLE, type=int,
+        help="Rate of data down-sampling to use")
+    args = parser.parse_args()
 
-    planes = tf.to_float(planes)
+    train_data_prefix = args.train or args.trainpref
+    restore_prefix = args.restore or args.restorepref
 
-    planes = tf.reshape(planes, (BATCH_SIZE, 18, 19*19))
-    probs = tf.reshape(probs, (BATCH_SIZE, 19*19 + 1))
-    winner = tf.reshape(winner, (BATCH_SIZE, 1))
+    training = get_chunks(train_data_prefix)
+    if not args.test:
+        # Generate test by taking 10% of the training chunks.
+        random.shuffle(training)
+        training, test = split_chunks(training, 0.1)
+    else:
+        test = get_chunks(args.test)
 
-    return (planes, probs, winner)
-
-def main(args):
-    train_data_prefix = args.pop(0)
-
-    chunks = get_chunks(train_data_prefix)
-    print("Found {0} chunks".format(len(chunks)))
-
-    if not chunks:
+    if not training:
+        print("No data to train on!")
         return
 
-    # The following assumes positions from one game are not
-    # spread through chunks.
-    random.shuffle(chunks)
-    training, test = split_chunks(chunks, 0.1)
     print("Training with {0} chunks, validating on {1} chunks".format(
         len(training), len(test)))
 
     train_parser = ChunkParser(FileDataSrc(training),
-        shuffle_size=1<<19, sample=DOWN_SAMPLE, batch_size=BATCH_SIZE)
-    #benchmark(train_parser)
-    dataset = tf.data.Dataset.from_generator(
-        train_parser.parse, output_types=(tf.string, tf.string, tf.string))
-    dataset = dataset.map(_parse_function)
-    dataset = dataset.prefetch(4)
-    train_iterator = dataset.make_one_shot_iterator()
+                               shuffle_size=1<<20, # 2.2GB of RAM.
+                               sample=args.sample,
+                               batch_size=RAM_BATCH_SIZE).parse()
 
     test_parser = ChunkParser(FileDataSrc(test),
-        shuffle_size=1<<19, sample=DOWN_SAMPLE, batch_size=BATCH_SIZE)
-    dataset = tf.data.Dataset.from_generator(
-        test_parser.parse, output_types=(tf.string, tf.string, tf.string))
-    dataset = dataset.map(_parse_function)
-    dataset = dataset.prefetch(4)
-    test_iterator = dataset.make_one_shot_iterator()
+                              shuffle_size=1<<19,
+                              sample=args.sample,
+                              batch_size=RAM_BATCH_SIZE).parse()
 
     tfprocess = TFProcess()
-    tfprocess.init(dataset, train_iterator, test_iterator)
+    tfprocess.init(RAM_BATCH_SIZE,
+                   logbase=args.logbase,
+                   macrobatch=BATCH_SIZE // RAM_BATCH_SIZE)
 
     #benchmark1(tfprocess)
 
-    if args:
-        restore_file = args.pop(0)
-        tfprocess.restore(restore_file)
-    while True:
-        tfprocess.process(BATCH_SIZE)
+    if restore_prefix:
+        tfprocess.restore(restore_prefix)
+    tfprocess.process(train_parser, test_parser)
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
-    main(sys.argv[1:])
+    main()
     mp.freeze_support()
 
 # Tests.

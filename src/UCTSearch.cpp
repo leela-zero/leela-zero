@@ -211,11 +211,16 @@ void tree_stats_helper(const UCTNode& node, size_t depth,
     if (depth > max_depth) max_depth = depth;
 
     for (const auto& child : node.get_children()) {
-        if (!child->first_visit()) children_count += 1;
-
-        tree_stats_helper(*(child.get()), depth+1,
-                          nodes, non_leaf_nodes, depth_sum,
-                          max_depth, children_count);
+        if (child.get_visits() > 0) {
+            children_count += 1;
+            tree_stats_helper(*(child.get()), depth+1,
+                              nodes, non_leaf_nodes, depth_sum,
+                              max_depth, children_count);
+        } else {
+            nodes += 1;
+            depth_sum += depth+1;
+            if (depth+1 > max_depth) max_depth = depth+1;
+        }
     }
 }
 
@@ -465,6 +470,7 @@ size_t UCTSearch::prune_noncontenders(int elapsed_centis, int time_for_move) {
         if (node->valid()) {
             const auto has_enough_visits =
                 node->get_visits() >= min_required_visits;
+
             node->set_active(has_enough_visits);
             if (!has_enough_visits) {
                 ++pruned_nodes;
@@ -541,6 +547,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
     } else {
         root_eval = m_root->get_eval(color);
     }
+
+    // Now that the new root is installed, there are a lot of special
+    // cases where root node assumes all childs are inflated.
+    m_root->inflate_all_children();
+
     m_root->kill_superkos(m_rootstate);
     if (cfg_noise) {
         // Adjust the Dirichlet noise's alpha constant to the board size
@@ -622,6 +633,11 @@ void UCTSearch::ponder() {
 
     m_run = true;
     int cpus = cfg_num_threads;
+
+    // There are a lot of special cases where the root nods assumes all
+    // childen are inflated.
+    m_root->inflate_all_children();
+
     ThreadGroup tg(thread_pool);
     for (int i = 1; i < cpus; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
