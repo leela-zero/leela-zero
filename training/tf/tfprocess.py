@@ -53,8 +53,9 @@ def conv2d(x, W):
 def optimistic_restore(session, save_file, graph=tf.get_default_graph()):
     reader = tf.train.NewCheckpointReader(save_file)
     saved_shapes = reader.get_variable_to_shape_map()
-    var_names = sorted([(var.name, var.name.split(':')[0]) for var in tf.global_variables()
-                            if var.name.split(':')[0] in saved_shapes])
+    var_names = sorted(
+        [(var.name, var.name.split(':')[0]) for var in tf.global_variables()
+         if var.name.split(':')[0] in saved_shapes])
     restore_vars = []
     for var_name, saved_var_name in var_names:
         curr_var = graph.get_tensor_by_name(var_name)
@@ -79,13 +80,16 @@ class Stats:
         return np.mean(self.s[name] or [0])
     def stddev_mean(self, name):
         # standard deviation in the sample mean.
-        return math.sqrt(np.var(self.s[name] or [0]) / max(0.0001, (len(self.s[name]) - 1)))
+        return math.sqrt(
+            np.var(self.s[name] or [0]) / max(0.0001, (len(self.s[name]) - 1)))
     def str(self):
-        return ', '.join([ "{}={:g}".format(k, np.mean(v or [0])) for k,v in self.s.items()])
+        return ', '.join(
+            ["{}={:g}".format(k, np.mean(v or [0])) for k,v in self.s.items()])
     def clear(self):
         self.s = {}
     def summaries(self, tags):
-        return [ tf.Summary.Value(tag=k, simple_value=self.mean(v)) for k,v in tags.items() ]
+        return [tf.Summary.Value(
+            tag=k, simple_value=self.mean(v)) for k,v in tags.items()]
 
 # Simple timer
 class Timer:
@@ -109,16 +113,19 @@ class TFProcess:
 
         # Output weight file with averaged weights
         self.swa_enabled = True
+
         # Net sampling rate (e.g 2 == every 2nd network).
         self.swa_c = 1
+
         # Take an exponentially weighted moving average over this
         # many networks. Under the SWA assumptions, this will reduce
         # the distance to the optimal value by a factor of 1/sqrt(n)
         self.swa_max_n = 16
+
         # Recalculate SWA weight batchnorm means and variances
         self.swa_recalc_bn = True
 
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
         config = tf.ConfigProto(gpu_options=gpu_options)
         self.session = tf.Session(config=config)
 
@@ -159,15 +166,18 @@ class TFProcess:
             # Count of networks accumulated into SWA
             self.swa_count = tf.Variable(0., name='swa_count', trainable=False)
             # Count of networks to skip
-            self.swa_skip = tf.Variable(self.swa_c, name='swa_skip', trainable=False)
+            self.swa_skip = tf.Variable(self.swa_c, name='swa_skip',
+                trainable=False)
             # Build the SWA variables and accumulators
             accum=[]
             load=[]
             n = self.swa_count
             for w in self.weights:
                 name = w.name.split(':')[0]
-                var = tf.Variable(tf.zeros(shape=w.shape), name='swa/'+name, trainable=False)
-                accum.append(tf.assign(var, var * (n / (n + 1.)) + w * (1. / (n + 1.))))
+                var = tf.Variable(
+                    tf.zeros(shape=w.shape), name='swa/'+name, trainable=False)
+                accum.append(
+                    tf.assign(var, var * (n / (n + 1.)) + w * (1. / (n + 1.))))
                 load.append(tf.assign(w, var))
             with tf.control_dependencies(accum):
                 self.swa_accum_op = tf.assign_add(n, 1.)
@@ -224,7 +234,8 @@ class TFProcess:
 
         zero_ops = []
         for g in clear_var:
-            zero_ops.append(tf.assign(g, tf.zeros(shape=g.shape, dtype=g.dtype)))
+            zero_ops.append(
+                tf.assign(g, tf.zeros(shape=g.shape, dtype=g.dtype)))
         # Op to clear accumulated gradients
         self.clear_op = tf.group(*zero_ops)
 
@@ -238,9 +249,11 @@ class TFProcess:
 
         # Summary part
         self.test_writer = tf.summary.FileWriter(
-            os.path.join(os.getcwd(), self.logbase + "/test"), self.session.graph)
+            os.path.join(os.getcwd(),
+                         self.logbase + "/test"), self.session.graph)
         self.train_writer = tf.summary.FileWriter(
-            os.path.join(os.getcwd(), self.logbase + "/train"), self.session.graph)
+            os.path.join(os.getcwd(),
+                         self.logbase + "/train"), self.session.graph)
 
         # Build checkpoint saver
         self.saver = tf.train.Saver()
@@ -261,8 +274,9 @@ class TFProcess:
             if isinstance(weights, str):
                 weights = tf.get_default_graph().get_tensor_by_name(weights)
             if weights.name.endswith('/batch_normalization/beta:0'):
-                # Batch norm beta is written as bias before the batch normalization
-                # in the weight file for backwards compatibility reasons.
+                # Batch norm beta is written as bias before the batch
+                # normalization in the weight file for backwards
+                # compatibility reasons.
                 bias = tf.constant(new_weights[e], shape=weights.shape)
                 # Weight file order: bias, means, variances
                 var = tf.constant(new_weights[e + 2], shape=weights.shape)
@@ -307,7 +321,9 @@ class TFProcess:
         if training:
             ops += [self.grad_op, self.step_op],
         r = self.session.run(ops, feed_dict={self.training: training,
-                           self.planes: batch[0], self.probs: batch[1], self.winner: batch[2]})
+                           self.planes: batch[0],
+                           self.probs: batch[1],
+                           self.winner: batch[2]})
         # Google's paper scales mse by 1/4 to a [0,1] range, so we do the same here
         return {'policy': r[0], 'mse': r[1]/4., 'reg': r[2],
                 'accuracy': r[3], 'total': r[0]+r[1]+r[2] }
@@ -334,8 +350,10 @@ class TFProcess:
                 print("step {}, policy={:g} mse={:g} reg={:g} total={:g} ({:g} pos/s)".format(
                     steps, stats.mean('policy'), stats.mean('mse'), stats.mean('reg'),
                     stats.mean('total'), speed))
-                summaries = stats.summaries({'Policy Loss': 'policy', 'MSE Loss': 'mse'})
-                self.train_writer.add_summary(tf.Summary(value=summaries), steps)
+                summaries = stats.summaries({'Policy Loss': 'policy',
+                                             'MSE Loss': 'mse'})
+                self.train_writer.add_summary(
+                    tf.Summary(value=summaries), steps)
                 stats.clear()
 
             if steps % 8000 == 0:
@@ -351,21 +369,25 @@ class TFProcess:
                 self.test_writer.add_summary(tf.Summary(value=summaries), steps)
                 print("step {}, policy={:g} training accuracy={:g}%, mse={:g}".\
                     format(steps, test_stats.mean('policy'),
-                        test_stats.mean('accuracy')*100.0, test_stats.mean('mse')))
+                        test_stats.mean('accuracy')*100.0,
+                        test_stats.mean('mse')))
 
                 # Write out current model and checkpoint
                 path = os.path.join(os.getcwd(), "leelaz-model")
-                save_path = self.saver.save(self.session, path, global_step=steps)
+                save_path = self.saver.save(self.session, path,
+                                            global_step=steps)
                 print("Model saved in file: {}".format(save_path))
                 leela_path = path + "-" + str(steps) + ".txt"
                 self.save_leelaz_weights(leela_path)
                 print("Leela weights saved to {}".format(leela_path))
-                # Things have likely changed enough that stats are no longer valid.
+                # Things have likely changed enough
+                # that stats are no longer valid.
 
                 if self.swa_enabled:
                     self.save_swa_network(steps, path, leela_path, train_data)
 
-                save_path = self.saver.save(self.session, path, global_step=steps)
+                save_path = self.saver.save(self.session, path,
+                                            global_step=steps)
                 print("Model saved in file: {}".format(save_path))
 
     def save_leelaz_weights(self, filename):
@@ -381,7 +403,8 @@ class TFProcess:
                     # the batch norm for backwards compatibility reasons
                     var_key = weights.name.replace('beta', 'moving_variance')
                     var = tf.get_default_graph().get_tensor_by_name(var_key)
-                    work_weights = tf.multiply(weights, tf.sqrt(var + tf.constant(1e-5)))
+                    work_weights = tf.multiply(weights,
+                                               tf.sqrt(var + tf.constant(1e-5)))
                 elif weights.shape.ndims == 4:
                     # Convolution weights need a transpose
                     #
@@ -413,7 +436,6 @@ class TFProcess:
         # The weights are internal to the batchnorm layer, so apply
         # a unique scope that we can store, and use to look them back up
         # later on.
-
         scope = self.get_batchnorm_key()
         with tf.variable_scope(scope):
             net = tf.layers.batch_normalization(
@@ -563,7 +585,6 @@ class TFProcess:
 
         print("Wrote averaged network to {}".format(swa_path))
 
-#
 # Unit tests for TFProcess.
 def gen_block(size, f_in, f_out):
     return [ [1.1] * size * size * f_in * f_out, # conv
@@ -578,8 +599,10 @@ class TFProcessTest(unittest.TestCase):
         # use known data to test replace_weights() works.
         data = gen_block(3, 18, tfprocess.RESIDUAL_FILTERS) # input conv
         for _ in range(tfprocess.RESIDUAL_BLOCKS):
-            data.extend(gen_block(3, tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
-            data.extend(gen_block(3, tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
+            data.extend(gen_block(3,
+                tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
+            data.extend(gen_block(3,
+                tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
         # policy
         data.extend(gen_block(1, tfprocess.RESIDUAL_FILTERS, 2))
         data.append([0.4] * 2*19*19 * (19*19+1))

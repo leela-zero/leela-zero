@@ -81,7 +81,8 @@ def benchmark(parser):
         for _ in range(batch):
             next(gen)
         end = time.time()
-        print("{} pos/sec {} secs".format( RAM_BATCH_SIZE * batch / (end - start), (end - start)))
+        print("{} pos/sec {} secs".format(
+            RAM_BATCH_SIZE * batch / (end - start), (end - start)))
 
 def benchmark1(t):
     """
@@ -95,7 +96,8 @@ def benchmark1(t):
                 feed_dict={t.training: True, t.handle: t.train_handle})
 
         end = time.time()
-        print("{} pos/sec {} secs".format( RAM_BATCH_SIZE * batch / (end - start), (end - start)))
+        print("{} pos/sec {} secs".format(
+            RAM_BATCH_SIZE * batch / (end - start), (end - start)))
 
 
 def split_chunks(chunks, test_ratio):
@@ -103,14 +105,21 @@ def split_chunks(chunks, test_ratio):
     return (chunks[:splitpoint], chunks[splitpoint:])
 
 def main():
-    parser = argparse.ArgumentParser(description='Train network from game data.')
-    parser.add_argument("trainpref", help='Training file prefix', nargs='?', type=str)
-    parser.add_argument("restorepref", help='Training snapshot prefix', nargs='?', type=str)
-    parser.add_argument("--train", '-t', help="Training file prefix", type=str)
+    parser = argparse.ArgumentParser(
+        description='Train network from game data.')
+    parser.add_argument("trainpref",
+        help='Training file prefix', nargs='?', type=str)
+    parser.add_argument("restorepref",
+        help='Training snapshot prefix', nargs='?', type=str)
+    parser.add_argument("--train", '-t',
+        help="Training file prefix", type=str)
     parser.add_argument("--test", help="Test file prefix", type=str)
-    parser.add_argument("--restore", type=str, help="Prefix of tensorflow snapshot to restore from")
-    parser.add_argument("--logbase", default='leelalogs', type=str, help="Log file prefix (for tensorboard)")
-    parser.add_argument("--sample", default=DOWN_SAMPLE, type=int, help="Rate of data down-sampling to use")
+    parser.add_argument("--restore", type=str,
+        help="Prefix of tensorflow snapshot to restore from")
+    parser.add_argument("--logbase", default='leelalogs', type=str,
+        help="Log file prefix (for tensorboard)")
+    parser.add_argument("--sample", default=DOWN_SAMPLE, type=int,
+        help="Rate of data down-sampling to use")
     args = parser.parse_args()
 
     train_data_prefix = args.train or args.trainpref
