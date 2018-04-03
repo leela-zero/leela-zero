@@ -408,8 +408,12 @@ std::string FastBoard::move_to_text(int move) const {
     column--;
     row--;
 
-    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (column >= 0 && column < m_boardsize));
+    assert(move == FastBoard::PASS
+           || move == FastBoard::RESIGN
+           || (row >= 0 && row < m_boardsize));
+    assert(move == FastBoard::PASS
+           || move == FastBoard::RESIGN
+           || (column >= 0 && column < m_boardsize));
 
     if (move >= 0 && move <= m_maxsq) {
         result << static_cast<char>(column < 8 ? 'A' + column : 'A' + column + 1);
@@ -434,8 +438,12 @@ std::string FastBoard::move_to_text_sgf(int move) const {
     column--;
     row--;
 
-    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS || move == FastBoard::RESIGN || (column >= 0 && column < m_boardsize));
+    assert(move == FastBoard::PASS
+           || move == FastBoard::RESIGN
+           || (row >= 0 && row < m_boardsize));
+    assert(move == FastBoard::PASS
+           || move == FastBoard::RESIGN
+           || (column >= 0 && column < m_boardsize));
 
     // SGF inverts rows
     row = m_boardsize - row - 1;

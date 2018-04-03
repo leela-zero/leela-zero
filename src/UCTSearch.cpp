@@ -548,9 +548,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
         root_eval = m_root->get_eval(color);
     }
 
-    // Now that the new root is installed...
-    // There are a lot of special cases where root nodes assumes all childs are inflated.
-    // it won't be a waste of memory by so much so go ahead and inflate it.
+    // Now that the new root is installed, there are a lot of special
+    // cases where root node assumes all childs are inflated.
     m_root->inflate_all_children();
 
     m_root->kill_superkos(m_rootstate);
@@ -635,8 +634,8 @@ void UCTSearch::ponder() {
     m_run = true;
     int cpus = cfg_num_threads;
 
-    // There are a lot of special cases where root nodes assumes all childs are .
-    // it won't be a waste of memory by so much so go ahead and inflate it.
+    // There are a lot of special cases where the root nods assumes all
+    // childen are inflated.
     m_root->inflate_all_children();
 
     ThreadGroup tg(thread_pool);

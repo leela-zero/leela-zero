@@ -147,7 +147,8 @@ std::unique_ptr<UCTNode> UCTNode::find_child(const int move) {
     if (m_has_children) {
         for (auto& child : m_children) {
             if (child.get_move() == move) {
-                child.inflate(); // no guarantee that this is a non-inflated node
+                 // no guarantee that this is a non-inflated node
+                child.inflate();
                 return std::unique_ptr<UCTNode>(child.release());
             }
         }
