@@ -123,7 +123,6 @@ const std::string GTP::s_commands[] = {
     "quit",
     "known_command",
     "list_commands",
-    "quit",
     "boardsize",
     "clear_board",
     "komi",
