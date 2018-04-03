@@ -862,18 +862,20 @@ Network::Netresult Network::get_scored_moves(
         result = get_scored_moves_internal(state, planes, rotation);
     } else if (ensemble == MULTI_AVG && rotation > 1) {
         // MULTI_AVG rotation is the # of random rotations to provide
-        assert(rotation >= 1 && rotation <= 8);
+        int num_rotations = rotation;
+
+        assert(num_rotations >= 1 && num_rotations <= 8);
         std::vector<int> r_list{0, 1, 2, 3, 4, 5, 6, 7};
         // Need to account for extra 2 in m_squaresize.
         std::vector<float> policy((BOARD_SIZE + 2) * (BOARD_SIZE + 1));
 
-        if (rotation < 8) {
+        if (num_rotations < 8) {
             std::shuffle(r_list.begin(), r_list.end(), Random::get_Rng());
         }
 
         result = get_scored_moves_internal(state, planes, r_list[0]);
 
-        for (int r = 1; r < rotation; ++r) {
+        for (int r = 1; r < num_rotations; ++r) {
             Netresult tmpresult = get_scored_moves_internal(state, planes, r_list[r]);
             result.second += tmpresult.second;
 
@@ -885,10 +887,10 @@ Network::Netresult Network::get_scored_moves(
 
         for (size_t c = 0; c < result.first.size(); c++) {
             result.first[c].first += policy[result.first[c].second + 1];
-            result.first[c].first /= rotation;
+            result.first[c].first /= num_rotations;
         }
 
-        result.second /= rotation;
+        result.second /= num_rotations;
     } else {
         assert((ensemble == RANDOM_ROTATION && rotation == -1) ||
                (ensemble == MULTI_AVG && rotation == 1));
