@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,91 +30,7 @@
 #include "GameState.h"
 #include "Network.h"
 #include "SMP.h"
-
-class UCTNode;
-
-// 'lazy-initializable' version of std::unique_ptr<UCTNode>.
-// When a UCTNodePointer is constructed, the constructor arguments
-// are stored instead of constructing the actual UCTNode instance.
-// Later when the UCTNode is needed, the external code calls inflate()
-// which actually constructs the UCTNode. Basically, this is a 'tagged union'
-// of:
-//  - std::unique_ptr<UCTNode> pointer;
-//  - std::pair<float, std::int16_t> args;
-
-// WARNING : inflate() is not thread-safe and hence has to be protected
-// by an external lock.
-
-class UCTNodePointer {
-private:
-    // the raw storage used here.
-    // if bit 0 is 0, m_data is the actual pointer.
-    // if bit 0 is 1, bit [31:16] is the vertex value, bit [63:32] is the score.
-    // (I really wanted to use C-style bit fields and unions, but
-    //  those aren't portable)
-    mutable uint64_t m_data = 1;
-
-
-    UCTNode * read_ptr() const {
-        assert(is_inflated());
-        return reinterpret_cast<UCTNode*>(m_data);
-    }
-
-    std::int16_t read_vertex() const {
-        assert(!is_inflated());
-        return static_cast<std::int16_t>(m_data >> 16);
-    }
-    float read_score() const {
-        static_assert(sizeof(float) == 4,
-            "This code assumes floats are 32-bit");
-        assert(!is_inflated());
-
-        auto x = static_cast<std::uint32_t>(m_data >> 32);
-        float ret;
-        std::memcpy(&ret, &x, sizeof(ret));
-        return ret;
-    }
-public:
-    ~UCTNodePointer();
-    UCTNodePointer(UCTNodePointer&& n);
-    UCTNodePointer(std::int16_t vertex, float score);
-    UCTNodePointer(const UCTNodePointer&) = delete;
-
-    bool is_inflated() const {
-        return (m_data & 1ULL) == 0;
-    }
-
-    // methods from std::unique_ptr<UCTNode>
-    typename std::add_lvalue_reference<UCTNode>::type operator*() const{
-        return *read_ptr();
-    }
-    UCTNode* operator->() const {
-        return read_ptr();
-    }
-    UCTNode* get() const {
-        return read_ptr();
-    }
-    UCTNodePointer& operator=(UCTNodePointer&& n);
-    UCTNode * release() {
-        auto ret = read_ptr();
-        m_data = 1;
-        return ret;
-    }
-
-    // construct UCTNode instance from the vertex/score pair
-    void inflate() const;
-
-    // proxy of UCTNode methods which can be called without
-    // constructing UCTNode
-    bool valid() const;
-    int get_visits() const;
-    float get_score() const;
-    bool active() const;
-    int get_move() const;
-    // this can only be called if it is an inflated pointer
-    float get_eval(int tomove) const;
-};
-
+#include "UCTNodePointer.h"
 
 class UCTNode {
 public:
@@ -201,69 +117,4 @@ private:
     std::vector<UCTNodePointer> m_children;
 };
 
-
-inline UCTNodePointer::~UCTNodePointer() {
-    if (is_inflated()) {
-        delete read_ptr();
-    }
-}
-
-inline UCTNodePointer::UCTNodePointer(UCTNodePointer&& n) {
-    if (is_inflated()) {
-        delete read_ptr();
-    }
-    m_data = n.m_data;
-    n.m_data = 1; // non-inflated garbage
-}
-
-inline UCTNodePointer::UCTNodePointer(std::int16_t vertex, float score) {
-    std::uint32_t i_score;
-    auto i_vertex = static_cast<std::uint16_t>(vertex);
-    std::memcpy(&i_score, &score, sizeof(i_score));
-
-    m_data =  (static_cast<std::uint64_t>(i_score) << 32)
-            | (static_cast<std::uint64_t>(i_vertex) << 16) | 1ULL;
-}
-
-inline UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
-    if ( is_inflated() ) {
-        delete read_ptr();
-    }
-    m_data = n.m_data;
-    n.m_data = 1;
-
-    return *this;
-}
-
-inline void UCTNodePointer::inflate() const {
-    if (is_inflated()) return;
-    m_data = reinterpret_cast<std::uint64_t>(
-        new UCTNode(read_vertex(), read_score()));
-}
-
-inline bool UCTNodePointer::valid() const {
-    if (is_inflated()) return read_ptr()->valid();
-    return true;
-}
-inline int UCTNodePointer::get_visits() const {
-    if (is_inflated()) return read_ptr()->get_visits();
-    return 0;
-}
-inline float UCTNodePointer::get_score() const {
-    if (is_inflated()) return read_ptr()->get_score();
-    return read_score();
-}
-inline bool UCTNodePointer::active() const {
-    if (is_inflated()) return read_ptr()->active();
-    return true;
-}
-inline float UCTNodePointer::get_eval(int tomove) const {
-    // this can only be called if it is an inflated pointer
-    assert(is_inflated());
-    return read_ptr()->get_eval(tomove);
-}
-inline int UCTNodePointer::get_move() const {
-    if (is_inflated()) return read_ptr()->get_move();
-    return read_vertex();
-}
 #endif
