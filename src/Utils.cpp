@@ -78,9 +78,10 @@ bool Utils::input_pending(void) {
 static std::mutex IOmutex;
 
 void Utils::myprintf(const char *fmt, ...) {
-    if (cfg_quiet) {
+    if (cfg_verbose == 0) {
         return;
     }
+
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
