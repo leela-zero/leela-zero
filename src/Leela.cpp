@@ -80,8 +80,13 @@ static void parse_commandline(int argc, char *argv[]) {
         ("dumbpass,d", "Don't use heuristics for smarter passing.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
+        ("verbose", po::value<int>(),
+                    "Verbosity of diagnostic output (0 to 3).")
         ("quiet,q", "Disable all diagnostic output.")
         ("noponder", "Disable thinking on opponent's time.")
+        ("ponder", po::value<int>()->default_value(cfg_ponder),
+                   "Augment playouts and visits by the ponder factor.\n"
+                   "-1 for no pondering, 0 for infinite pondering.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
 #ifdef USE_OPENCL
@@ -134,12 +139,20 @@ static void parse_commandline(int argc, char *argv[]) {
         exit(ev);
     }
 
+    if (vm.count("verbose")) {
+        cfg_verbose = vm["verbose"].as<int>();
+        if (vm.count("quiet")) {
+            printf("Nonsensical options: Can't be verbose and quiet at the same time.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
     if (vm.count("quiet")) {
-        cfg_quiet = true;
+        cfg_verbose = 0;
     }
 
     if (vm.count("benchmark")) {
-        cfg_quiet = true;  // Set this early to avoid unnecessary output.
+        cfg_verbose = 0;  // Set this early to avoid unnecessary output.
     }
 
 #ifdef USE_TUNER
@@ -179,7 +192,8 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_num_threads = num_threads;
         }
     }
-    myprintf("Using %d thread(s).\n", cfg_num_threads);
+
+    if (cfg_verbose >= 2) myprintf("Using %d thread(s).\n", cfg_num_threads);
 
     if (vm.count("seed")) {
         cfg_rng_seed = vm["seed"].as<std::uint64_t>();
@@ -188,10 +202,18 @@ static void parse_commandline(int argc, char *argv[]) {
             myprintf("Games will likely not be reproducible.\n");
         }
     }
-    myprintf("RNG seed: %llu\n", cfg_rng_seed);
+    if (cfg_verbose >= 2) myprintf("RNG seed: %llu\n", cfg_rng_seed);
 
     if (vm.count("noponder")) {
-        cfg_allow_pondering = false;
+        cfg_ponder = -1;
+    }
+
+    if (vm.count("ponder")) {
+        cfg_ponder = vm["ponder"].as<int>();
+        if (vm.count("noponder")) {
+            printf("Nonsensical options: Can't ponder and not ponder at the same time.\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (vm.count("noise")) {
@@ -204,7 +226,7 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("playouts")) {
         cfg_max_playouts = vm["playouts"].as<int>();
-        if (!vm.count("noponder")) {
+        if (cfg_ponder != -1) {
             printf("Nonsensical options: Playouts are restricted but "
                    "thinking on the opponent's time is still allowed. "
                    "Add --noponder if you want a weakened engine.\n");
@@ -266,7 +288,7 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("benchmark")) {
         // These must be set later to override default arguments.
-        cfg_allow_pondering = false;
+        cfg_ponder = -1;
         cfg_benchmark = true;
         cfg_noise = false;  // Not much of a benchmark if random was used.
         cfg_random_cnt = 0;
@@ -348,7 +370,7 @@ int main (int argc, char *argv[]) {
     maingame->init_game(BOARD_SIZE, komi);
 
     if (cfg_benchmark) {
-        cfg_quiet = false;
+        cfg_verbose = 3;
         benchmark(*maingame);
         return 0;
     }

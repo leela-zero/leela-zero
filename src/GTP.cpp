@@ -46,7 +46,7 @@ using namespace Utils;
 
 // Configuration flags
 bool cfg_gtp_mode;
-bool cfg_allow_pondering;
+int cfg_ponder;
 int cfg_num_threads;
 int cfg_max_threads;
 int cfg_max_playouts;
@@ -69,13 +69,13 @@ float cfg_fpu_reduction;
 std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
-bool cfg_quiet;
+int cfg_verbose;
 std::string cfg_options_str;
 bool cfg_benchmark;
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
-    cfg_allow_pondering = true;
+    cfg_ponder = 1;
     cfg_max_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
 #ifdef USE_OPENCL
     // If we will be GPU limited, using many threads won't help much.
@@ -83,8 +83,8 @@ void GTP::setup_default_parameters() {
 #else
     cfg_num_threads = cfg_max_threads;
 #endif
-    cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
-    cfg_max_visits = std::numeric_limits<decltype(cfg_max_visits)>::max();
+    cfg_max_playouts = 0;
+    cfg_max_visits = 0;
     cfg_timemanage = TimeManagement::AUTO;
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL
@@ -101,7 +101,7 @@ void GTP::setup_default_parameters() {
     cfg_random_cnt = 0;
     cfg_dumbpass = false;
     cfg_logfile_handle = nullptr;
-    cfg_quiet = false;
+    cfg_verbose = 3;
     cfg_benchmark = false;
 
     // C++11 doesn't guarantee *anything* about how random this is,
@@ -367,7 +367,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
             }
-            if (cfg_allow_pondering) {
+            if (cfg_ponder != -1) {
                 // now start pondering
                 if (!game.has_resigned()) {
                     search->ponder();
@@ -403,7 +403,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
             }
-            if (cfg_allow_pondering) {
+            if (cfg_ponder != -1) {
                 // now start pondering
                 if (!game.has_resigned()) {
                     search->ponder();
@@ -485,7 +485,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
             gtp_printf(id, "");
 
-            if (cfg_allow_pondering) {
+            if (cfg_ponder != -1) {
                 // KGS sends this after our move
                 // now start pondering
                 if (!game.has_resigned()) {
