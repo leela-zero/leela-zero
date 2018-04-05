@@ -192,9 +192,9 @@ std::vector<float> Network::zeropad_U(const std::vector<float>& U,
 
 std::pair<int, int> Network::load_v1_network(std::ifstream& wtfile) {
     // Count size of the network
-    myprintf("Detecting residual layers...");
+    if (cfg_verbose >= 2) myprintf("Detecting residual layers...");
     // We are version 1
-    myprintf("v%d...", 1);
+    if (cfg_verbose >= 2) myprintf("v%d...", 1);
     // First line was the version number
     auto linecount = size_t{1};
     auto channels = 0;
@@ -207,7 +207,7 @@ std::pair<int, int> Network::load_v1_network(std::ifstream& wtfile) {
         if (linecount == 2) {
             auto count = std::distance(std::istream_iterator<std::string>(iss),
                                        std::istream_iterator<std::string>());
-            myprintf("%d channels...", count);
+            if (cfg_verbose >= 2) myprintf("%d channels...", count);
             channels = count;
         }
         linecount++;
@@ -220,7 +220,7 @@ std::pair<int, int> Network::load_v1_network(std::ifstream& wtfile) {
         return {0, 0};
     }
     residual_blocks /= 8;
-    myprintf("%d blocks.\n", residual_blocks);
+    if (cfg_verbose >= 2) myprintf("%d blocks.\n", residual_blocks);
 
     // Re-read file and process
     wtfile.clear();
@@ -372,7 +372,7 @@ void Network::initialize() {
     }
 
 #ifdef USE_OPENCL
-    myprintf("Initializing OpenCL.\n");
+    if (cfg_verbose >= 2) myprintf("Initializing OpenCL.\n");
     opencl.initialize(channels);
 
     for(const auto & opencl_net : opencl.get_networks()) {
@@ -424,7 +424,7 @@ void Network::initialize() {
 #ifndef __APPLE__
 #ifdef USE_OPENBLAS
     openblas_set_num_threads(1);
-    myprintf("BLAS Core: %s\n", openblas_get_corename());
+    if (cfg_verbose >= 2) myprintf("BLAS Core: %s\n", openblas_get_corename());
 #endif
 #ifdef USE_MKL
     //mkl_set_threading_layer(MKL_THREADING_SEQUENTIAL);

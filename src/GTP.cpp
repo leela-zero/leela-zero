@@ -69,7 +69,7 @@ float cfg_fpu_reduction;
 std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
-bool cfg_quiet;
+int cfg_verbose;
 std::string cfg_options_str;
 bool cfg_benchmark;
 
@@ -101,7 +101,7 @@ void GTP::setup_default_parameters() {
     cfg_random_cnt = 0;
     cfg_dumbpass = false;
     cfg_logfile_handle = nullptr;
-    cfg_quiet = false;
+    cfg_verbose = 3;
     cfg_benchmark = false;
 
     // C++11 doesn't guarantee *anything* about how random this is,
