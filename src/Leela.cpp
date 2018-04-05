@@ -80,7 +80,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("dumbpass,d", "Don't use heuristics for smarter passing.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
-        ("verbose", po::value<int>()->default_value(cfg_verbose),
+        ("verbose", po::value<int>(),
                     "Verbosity of diagnostic output (0 to 3).")
         ("quiet,q", "Disable all diagnostic output.")
         ("noponder", "Disable thinking on opponent's time.")
