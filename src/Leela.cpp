@@ -189,7 +189,8 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_num_threads = num_threads;
         }
     }
-    myprintf("Using %d thread(s).\n", cfg_num_threads);
+
+    if (cfg_verbose >= 2) myprintf("Using %d thread(s).\n", cfg_num_threads);
 
     if (vm.count("seed")) {
         cfg_rng_seed = vm["seed"].as<std::uint64_t>();
@@ -198,7 +199,7 @@ static void parse_commandline(int argc, char *argv[]) {
             myprintf("Games will likely not be reproducible.\n");
         }
     }
-    myprintf("RNG seed: %llu\n", cfg_rng_seed);
+    if (cfg_verbose >= 2) myprintf("RNG seed: %llu\n", cfg_rng_seed);
 
     if (vm.count("noponder")) {
         cfg_allow_pondering = false;

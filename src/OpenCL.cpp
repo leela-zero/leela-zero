@@ -941,13 +941,13 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
     auto found_device = false;
     auto id = 0;
 
-    if (!silent) {
+    if (cfg_verbose >= 2 && !silent) {
         myprintf("Detected %d OpenCL platforms.\n", platforms.size());
     }
 
     for (const auto &p : platforms) {
         std::string platvers = p.getInfo<CL_PLATFORM_VERSION>();
-        if (!silent) {
+        if (cfg_verbose >= 3 && !silent) {
             std::string platprof = p.getInfo<CL_PLATFORM_PROFILE>();
             std::string platname = p.getInfo<CL_PLATFORM_NAME>();
             std::string platvend = p.getInfo<CL_PLATFORM_VENDOR>();
@@ -970,7 +970,7 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
             devices.clear();
         }
         for (auto& d : devices) {
-            if (!silent) {
+            if (cfg_verbose >= 3 && !silent) {
                 myprintf("Device ID:     %d\n", id);
                 myprintf("Device name:   %s\n",
                          trim(d.getInfo<CL_DEVICE_NAME>()).c_str());
@@ -995,7 +995,7 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
             this_score +=  500 * boost::icontains(this_vendor, "intel");
             this_score +=  100 * (d.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU);
             this_score +=  opencl_version * 10;
-            if (!silent) {
+            if (cfg_verbose >= 3 && !silent) {
                 myprintf("Device score:  %d\n", this_score);
             }
 
@@ -1022,11 +1022,13 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
         throw std::runtime_error("No suitable OpenCL device found.");
     }
 
-    myprintf("Selected platform: %s\n",
-        best_platform.getInfo<CL_PLATFORM_NAME>().c_str());
-    myprintf("Selected device: %s\n",
-        trim(best_device.getInfo<CL_DEVICE_NAME>()).c_str());
-    myprintf("with OpenCL %2.1f capability.\n", best_version);
+    if (cfg_verbose >= 2) {
+        myprintf("Selected platform: %s\n",
+            best_platform.getInfo<CL_PLATFORM_NAME>().c_str());
+        myprintf("Selected device: %s\n",
+            trim(best_device.getInfo<CL_DEVICE_NAME>()).c_str());
+        myprintf("with OpenCL %2.1f capability.\n", best_version);
+    }
 
     cl::Context context;
     try {
@@ -1080,17 +1082,19 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
     m_wavefront_size =
         opencl_thread_data.m_sgemm_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
             best_device);
-    myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
+    if (cfg_verbose >= 3) myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
 
     m_max_workgroup_size = best_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
     m_max_workgroup_dims = best_device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
 
-    myprintf("Max workgroup size: %d\n", m_max_workgroup_size);
-    myprintf("Max workgroup dimensions: ");
-    for (auto d : m_max_workgroup_dims) {
-        myprintf("%d ", d);
+    if (cfg_verbose >= 3) {
+        myprintf("Max workgroup size: %d\n", m_max_workgroup_size);
+        myprintf("Max workgroup dimensions: ");
+        for (auto d : m_max_workgroup_dims) {
+            myprintf("%d ", d);
+        }
+        myprintf("\n");
     }
-    myprintf("\n");
 
     m_init_ok = true;
 }

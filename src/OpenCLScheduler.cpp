@@ -28,7 +28,7 @@ OpenCLScheduler opencl;
 void OpenCLScheduler::initialize(const int channels) {
     // multi-gpu?
     if (!cfg_gpus.empty()) {
-        auto silent{false};
+        auto silent{cfg_verbose <= 1};
         for(auto gpu : cfg_gpus) {
             auto opencl = std::make_unique<OpenCL>();
             auto net = std::make_unique<OpenCL_Network>(*opencl);
@@ -41,7 +41,7 @@ void OpenCLScheduler::initialize(const int channels) {
             opencl_thread_data = ThreadData();
 
             // starting next GPU, let's not dump full list of GPUs
-            silent = true;
+            silent = cfg_verbose >= 2;
         }
 
         for(size_t gnum = 0; gnum < m_networks.size(); gnum++) {

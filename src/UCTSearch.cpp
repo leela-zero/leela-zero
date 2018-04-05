@@ -634,6 +634,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
 void UCTSearch::ponder() {
     update_root();
 
+    // set up timing info
+    Time start;
+
     m_run = true;
     int cpus = cfg_num_threads;
 
@@ -646,12 +649,26 @@ void UCTSearch::ponder() {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
     auto keeprunning = true;
+    int last_update = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = play_simulation(*currstate, m_root.get());
         if (result.valid()) {
             increment_playouts();
         }
+
+        if (cfg_verbose >= 3) {
+            Time elapsed;
+            int elapsed_centis = Time::timediff_centis(start, elapsed);
+
+            // output some stats every few seconds
+            // check if we should still search
+            if (elapsed_centis - last_update > 250) {
+                last_update = elapsed_centis;
+                dump_analysis(static_cast<int>(m_playouts));
+            }
+        }
+
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(0, 1);
     } while(!Utils::input_pending() && keeprunning);
