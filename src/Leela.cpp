@@ -80,6 +80,8 @@ static void parse_commandline(int argc, char *argv[]) {
         ("dumbpass,d", "Don't use heuristics for smarter passing.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
+        ("verbose", po::value<int>()->default_value(cfg_verbose),
+                    "Verbosity of diagnostic output (0 to 3).")
         ("quiet,q", "Disable all diagnostic output.")
         ("noponder", "Disable thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
@@ -134,12 +136,20 @@ static void parse_commandline(int argc, char *argv[]) {
         exit(ev);
     }
 
+    if (vm.count("verbose")) {
+        cfg_verbose = vm["verbose"].as<int>();
+        if (vm.count("quiet")) {
+            printf("Nonsensical options: Can't be verbose and quiet at the same time.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
     if (vm.count("quiet")) {
-        cfg_quiet = true;
+        cfg_verbose = 0;
     }
 
     if (vm.count("benchmark")) {
-        cfg_quiet = true;  // Set this early to avoid unnecessary output.
+        cfg_verbose = 0;  // Set this early to avoid unnecessary output.
     }
 
 #ifdef USE_TUNER
@@ -179,7 +189,8 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_num_threads = num_threads;
         }
     }
-    myprintf("Using %d thread(s).\n", cfg_num_threads);
+
+    if (cfg_verbose >= 2) myprintf("Using %d thread(s).\n", cfg_num_threads);
 
     if (vm.count("seed")) {
         cfg_rng_seed = vm["seed"].as<std::uint64_t>();
@@ -188,7 +199,7 @@ static void parse_commandline(int argc, char *argv[]) {
             myprintf("Games will likely not be reproducible.\n");
         }
     }
-    myprintf("RNG seed: %llu\n", cfg_rng_seed);
+    if (cfg_verbose >= 2) myprintf("RNG seed: %llu\n", cfg_rng_seed);
 
     if (vm.count("noponder")) {
         cfg_allow_pondering = false;
@@ -348,7 +359,7 @@ int main (int argc, char *argv[]) {
     maingame->init_game(BOARD_SIZE, komi);
 
     if (cfg_benchmark) {
-        cfg_quiet = false;
+        cfg_verbose = 3;
         benchmark(*maingame);
         return 0;
     }

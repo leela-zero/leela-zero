@@ -52,7 +52,7 @@ extern float cfg_fpu_reduction;
 extern std::string cfg_logfile;
 extern std::string cfg_weightsfile;
 extern FILE* cfg_logfile_handle;
-extern bool cfg_quiet;
+extern int cfg_verbose;
 extern std::string cfg_options_str;
 extern bool cfg_benchmark;
 

@@ -501,7 +501,7 @@ std::string Tuner::load_sgemm_tuners(const int m, const int n, const int k,
         while (std::getline(file, line)) {
             auto tuners = sgemm_tuners_from_line(line, m, n, k, batch_size);
             if (tuners.size() != 0) {
-                myprintf("Loaded existing SGEMM tuning.\n");
+                if (cfg_verbose >= 3) myprintf("Loaded existing SGEMM tuning.\n");
                 return tuners;
             }
         }
