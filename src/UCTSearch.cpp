@@ -167,7 +167,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
 }
 
 void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
-    if (cfg_quiet || !parent.has_children()) {
+    if (cfg_verbose == 0 || !parent.has_children()) {
         return;
     }
 
@@ -185,6 +185,9 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         // Always display at least two moves. In the case there is
         // only one move searched the user could get an idea why.
         if (++movecount > 2 && !node->get_visits()) break;
+
+        // Display max 5 moves if verbose <= 2
+        if (cfg_verbose <= 2 && movecount > 5) break;
 
         std::string move = state.move_to_text(node->get_move());
         FastState tmpstate = state;
@@ -423,7 +426,7 @@ std::string UCTSearch::get_pv(FastState & state, UCTNode& parent) {
 }
 
 void UCTSearch::dump_analysis(int playouts) {
-    if (cfg_quiet) {
+    if (cfg_verbose == 0) {
         return;
     }
 
@@ -522,6 +525,9 @@ void UCTSearch::increment_playouts() {
 }
 
 int UCTSearch::think(int color, passflag_t passflag) {
+    set_playout_limit(cfg_max_playouts);
+    set_visit_limit(cfg_max_visits);
+
     // Start counting time for us
     m_rootstate.start_clock(color);
 
@@ -629,7 +635,15 @@ int UCTSearch::think(int color, passflag_t passflag) {
 }
 
 void UCTSearch::ponder() {
+    if (cfg_ponder == -1) return;
+
+    set_playout_limit(cfg_ponder * cfg_max_playouts);
+    set_visit_limit(cfg_ponder * cfg_max_visits);
+
     update_root();
+
+    // set up timing info
+    Time start;
 
     m_run = true;
     int cpus = cfg_num_threads;
@@ -643,12 +657,26 @@ void UCTSearch::ponder() {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
     auto keeprunning = true;
+    int last_update = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = play_simulation(*currstate, m_root.get());
         if (result.valid()) {
             increment_playouts();
         }
+
+        if (cfg_verbose >= 3) {
+            Time elapsed;
+            int elapsed_centis = Time::timediff_centis(start, elapsed);
+
+            // output some stats every few seconds
+            // check if we should still search
+            if (elapsed_centis - last_update > 250) {
+                last_update = elapsed_centis;
+                dump_analysis(static_cast<int>(m_playouts));
+            }
+        }
+
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(0, 1);
     } while(!Utils::input_pending() && keeprunning);
@@ -656,11 +684,14 @@ void UCTSearch::ponder() {
     // stop the search
     m_run = false;
     tg.wait_all();
-    // display search info
-    myprintf("\n");
-    dump_stats(m_rootstate, *m_root);
 
-    myprintf("\n%d visits, %d nodes\n\n", m_root->get_visits(), m_nodes.load());
+    if (cfg_verbose > 1) {
+        // display search info
+        myprintf("\n");
+        dump_stats(m_rootstate, *m_root);
+
+        myprintf("\n%d visits, %d nodes\n\n", m_root->get_visits(), m_nodes.load());
+    }
 }
 
 void UCTSearch::set_playout_limit(int playouts) {
@@ -669,8 +700,7 @@ void UCTSearch::set_playout_limit(int playouts) {
                   "Inconsistent types for playout amount.");
     if (playouts == 0) {
         // Divide max by 2 to prevent overflow when multithreading.
-        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max()
-                        / 2;
+        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max() / 2;
     } else {
         m_maxplayouts = playouts;
     }
@@ -682,8 +712,7 @@ void UCTSearch::set_visit_limit(int visits) {
                   "Inconsistent types for visits amount.");
     if (visits == 0) {
         // Divide max by 2 to prevent overflow when multithreading.
-        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max()
-                      / 2;
+        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max() / 2;
     } else {
         m_maxvisits = visits;
     }
