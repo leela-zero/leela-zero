@@ -525,6 +525,9 @@ void UCTSearch::increment_playouts() {
 }
 
 int UCTSearch::think(int color, passflag_t passflag) {
+    set_playout_limit(cfg_max_playouts);
+    set_visit_limit(cfg_max_visits);
+
     // Start counting time for us
     m_rootstate.start_clock(color);
 
@@ -632,6 +635,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
 }
 
 void UCTSearch::ponder() {
+    if (cfg_ponder == -1) return;
+
+    set_playout_limit(cfg_ponder * cfg_max_playouts);
+    set_visit_limit(cfg_ponder * cfg_max_visits);
+
     update_root();
 
     // set up timing info
@@ -692,8 +700,7 @@ void UCTSearch::set_playout_limit(int playouts) {
                   "Inconsistent types for playout amount.");
     if (playouts == 0) {
         // Divide max by 2 to prevent overflow when multithreading.
-        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max()
-                        / 2;
+        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max() / 2;
     } else {
         m_maxplayouts = playouts;
     }
@@ -705,8 +712,7 @@ void UCTSearch::set_visit_limit(int visits) {
                   "Inconsistent types for visits amount.");
     if (visits == 0) {
         // Divide max by 2 to prevent overflow when multithreading.
-        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max()
-                      / 2;
+        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max() / 2;
     } else {
         m_maxvisits = visits;
     }

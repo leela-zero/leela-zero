@@ -84,6 +84,9 @@ static void parse_commandline(int argc, char *argv[]) {
                     "Verbosity of diagnostic output (0 to 3).")
         ("quiet,q", "Disable all diagnostic output.")
         ("noponder", "Disable thinking on opponent's time.")
+        ("ponder", po::value<int>()->default_value(cfg_ponder),
+                   "Augment playouts and visits by the ponder factor.\n"
+                   "-1 for no pondering, 0 for infinite pondering.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
 #ifdef USE_OPENCL
@@ -202,7 +205,15 @@ static void parse_commandline(int argc, char *argv[]) {
     if (cfg_verbose >= 2) myprintf("RNG seed: %llu\n", cfg_rng_seed);
 
     if (vm.count("noponder")) {
-        cfg_allow_pondering = false;
+        cfg_ponder = -1;
+    }
+
+    if (vm.count("ponder")) {
+        cfg_ponder = vm["ponder"].as<int>();
+        if (vm.count("noponder")) {
+            printf("Nonsensical options: Can't ponder and not ponder at the same time.\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (vm.count("noise")) {
@@ -215,7 +226,7 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("playouts")) {
         cfg_max_playouts = vm["playouts"].as<int>();
-        if (!vm.count("noponder")) {
+        if (cfg_ponder != -1) {
             printf("Nonsensical options: Playouts are restricted but "
                    "thinking on the opponent's time is still allowed. "
                    "Add --noponder if you want a weakened engine.\n");
@@ -277,7 +288,7 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("benchmark")) {
         // These must be set later to override default arguments.
-        cfg_allow_pondering = false;
+        cfg_ponder = -1;
         cfg_benchmark = true;
         cfg_noise = false;  // Not much of a benchmark if random was used.
         cfg_random_cnt = 0;
