@@ -75,7 +75,7 @@ bool cfg_benchmark;
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
-    cfg_ponder = 0;
+    cfg_ponder = 1;
     cfg_max_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
 #ifdef USE_OPENCL
     // If we will be GPU limited, using many threads won't help much.
