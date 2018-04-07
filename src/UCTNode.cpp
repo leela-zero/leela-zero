@@ -303,9 +303,9 @@ public:
     bool operator()(const UCTNodePointer& a,
                     const UCTNodePointer& b) {
         // Calculate the lower confidence bound for each node.
-        if (a->get_visits() && b->get_visits()) {
-            float a_lb = a->get_lcb(m_color);
-            float b_lb = b->get_lcb(m_color);
+        if (a.get_visits() && b.get_visits()) {
+            float a_lb = a.get_lcb(m_color);
+            float b_lb = b.get_lcb(m_color);
 
             // Sort on lower confidence bounds
             if (a_lb != b_lb) {

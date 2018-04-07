@@ -74,6 +74,16 @@ int UCTNodePointer::get_visits() const {
     return 0;
 }
 
+float UCTNodePointer::get_lcb(int color) const {
+    assert(is_inflated());
+    return read_ptr()->get_lcb(color);
+}
+
+float UCTNodePointer::get_ucb(int color) const {
+    assert(is_inflated());
+    return read_ptr()->get_ucb(color);
+}
+
 float UCTNodePointer::get_score() const {
     if (is_inflated()) return read_ptr()->get_score();
     return read_score();
