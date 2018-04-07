@@ -63,6 +63,7 @@ bool UCTSearch::advance_to_new_rootstate() {
         return false;
     }
 
+
     auto test = std::make_unique<GameState>(m_rootstate);
     for (auto i = 0; i < depth; i++) {
         test->undo_move();
@@ -73,11 +74,31 @@ bool UCTSearch::advance_to_new_rootstate() {
         return false;
     }
 
+    // make sure that the nodes we destroyed the previous move is
+    // in fact destroyed
+    while (!m_delete_futures.empty()) {
+        m_delete_futures.front().get();
+        m_delete_futures.pop_front();
+    }
+
     // Try to replay moves advancing m_root
     for (auto i = 0; i < depth; i++) {
         test->forward_move();
         const auto move = test->get_last_move();
-        m_root = m_root->find_child(move);
+
+        auto oldroot = std::move(m_root);
+        m_root = oldroot->find_child(move);
+
+        // Lazy tree destruction.  Instead of calling the destructor of the
+        // old root node on the main thread, send the old root to a separate thread
+        // and destroy it from the child thread.  This will save a bit of time when
+        // dealing with large trees.
+        auto f = std::async(std::launch::async, 
+                            [](UCTNode* p) { delete p; },
+                            oldroot.release()
+        );
+        m_delete_futures.push_back(std::move(f));
+
         if (!m_root) {
             // Tree hasn't been expanded this far
             return false;
@@ -529,12 +550,12 @@ int UCTSearch::think(int color, passflag_t passflag) {
     // Start counting time for us
     m_rootstate.start_clock(color);
 
+    // set up timing info
+    Time start;
+
     update_root();
     // set side to move
     m_rootstate.board.set_to_move(color);
-
-    // set up timing info
-    Time start;
 
     m_rootstate.get_timecontrol().set_boardsize(
         m_rootstate.board.get_boardsize());
