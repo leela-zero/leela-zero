@@ -137,28 +137,19 @@ TEST(FastBoardTest, MakeBlackMoveOn19x19) {
     EXPECT_EQ(expected, b.serialize_board());
 }
 
-TEST(FastBoardTest, GetVertexOn19x19) {
-    FastBoard b;
-    b.reset_board(19);
-    EXPECT_EQ(22, b.get_vertex(0, 0));
-    EXPECT_EQ(43, b.get_vertex(0, 1));
-    EXPECT_EQ(44, b.get_vertex(1, 1));
-    EXPECT_EQ(87, b.get_vertex(2, 3));
-    EXPECT_EQ(418, b.get_vertex(18, 18));
-}
 
-TEST(FastBoardTest, GetXYFromVertex) {
+TEST(FastBoardTest, GetXYFromGetVertexOn19x19) {
     FastBoard b;
     b.reset_board(19);
-    EXPECT_EQ(std::make_pair(0, 0), b.get_xy(22));
-    EXPECT_EQ(std::make_pair(0, 1), b.get_xy(43));
-    EXPECT_EQ(std::make_pair(1, 1), b.get_xy(44));
-    EXPECT_EQ(std::make_pair(2, 1), b.get_xy(45));
-    EXPECT_EQ(std::make_pair(2, 3), b.get_xy(87));
-    EXPECT_EQ(std::make_pair(18, 18), b.get_xy(418));
+    EXPECT_EQ(std::make_pair(0, 0), b.get_xy(b.get_vertex(0, 0)));
+    EXPECT_EQ(std::make_pair(0, 1), b.get_xy(b.get_vertex(0, 1)));
+    EXPECT_EQ(std::make_pair(1, 1), b.get_xy(b.get_vertex(1, 1)));
+    EXPECT_EQ(std::make_pair(2, 1), b.get_xy(b.get_vertex(2, 1)));
+    EXPECT_EQ(std::make_pair(2, 3), b.get_xy(b.get_vertex(2, 3)));
+    EXPECT_EQ(std::make_pair(18, 18), b.get_xy(b.get_vertex(18, 18)));
     
     // Negative test to check assertion
-    // Commenting out until assertions are enable in CI build.
+    // Commenting out until assertions are enabled in CI build.
     //ASSERT_DEATH({ b.get_xy(7);}, ".*FastBoard.cpp.* Assertion `y >= 0 && y < m_boardsize' failed.");
 }
 
@@ -188,7 +179,7 @@ TEST(FastBoardTest, SemiFilled5x5Board) {
     EXPECT_EQ(expected,  b.serialize_board());
 }
 
-// Results will make more sense in FullBuard test
+// Results will make more sense in FullBoard test
 TEST(FastBoardTest, CountRealLibertiesOn5x5) {
     FastBoard b = create_filled_5x5();
     EXPECT_EQ(2, b.count_pliberties(b.get_vertex(0, 0)));
@@ -220,7 +211,7 @@ TEST(FastBoardTest, SemiFilled9x9Board) {
     EXPECT_EQ(expected,  b.serialize_board());
 }
 
-// Results will make more sense in FullBuard test
+// Results will make more sense in FullBoard test
 TEST(FastBoardTest, CountRealLibertiesOn9x9) {
     FastBoard b = create_filled_9x9();
     
@@ -231,7 +222,7 @@ TEST(FastBoardTest, CountRealLibertiesOn9x9) {
     EXPECT_EQ(4, b.count_pliberties(b.get_vertex(5, 4)));
 }
 
-// Results will make more sense in FullBuard test
+// Results will make more sense in FullBoard test
 TEST(FastBoardTest, IsSuicideWhenNotForBlack) {
     FastBoard b;
     b.reset_board(5);  
@@ -240,7 +231,7 @@ TEST(FastBoardTest, IsSuicideWhenNotForBlack) {
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(2, 1), FastBoard::BLACK));
 }
 
-// Results will make more sense in FullBuard test
+// Results will make more sense in FullBoard test
 TEST(FastBoardTest, IsSuicideWhenForBlackInAllWhiteField) {
     FastBoard b = create_5x5_all_white_field();
 
@@ -295,7 +286,6 @@ TEST(FastBoardTest, MoveToTextSgf) {
     EXPECT_EQ("ab", b.move_to_text_sgf(b.get_vertex(0, 1)));
     EXPECT_EQ("ca", b.move_to_text_sgf(b.get_vertex(2, 2)));
     EXPECT_EQ("tt", b.move_to_text_sgf(FastBoard::PASS));
-    EXPECT_EQ("tt", b.move_to_text_sgf(FastBoard::RESIGN));
 }
 
 TEST(FastBoardTest, GetStoneList) {
