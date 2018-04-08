@@ -49,8 +49,8 @@ sources = Network.cpp FullBoard.cpp KoState.cpp Training.cpp \
 	  TimeControl.cpp UCTSearch.cpp GameState.cpp Leela.cpp \
 	  SGFParser.cpp Timing.cpp Utils.cpp FastBoard.cpp \
 	  SGFTree.cpp Zobrist.cpp FastState.cpp GTP.cpp Random.cpp \
-	  SMP.cpp UCTNode.cpp UCTNodeRoot.cpp OpenCL.cpp OpenCLScheduler.cpp \
-	  NNCache.cpp Tuner.cpp
+	  SMP.cpp UCTNode.cpp UCTNodePointer.cpp UCTNodeRoot.cpp \
+	  OpenCL.cpp OpenCLScheduler.cpp NNCache.cpp Tuner.cpp
 
 objects = $(sources:.cpp=.o)
 deps = $(sources:%.cpp=%.d)
