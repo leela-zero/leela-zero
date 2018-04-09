@@ -461,7 +461,7 @@ void Network::winograd_transform_in(const std::vector<float>& in,
     for (auto ch = 0; ch < C; ch++) {
         for (auto yin = 0; yin < H; yin++) {
             for (auto xin = 0; xin < W; xin++) {
-                in_pad[yin + 1][xin + 1] = in[ch*(W*H) + yin*W + xin];
+                in_pad.at(yin + 1).at(xin + 1) = in[ch*(W*H) + yin*W + xin];
             }
         }
         for (auto block_y = 0; block_y < WTILES; block_y++) {
@@ -480,22 +480,22 @@ void Network::winograd_transform_in(const std::vector<float>& in,
                     std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
                 WinogradTile T1, T2;
 
-                T1[0][0] = in_pad[yin + 0][xin + 0] - in_pad[yin + 2][xin + 0];
-                T1[0][1] = in_pad[yin + 0][xin + 1] - in_pad[yin + 2][xin + 1];
-                T1[0][2] = in_pad[yin + 0][xin + 2] - in_pad[yin + 2][xin + 2];
-                T1[0][3] = in_pad[yin + 0][xin + 3] - in_pad[yin + 2][xin + 3];
-                T1[1][0] = in_pad[yin + 1][xin + 0] + in_pad[yin + 2][xin + 0];
-                T1[1][1] = in_pad[yin + 1][xin + 1] + in_pad[yin + 2][xin + 1];
-                T1[1][2] = in_pad[yin + 1][xin + 2] + in_pad[yin + 2][xin + 2];
-                T1[1][3] = in_pad[yin + 1][xin + 3] + in_pad[yin + 2][xin + 3];
-                T1[2][0] = in_pad[yin + 2][xin + 0] - in_pad[yin + 1][xin + 0];
-                T1[2][1] = in_pad[yin + 2][xin + 1] - in_pad[yin + 1][xin + 1];
-                T1[2][2] = in_pad[yin + 2][xin + 2] - in_pad[yin + 1][xin + 2];
-                T1[2][3] = in_pad[yin + 2][xin + 3] - in_pad[yin + 1][xin + 3];
-                T1[3][0] = in_pad[yin + 1][xin + 0] - in_pad[yin + 3][xin + 0];
-                T1[3][1] = in_pad[yin + 1][xin + 1] - in_pad[yin + 3][xin + 1];
-                T1[3][2] = in_pad[yin + 1][xin + 2] - in_pad[yin + 3][xin + 2];
-                T1[3][3] = in_pad[yin + 1][xin + 3] - in_pad[yin + 3][xin + 3];
+                T1[0][0] = in_pad.at(yin + 0).at(xin + 0) - in_pad.at(yin + 2).at(xin + 0);
+                T1[0][1] = in_pad.at(yin + 0).at(xin + 1) - in_pad.at(yin + 2).at(xin + 1);
+                T1[0][2] = in_pad.at(yin + 0).at(xin + 2) - in_pad.at(yin + 2).at(xin + 2);
+                T1[0][3] = in_pad.at(yin + 0).at(xin + 3) - in_pad.at(yin + 2).at(xin + 3);
+                T1[1][0] = in_pad.at(yin + 1).at(xin + 0) + in_pad.at(yin + 2).at(xin + 0);
+                T1[1][1] = in_pad.at(yin + 1).at(xin + 1) + in_pad.at(yin + 2).at(xin + 1);
+                T1[1][2] = in_pad.at(yin + 1).at(xin + 2) + in_pad.at(yin + 2).at(xin + 2);
+                T1[1][3] = in_pad.at(yin + 1).at(xin + 3) + in_pad.at(yin + 2).at(xin + 3);
+                T1[2][0] = in_pad.at(yin + 2).at(xin + 0) - in_pad.at(yin + 1).at(xin + 0);
+                T1[2][1] = in_pad.at(yin + 2).at(xin + 1) - in_pad.at(yin + 1).at(xin + 1);
+                T1[2][2] = in_pad.at(yin + 2).at(xin + 2) - in_pad.at(yin + 1).at(xin + 2);
+                T1[2][3] = in_pad.at(yin + 2).at(xin + 3) - in_pad.at(yin + 1).at(xin + 3);
+                T1[3][0] = in_pad.at(yin + 1).at(xin + 0) - in_pad.at(yin + 3).at(xin + 0);
+                T1[3][1] = in_pad.at(yin + 1).at(xin + 1) - in_pad.at(yin + 3).at(xin + 1);
+                T1[3][2] = in_pad.at(yin + 1).at(xin + 2) - in_pad.at(yin + 3).at(xin + 2);
+                T1[3][3] = in_pad.at(yin + 1).at(xin + 3) - in_pad.at(yin + 3).at(xin + 3);
 
                 T2[0][0] = T1[0][0] - T1[0][2];
                 T2[0][1] = T1[0][1] + T1[0][2];
