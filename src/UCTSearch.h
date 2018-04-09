@@ -90,6 +90,7 @@ public:
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
+    float get_min_psa_ratio() const;
     void dump_stats(FastState& state, UCTNode& parent);
     void tree_stats(const UCTNode& node);
     std::string get_pv(FastState& state, UCTNode& parent);

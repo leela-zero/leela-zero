@@ -121,6 +121,23 @@ void UCTSearch::update_root() {
 #endif
 }
 
+float UCTSearch::get_min_psa_ratio() const {
+    const auto mem_full = m_nodes / static_cast<float>(MAX_TREE_SIZE);
+    // If we are halfway through our memory budget, start trimming
+    // moves with very low policy priors.
+    if (mem_full > 0.5f) {
+        // Memory is almost exhausted, trim more aggressively.
+        if (mem_full > 0.95f) {
+            return 0.01f;
+        } else {
+            return 0.001f;
+        }
+    }
+    else {
+        return 0.0f;
+    }
+}
+
 SearchResult UCTSearch::play_simulation(GameState & currstate,
                                         UCTNode* const node) {
     const auto color = currstate.get_to_move();
@@ -128,16 +145,16 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
 
     node->virtual_loss();
 
-    if (!node->has_children()) {
+    if (node->expandable()) {
         if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
         } else if (m_nodes < MAX_TREE_SIZE) {
-            auto mem_full_pct = m_nodes / static_cast<float>(MAX_TREE_SIZE);
             float eval;
-            auto success =
-                node->create_children(m_nodes, currstate, eval, mem_full_pct);
-            if (success) {
+            const auto had_children = node->has_children();
+            const auto success =
+                node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
+            if (!had_children && success) {
                 result = SearchResult::from_eval(eval);
             }
         }
@@ -545,11 +562,14 @@ int UCTSearch::think(int color, passflag_t passflag) {
     // create a sorted list off legal moves (make sure we
     // play something legal and decent even in time trouble)
     float root_eval;
-    if (!m_root->has_children()) {
+    const auto had_children = m_root->has_children();
+    if (m_root->expandable()) {
         m_root->create_children(m_nodes, m_rootstate, root_eval);
-        m_root->update(root_eval);
-    } else {
+    }
+    if (had_children) {
         root_eval = m_root->get_eval(color);
+    } else {
+        m_root->update(root_eval);
     }
 
     // Now that the new root is installed, there are a lot of special
