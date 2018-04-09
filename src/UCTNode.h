@@ -109,7 +109,6 @@ private:
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
     // Is someone adding scores to this node?
-    // We don't need to unset this.
     bool m_is_expanding{false};
     SMP::Mutex m_nodemutex;
 

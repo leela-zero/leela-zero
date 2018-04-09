@@ -114,7 +114,6 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     }
 
     link_nodelist(nodecount, nodelist, min_psa_ratio);
-    m_is_expanding = false;
     return true;
 }
 
@@ -156,6 +155,7 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
     }
 
     m_min_psa_ratio_children = skipped_children ? min_psa_ratio : 0.0f;
+    m_is_expanding = false;
 }
 
 const std::vector<UCTNodePointer>& UCTNode::get_children() const {
