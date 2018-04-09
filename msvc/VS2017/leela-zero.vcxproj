@@ -42,6 +42,7 @@
     <ClInclude Include="..\..\src\Training.h" />
     <ClInclude Include="..\..\src\Tuner.h" />
     <ClInclude Include="..\..\src\UCTNode.h" />
+    <ClInclude Include="..\..\src\UCTNodePointer.h" />
     <ClInclude Include="..\..\src\UCTSearch.h" />
     <ClInclude Include="..\..\src\Utils.h" />
     <ClInclude Include="..\..\src\Zobrist.h" />
@@ -68,6 +69,7 @@
     <ClCompile Include="..\..\src\Training.cpp" />
     <ClCompile Include="..\..\src\Tuner.cpp" />
     <ClCompile Include="..\..\src\UCTNode.cpp" />
+    <ClCompile Include="..\..\src\UCTNodePointer.cpp" />
     <ClCompile Include="..\..\src\UCTNodeRoot.cpp" />
     <ClCompile Include="..\..\src\UCTSearch.cpp" />
     <ClCompile Include="..\..\src\Utils.cpp" />
