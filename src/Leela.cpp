@@ -347,7 +347,7 @@ int main (int argc, char *argv[]) {
     auto komi = 7.5f;
     maingame->init_game(BOARD_SIZE, komi);
 
-    Network::init_rotation_table(*maingame);
+    Network::init_symmetry_table(*maingame);
 
     if (cfg_benchmark) {
         cfg_quiet = false;

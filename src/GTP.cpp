@@ -515,14 +515,14 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("heatmap") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        int rotation;
+        int symmetry;
 
         cmdstream >> tmp;   // eat heatmap
-        cmdstream >> rotation;
+        cmdstream >> symmetry;
 
         if (!cmdstream.fail()) {
             auto vec = Network::get_scored_moves(
-                &game, Network::Ensemble::DIRECT, rotation, true);
+                &game, Network::Ensemble::DIRECT, symmetry, true);
             Network::show_heatmap(&game, vec, false);
         } else {
             auto vec = Network::get_scored_moves(
