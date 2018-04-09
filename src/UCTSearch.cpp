@@ -666,6 +666,9 @@ void UCTSearch::ponder() {
     dump_stats(m_rootstate, *m_root);
 
     myprintf("\n%d visits, %d nodes\n\n", m_root->get_visits(), m_nodes.load());
+
+    // Copy the root state. Use to check for tree re-use in future calls.
+    m_last_rootstate = std::make_unique<GameState>(m_rootstate);
 }
 
 void UCTSearch::set_playout_limit(int playouts) {
