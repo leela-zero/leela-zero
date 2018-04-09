@@ -92,8 +92,8 @@ private:
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
 
-    static int get_board_vertex(const GameState& state,
-                                const int x, const int y, int symmetry);
+    static void get_xy_symmetry(const int x, const int y, int symmetry,
+                                int* const x_out, int* const y_out);
     static void get_input_moves(const GameState* const state,
                                 std::vector<net_t>& input_data,
                                 const int symmetry,

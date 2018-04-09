@@ -431,11 +431,14 @@ void Network::initialize() {
 }
 
 void Network::init_symmetry_table(const GameState& state) {
-    for (auto r = 0; r < 8; r++) {
+    for (auto s = 0; s < 8; s++) {
         for (auto y = 0; y < BOARD_SIZE; y++) {
             for (auto x = 0; x < BOARD_SIZE; x++) {
-                symmetry_nn_idx_vtx_table[r][y * BOARD_SIZE + x] =
-                    get_board_vertex(state, x, y, r);
+                int x_sym, y_sym;
+                get_xy_symmetry(x, y, s, &x_sym, &y_sym);
+
+                symmetry_nn_idx_vtx_table[s][y * BOARD_SIZE + x] = 
+                    state.board.get_vertex(x_sym, y_sym);
             }
         }
     }
@@ -1044,8 +1047,8 @@ void Network::gather_features_vector(const GameState* const state,
     input_data.insert(input_data.cend(), BOARD_SQUARES, net_t(!blacks_move));
 }
 
-int Network::get_board_vertex(const GameState& state, 
-                              const int x, const int y, int symmetry) {
+void Network::get_xy_symmetry(const int x, const int y, int symmetry,
+                              int* const x_out, int* const y_out) {
     assert(x >= 0 && x < BOARD_SIZE);
     assert(y >= 0 && y < BOARD_SIZE);
     assert(symmetry >= 0 && symmetry <= 7);
@@ -1073,8 +1076,7 @@ int Network::get_board_vertex(const GameState& state,
         assert(symmetry == 0);
         break;
     }
-
-    const auto newvtx = state.board.get_vertex(newx, newy);
-    return newvtx;
+    
+    *x_out = newx;
+    *y_out = newy;
 }
-
