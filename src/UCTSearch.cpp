@@ -570,7 +570,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
         root_eval = m_root->get_eval(color);
     } else {
         m_root->update(root_eval);
+        root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
     }
+    myprintf("NN eval=%f\n", root_eval);
 
     // Now that the new root is installed, there are a lot of special
     // cases where root node assumes all childs are inflated.
@@ -582,9 +584,6 @@ int UCTSearch::think(int color, passflag_t passflag) {
         auto alpha = 0.03f * 361.0f / BOARD_SQUARES;
         m_root->dirichlet_noise(0.25f, alpha);
     }
-
-    myprintf("NN eval=%f\n",
-             (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval));
 
     m_run = true;
     int cpus = cfg_num_threads;
