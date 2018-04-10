@@ -31,7 +31,6 @@
 #include "FullBoard.h"
 #include "GTP.h"
 #include "GameState.h"
-#include "ThreadPool.h"
 #include "TimeControl.h"
 #include "Timing.h"
 #include "Training.h"
@@ -77,12 +76,14 @@ bool UCTSearch::advance_to_new_rootstate() {
     // make sure that the nodes we destroyed the previous move is
     // in fact destroyed
     while (!m_delete_futures.empty()) {
-        m_delete_futures.front().get();
+        m_delete_futures.front().wait_all();
         m_delete_futures.pop_front();
     }
 
     // Try to replay moves advancing m_root
     for (auto i = 0; i < depth; i++) {
+        ThreadGroup tg(thread_pool);
+
         test->forward_move();
         const auto move = test->get_last_move();
 
@@ -93,11 +94,9 @@ bool UCTSearch::advance_to_new_rootstate() {
         // old root node on the main thread, send the old root to a separate thread
         // and destroy it from the child thread.  This will save a bit of time when
         // dealing with large trees.
-        auto f = std::async(std::launch::async, 
-                            [](UCTNode* p) { delete p; },
-                            oldroot.release()
-        );
-        m_delete_futures.push_back(std::move(f));
+        UCTNode * p = oldroot.release();
+        tg.add_task([p]() { delete p; });
+        m_delete_futures.push_back(std::move(tg));
 
         if (!m_root) {
             // Tree hasn't been expanded this far

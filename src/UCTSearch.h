@@ -26,6 +26,7 @@
 #include <tuple>
 #include <future>
 
+#include "ThreadPool.h"
 #include "FastBoard.h"
 #include "FastState.h"
 #include "GameState.h"
@@ -114,7 +115,7 @@ private:
     int m_maxplayouts;
     int m_maxvisits;
 
-    std::list<std::future<void>> m_delete_futures;
+    std::list<Utils::ThreadGroup> m_delete_futures;
 };
 
 class UCTWorker {
