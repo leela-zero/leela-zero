@@ -73,8 +73,8 @@ bool UCTSearch::advance_to_new_rootstate() {
         return false;
     }
 
-    // make sure that the nodes we destroyed the previous move is
-    // in fact destroyed
+    // Make sure that the nodes we destroyed the previous move are
+    // in fact destroyed.
     while (!m_delete_futures.empty()) {
         m_delete_futures.front().wait_all();
         m_delete_futures.pop_front();
@@ -91,10 +91,10 @@ bool UCTSearch::advance_to_new_rootstate() {
         m_root = oldroot->find_child(move);
 
         // Lazy tree destruction.  Instead of calling the destructor of the
-        // old root node on the main thread, send the old root to a separate thread
-        // and destroy it from the child thread.  This will save a bit of time when
-        // dealing with large trees.
-        UCTNode * p = oldroot.release();
+        // old root node on the main thread, send the old root to a separate
+        // thread and destroy it from the child thread.  This will save a
+        // bit of time when dealing with large trees.
+        auto p = oldroot.release();
         tg.add_task([p]() { delete p; });
         m_delete_futures.push_back(std::move(tg));
 
@@ -149,13 +149,10 @@ float UCTSearch::get_min_psa_ratio() const {
         // Memory is almost exhausted, trim more aggressively.
         if (mem_full > 0.95f) {
             return 0.01f;
-        } else {
-            return 0.001f;
         }
+        return 0.001f;
     }
-    else {
-        return 0.0f;
-    }
+    return 0.0f;
 }
 
 SearchResult UCTSearch::play_simulation(GameState & currstate,
@@ -173,7 +170,8 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             float eval;
             const auto had_children = node->has_children();
             const auto success =
-                node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
+                node->create_children(m_nodes, currstate, eval,
+                                      get_min_psa_ratio());
             if (!had_children && success) {
                 result = SearchResult::from_eval(eval);
             }
