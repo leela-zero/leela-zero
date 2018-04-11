@@ -93,6 +93,7 @@ def conv_bn_wider(weights, next_weights, inputs, channels,
 
     #Widen the current layer
     w_conv_new = np.array(weights[0]).reshape(channels, inputs, 3, 3)[rand, :, :, :]
+    bias = np.array(weights[1])[rand]
     w_bn_means = np.array(weights[2])[rand]
     w_bn_vars = np.array(weights[3])[rand]
 
@@ -124,9 +125,6 @@ def conv_bn_wider(weights, next_weights, inputs, channels,
     w_conv_new = w_conv_new.flatten()
     for j in range(len(next_weights)):
         next_weights_new[j] = next_weights_new[j].flatten()
-
-    #Biases are always zero
-    bias = np.zeros(channels + new_channels)
 
     w_new = [w_conv_new, bias, w_bn_means, w_bn_vars]
 
