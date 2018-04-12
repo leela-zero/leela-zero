@@ -123,7 +123,6 @@ const std::string GTP::s_commands[] = {
     "quit",
     "known_command",
     "list_commands",
-    "quit",
     "boardsize",
     "clear_board",
     "komi",
@@ -429,7 +428,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         float ftmp = game.final_score();
         /* white wins */
         if (ftmp < -0.1) {
-            gtp_printf(id, "W+%3.1f", (float)fabs(ftmp));
+            gtp_printf(id, "W+%3.1f", float(fabs(ftmp)));
         } else if (ftmp > 0.1) {
             gtp_printf(id, "B+%3.1f", ftmp);
         } else {

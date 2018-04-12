@@ -39,7 +39,7 @@ bool Utils::input_pending(void) {
     FD_ZERO(&read_fds);
     FD_SET(0,&read_fds);
     struct timeval timeout{0,0};
-    select(1,&read_fds,NULL,NULL,&timeout);
+    select(1,&read_fds,nullptr,nullptr,&timeout);
     return FD_ISSET(0, &read_fds);
 #else
     static int init = 0, pipe;
@@ -57,7 +57,7 @@ bool Utils::input_pending(void) {
     }
 
     if (pipe) {
-        if (!PeekNamedPipe(inh, NULL, 0, NULL, &dw, NULL)) {
+        if (!PeekNamedPipe(inh, nullptr, 0, nullptr, &dw, nullptr)) {
             myprintf("Nothing at other end - exiting\n");
             exit(EXIT_FAILURE);
         }
