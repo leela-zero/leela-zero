@@ -35,7 +35,7 @@
 class Network {
 public:
     enum Ensemble {
-        DIRECT, RANDOM_ROTATION
+        DIRECT, RANDOM_SYMMETRY
     };
     using BoardPlane = std::bitset<BOARD_SQUARES>;
     using NNPlanes = std::vector<BoardPlane>;
@@ -44,7 +44,7 @@ public:
 
     static Netresult get_scored_moves(const GameState* const state,
                                       const Ensemble ensemble,
-                                      const int rotation = -1,
+                                      const int symmetry = -1,
                                       const bool skip_cache = false);
     // File format version
     static constexpr auto FORMAT_VERSION = 1;
@@ -58,6 +58,7 @@ public:
     static constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 
     static void initialize();
+    static void init_symmetry_table(const GameState& state);
     static void benchmark(const GameState * const state,
                           const int iterations = 1600);
     static void show_heatmap(const FastState * const state,
@@ -90,11 +91,18 @@ private:
     static void winograd_sgemm(const std::vector<float>& U,
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
-    static int rotate_nn_idx(const int vertex, int symmetry);
-    static void fill_input_plane_pair(
-      const FullBoard& board, BoardPlane& black, BoardPlane& white);
-    static Netresult get_scored_moves_internal(
-      const GameState* const state, const NNPlanes & planes, const int rotation);
+
+    static void get_xy_symmetry(const int x, const int y, int symmetry,
+                                int* const x_out, int* const y_out);
+    static void get_input_moves(const GameState* const state,
+                                std::vector<net_t>& input_data,
+                                const int symmetry,
+                                const int color);
+    static void gather_features_vector(const GameState* const state,
+                                       std::vector<net_t>& input_data, 
+                                       const int symmetry);
+    static Netresult get_scored_moves_internal(const GameState* const state, 
+                                               const int symmetry);
 #if defined(USE_BLAS)
     static void forward_cpu(const std::vector<float>& input,
                             std::vector<float>& output_pol,
