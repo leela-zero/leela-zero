@@ -98,12 +98,12 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
             const auto y = i / BOARD_SIZE;
             const auto vertex = state.board.get_vertex(x, y); 
             if (state.is_move_legal(to_move, vertex)) {
-                auto p = std::make_pair(raw_netlist[i], vertex);
+                const auto p = std::make_pair(raw_netlist[i], vertex);
                 nodelist.emplace_back(p);
                 legal_sum += raw_netlist[i];
             }
         } else {
-            auto p = std::make_pair(raw_netlist[i], FastBoard::PASS);
+            const auto p = std::make_pair(raw_netlist[i], FastBoard::PASS);
             nodelist.emplace_back(p);
             legal_sum += raw_netlist[i];
         }

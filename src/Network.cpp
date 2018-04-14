@@ -954,7 +954,7 @@ void Network::show_heatmap(const FastState* const state,
     for (unsigned int y = 0; y < BOARD_SIZE; y++) {
         for (unsigned int x = 0; x < BOARD_SIZE; x++) {
             auto score = 0;
-            auto vertex = state->board.get_vertex(x, y);
+            const auto vertex = state->board.get_vertex(x, y);
             if (state->board.get_square(vertex) == FastBoard::EMPTY) {
                 score = result[y * BOARD_SIZE + x] * 1000;
             }
@@ -975,10 +975,10 @@ void Network::show_heatmap(const FastState* const state,
 
     if (topmoves) {
         std::vector<std::pair<float,int>> moves;
-        for (int i=0; i < BOARD_SQUARES; i++) {
-            auto x = i % BOARD_SIZE;
-            auto y = i / BOARD_SIZE;
-            auto vertex = state->board.get_vertex(x, y);
+        for (auto i=0; i < BOARD_SQUARES; i++) {
+            const auto x = i % BOARD_SIZE;
+            const auto y = i / BOARD_SIZE;
+            const auto vertex = state->board.get_vertex(x, y);
             if (state->board.get_square(vertex) == FastBoard::EMPTY) {
                 moves.emplace_back(result[i], vertex);
             }
