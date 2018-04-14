@@ -88,7 +88,7 @@ private:
         ACTIVE
     };
     void link_nodelist(std::atomic<int>& nodecount,
-                       std::vector<Network::scored_node>& nodelist,
+                       std::vector<std::pair<float,int>>& nodelist,
                        float min_psa_ratio);
     double get_blackevals() const;
     void accumulate_eval(float eval);

@@ -39,8 +39,9 @@ public:
     };
     using BoardPlane = std::bitset<BOARD_SQUARES>;
     using NNPlanes = std::vector<BoardPlane>;
-    using scored_node = std::pair<float, int>;
-    using Netresult = std::pair<std::vector<scored_node>, float>;
+
+    // {19x19 board positions, pass, winrate}
+    using Netresult = std::array<float, BOARD_SQUARES+2>;
 
     static Netresult get_scored_moves(const GameState* const state,
                                       const Ensemble ensemble,
@@ -94,7 +95,7 @@ private:
     static void fill_input_plane_pair(
       const FullBoard& board, BoardPlane& black, BoardPlane& white);
     static Netresult get_scored_moves_internal(
-      const GameState* const state, const NNPlanes & planes, const int rotation);
+      const NNPlanes & planes, const int rotation);
 #if defined(USE_BLAS)
     static void forward_cpu(const std::vector<float>& input,
                             std::vector<float>& output_pol,
