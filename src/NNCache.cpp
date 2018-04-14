@@ -76,8 +76,8 @@ void NNCache::resize(int size) {
 void NNCache::set_size_from_playouts(int max_playouts) {
     // cache hits are generally from last several moves so setting cache
     // size based on playouts increases the hit rate while balancing memory
-    // usage for low playout instances. 50'000 cache entries is ~250 MB
-    auto max_size = std::min(50'000, std::max(6'000, 3 * max_playouts));
+    // usage for low playout instances. 150'000 cache entries is ~225 MB
+    auto max_size = std::min(150'000, std::max(6'000, 3 * max_playouts));
     NNCache::get_NNCache().resize(max_size);
 }
 
