@@ -54,9 +54,9 @@ SMP::Mutex& UCTNode::get_mutex() {
 bool UCTNode::create_children(std::atomic<int>& nodecount,
                               GameState& state,
                               float& eval,
-                              float mem_full) {
+                              float min_psa_ratio) {
     // check whether somebody beat us to it (atomic)
-    if (has_children()) {
+    if (!expandable(min_psa_ratio)) {
         return false;
     }
     // acquire the lock
@@ -66,7 +66,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         return false;
     }
     // check whether somebody beat us to it (after taking the lock)
-    if (has_children()) {
+    if (!expandable(min_psa_ratio)) {
         return false;
     }
     // Someone else is running the expansion
@@ -113,13 +113,15 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         }
     }
 
-    link_nodelist(nodecount, nodelist, mem_full);
+    link_nodelist(nodecount, nodelist, min_psa_ratio);
     return true;
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
                             std::vector<Network::scored_node>& nodelist,
-                            float mem_full) {
+                            float min_psa_ratio) {
+    assert(min_psa_ratio < m_min_psa_ratio_children);
+
     if (nodelist.empty()) {
         return;
     }
@@ -129,33 +131,31 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
 
     LOCK(get_mutex(), lock);
 
-    auto min_psa = 0.0f;
-    // If we are halfway through our memory budget, start trimming
-    // moves with very low policy priors.
-    if (mem_full > 0.5f) {
-        auto max_psa = nodelist[0].first;
-        // Memory is almost exhausted, trim more aggressively.
-        if (mem_full > 0.95f) {
-            min_psa = max_psa * 0.01f;
-        } else {
-            min_psa = max_psa * 0.001f;
-        }
+    const auto max_psa = nodelist[0].first;
+    const auto old_min_psa = max_psa * m_min_psa_ratio_children;
+    const auto new_min_psa = max_psa * min_psa_ratio;
+    if (new_min_psa > 0.0f) {
         m_children.reserve(
             std::count_if(cbegin(nodelist), cend(nodelist),
-                [=](const auto& node) { return node.first >= min_psa; }
+                [=](const auto& node) { return node.first >= new_min_psa; }
             )
         );
     } else {
         m_children.reserve(nodelist.size());
     }
 
+    auto skipped_children = false;
     for (const auto& node : nodelist) {
-        if (node.first < min_psa) continue;
-        m_children.emplace_back(node.second, node.first);
+        if (node.first < new_min_psa) {
+            skipped_children = true;
+        } else if (node.first < old_min_psa) {
+            m_children.emplace_back(node.second, node.first);
+            ++nodecount;
+        }
     }
 
-    nodecount += m_children.size();
-    m_has_children = true;
+    m_min_psa_ratio_children = skipped_children ? min_psa_ratio : 0.0f;
+    m_is_expanding = false;
 }
 
 const std::vector<UCTNodePointer>& UCTNode::get_children() const {
@@ -181,7 +181,11 @@ void UCTNode::update(float eval) {
 }
 
 bool UCTNode::has_children() const {
-    return m_has_children;
+    return m_min_psa_ratio_children <= 1.0f;
+}
+
+bool UCTNode::expandable(const float min_psa_ratio) const {
+    return min_psa_ratio < m_min_psa_ratio_children;
 }
 
 float UCTNode::get_score() const {
@@ -324,12 +328,10 @@ UCTNode& UCTNode::get_best_root_child(int color) {
 
 size_t UCTNode::count_nodes() const {
     auto nodecount = size_t{0};
-    if (m_has_children) {
-        nodecount += m_children.size();
-        for (auto& child : m_children) {
-            if (child.get_visits() > 0) {
-                nodecount += child->count_nodes();
-            }
+    nodecount += m_children.size();
+    for (auto& child : m_children) {
+        if (child.get_visits() > 0) {
+            nodecount += child->count_nodes();
         }
     }
     return nodecount;
