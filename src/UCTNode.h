@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,10 +24,13 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <cassert>
+#include <cstring>
 
 #include "GameState.h"
 #include "Network.h"
 #include "SMP.h"
+#include "UCTNodePointer.h"
 
 class UCTNode {
 public:
@@ -35,21 +38,19 @@ public:
     // to it to encourage other CPUs to explore other parts of the
     // search tree.
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
-
-    using node_ptr_t = std::unique_ptr<UCTNode>;
-
     // Defined in UCTNode.cpp
     explicit UCTNode(int vertex, float score);
     UCTNode() = delete;
     ~UCTNode() = default;
 
     bool create_children(std::atomic<int>& nodecount,
-                         GameState& state, float& eval);
+                         GameState& state, float& eval,
+                         float mem_full = 0.0f);
 
-    const std::vector<node_ptr_t>& get_children() const;
+    const std::vector<UCTNodePointer>& get_children() const;
     void sort_children(int color);
     UCTNode& get_best_root_child(int color);
-    UCTNode* uct_select_child(int color);
+    UCTNode* uct_select_child(int color, bool is_root);
 
     size_t count_nodes() const;
     SMP::Mutex& get_mutex();
@@ -65,8 +66,6 @@ public:
     void set_score(float score);
     float get_eval(int tomove) const;
     float get_net_eval(int tomove) const;
-    double get_blackevals() const;
-    void accumulate_eval(float eval);
     void virtual_loss(void);
     void virtual_loss_undo(void);
     void update(float eval);
@@ -78,7 +77,8 @@ public:
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    node_ptr_t find_child(const int move);
+    std::unique_ptr<UCTNode> find_child(const int move);
+    void inflate_all_children();
 
 private:
     enum Status : char {
@@ -87,7 +87,10 @@ private:
         ACTIVE
     };
     void link_nodelist(std::atomic<int>& nodecount,
-                       std::vector<Network::scored_node>& nodelist);
+                       std::vector<Network::scored_node>& nodelist,
+                       float mem_full);
+    double get_blackevals() const;
+    void accumulate_eval(float eval);
 
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution
@@ -111,7 +114,7 @@ private:
 
     // Tree data
     std::atomic<bool> m_has_children{false};
-    std::vector<node_ptr_t> m_children;
+    std::vector<UCTNodePointer> m_children;
 };
 
 #endif

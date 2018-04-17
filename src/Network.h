@@ -58,9 +58,10 @@ public:
     static constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 
     static void initialize();
-    static void benchmark(const GameState * const state, const int iterations = 1600);
-    static void show_heatmap(const FastState * const state, const Netresult & netres,
-                             const bool topmoves);
+    static void benchmark(const GameState * const state,
+                          const int iterations = 1600);
+    static void show_heatmap(const FastState * const state,
+                             const Netresult & netres, const bool topmoves);
 
     static void gather_features(const GameState* const state, NNPlanes& planes);
 private:
