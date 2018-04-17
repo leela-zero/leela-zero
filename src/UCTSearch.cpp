@@ -699,6 +699,9 @@ void UCTSearch::ponder() {
     m_run = false;
     tg.wait_all();
 
+    // inflate all children once more in case the root node was an empty node when starting pondering
+    m_root->inflate_all_children();      
+
     // display search info
     myprintf("\n");
     dump_stats(m_rootstate, *m_root);
