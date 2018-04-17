@@ -45,7 +45,7 @@ public:
 
     bool create_children(std::atomic<int>& nodecount,
                          GameState& state, float& eval,
-                         float mem_full = 0.0f);
+                         float min_psa_ratio = 0.0f);
 
     const std::vector<UCTNodePointer>& get_children() const;
     void sort_children(int color);
@@ -56,6 +56,7 @@ public:
     SMP::Mutex& get_mutex();
     bool first_visit() const;
     bool has_children() const;
+    bool expandable(const float min_psa_ratio = 0.0f) const;
     void invalidate();
     void set_active(const bool active);
     bool valid() const;
@@ -88,7 +89,7 @@ private:
     };
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist,
-                       float mem_full);
+                       float min_psa_ratio);
     double get_blackevals() const;
     void accumulate_eval(float eval);
 
@@ -108,12 +109,11 @@ private:
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
     // Is someone adding scores to this node?
-    // We don't need to unset this.
     bool m_is_expanding{false};
     SMP::Mutex m_nodemutex;
 
     // Tree data
-    std::atomic<bool> m_has_children{false};
+    std::atomic<float> m_min_psa_ratio_children{2.0f};
     std::vector<UCTNodePointer> m_children;
 };
 
