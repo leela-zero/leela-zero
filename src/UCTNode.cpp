@@ -81,7 +81,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         &state, Network::Ensemble::RANDOM_ROTATION);
 
     // DCNN returns winrate as side to move
-    m_net_eval = raw_netlist[BOARD_SQUARES+1];
+    m_net_eval = raw_netlist.winrate;
     const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
     if (state.board.white_to_move()) {
@@ -89,24 +89,23 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     }
     eval = m_net_eval;
 
-    std::vector<std::pair<float,int>> nodelist;
+    std::vector<UCTNode::ScoreVertexPair> nodelist;
 
     auto legal_sum = 0.0f;
-    for (auto i = 0; i < BOARD_SQUARES+1; i++) {
-        if (i < BOARD_SQUARES) {
-            const auto x = i % BOARD_SIZE;
-            const auto y = i / BOARD_SIZE;
-            const auto vertex = state.board.get_vertex(x, y); 
-            if (state.is_move_legal(to_move, vertex)) {
-                const auto p = std::make_pair(raw_netlist[i], vertex);
-                nodelist.emplace_back(p);
-                legal_sum += raw_netlist[i];
-            }
-        } else {
-            const auto p = std::make_pair(raw_netlist[i], FastBoard::PASS);
+    for (auto i = 0; i < BOARD_SQUARES; i++) {
+        const auto x = i % BOARD_SIZE;
+        const auto y = i / BOARD_SIZE;
+        const auto vertex = state.board.get_vertex(x, y); 
+        if (state.is_move_legal(to_move, vertex)) {
+            const auto p = std::make_pair(raw_netlist.policy[i], vertex);
             nodelist.emplace_back(p);
-            legal_sum += raw_netlist[i];
+            legal_sum += raw_netlist.policy[i];
         }
+    }
+    {
+        const auto p = std::make_pair(raw_netlist.policy_pass, FastBoard::PASS);
+        nodelist.emplace_back(p);
+        legal_sum += raw_netlist.policy_pass;
     }
 
     if (legal_sum > std::numeric_limits<float>::min()) {
@@ -127,7 +126,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
-                            std::vector<std::pair<float,int>>& nodelist,
+                            std::vector<UCTNode::ScoreVertexPair>& nodelist,
                             float min_psa_ratio) {
     assert(min_psa_ratio < m_min_psa_ratio_children);
 

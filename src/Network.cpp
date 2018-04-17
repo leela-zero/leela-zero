@@ -932,15 +932,13 @@ Network::Netresult Network::get_scored_moves_internal(
 
     Netresult result;
 
-    for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
-        if (idx < BOARD_SQUARES) {
-            const auto rot_idx = rotate_nn_idx_table[rotation][idx];
-            result[rot_idx] = outputs[idx];
-        } else {
-            result[idx] = outputs[idx];
-        }
+    for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+        const auto rot_idx = rotate_nn_idx_table[rotation][idx];
+        result.policy[rot_idx] = outputs[idx];
     }
-    result[BOARD_SQUARES+1] = winrate_sig;
+
+    result.policy_pass = outputs[BOARD_SQUARES];
+    result.winrate = winrate_sig;
 
     return result;
 }
@@ -956,7 +954,7 @@ void Network::show_heatmap(const FastState* const state,
             auto score = 0;
             const auto vertex = state->board.get_vertex(x, y);
             if (state->board.get_square(vertex) == FastBoard::EMPTY) {
-                score = result[y * BOARD_SIZE + x] * 1000;
+                score = result.policy[y * BOARD_SIZE + x] * 1000;
             }
 
             line += boost::str(boost::format("%3d ") % score);
@@ -969,21 +967,22 @@ void Network::show_heatmap(const FastState* const state,
     for (int i = display_map.size() - 1; i >= 0; --i) {
         myprintf("%s\n", display_map[i].c_str());
     }
-    const auto pass_score = int(result[BOARD_SQUARES] * 1000);
+    const auto pass_score = int(result.policy_pass * 1000);
     myprintf("pass: %d\n", pass_score);
-    myprintf("winrate: %f\n", result[BOARD_SQUARES+1]);
+    myprintf("winrate: %f\n", result.winrate);
 
     if (topmoves) {
-        std::vector<std::pair<float,int>> moves;
+        using ScoreVertexPair = std::pair<float,int>;
+        std::vector<ScoreVertexPair> moves;
         for (auto i=0; i < BOARD_SQUARES; i++) {
             const auto x = i % BOARD_SIZE;
             const auto y = i / BOARD_SIZE;
             const auto vertex = state->board.get_vertex(x, y);
             if (state->board.get_square(vertex) == FastBoard::EMPTY) {
-                moves.emplace_back(result[i], vertex);
+                moves.emplace_back(result.policy[i], vertex);
             }
         }
-        moves.emplace_back(result[BOARD_SQUARES], FastBoard::PASS);
+        moves.emplace_back(result.policy_pass, FastBoard::PASS);
 
         std::stable_sort(rbegin(moves), rend(moves));
 

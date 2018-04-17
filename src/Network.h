@@ -41,7 +41,11 @@ public:
     using NNPlanes = std::vector<BoardPlane>;
 
     // {19x19 board positions, pass, winrate}
-    using Netresult = std::array<float, BOARD_SQUARES+2>;
+    struct Netresult {
+        std::vector<float> policy = std::vector<float>(BOARD_SQUARES);
+        float policy_pass;
+        float winrate;
+    };
 
     static Netresult get_scored_moves(const GameState* const state,
                                       const Ensemble ensemble,

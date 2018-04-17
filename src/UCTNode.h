@@ -82,13 +82,14 @@ public:
     void inflate_all_children();
 
 private:
+    using ScoreVertexPair = std::pair<float,int>;
     enum Status : char {
         INVALID, // superko
         PRUNED,
         ACTIVE
     };
     void link_nodelist(std::atomic<int>& nodecount,
-                       std::vector<std::pair<float,int>>& nodelist,
+                       std::vector<ScoreVertexPair>& nodelist,
                        float min_psa_ratio);
     double get_blackevals() const;
     void accumulate_eval(float eval);
