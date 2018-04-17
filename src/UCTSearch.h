@@ -19,11 +19,14 @@
 #ifndef UCTSEARCH_H_INCLUDED
 #define UCTSEARCH_H_INCLUDED
 
+#include <list>
 #include <atomic>
 #include <memory>
 #include <string>
 #include <tuple>
+#include <future>
 
+#include "ThreadPool.h"
 #include "FastBoard.h"
 #include "FastState.h"
 #include "GameState.h"
@@ -90,6 +93,7 @@ public:
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
+    float get_min_psa_ratio() const;
     void dump_stats(FastState& state, UCTNode& parent);
     void tree_stats(const UCTNode& node);
     std::string get_pv(FastState& state, UCTNode& parent);
@@ -111,6 +115,8 @@ private:
     std::atomic<bool> m_run{false};
     int m_maxplayouts;
     int m_maxvisits;
+
+    std::list<Utils::ThreadGroup> m_delete_futures;
 };
 
 class UCTWorker {
