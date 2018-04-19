@@ -70,7 +70,7 @@
  * OpenCL drivers - the BLAS version is much faster for those.
  */
 #ifndef FEATURE_USE_CPU_ONLY
-#define USE_OPENCL
+//#define USE_OPENCL
 #endif
 /*
  * USE_TUNER: Expose some extra command line parameters that allow tuning the
