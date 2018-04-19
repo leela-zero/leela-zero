@@ -216,6 +216,7 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
     for (const auto& node : parent.get_children()) {
         // Always display at least two moves. In the case there is
         // only one move searched the user could get an idea why.
+        node.inflate();
         if (++movecount > 2 && !node->get_visits()) break;
 
         std::string move = state.move_to_text(node->get_move());
@@ -669,6 +670,9 @@ void UCTSearch::ponder() {
     // stop the search
     m_run = false;
     tg.wait_all();
+
+    // inflate all children once more in case the root node was an empty node when starting pondering
+    m_root->inflate_all_children();      
 
     // display search info
     myprintf("\n");
