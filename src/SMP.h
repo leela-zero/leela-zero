@@ -43,6 +43,8 @@ namespace SMP {
         void unlock();
     private:
         Mutex * m_mutex;
+        // true if this Lock holds the mutex
+        bool m_selflock;
     };
 }
 

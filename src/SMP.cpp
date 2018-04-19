@@ -18,6 +18,7 @@
 
 #include "SMP.h"
 
+#include <cassert>
 #include <thread>
 
 SMP::Mutex::Mutex() {
@@ -26,19 +27,31 @@ SMP::Mutex::Mutex() {
 
 SMP::Lock::Lock(Mutex & m) {
     m_mutex = &m;
+    m_selflock = false;
     lock();
 }
 
 void SMP::Lock::lock() {
+    assert(!m_selflock);
     while (m_mutex->m_lock.exchange(true, std::memory_order_acquire) == true);
+    m_selflock = true;
 }
 
 void SMP::Lock::unlock() {
-    m_mutex->m_lock.store(false, std::memory_order_release);
+    assert(m_selflock);
+    auto prevval = m_mutex->m_lock.exchange(false, std::memory_order_release);
+
+    // if this fails it means we are unlocking an unlocked lock
+    assert(prevval);
+    m_selflock = false;
 }
 
 SMP::Lock::~Lock() {
-    unlock();
+    // if we don't claim to hold the lock,
+    // don't bother trying to unlock on destructor.
+    if (m_selflock) {
+        unlock();
+    }
 }
 
 int SMP::get_num_cpus() {
