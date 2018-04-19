@@ -39,36 +39,44 @@ class UCTNode;
 //  - std::unique_ptr<UCTNode> pointer;
 //  - std::pair<float, std::int16_t> args;
 
-// WARNING : inflate() is not thread-safe and hence has to be protected
-// by an external lock.
+// All methods should be thread-safe except destructor and when
+// the instanced is 'moved from'.
 
 class UCTNodePointer {
 private:
+    static constexpr std::uint64_t INVALID = 2;
+    static constexpr std::uint64_t POINTER = 1;
+    static constexpr std::uint64_t UNINFLATED = 0;
     // the raw storage used here.
-    // if bit 0 is 0, m_data is the actual pointer.
-    // if bit 0 is 1, bit [31:16] is the vertex value, bit [63:32] is the score.
+    // if bit [1:0] is 1, m_data is the actual pointer.
+    // if bit [1:0] is 0, bit [31:16] is the vertex value, bit [63:32] is the score.
+    // if bit [1:0] is other values, it should assert-fail
     // (C-style bit fields and unions are not portable)
-    mutable uint64_t m_data = 1;
+    mutable std::atomic<std::uint64_t> m_data{INVALID};
 
-    UCTNode * read_ptr() const {
-        assert(is_inflated());
-        return reinterpret_cast<UCTNode*>(m_data);
+    UCTNode * read_ptr(uint64_t v) const {
+        assert((v & 3ULL) == POINTER);
+        return reinterpret_cast<UCTNode*>(v & ~(0x3ULL));
     }
 
-    std::int16_t read_vertex() const {
-        assert(!is_inflated());
-        return static_cast<std::int16_t>(m_data >> 16);
+    std::int16_t read_vertex(uint64_t v) const {
+        assert((v & 3ULL) == UNINFLATED);
+        return static_cast<std::int16_t>(v >> 16);
     }
 
-    float read_score() const {
+    float read_score(uint64_t v) const {
         static_assert(sizeof(float) == 4,
             "This code assumes floats are 32-bit");
-        assert(!is_inflated());
+        assert((v & 3ULL) == UNINFLATED);
 
-        auto x = static_cast<std::uint32_t>(m_data >> 32);
+        auto x = static_cast<std::uint32_t>(v >> 32);
         float ret;
         std::memcpy(&ret, &x, sizeof(ret));
         return ret;
+    }
+
+    bool is_inflated(uint64_t v) const {
+        return (v & 3ULL) == POINTER;
     }
 
 public:
@@ -77,25 +85,21 @@ public:
     UCTNodePointer(std::int16_t vertex, float score);
     UCTNodePointer(const UCTNodePointer&) = delete;
 
-    bool is_inflated() const {
-        return (m_data & 1ULL) == 0;
-    }
 
     // methods from std::unique_ptr<UCTNode>
     typename std::add_lvalue_reference<UCTNode>::type operator*() const{
-        return *read_ptr();
+        return *read_ptr(m_data.load());
     }
     UCTNode* operator->() const {
-        return read_ptr();
+        return read_ptr(m_data.load());
     }
     UCTNode* get() const {
-        return read_ptr();
+        return read_ptr(m_data.load());
     }
     UCTNodePointer& operator=(UCTNodePointer&& n);
     UCTNode * release() {
-        auto ret = read_ptr();
-        m_data = 1;
-        return ret;
+        auto v = std::atomic_exchange(&m_data, INVALID); 
+        return read_ptr(v);
     }
 
     // construct UCTNode instance from the vertex/score pair
