@@ -180,16 +180,13 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
 
     if (node->has_children() && !result.valid()) {
         auto next = node->uct_select_child(color, node == m_root.get());
+        auto move = next->get_move();
 
-        if (next != nullptr) {
-            auto move = next->get_move();
-
-            currstate.play_move(move);
-            if (move != FastBoard::PASS && currstate.superko()) {
-                next->invalidate();
-            } else {
-                result = play_simulation(currstate, next);
-            }
+        currstate.play_move(move);
+        if (move != FastBoard::PASS && currstate.superko()) {
+            next->invalidate();
+        } else {
+            result = play_simulation(currstate, next);
         }
     }
 

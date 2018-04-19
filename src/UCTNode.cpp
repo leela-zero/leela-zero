@@ -234,9 +234,6 @@ void UCTNode::accumulate_eval(float eval) {
 }
 
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
-    UCTNodePointer * best = nullptr;
-    auto best_value = std::numeric_limits<double>::lowest();
-
     LOCK(get_mutex(), lock);
 
     // Count parentvisits manually to avoid issues with transpositions.
@@ -262,12 +259,15 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     // Estimated eval for unknown nodes = original parent NN eval - reduction
     auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
+    auto best = (UCTNodePointer*){nullptr};
+    auto best_value = std::numeric_limits<double>::lowest();
+
     for (auto& child : m_children) {
         if (!child.active()) {
             continue;
         }
 
-        float winrate = fpu_eval;
+        auto winrate = fpu_eval;
         if (child.get_visits() > 0) {
             winrate = child.get_eval(color);
         }
