@@ -574,31 +574,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
 
-    // create a sorted list off legal moves (make sure we
+    // create a sorted list of legal moves (make sure we
     // play something legal and decent even in time trouble)
-    float root_eval;
-    const auto had_children = m_root->has_children();
-    if (m_root->expandable()) {
-        m_root->create_children(m_nodes, m_rootstate, root_eval);
-    }
-    if (had_children) {
-        root_eval = m_root->get_eval(color);
-    } else {
-        m_root->update(root_eval);
-        root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
-    }
-    myprintf("NN eval=%f\n", root_eval);
-
-    // Now that the new root is installed, there are a lot of special
-    // cases where root node assumes all childs are inflated.
-    m_root->inflate_all_children();
-
-    m_root->kill_superkos(m_rootstate);
-    if (cfg_noise) {
-        // Adjust the Dirichlet noise's alpha constant to the board size
-        auto alpha = 0.03f * 361.0f / BOARD_SQUARES;
-        m_root->dirichlet_noise(0.25f, alpha);
-    }
+    m_root->prepare_root_node(color, m_nodes, m_rootstate);
 
     m_run = true;
     int cpus = cfg_num_threads;
@@ -669,15 +647,12 @@ int UCTSearch::think(int color, passflag_t passflag) {
 void UCTSearch::ponder() {
     update_root();
 
+    m_root->prepare_root_node(m_rootstate.board.get_to_move(),
+                              m_nodes, m_rootstate);
+
     m_run = true;
-    int cpus = cfg_num_threads;
-
-    // There are a lot of special cases where the root node assumes all
-    // childen are inflated.
-    m_root->inflate_all_children();
-
     ThreadGroup tg(thread_pool);
-    for (int i = 1; i < cpus; i++) {
+    for (int i = 1; i < cfg_num_threads; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
     auto keeprunning = true;

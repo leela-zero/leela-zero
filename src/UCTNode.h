@@ -72,9 +72,10 @@ public:
     void update(float eval);
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch
-    void kill_superkos(const KoState& state);
-    void dirichlet_noise(float epsilon, float alpha);
     void randomize_first_proportionally();
+    void prepare_root_node(int color,
+                           std::atomic<int>& nodecount,
+                           GameState& state);
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
@@ -92,6 +93,8 @@ private:
                        float min_psa_ratio);
     double get_blackevals() const;
     void accumulate_eval(float eval);
+    void kill_superkos(const KoState& state);
+    void dirichlet_noise(float epsilon, float alpha);
 
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution
