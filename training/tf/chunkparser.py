@@ -61,7 +61,8 @@ class ChunkDataSrc:
         return self.items.pop()
 
 class ChunkParser:
-    def __init__(self, chunkdatasrc, shuffle_size=1, sample=1, buffer_size=1, batch_size=256, workers=None):
+    def __init__(self, chunkdatasrc, shuffle_size=1, sample=1,
+                 buffer_size=1, batch_size=256, workers=None):
         """
             Read data and yield batches of raw tensors.
 
@@ -75,31 +76,42 @@ class ChunkParser:
 
             chunk: The name of a file containing chunkdata
 
-            chunkdata: type Bytes. Either mutiple records of v1 format, or multiple records
-            of v2 format.
+            chunkdata: type Bytes. Either mutiple records of v1 format,
+            or multiple records of v2 format.
 
-            v1: The original text format describing a move. 19 lines long. VERY slow
-            to decode. Typically around 2500 bytes long. Used only for backward
-            compatability.
+            v1: The original text format describing a move. 19 lines long.
+            VERY slow to decode. Typically around 2500 bytes long.
+            Used only for backward compatability.
 
-            v2: Packed binary representation of v1. Fixed length, no record seperator.
-            The most compact format. Data in the shuffle buffer is held in this
-            format as it allows the largest possible shuffle buffer. Very fast to
-            decode. Preferred format to use on disk. 2176 bytes long.
+            v2: Packed binary representation of v1. Fixed length,
+            no record seperator. The most compact format.
+            Data in the shuffle buffer is held in this
+            format as it allows the largest possible shuffle buffer.
+            Very fast to decode. Preferred format to use on disk.
+            2176 bytes long.
 
-            raw: A byte string holding raw tensors contenated together. This is used
-            to pass data from the workers to the parent. Exists because TensorFlow doesn't
-            have a fast way to unpack bit vectors. 7950 bytes long.
+            raw: A byte string holding raw tensors contenated together.
+            This is used to pass data from the workers to the parent.
+            Exists because TensorFlow doesn't have a fast way to
+            unpack bit vectors.
+            7950 bytes long.
         """
-        # Build probility reflection tables. The last element is 'pass' and is identity mapped.
-        self.prob_reflection_table = [[remap_vertex(vertex, sym) for vertex in range(361)]+[361] for sym in range(8)]
+        # Build probility reflection tables.
+        # The last element is 'pass' and is identity mapped.
+        self.prob_reflection_table = [
+            [remap_vertex(vertex, sym)
+              for vertex in range(361)]+[361] for sym in range(8)]
         # Build full 16-plane reflection tables.
         self.full_reflection_table = [
-            np.array([remap_vertex(vertex, sym) + p * 361 for p in range(16) for vertex in range(361) ])
-                for sym in range(8) ]
-        # Convert both to np.array. This avoids a conversion step when they're actually used.
-        self.prob_reflection_table = [ np.array(x, dtype=np.int64) for x in self.prob_reflection_table ]
-        self.full_reflection_table = [ np.array(x, dtype=np.int64) for x in self.full_reflection_table ]
+            np.array([remap_vertex(vertex, sym) + p * 361
+                for p in range(16) for vertex in range(361)])
+                    for sym in range(8)]
+        # Convert both to np.array.
+        # This avoids a conversion step when they're actually used.
+        self.prob_reflection_table = [
+            np.array(x, dtype=np.int64) for x in self.prob_reflection_table ]
+        self.full_reflection_table = [
+            np.array(x, dtype=np.int64) for x in self.full_reflection_table ]
         # Build the all-zeros and all-ones flat planes, used for color-to-move.
         self.flat_planes = [ b'\1'*361 + b'\0'*361, b'\0'*361 + b'\1'*361 ]
 
@@ -119,7 +131,8 @@ class ChunkParser:
         for _ in range(workers):
             read, write = mp.Pipe(duplex=False)
             mp.Process(target=self.task,
-                    args=(chunkdatasrc, write)).start()
+                       args=(chunkdatasrc, write),
+                       daemon=True).start()
             self.readers.append(read)
             write.close()
         self.init_structs()
@@ -140,7 +153,8 @@ class ChunkParser:
         # float32 winner
         # float32*392 probs
         # uint*6498 planes
-        # (order is to ensure that no padding is required to make float32 be 32-bit aligned)
+        # (order is to ensure that no padding is required to
+        #  make float32 be 32-bit aligned)
         self.raw_struct = struct.Struct('4s1448s6498s')
 
     def convert_v1_to_v2(self, text_item):
@@ -152,13 +166,15 @@ class ChunkParser:
             [probabilities],...
             winner,...
         """
-        # We start by building a list of 16 planes, each being a 19*19 == 361 element array
+        # We start by building a list of 16 planes,
+        # each being a 19*19 == 361 element array
         # of type np.uint8
         planes = []
         for plane in range(0, 16):
             # first 360 first bits are 90 hex chars, encoded MSB
             hex_string = text_item[plane][0:90]
-            array = np.unpackbits(np.frombuffer(bytearray.fromhex(hex_string), dtype=np.uint8))
+            array = np.unpackbits(np.frombuffer(
+                bytearray.fromhex(hex_string), dtype=np.uint8))
             # Remaining bit that didn't fit. Encoded LSB so
             # it needs to be specially handled.
             last_digit = text_item[plane][90]
@@ -196,7 +212,6 @@ class ChunkParser:
         version = struct.pack('i', 1)
 
         return True, self.v2_struct.pack(version, probs, planes, stm, winner)
-        #return True, b''.join([b'\1\0\0\0', probs, planes, b'\0\1'[stm:stm+1], b'\0\1'[winner:winner+1]])
 
     def v2_apply_symmetry(self, symmetry, content):
         """
@@ -227,7 +242,7 @@ class ChunkParser:
 
     def convert_v2_to_tuple(self, content):
         """
-            Convert v2 binary training data to packed tensors 
+            Convert v2 binary training data to packed tensors
 
             v2 struct format is
                 int32 ver
@@ -289,8 +304,9 @@ class ChunkParser:
 
     def task(self, chunkdatasrc, writer):
         """
-            Run in fork'ed process, read data from chunkdatasrc, parsing, shuffling and
-            sending v2 data through pipe back to main process.
+            Run in fork'ed process, read data from chunkdatasrc,
+            parsing, shuffling and sending v2 data through pipe back
+            to main process.
         """
         self.init_structs()
         while True:
@@ -303,7 +319,7 @@ class ChunkParser:
                 item = self.v2_apply_symmetry(symmetry, item)
                 writer.send_bytes(item)
 
-    def chunk_gen(self):
+    def v2_gen(self):
         """
             Read v2 records from child workers, shuffle, and yield
             records.
@@ -333,7 +349,7 @@ class ChunkParser:
             Take a generator producing v2 records and convert them to tuples.
             applying a random symmetry on the way.
         """
-        for r in gen: 
+        for r in gen:
             yield self.convert_v2_to_tuple(r)
 
     def batch_gen(self, gen):
@@ -355,15 +371,13 @@ class ChunkParser:
             Read data from child workers and yield batches
             of raw tensors
         """
-        gen = self.chunk_gen()     # read from workers
+        gen = self.v2_gen()        # read from workers
         gen = self.tuple_gen(gen)  # convert v2->tuple
         gen = self.batch_gen(gen)  # assemble into batches
         for b in gen:
             yield b
 
 
-
-#
 # Tests to check that records can round-trip successfully
 class ChunkParserTest(unittest.TestCase):
     def generate_fake_pos(self):
@@ -372,7 +386,8 @@ class ChunkParserTest(unittest.TestCase):
             Result is ([[361] * 18], [362], [1])
         """
         # 1. 18 binary planes of length 361
-        planes = [np.random.randint(2, size=361).tolist() for plane in range(16)]
+        planes = [np.random.randint(2, size=361).tolist()
+                  for plane in range(16)]
         stm = float(np.random.randint(2))
         planes.append([stm] * 361)
         planes.append([1. - stm] * 361)
@@ -415,16 +430,19 @@ class ChunkParserTest(unittest.TestCase):
         # feed batch_size copies into parser
         chunkdatasrc = ChunkDataSrc([chunkdata for _ in range(batch_size*2)])
         parser = ChunkParser(chunkdatasrc,
-                shuffle_size=1, workers=1,batch_size=batch_size)
+                             shuffle_size=1, workers=1, batch_size=batch_size)
 
         # Get one batch from the parser.
         batchgen = parser.parse()
         data = next(batchgen)
 
         # Convert batch to python lists.
-        batch = ( np.reshape(np.frombuffer(data[0], dtype=np.uint8), (batch_size, 18, 19*19)).tolist(),
-                  np.reshape(np.frombuffer(data[1], dtype=np.float32), (batch_size, 19*19+1)).tolist(),
-                  np.reshape(np.frombuffer(data[2], dtype=np.float32), (batch_size, 1)).tolist() )
+        batch = ( np.reshape(np.frombuffer(data[0], dtype=np.uint8),
+                             (batch_size, 18, 19*19)).tolist(),
+                  np.reshape(np.frombuffer(data[1], dtype=np.float32),
+                             (batch_size, 19*19+1)).tolist(),
+                  np.reshape(np.frombuffer(data[2], dtype=np.float32),
+                             (batch_size, 1)).tolist() )
 
         # Check that every record in the batch is a some valid symmetry
         # of the original data.
@@ -435,8 +453,13 @@ class ChunkParserTest(unittest.TestCase):
             result = False
             for symmetry in range(8):
                 # Apply the symmetry to the original
-                sym_planes = [ [ plane[remap_vertex(vertex, symmetry)] for vertex in range(361) ] for plane in planes ]
-                sym_probs = [ probs[remap_vertex(vertex, symmetry)] for vertex in range(361)] + [probs[361]]
+                sym_planes = [
+                    [plane[remap_vertex(vertex, symmetry)]
+                        for vertex in range(361)]
+                            for plane in planes]
+                sym_probs = [
+                    probs[remap_vertex(vertex, symmetry)]
+                        for vertex in range(361)] + [probs[361]]
 
                 if symmetry == 0:
                     assert sym_planes == planes

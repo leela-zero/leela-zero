@@ -152,7 +152,7 @@ std::string Tuner::parameters_to_string(const Parameters& p) {
 }
 
 static size_t next_power_of_two(const size_t x) {
-    return 2 << (size_t)(std::ceil(std::log2(x)) - 1);
+    return 2 << size_t(std::ceil(std::log2(x)) - 1);
 }
 
 static void sgemm_generate_data(std::vector<float> &x,
@@ -322,9 +322,9 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
 
         auto sgemm_kernel = cl::Kernel(program, "XgemmBatched");
 
-        auto m_ceil = (int)ceilMultiple(ceilMultiple(m, p["MWG"]), p["VWM"]);
-        auto n_ceil = (int)ceilMultiple(ceilMultiple(n, p["NWG"]), p["VWN"]);
-        auto k_ceil = (int)ceilMultiple(ceilMultiple(k, p["KWG"]), p["VWM"]);
+        auto m_ceil = int(ceilMultiple(ceilMultiple(m, p["MWG"]), p["VWM"]));
+        auto n_ceil = int(ceilMultiple(ceilMultiple(n, p["NWG"]), p["VWN"]));
+        auto k_ceil = int(ceilMultiple(ceilMultiple(k, p["KWG"]), p["VWM"]));
 
         if (m_ceil != m_ceil_prev
             || n_ceil != n_ceil_prev
@@ -355,7 +355,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
 
         cl::NDRange size_sgemm = {(m_ceil * p["MDIMC"]) / p["MWG"],
                                   (n_ceil * p["NDIMC"]) / p["NWG"],
-                                  (size_t)batch_size};
+                                  size_t(batch_size)};
 
         auto sum = 0.0f;
         auto max_error = 0.0f;

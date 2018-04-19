@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,10 +24,13 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <cassert>
+#include <cstring>
 
 #include "GameState.h"
 #include "Network.h"
 #include "SMP.h"
+#include "UCTNodePointer.h"
 
 class UCTNode {
 public:
@@ -35,9 +38,6 @@ public:
     // to it to encourage other CPUs to explore other parts of the
     // search tree.
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
-
-    using node_ptr_t = std::unique_ptr<UCTNode>;
-
     // Defined in UCTNode.cpp
     explicit UCTNode(int vertex, float score);
     UCTNode() = delete;
@@ -45,9 +45,9 @@ public:
 
     bool create_children(std::atomic<int>& nodecount,
                          GameState& state, float& eval,
-                         float mem_full = 0.0f);
+                         float min_psa_ratio = 0.0f);
 
-    const std::vector<node_ptr_t>& get_children() const;
+    const std::vector<UCTNodePointer>& get_children() const;
     void sort_children(int color);
     UCTNode& get_best_root_child(int color);
     UCTNode* uct_select_child(int color, bool is_root);
@@ -56,6 +56,7 @@ public:
     SMP::Mutex& get_mutex();
     bool first_visit() const;
     bool has_children() const;
+    bool expandable(const float min_psa_ratio = 0.0f) const;
     void invalidate();
     void set_active(const bool active);
     bool valid() const;
@@ -71,13 +72,15 @@ public:
     void update(float eval);
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch
-    void kill_superkos(const KoState& state);
-    void dirichlet_noise(float epsilon, float alpha);
     void randomize_first_proportionally();
+    void prepare_root_node(int color,
+                           std::atomic<int>& nodecount,
+                           GameState& state);
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    node_ptr_t find_child(const int move);
+    std::unique_ptr<UCTNode> find_child(const int move);
+    void inflate_all_children();
 
 private:
     enum Status : char {
@@ -87,9 +90,11 @@ private:
     };
     void link_nodelist(std::atomic<int>& nodecount,
                        std::vector<Network::scored_node>& nodelist,
-                       float mem_full);
+                       float min_psa_ratio);
     double get_blackevals() const;
     void accumulate_eval(float eval);
+    void kill_superkos(const KoState& state);
+    void dirichlet_noise(float epsilon, float alpha);
 
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution
@@ -107,13 +112,12 @@ private:
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
     // Is someone adding scores to this node?
-    // We don't need to unset this.
     bool m_is_expanding{false};
     SMP::Mutex m_nodemutex;
 
     // Tree data
-    std::atomic<bool> m_has_children{false};
-    std::vector<node_ptr_t> m_children;
+    std::atomic<float> m_min_psa_ratio_children{2.0f};
+    std::vector<UCTNodePointer> m_children;
 };
 
 #endif

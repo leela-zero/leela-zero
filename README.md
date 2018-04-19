@@ -294,6 +294,8 @@ https://github.com/glinscott/leela-chess
 https://storage.googleapis.com/deepmind-media/alphago/AlphaGoNaturePaper.pdf
 * Newer Alpha Zero (Go, Chess, Shogi) paper:
 https://arxiv.org/pdf/1712.01815.pdf
+* AlphaGo Zero Explained In One Diagram:
+https://medium.com/applied-data-science/alphago-zero-explained-in-one-diagram-365f5abf67e0
 
 # License
 

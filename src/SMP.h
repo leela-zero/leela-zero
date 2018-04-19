@@ -43,6 +43,7 @@ namespace SMP {
         void unlock();
     private:
         Mutex * m_mutex;
+        bool m_owns_lock{false};
     };
 }
 

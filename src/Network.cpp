@@ -446,14 +446,16 @@ void Network::winograd_transform_in(const std::vector<float>& in,
     constexpr auto WTILES = (W + 1) / 2;
     constexpr auto P = WTILES * WTILES;
 
-    std::array<std::array<float, W + 2>, H + 2> in_pad;
-    for (auto xin = 0; xin < W + 2; xin++) {
+    std::array<std::array<float, WTILES * 2 + 2>, WTILES * 2 + 2> in_pad;
+    for (auto xin = size_t{0}; xin < in_pad.size(); xin++) {
         in_pad[0][xin]     = 0.0f;
         in_pad[H + 1][xin] = 0.0f;
+        in_pad[H + 2][xin] = 0.0f;
     }
-    for (auto yin = 1; yin < H + 1; yin++) {
+    for (auto yin = size_t{1}; yin < in_pad[0].size() - 2; yin++) {
         in_pad[yin][0]     = 0.0f;
         in_pad[yin][W + 1] = 0.0f;
+        in_pad[yin][W + 2] = 0.0f;
     }
 
     for (auto ch = 0; ch < C; ch++) {

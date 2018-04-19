@@ -54,9 +54,9 @@ SMP::Mutex& UCTNode::get_mutex() {
 bool UCTNode::create_children(std::atomic<int>& nodecount,
                               GameState& state,
                               float& eval,
-                              float mem_full) {
+                              float min_psa_ratio) {
     // check whether somebody beat us to it (atomic)
-    if (has_children()) {
+    if (!expandable(min_psa_ratio)) {
         return false;
     }
     // acquire the lock
@@ -66,7 +66,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         return false;
     }
     // check whether somebody beat us to it (after taking the lock)
-    if (has_children()) {
+    if (!expandable(min_psa_ratio)) {
         return false;
     }
     // Someone else is running the expansion
@@ -113,13 +113,15 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         }
     }
 
-    link_nodelist(nodecount, nodelist, mem_full);
+    link_nodelist(nodecount, nodelist, min_psa_ratio);
     return true;
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
                             std::vector<Network::scored_node>& nodelist,
-                            float mem_full) {
+                            float min_psa_ratio) {
+    assert(min_psa_ratio < m_min_psa_ratio_children);
+
     if (nodelist.empty()) {
         return;
     }
@@ -129,38 +131,34 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
 
     LOCK(get_mutex(), lock);
 
-    auto min_psa = 0.0f;
-    // If we are halfway through our memory budget, start trimming
-    // moves with very low policy priors.
-    if (mem_full > 0.5f) {
-        auto max_psa = nodelist[0].first;
-        // Memory is almost exhausted, trim more aggressively.
-        if (mem_full > 0.95f) {
-            min_psa = max_psa * 0.01f;
-        } else {
-            min_psa = max_psa * 0.001f;
-        }
+    const auto max_psa = nodelist[0].first;
+    const auto old_min_psa = max_psa * m_min_psa_ratio_children;
+    const auto new_min_psa = max_psa * min_psa_ratio;
+    if (new_min_psa > 0.0f) {
         m_children.reserve(
             std::count_if(cbegin(nodelist), cend(nodelist),
-                [=](const auto& node) { return node.first >= min_psa; }
+                [=](const auto& node) { return node.first >= new_min_psa; }
             )
         );
     } else {
         m_children.reserve(nodelist.size());
     }
 
+    auto skipped_children = false;
     for (const auto& node : nodelist) {
-        if (node.first < min_psa) continue;
-        m_children.emplace_back(
-            std::make_unique<UCTNode>(node.second, node.first)
-        );
+        if (node.first < new_min_psa) {
+            skipped_children = true;
+        } else if (node.first < old_min_psa) {
+            m_children.emplace_back(node.second, node.first);
+            ++nodecount;
+        }
     }
 
-    nodecount += m_children.size();
-    m_has_children = true;
+    m_min_psa_ratio_children = skipped_children ? min_psa_ratio : 0.0f;
+    m_is_expanding = false;
 }
 
-const std::vector<UCTNode::node_ptr_t>& UCTNode::get_children() const {
+const std::vector<UCTNodePointer>& UCTNode::get_children() const {
     return m_children;
 }
 
@@ -183,7 +181,11 @@ void UCTNode::update(float eval) {
 }
 
 bool UCTNode::has_children() const {
-    return m_has_children;
+    return m_min_psa_ratio_children <= 1.0f;
+}
+
+bool UCTNode::expandable(const float min_psa_ratio) const {
+    return min_psa_ratio < m_min_psa_ratio_children;
 }
 
 float UCTNode::get_score() const {
@@ -209,7 +211,7 @@ float UCTNode::get_eval(int tomove) const {
     if (tomove == FastBoard::WHITE) {
         blackeval += static_cast<double>(virtual_loss);
     }
-    auto score = static_cast<float>(blackeval / (double)visits);
+    auto score = static_cast<float>(blackeval / double(visits));
     if (tomove == FastBoard::WHITE) {
         score = 1.0f - score;
     }
@@ -228,28 +230,25 @@ double UCTNode::get_blackevals() const {
 }
 
 void UCTNode::accumulate_eval(float eval) {
-    atomic_add(m_blackevals, (double)eval);
+    atomic_add(m_blackevals, double(eval));
 }
 
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
-    UCTNode* best = nullptr;
-    auto best_value = std::numeric_limits<double>::lowest();
-
     LOCK(get_mutex(), lock);
 
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
     auto parentvisits = size_t{0};
     for (const auto& child : m_children) {
-        if (child->valid()) {
-            parentvisits += child->get_visits();
-            if (child->get_visits() > 0) {
-                total_visited_policy += child->get_score();
+        if (child.valid()) {
+            parentvisits += child.get_visits();
+            if (child.get_visits() > 0) {
+                total_visited_policy += child.get_score();
             }
         }
     }
 
-    auto numerator = std::sqrt((double)parentvisits);
+    auto numerator = std::sqrt(double(parentvisits));
     auto fpu_reduction = 0.0f;
     // Lower the expected eval for moves that are likely not the best.
     // Do not do this if we have introduced noise at this node exactly
@@ -260,49 +259,53 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     // Estimated eval for unknown nodes = original parent NN eval - reduction
     auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
-    for (const auto& child : m_children) {
-        if (!child->active()) {
+    auto best = static_cast<UCTNodePointer*>(nullptr);
+    auto best_value = std::numeric_limits<double>::lowest();
+
+    for (auto& child : m_children) {
+        if (!child.active()) {
             continue;
         }
 
-        float winrate = fpu_eval;
-        if (child->get_visits() > 0) {
-            winrate = child->get_eval(color);
+        auto winrate = fpu_eval;
+        if (child.get_visits() > 0) {
+            winrate = child.get_eval(color);
         }
-        auto psa = child->get_score();
-        auto denom = 1.0 + child->get_visits();
+        auto psa = child.get_score();
+        auto denom = 1.0 + child.get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
         auto value = winrate + puct;
         assert(value > std::numeric_limits<double>::lowest());
 
         if (value > best_value) {
             best_value = value;
-            best = child.get();
+            best = &child;
         }
     }
 
     assert(best != nullptr);
-    return best;
+    best->inflate();
+    return best->get();
 }
 
-class NodeComp : public std::binary_function<UCTNode::node_ptr_t&,
-                                             UCTNode::node_ptr_t&, bool> {
+class NodeComp : public std::binary_function<UCTNodePointer&,
+                                             UCTNodePointer&, bool> {
 public:
     NodeComp(int color) : m_color(color) {};
-    bool operator()(const UCTNode::node_ptr_t& a,
-                    const UCTNode::node_ptr_t& b) {
+    bool operator()(const UCTNodePointer& a,
+                    const UCTNodePointer& b) {
         // if visits are not same, sort on visits
-        if (a->get_visits() != b->get_visits()) {
-            return a->get_visits() < b->get_visits();
+        if (a.get_visits() != b.get_visits()) {
+            return a.get_visits() < b.get_visits();
         }
 
         // neither has visits, sort on prior score
-        if (a->get_visits() == 0) {
-            return a->get_score() < b->get_score();
+        if (a.get_visits() == 0) {
+            return a.get_score() < b.get_score();
         }
 
         // both have same non-zero number of visits
-        return a->get_eval(m_color) < b->get_eval(m_color);
+        return a.get_eval(m_color) < b.get_eval(m_color);
     }
 private:
     int m_color;
@@ -317,15 +320,17 @@ UCTNode& UCTNode::get_best_root_child(int color) {
     LOCK(get_mutex(), lock);
     assert(!m_children.empty());
 
-    return *(std::max_element(begin(m_children), end(m_children),
-                              NodeComp(color))->get());
+    auto ret = std::max_element(begin(m_children), end(m_children),
+                                NodeComp(color));
+    ret->inflate();
+    return *(ret->get());
 }
 
 size_t UCTNode::count_nodes() const {
     auto nodecount = size_t{0};
-    if (m_has_children) {
-        nodecount += m_children.size();
-        for (auto& child : m_children) {
+    nodecount += m_children.size();
+    for (auto& child : m_children) {
+        if (child.get_visits() > 0) {
             nodecount += child->count_nodes();
         }
     }
