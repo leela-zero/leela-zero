@@ -26,14 +26,14 @@
 #include "UCTNode.h"
 
 UCTNodePointer::~UCTNodePointer() {
-    auto v = std::atomic_exchange(&m_data, std::uint64_t{2});
+    auto v = std::atomic_exchange(&m_data, INVALID);
     if (is_inflated(v)) {
         delete read_ptr(v);
     }
 }
 
 UCTNodePointer::UCTNodePointer(UCTNodePointer&& n) {
-    auto nv = std::atomic_exchange(&n.m_data, std::uint64_t{2});
+    auto nv = std::atomic_exchange(&n.m_data, INVALID);
     auto v = std::atomic_exchange(&m_data, nv);
     if (is_inflated(v)) {
         delete read_ptr(v);
@@ -50,7 +50,7 @@ UCTNodePointer::UCTNodePointer(std::int16_t vertex, float score) {
 }
 
 UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
-    auto nv = std::atomic_exchange(&n.m_data, std::uint64_t{2});
+    auto nv = std::atomic_exchange(&n.m_data, INVALID);
     auto v = std::atomic_exchange(&m_data, nv);
 
     if (is_inflated(v)) {
@@ -60,13 +60,13 @@ UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
 }
 
 void UCTNodePointer::inflate() const {
-    while(1) {
+    while(true) {
         auto v = m_data.load();
         if (is_inflated(v)) return;
 
         auto v2 = reinterpret_cast<std::uint64_t>(
             new UCTNode(read_vertex(v), read_score(v))
-        ) + 1;
+        ) | POINTER;
         bool success = m_data.compare_exchange_strong(v, v2);
         if (success) {
             return;
