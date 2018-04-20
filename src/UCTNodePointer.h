@@ -110,6 +110,7 @@ public:
     int get_move() const;
     // this can only be called if it is an inflated pointer
     float get_eval(int tomove) const;
+    std::pair<float, float> get_beta_param(int tomove) const;
 };
 
 #endif
