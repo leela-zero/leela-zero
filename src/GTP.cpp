@@ -93,10 +93,10 @@ void GTP::setup_default_parameters() {
     cfg_sgemm_exhaustive = false;
     cfg_tune_only = false;
 #endif
-    cfg_puct = 0.2f;
     cfg_softmax_temp = 1.0f;
-    cfg_fpu_reduction = 0.03f;
-    cfg_beta_prior = 15.0f;
+    cfg_puct = 0.2f;
+    cfg_fpu_reduction = 0.01f;
+    cfg_beta_prior = 500.0f;
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
     cfg_noise = false;

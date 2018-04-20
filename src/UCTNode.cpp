@@ -260,24 +260,15 @@ void UCTNode::accumulate_eval(float eval) {
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     LOCK(get_mutex(), lock);
 
-    auto total_visited_policy = 0.0f;
+    auto max_policy = 0.0f;
     for (const auto& child : m_children) {
-        if (child.valid() && child.get_visits() > 0) {
-            total_visited_policy += child.get_score();
+        if (child.valid()) {
+            max_policy = std::max(max_policy, child.get_score());
         }
     }
 
-    auto fpu_reduction = 0.0f;
-    // Lower the expected eval for moves that are likely not the best.
-    // Do not do this if we have introduced noise at this node exactly
-    // to explore more.
-    if (!is_root || !cfg_noise) {
-        fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
-    }
     // Estimated eval for unknown nodes = original parent NN eval - reduction
     auto parent_eval = get_net_eval(color);
-    auto fpu_eval = parent_eval - fpu_reduction;
-
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
 
@@ -286,18 +277,26 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
             continue;
         }
 
-        auto success = fpu_eval;
-        auto failure = 1.0f - fpu_eval;
-        if (child.get_visits() > 0) {
+        auto psa = child.get_score();
+        auto policy_ratio = max_policy / psa;
+        auto policy_reduction = cfg_fpu_reduction * std::sqrt(policy_ratio);
+        auto policy_eval = parent_eval - policy_reduction;
+        policy_eval = std::max(0.0f, policy_eval);
+
+        auto success = 0.0f;
+        auto failure = 0.0f;
+        if (child.get_visits()) {
             std::tie(success, failure) = child.get_beta_param(color);
         }
-        boost::random::beta_distribution<float> dist(success + cfg_beta_prior,
-                                                     failure + cfg_beta_prior);
-        auto pick = dist(Random::get_Rng());
-        auto psa = child.get_score();
-        auto value = pick * std::pow(psa, cfg_puct);
-        assert(value > std::numeric_limits<double>::lowest());
+        success += cfg_beta_prior * policy_eval;
+        failure += cfg_beta_prior * (1.0f - policy_eval);
 
+        auto alpha = 1.0f + (success / cfg_puct);
+        auto beta  = 1.0f + (failure / cfg_puct);
+        boost::random::beta_distribution<float> dist(alpha, beta);
+        auto value = dist(Random::get_Rng());
+
+        assert(value > std::numeric_limits<double>::lowest());
         if (value > best_value) {
             best_value = value;
             best = &child;
