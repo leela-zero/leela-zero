@@ -40,6 +40,7 @@
 #include <numeric>
 #include <utility>
 #include <vector>
+#include <boost/random/beta_distribution.hpp>
 
 #include "UCTNode.h"
 #include "FastBoard.h"
@@ -48,6 +49,7 @@
 #include "GameState.h"
 #include "Network.h"
 #include "Utils.h"
+#include "Random.h"
 
 using namespace Utils;
 
@@ -232,6 +234,24 @@ float UCTNode::get_eval(int tomove) const {
     return get_raw_eval(tomove, m_virtual_loss);
 }
 
+std::pair<float, float> UCTNode::get_beta_param(int tomove) const {
+    auto virtual_loss = int{m_virtual_loss};
+    auto visits = get_visits() + virtual_loss;
+    assert(visits > 0);
+    auto blackeval = get_blackevals();
+    if (tomove == FastBoard::WHITE) {
+        blackeval += static_cast<double>(virtual_loss);
+    }
+    auto success = blackeval;
+    auto failure = visits - blackeval;
+    assert(failure >= 0.0f);
+    if (tomove == FastBoard::BLACK) {
+        return {success, failure};
+    } else {
+        return {failure, success};
+    }
+}
+
 float UCTNode::get_net_eval(int tomove) const {
     if (tomove == FastBoard::WHITE) {
         return 1.0f - m_net_eval;
@@ -250,9 +270,7 @@ void UCTNode::accumulate_eval(float eval) {
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     wait_expanded();
 
-    // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
-    auto parentvisits = size_t{0};
     for (const auto& child : m_children) {
         if (child.valid()) {
             parentvisits += child.get_visits();
@@ -276,18 +294,16 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
             continue;
         }
 
-        auto winrate = fpu_eval;
-        if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
-            // Someone else is expanding this node, never select it
-            // if we can avoid so, because we'd block on it.
-            winrate = -1.0f - fpu_reduction;
-        } else if (child.get_visits() > 0) {
-            winrate = child.get_eval(color);
+        auto success = fpu_eval;
+        auto failure = 1.0f - fpu_eval;
+        if (child.get_visits() > 0) {
+            std::tie(success, failure) = child.get_beta_param(color);
         }
-        const auto psa = child.get_policy();
-        const auto denom = 1.0 + child.get_visits();
-        const auto puct = cfg_puct * psa * (numerator / denom);
-        const auto value = winrate + puct;
+        boost::random::beta_distribution<float> dist(success + cfg_beta_prior,
+                                                     failure + cfg_beta_prior);
+        auto pick = dist(Random::get_Rng());
+        auto psa = child.get_score();
+        auto value = pick * std::pow(psa, cfg_puct);
         assert(value > std::numeric_limits<double>::lowest());
 
         if (value > best_value) {
