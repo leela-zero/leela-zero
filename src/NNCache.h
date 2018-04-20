@@ -53,7 +53,7 @@ public:
     void dump_stats();
 
 private:
-    NNCache(int size = 50000);  // ~ 250MB
+    NNCache(int size = 150000);  // ~ 225MB
 
     std::mutex m_mutex;
 
@@ -67,7 +67,7 @@ private:
     struct Entry {
         Entry( const Network::Netresult& r)
             : result(r) {}
-        Network::Netresult result;  // ~ 3KB
+        Network::Netresult result;  // ~ 1.5KB
     };
 
     // Map from hash to {features, result}
