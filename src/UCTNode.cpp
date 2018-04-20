@@ -89,7 +89,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     }
     eval = m_net_eval;
 
-    std::vector<UCTNode::ScoreVertexPair> nodelist;
+    std::vector<Network::ScoreVertexPair> nodelist;
 
     auto legal_sum = 0.0f;
     for (auto i = 0; i < BOARD_SQUARES; i++) {
@@ -97,14 +97,12 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         const auto y = i / BOARD_SIZE;
         const auto vertex = state.board.get_vertex(x, y); 
         if (state.is_move_legal(to_move, vertex)) {
-            const auto p = std::make_pair(raw_netlist.policy[i], vertex);
-            nodelist.emplace_back(p);
+            nodelist.emplace_back(raw_netlist.policy[i], vertex);
             legal_sum += raw_netlist.policy[i];
         }
     }
     {
-        const auto p = std::make_pair(raw_netlist.policy_pass, FastBoard::PASS);
-        nodelist.emplace_back(p);
+        nodelist.emplace_back(raw_netlist.policy_pass, FastBoard::PASS);
         legal_sum += raw_netlist.policy_pass;
     }
 
@@ -126,7 +124,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
-                            std::vector<UCTNode::ScoreVertexPair>& nodelist,
+                            std::vector<Network::ScoreVertexPair>& nodelist,
                             float min_psa_ratio) {
     assert(min_psa_ratio < m_min_psa_ratio_children);
 

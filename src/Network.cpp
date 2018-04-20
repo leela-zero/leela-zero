@@ -972,8 +972,7 @@ void Network::show_heatmap(const FastState* const state,
     myprintf("winrate: %f\n", result.winrate);
 
     if (topmoves) {
-        using ScoreVertexPair = std::pair<float,int>;
-        std::vector<ScoreVertexPair> moves;
+        std::vector<Network::ScoreVertexPair> moves;
         for (auto i=0; i < BOARD_SQUARES; i++) {
             const auto x = i % BOARD_SIZE;
             const auto y = i / BOARD_SIZE;

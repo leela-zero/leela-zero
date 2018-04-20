@@ -39,12 +39,19 @@ public:
     };
     using BoardPlane = std::bitset<BOARD_SQUARES>;
     using NNPlanes = std::vector<BoardPlane>;
+    using ScoreVertexPair = std::pair<float,int>;
 
-    // {19x19 board positions, pass, winrate}
     struct Netresult {
-        std::vector<float> policy = std::vector<float>(BOARD_SQUARES);
+        // 19x19 board positions
+        std::vector<float> policy;
+
+        // pass
         float policy_pass;
+
+        // winrate
         float winrate;
+
+        Netresult() : policy(BOARD_SQUARES), policy_pass(0.0f), winrate(0.0f) {}
     };
 
     static Netresult get_scored_moves(const GameState* const state,
