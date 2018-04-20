@@ -332,16 +332,13 @@ void GTP::setup_default_parameters() {
     cfg_precision = precision_t::AUTO;
 #endif
 #endif
-<<<<<<< HEAD
     cfg_puct = 0.5f;
     cfg_logpuct = 0.015f;
     cfg_logconst = 1.7f;
-=======
-    cfg_puct = 0.2f;
->>>>>>> Implement Thompson sampling.
     cfg_softmax_temp = 1.0f;
-    cfg_fpu_reduction = 0.03f;
-    cfg_beta_prior = 15.0f;
+    cfg_puct = 0.2f;
+    cfg_fpu_reduction = 0.01f;
+    cfg_beta_prior = 500.0f;
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
     cfg_noise = false;
