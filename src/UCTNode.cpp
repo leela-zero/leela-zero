@@ -81,7 +81,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         &state, Network::Ensemble::RANDOM_ROTATION);
 
     // DCNN returns winrate as side to move
-    m_net_eval = raw_netlist.winrate;
+    m_net_eval = raw_netlist.read_winrate();
     const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
     if (state.board.white_to_move()) {
@@ -97,12 +97,12 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         const auto y = i / BOARD_SIZE;
         const auto vertex = state.board.get_vertex(x, y);
         if (state.is_move_legal(to_move, vertex)) {
-            nodelist.emplace_back(raw_netlist.policy[i], vertex);
-            legal_sum += raw_netlist.policy[i];
+            nodelist.emplace_back(raw_netlist.read_policy(i), vertex);
+            legal_sum += raw_netlist.read_policy(i);
         }
     }
-    nodelist.emplace_back(raw_netlist.policy_pass, FastBoard::PASS);
-    legal_sum += raw_netlist.policy_pass;
+    nodelist.emplace_back(raw_netlist.read_pass(), FastBoard::PASS);
+    legal_sum += raw_netlist.read_pass();
 
     if (legal_sum > std::numeric_limits<float>::min()) {
         // re-normalize after removing illegal moves.
