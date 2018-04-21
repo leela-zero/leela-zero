@@ -39,11 +39,11 @@ public:
     void resize(int size);
 
     // Try and find an existing entry.
-    bool lookup(std::uint64_t hash, Network::Netresult & result);
+    bool lookup(std::uint64_t hash, Netresult & result);
 
     // Insert a new entry.
     void insert(std::uint64_t hash,
-                const Network::Netresult& result);
+                const Netresult& result);
 
     // Return the hit rate ratio.
     std::pair<int, int> hit_rate() const {
@@ -53,7 +53,7 @@ public:
     void dump_stats();
 
 private:
-    NNCache(int size = 150000);  // ~ 225MB
+    NNCache(int size = 300000);  // ~ 225MB
 
     std::mutex m_mutex;
 
@@ -65,9 +65,9 @@ private:
     int m_inserts{0};
 
     struct Entry {
-        Entry( const Network::Netresult& r)
+        Entry( const Netresult& r)
             : result(r) {}
-        Network::Netresult result;  // ~ 1.5KB
+        Netresult result;  // ~ 0.75kB 
     };
 
     // Map from hash to {features, result}

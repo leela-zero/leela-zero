@@ -42,6 +42,9 @@
     <ClInclude Include="..\..\src\Network.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Netresult.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\OpenCL.h">
       <Filter>Header Files</Filter>
     </ClInclude>

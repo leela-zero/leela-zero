@@ -29,7 +29,7 @@ NNCache& NNCache::get_NNCache(void) {
     return cache;
 }
 
-bool NNCache::lookup(std::uint64_t hash, Network::Netresult & result) {
+bool NNCache::lookup(std::uint64_t hash, Netresult & result) {
     std::lock_guard<std::mutex> lock(m_mutex);
     ++m_lookups;
 
@@ -47,7 +47,7 @@ bool NNCache::lookup(std::uint64_t hash, Network::Netresult & result) {
 }
 
 void NNCache::insert(std::uint64_t hash,
-                     const Network::Netresult& result) {
+                     const Netresult& result) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     if (m_cache.find(hash) != m_cache.end()) {
@@ -76,8 +76,8 @@ void NNCache::resize(int size) {
 void NNCache::set_size_from_playouts(int max_playouts) {
     // cache hits are generally from last several moves so setting cache
     // size based on playouts increases the hit rate while balancing memory
-    // usage for low playout instances. 150'000 cache entries is ~225 MB
-    auto max_size = std::min(150'000, std::max(6'000, 3 * max_playouts));
+    // usage for low playout instances. 300'000 cache entries is ~225 MB
+    auto max_size = std::min(300'000, std::max(6'000, 3 * max_playouts));
     NNCache::get_NNCache().resize(max_size);
 }
 
