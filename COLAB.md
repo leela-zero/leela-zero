@@ -1,3 +1,5 @@
+# Run Leela Zero client on a Tesla K80 GPU for free (Google Colaboratory)
+
 [Google Colaboratory](https://colab.research.google.com) (Colab) is a free tool for machine learning research. It's a Python notebook environment on a personal VM with an NVIDIA Tesla K80 GPU. Using Colab requires **no installation and runs in your browser**.
 
 This example shows how to run a **Leela Zero client on the K80 GPU to contribute training games**. You can expect to contribute 60-80 games/day.
