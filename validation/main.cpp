@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
     
     QStringList optsList = parser.values(optionsOption);
     while(optsList.count() != 2) {
-        optsList << " -g  --tune-only -p 100000 --noponder -t 100 -r 5 -w ";
+        optsList << " -g -v 100000 --timemanage off --noponder -t 100 -r 5 -w ";
     }
    
     QString sprtOpt = parser.value(sprtOption);
