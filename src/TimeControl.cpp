@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -220,7 +220,13 @@ void TimeControl::adjust_time(int color, int time, int stones) {
 }
 
 void TimeControl::set_boardsize(int boardsize) {
+    auto board_div = 5;
+    if (cfg_timemanage != TimeManagement::OFF) {
+        // We will take early exits with time management on, so
+        // it's OK to make our base time bigger.
+        board_div = 9;
+    }
     // Note this is constant as we play, so it's fair
     // to underestimate quite a bit.
-    m_moves_expected = (boardsize * boardsize) / 5;
+    m_moves_expected = (boardsize * boardsize) / board_div;
 }

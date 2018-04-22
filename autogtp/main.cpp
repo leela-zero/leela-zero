@@ -1,7 +1,7 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

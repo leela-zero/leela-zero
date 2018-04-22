@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -861,12 +861,12 @@ Network::Netresult Network::get_scored_moves(
 
     if (ensemble == DIRECT) {
         assert(rotation >= 0 && rotation <= 7);
-        result = get_scored_moves_internal(state, planes, rotation);
+        result = get_scored_moves_internal(planes, rotation);
     } else {
         assert(ensemble == RANDOM_ROTATION);
         assert(rotation == -1);
         const auto rand_rot = Random::get_Rng().randfix<8>();
-        result = get_scored_moves_internal(state, planes, rand_rot);
+        result = get_scored_moves_internal(planes, rand_rot);
     }
 
     // Insert result into cache.
@@ -876,7 +876,7 @@ Network::Netresult Network::get_scored_moves(
 }
 
 Network::Netresult Network::get_scored_moves_internal(
-    const GameState* const state, const NNPlanes & planes, const int rotation) {
+    const NNPlanes & planes, const int rotation) {
     assert(rotation >= 0 && rotation <= 7);
     assert(INPUT_CHANNELS == planes.size());
     constexpr auto width = BOARD_SIZE;
@@ -930,45 +930,31 @@ Network::Netresult Network::get_scored_moves_internal(
     // Sigmoid
     const auto winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
 
-    std::vector<scored_node> result;
-    for (auto idx = size_t{0}; idx < outputs.size(); idx++) {
-        if (idx < BOARD_SQUARES) {
-            const auto rot_idx = rotate_nn_idx_table[rotation][idx];
-            const auto x = rot_idx % BOARD_SIZE;
-            const auto y = rot_idx / BOARD_SIZE;
-            const auto rot_vtx = state->board.get_vertex(x, y);
-            if (state->board.get_square(rot_vtx) == FastBoard::EMPTY) {
-                result.emplace_back(outputs[idx], rot_vtx);
-            }
-        } else {
-            result.emplace_back(outputs[idx], FastBoard::PASS);
-        }
+    Netresult result;
+
+    for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+        const auto rot_idx = rotate_nn_idx_table[rotation][idx];
+        result.policy[rot_idx] = outputs[idx];
     }
 
-    return std::make_pair(result, winrate_sig);
+    result.policy_pass = outputs[BOARD_SQUARES];
+    result.winrate = winrate_sig;
+
+    return result;
 }
 
 void Network::show_heatmap(const FastState* const state,
                            const Netresult& result,
                            const bool topmoves) {
-    auto moves = result.first;
     std::vector<std::string> display_map;
     std::string line;
 
     for (unsigned int y = 0; y < BOARD_SIZE; y++) {
         for (unsigned int x = 0; x < BOARD_SIZE; x++) {
-            const auto vtx = state->board.get_vertex(x, y);
-
-            const auto item = std::find_if(moves.cbegin(), moves.cend(),
-                [&vtx](scored_node const& test_item) {
-                return test_item.second == vtx;
-            });
-
             auto score = 0;
-            // Non-empty squares won't be scored
-            if (item != moves.cend()) {
-                score = int(item->first * 1000);
-                assert(vtx == item->second);
+            const auto vertex = state->board.get_vertex(x, y);
+            if (state->board.get_square(vertex) == FastBoard::EMPTY) {
+                score = result.policy[y * BOARD_SIZE + x] * 1000;
             }
 
             line += boost::str(boost::format("%3d ") % score);
@@ -981,12 +967,22 @@ void Network::show_heatmap(const FastState* const state,
     for (int i = display_map.size() - 1; i >= 0; --i) {
         myprintf("%s\n", display_map[i].c_str());
     }
-    assert(result.first.back().second == FastBoard::PASS);
-    const auto pass_score = int(result.first.back().first * 1000);
+    const auto pass_score = int(result.policy_pass * 1000);
     myprintf("pass: %d\n", pass_score);
-    myprintf("winrate: %f\n", result.second);
+    myprintf("winrate: %f\n", result.winrate);
 
     if (topmoves) {
+        std::vector<Network::ScoreVertexPair> moves;
+        for (auto i=0; i < BOARD_SQUARES; i++) {
+            const auto x = i % BOARD_SIZE;
+            const auto y = i / BOARD_SIZE;
+            const auto vertex = state->board.get_vertex(x, y);
+            if (state->board.get_square(vertex) == FastBoard::EMPTY) {
+                moves.emplace_back(result.policy[i], vertex);
+            }
+        }
+        moves.emplace_back(result.policy_pass, FastBoard::PASS);
+
         std::stable_sort(rbegin(moves), rend(moves));
 
         auto cum = 0.0f;

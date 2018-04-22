@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -83,7 +83,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         &state, Network::Ensemble::RANDOM_ROTATION);
 
     // DCNN returns winrate as side to move
-    m_net_eval = raw_netlist.second;
+    m_net_eval = raw_netlist.winrate;
     const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
     if (state.board.white_to_move()) {
@@ -91,16 +91,20 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     }
     eval = m_net_eval;
 
-    std::vector<Network::scored_node> nodelist;
+    std::vector<Network::ScoreVertexPair> nodelist;
 
     auto legal_sum = 0.0f;
-    for (const auto& node : raw_netlist.first) {
-        auto vertex = node.second;
+    for (auto i = 0; i < BOARD_SQUARES; i++) {
+        const auto x = i % BOARD_SIZE;
+        const auto y = i / BOARD_SIZE;
+        const auto vertex = state.board.get_vertex(x, y);
         if (state.is_move_legal(to_move, vertex)) {
-            nodelist.emplace_back(node);
-            legal_sum += node.first;
+            nodelist.emplace_back(raw_netlist.policy[i], vertex);
+            legal_sum += raw_netlist.policy[i];
         }
     }
+    nodelist.emplace_back(raw_netlist.policy_pass, FastBoard::PASS);
+    legal_sum += raw_netlist.policy_pass;
 
     if (legal_sum > std::numeric_limits<float>::min()) {
         // re-normalize after removing illegal moves.
@@ -120,7 +124,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
-                            std::vector<Network::scored_node>& nodelist,
+                            std::vector<Network::ScoreVertexPair>& nodelist,
                             float min_psa_ratio) {
     assert(min_psa_ratio < m_min_psa_ratio_children);
 
@@ -246,9 +250,6 @@ void UCTNode::accumulate_eval(float eval) {
 }
 
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
-    UCTNodePointer * best = nullptr;
-    auto best_value = std::numeric_limits<double>::lowest();
-
     LOCK(get_mutex(), lock);
 
     // Count parentvisits manually to avoid issues with transpositions.
@@ -274,12 +275,15 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     // Estimated eval for unknown nodes = original parent NN eval - reduction
     auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
+    auto best = static_cast<UCTNodePointer*>(nullptr);
+    auto best_value = std::numeric_limits<double>::lowest();
+
     for (auto& child : m_children) {
         if (!child.active()) {
             continue;
         }
 
-        float winrate = fpu_eval;
+        auto winrate = fpu_eval;
         if (child.get_visits() > 0) {
             winrate = child.get_eval(color);
         }
