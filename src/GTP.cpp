@@ -94,9 +94,9 @@ void GTP::setup_default_parameters() {
     cfg_tune_only = false;
 #endif
     cfg_softmax_temp = 1.0f;
-    cfg_puct = 0.2f;
-    cfg_fpu_reduction = 0.01f;
-    cfg_beta_prior = 500.0f;
+    cfg_puct = 0.1f;
+    cfg_fpu_reduction = 0.015f;
+    cfg_beta_prior = 20.0f;
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
     cfg_noise = false;
