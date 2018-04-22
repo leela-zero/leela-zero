@@ -32,6 +32,8 @@
 #include "KoState.h"
 #include "Random.h"
 #include "UCTNode.h"
+#include "Utils.h"
+#include "GTP.h"
 
 /*
  * These functions belong to UCTNode but should only be called on the root node
@@ -158,5 +160,36 @@ std::unique_ptr<UCTNode> UCTNode::find_child(const int move) {
 void UCTNode::inflate_all_children() {
     for (const auto& node : get_children()) {
         node.inflate();
+    }
+}
+
+void UCTNode::prepare_root_node(int color,
+                                std::atomic<int>& nodes,
+                                GameState& root_state) {
+    float root_eval;
+    const auto had_children = has_children();
+    if (expandable()) {
+        create_children(nodes, root_state, root_eval);
+    }
+    if (had_children) {
+        root_eval = get_eval(color);
+    } else {
+        update(root_eval);
+        root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
+    }
+    Utils::myprintf("NN eval=%f\n", root_eval);
+
+    // There are a lot of special cases where code assumes
+    // all children of the root are inflated, so do that.
+    inflate_all_children();
+
+    // Remove illegal moves, so the root move list is correct.
+    // This also removes a lot of special cases.
+    kill_superkos(root_state);
+
+    if (cfg_noise) {
+        // Adjust the Dirichlet noise's alpha constant to the board size
+        auto alpha = 0.03f * 361.0f / BOARD_SQUARES;
+        dirichlet_noise(0.25f, alpha);
     }
 }
