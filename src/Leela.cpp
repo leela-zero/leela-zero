@@ -59,6 +59,8 @@ static void parse_commandline(int argc, char *argv[]) {
         ("gtp,g", "Enable GTP mode.")
         ("threads,t", po::value<int>()->default_value(cfg_num_threads),
                       "Number of threads to use.")
+        ("maxnodes,x", po::value<int>()->default_value(cfg_max_tree_size),
+                      "Maximum tree size in number of nodes.")
         ("playouts,p", po::value<int>(),
                        "Weaken engine by limiting the number of playouts. "
                        "Requires --noponder.")
@@ -200,6 +202,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("dumbpass")) {
         cfg_dumbpass = true;
+    }
+
+    if (vm.count("maxnodes")) {
+        cfg_max_tree_size = vm["maxnodes"].as<int>();
     }
 
     if (vm.count("playouts")) {
