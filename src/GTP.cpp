@@ -70,6 +70,7 @@ std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
+bool cfg_rt_log;
 std::string cfg_options_str;
 bool cfg_benchmark;
 
@@ -102,6 +103,7 @@ void GTP::setup_default_parameters() {
     cfg_dumbpass = false;
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
+    cfg_rt_log = false;
     cfg_benchmark = false;
 
     // C++11 doesn't guarantee *anything* about how random this is,
