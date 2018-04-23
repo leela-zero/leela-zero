@@ -80,6 +80,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("dumbpass,d", "Don't use heuristics for smarter passing.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
+        ("rtlog", "Enable thinking output for GUI.")
         ("quiet,q", "Disable all diagnostic output.")
         ("noponder", "Disable thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
@@ -136,6 +137,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("quiet")) {
         cfg_quiet = true;
+    }
+
+    if (vm.count("rtlog")) {
+        cfg_rt_log = true;
     }
 
     if (vm.count("benchmark")) {
