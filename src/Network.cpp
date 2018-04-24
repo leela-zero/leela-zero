@@ -888,7 +888,7 @@ Network::Netresult Network::get_scored_moves(
         }
 
         for (size_t c = 0; c < result.first.size(); c++) {
-            result.first[c].first += policy[result.first[c].second + 1];
+            result.first[c].first += policy[result.first[c].second];
             result.first[c].first /= num_rotations;
         }
 
