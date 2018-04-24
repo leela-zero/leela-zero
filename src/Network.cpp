@@ -885,9 +885,8 @@ Network::Netresult Network::get_scored_moves(
             }
         }
 
-        for (size_t c = 0; c < result.first.size(); c++) {
-            result.first[c].first += result.policy[result.first[c].second];
-            result.first[c].first /= num_rotations;
+        for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+            result.policy[idx] /= num_rotations;
         }
 
         result.winrate /= num_rotations;
