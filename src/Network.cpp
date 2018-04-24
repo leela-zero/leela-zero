@@ -882,8 +882,8 @@ Network::Netresult Network::get_scored_moves(
             result.winrate += tmpresult.winrate;
             result.policy_pass += tmpresult.policy_pass;
 
-            for (auto res : tmpresult.first) {
-                policy[res.second] += res.first;
+            for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+                policy[idx] += tmpresult.policy[idx];
             }
         }
 
