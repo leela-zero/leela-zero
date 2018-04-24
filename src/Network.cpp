@@ -868,7 +868,6 @@ Network::Netresult Network::get_scored_moves(
 
         assert(num_rotations >= 1 && num_rotations <= 8);
         std::vector<int> r_list{0, 1, 2, 3, 4, 5, 6, 7};
-        // Need to account for extra 2 in m_squaresize.
 
         if (num_rotations < 8) {
             std::shuffle(r_list.begin(), r_list.end(), Random::get_Rng());
