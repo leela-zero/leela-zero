@@ -226,3 +226,28 @@ void TimeControl::set_boardsize(int boardsize) {
     // to underestimate quite a bit.
     m_moves_expected = (boardsize * boardsize) / board_div;
 }
+
+// Returns true if we are in a time control where we
+// can save up time. If not, we should not move quickly
+// even if certain of our move, but plough ahead.
+bool TimeControl::can_accumulate_time(int color) {
+    if (m_inbyo[color]) {
+        // Cannot accumulate in Japanese byo yomi
+        if (m_byoperiods) {
+            return false;
+        }
+
+        // Cannot accumulate in Canadese style with
+        // one move remaining in the period
+        if (m_byostones && m_stones_left[color] == 1) {
+            return false;
+        }
+    } else {
+        // If there is a base time, we should expect
+        // to be able to accumulate. This may be somewhat
+        // of an illusion if the base time is tiny and byo
+        // yomi time is big.
+    }
+
+    return true;
+}

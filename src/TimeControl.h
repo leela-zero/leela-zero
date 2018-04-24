@@ -41,6 +41,7 @@ public:
     void set_boardsize(int boardsize);
     void display_times();
     void reset_clocks();
+    bool can_accumulate_time(int color);
     std::string to_text_sgf();
 
 private:
