@@ -120,7 +120,6 @@ const std::string GTP::s_commands[] = {
     "protocol_version",
     "name",
     "version",
-    "quit",
     "known_command",
     "list_commands",
     "quit",
