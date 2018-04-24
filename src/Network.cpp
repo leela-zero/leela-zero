@@ -869,7 +869,6 @@ Network::Netresult Network::get_scored_moves(
         assert(num_rotations >= 1 && num_rotations <= 8);
         std::vector<int> r_list{0, 1, 2, 3, 4, 5, 6, 7};
         // Need to account for extra 2 in m_squaresize.
-        std::vector<float> policy((BOARD_SIZE + 2) * (BOARD_SIZE + 1));
 
         if (num_rotations < 8) {
             std::shuffle(r_list.begin(), r_list.end(), Random::get_Rng());
@@ -883,12 +882,12 @@ Network::Netresult Network::get_scored_moves(
             result.policy_pass += tmpresult.policy_pass;
 
             for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
-                policy[idx] += tmpresult.policy[idx];
+                result.policy[idx] += tmpresult.policy[idx];
             }
         }
 
         for (size_t c = 0; c < result.first.size(); c++) {
-            result.first[c].first += policy[result.first[c].second];
+            result.first[c].first += result.policy[result.first[c].second];
             result.first[c].first /= num_rotations;
         }
 
