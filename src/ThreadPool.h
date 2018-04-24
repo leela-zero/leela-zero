@@ -3,6 +3,8 @@
 /*
     Extended from code:
     Copyright (c) 2012 Jakob Progsch, Václav Zeman
+    Modifications:
+    Copyright (c) 2017-2018 Gian-Carlo Pascutto and contributors
 
     This software is provided 'as-is', without any express or implied
     warranty. In no event will the authors be held liable for any damages

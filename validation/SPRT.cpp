@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Marco Calignano
     originally taken from Cute Chess (http://github.com/cutechess)
     Copyright (C) 2016 Ilari Pihlajisto
 

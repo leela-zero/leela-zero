@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -147,7 +147,7 @@ void Training::record(GameState& state, UCTNode& root) {
 
     auto result =
         Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
-    step.net_winrate = result.second;
+    step.net_winrate = result.winrate;
 
     const auto& best_node = root.get_best_root_child(step.to_move);
     step.root_uct_winrate = root.get_eval(step.to_move);
