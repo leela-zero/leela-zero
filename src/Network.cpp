@@ -880,19 +880,20 @@ Network::Netresult Network::get_scored_moves(
         for (int r = 1; r < num_rotations; ++r) {
             Netresult tmpresult = get_scored_moves_internal(planes, r_list[r]);
             result.winrate += tmpresult.winrate;
+            result.policy_pass += tmpresult.policy_pass;
 
             for (auto res : tmpresult.first) {
-                // +1 to account for PASS
-                policy[res.winrate + 1] += res.first;
+                policy[res.second] += res.first;
             }
         }
 
         for (size_t c = 0; c < result.first.size(); c++) {
-            result.first[c].first += policy[result.first[c].winrate + 1];
+            result.first[c].first += policy[result.first[c].second + 1];
             result.first[c].first /= num_rotations;
         }
 
         result.winrate /= num_rotations;
+        result.policy_pass /= num_rotations;
     } else {
         assert((ensemble == RANDOM_ROTATION && rotation == -1) ||
                (ensemble == MULTI_AVG && rotation == 1));
