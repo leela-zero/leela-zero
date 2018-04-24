@@ -40,6 +40,8 @@ lower. If your CPU is not *very* recent (Haswell or newer, Ryzen or newer),
 performance will be outright bad, and it's probably of no use trying to join
 the distributed effort. But you can still play, especially if you are patient.
 
+[Running Leela Zero client on a Tesla K80 GPU for free (Google Colaboratory)](COLAB.md)
+
 ## Windows
 
 Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
