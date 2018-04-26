@@ -77,7 +77,7 @@ public:
 
     static void gather_features(const GameState* const state, NNPlanes& planes);
 private:
-    static std::pair<int, int> load_v1_network(std::ifstream& wtfile);
+    static std::pair<int, int> load_v1_network(std::istream& wtfile);
     static std::pair<int, int> load_network_file(const std::string& filename);
     static void process_bn_var(std::vector<float>& weights,
                                const float epsilon=1e-5f);
