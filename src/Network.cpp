@@ -41,6 +41,7 @@
 #ifdef USE_OPENBLAS
 #include <cblas.h>
 #endif
+#include "zlib.h"
 #ifdef USE_OPENCL
 #include "OpenCLScheduler.h"
 #include "UCTNode.h"
@@ -190,7 +191,7 @@ std::vector<float> Network::zeropad_U(const std::vector<float>& U,
     return Upad;
 }
 
-std::pair<int, int> Network::load_v1_network(std::ifstream& wtfile) {
+std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     // Count size of the network
     myprintf("Detecting residual layers...");
     // We are version 1
@@ -288,22 +289,39 @@ std::pair<int, int> Network::load_v1_network(std::ifstream& wtfile) {
         }
         linecount++;
     }
-    wtfile.close();
 
-    return {channels, residual_blocks};
+    return {channels, static_cast<int>(residual_blocks)};
 }
 
 std::pair<int, int> Network::load_network_file(const std::string& filename) {
-    auto wtfile = std::ifstream{filename};
-    if (wtfile.fail()) {
+    // gzopen supports both gz and non-gz files, will decompress
+    // or just read directly as needed.
+    auto gzhandle = gzopen(filename.c_str(), "rb");
+    if (gzhandle == nullptr) {
         myprintf("Could not open weights file: %s\n", filename.c_str());
         return {0, 0};
     }
+    // Stream the gz file in to a memory buffer stream.
+    auto buffer = std::stringstream{};
+    constexpr auto chunkBufferSize = 64 * 1024;
+    std::vector<char> chunkBuffer(chunkBufferSize);
+    while (true) {
+        auto bytesRead = gzread(gzhandle, chunkBuffer.data(), chunkBufferSize);
+        if (bytesRead == 0) break;
+        if (bytesRead < 0) {
+            myprintf("Failed to decompress or read: %s\n", filename.c_str());
+            gzclose(gzhandle);
+            return {0, 0};
+        }
+        assert(bytesRead <= chunkBufferSize);
+        buffer.write(chunkBuffer.data(), bytesRead);
+    }
+    gzclose(gzhandle);
 
     // Read format version
     auto line = std::string{};
     auto format_version = -1;
-    if (std::getline(wtfile, line)) {
+    if (std::getline(buffer, line)) {
         auto iss = std::stringstream{line};
         // First line is the file format version id
         iss >> format_version;
@@ -312,10 +330,9 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
             return {0, 0};
         } else {
             assert(format_version == FORMAT_VERSION);
-            return load_v1_network(wtfile);
+            return load_v1_network(buffer);
         }
     }
-
     return {0, 0};
 }
 

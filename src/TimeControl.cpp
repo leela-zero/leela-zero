@@ -58,14 +58,10 @@ std::string TimeControl::to_text_sgf() {
 }
 
 void TimeControl::reset_clocks() {
-    m_remaining_time[0] = m_maintime;
-    m_remaining_time[1] = m_maintime;
-    m_stones_left[0] = m_byostones;
-    m_stones_left[1] = m_byostones;
-    m_periods_left[0] = m_byoperiods;
-    m_periods_left[1] = m_byoperiods;
-    m_inbyo[0] = m_maintime <= 0;
-    m_inbyo[1] = m_maintime <= 0;
+    m_remaining_time = {m_maintime, m_maintime};
+    m_stones_left = {m_byostones, m_byostones};
+    m_periods_left = {m_byoperiods, m_byoperiods};
+    m_inbyo = {m_maintime <= 0, m_maintime <= 0};
     // Now that byo-yomi status is set, add time
     // back to our clocks
     if (m_inbyo[0]) {
@@ -136,8 +132,8 @@ void TimeControl::display_color_time(int color) {
 }
 
 void TimeControl::display_times() {
-    display_color_time(0); // Black
-    display_color_time(1); // White
+    display_color_time(FastBoard::BLACK);
+    display_color_time(FastBoard::WHITE);
     myprintf("\n");
 }
 
