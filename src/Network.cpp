@@ -643,7 +643,7 @@ void Network::winograd_convolve3(const int outputs,
 
 template<unsigned int filter_size>
 void convolve(const size_t outputs,
-              const std::vector<net_t>& input,
+              const std::vector<float>& input,
               const std::vector<float>& weights,
               const std::vector<float>& biases,
               std::vector<float>& output) {
@@ -901,6 +901,10 @@ Network::Netresult Network::get_scored_moves_internal(
     std::vector<net_t> input_data;
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
+#ifdef USE_HALF
+    std::vector<net_t> policy_data_n(OUTPUTS_POLICY * width * height);
+    std::vector<net_t> value_data_n(OUTPUTS_VALUE * width * height);
+#endif
     // Data layout is input_data[(c * height + h) * width + w]
     input_data.reserve(INPUT_CHANNELS * width * height);
     for (auto c = 0; c < INPUT_CHANNELS; ++c) {
@@ -912,7 +916,13 @@ Network::Netresult Network::get_scored_moves_internal(
         }
     }
 #ifdef USE_OPENCL
+#ifdef USE_HALF
+    opencl.forward(input_data, policy_data_n, value_data_n);
+    std::copy(begin(policy_data_n), end(policy_data_n), begin(policy_data));
+    std::copy(begin(value_data_n), end(value_data_n), begin(value_data));
+#else
     opencl.forward(input_data, policy_data, value_data);
+#endif
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
     forward_cpu(input_data, policy_data, value_data);
 #endif

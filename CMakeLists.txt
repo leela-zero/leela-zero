@@ -64,15 +64,19 @@ endif(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 
 if(GccSpecificFlags)
   set(GCC_COMPILE_FLAGS "-Wall -Wextra -ffast-math -flto -march=native")
-  set(GCC_DISABLED_WARNING_COMPILE_FLAGS "-Wno-ignored-attributes -Wno-maybe-uninitialized")
+  set(GCC_DISABLED_WARNING_COMPILE_FLAGS "-Wno-ignored-attributes -Wno-maybe-uninitialized \
+      -Wno-mismatched-tags")
   set(GCC_FLAGS "${GCC_COMPILE_FLAGS} ${GCC_DISABLED_WARNING_COMPILE_FLAGS}")
   set(CMAKE_CXX_FLAGS_DEBUG "${GCC_FLAGS} -g -Og")
   set(CMAKE_CXX_FLAGS_RELEASE "${GCC_FLAGS} -g -O3 -DNDEBUG")
   set(CMAKE_EXE_LINKER_FLAGS "-flto -g")
 endif(GccSpecificFlags)
 
-if(FEATURE_USE_CPU_ONLY)
-  add_definitions(-DFEATURE_USE_CPU_ONLY)
+if(USE_CPU_ONLY)
+  add_definitions(-DUSE_CPU_ONLY)
+endif()
+if(USE_HALF)
+  add_definitions(-DUSE_HALF)
 endif()
 
 set(IncludePath "${CMAKE_CURRENT_SOURCE_DIR}/src")

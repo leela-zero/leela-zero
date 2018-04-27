@@ -69,7 +69,7 @@
  * faster if you have a recent GPU. Don't use it on CPUs even if they have
  * OpenCL drivers - the BLAS version is much faster for those.
  */
-#ifndef FEATURE_USE_CPU_ONLY
+#ifndef USE_CPU_ONLY
 #define USE_OPENCL
 #endif
 /*
@@ -91,7 +91,12 @@
 #define MAX_CPUS 128
 #endif
 
+#ifdef USE_HALF
+#include "half/half.hpp"
+using net_t = half_float::half;
+#else
 using net_t = float;
+#endif
 
 #if defined(USE_BLAS) && defined(USE_OPENCL) && !defined(USE_HALF)
 // If both BLAS and OpenCL are fully usable, then check the OpenCL

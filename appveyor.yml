@@ -5,7 +5,7 @@ environment:
   matrix:
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-    features: FEATURE_USE_CPU_ONLY
+    features: USE_CPU_ONLY
     run_tests: 1
 skip_commits:
   files:
