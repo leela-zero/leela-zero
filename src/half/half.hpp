@@ -1078,7 +1078,7 @@ namespace half_float
 		friend struct detail::unary_specialized<half>;
 		friend struct detail::binary_specialized<half,half>;
 		template<typename,typename,std::float_round_style> friend struct detail::half_caster;
-		friend class std::numeric_limits<half>;
+		friend struct std::numeric_limits<half>;
 	#if HALF_ENABLE_CPP11_HASH
 		friend struct std::hash<half>;
 	#endif
