@@ -46,15 +46,28 @@
 #endif
 
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
+#ifdef USE_HALF
+const auto TUNER_KERNEL = std::string("XgemmBatchedHalf");
+constexpr auto MAX_ERROR = 1e-2f;
+#else
+const auto TUNER_KERNEL = std::string("XgemmBatched");
 constexpr auto MAX_ERROR = 1e-4f;
+#endif
 
 using namespace Utils;
 
-static void sgemmBatched_ref(const std::vector<float>& a,
-                             const std::vector<float>& b,
-                             std::vector<float>& c,
+static void sgemmBatched_ref(const std::vector<net_t>& a,
+                             const std::vector<net_t>& b,
+                             std::vector<net_t>& c,
                              const int m, const int n, const int k,
                              const int batch_size) {
+    std::vector<float> ar(a.size());
+    std::vector<float> br(b.size());
+    std::vector<float> cr(c.size());
+
+    std::copy(begin(a), end(a), begin(ar));
+    std::copy(begin(b), end(b), begin(br));
+
     for (auto batch = 0; batch < batch_size; batch++) {
         auto offset_u = batch * m * k;
         auto offset_v = batch * n * k;
@@ -63,11 +76,13 @@ static void sgemmBatched_ref(const std::vector<float>& a,
         cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
                     m, n, k,
                     1.0f,
-                    &a[offset_u], m,
-                    &b[offset_v], n,
+                    &ar[offset_u], m,
+                    &br[offset_v], n,
                     0.0f,
-                    &c[offset_m], n);
+                    &cr[offset_m], n);
     }
+
+    std::copy(begin(cr), end(cr), begin(c));
 }
 
 
@@ -155,7 +170,7 @@ static size_t next_power_of_two(const size_t x) {
     return 2 << size_t(std::ceil(std::log2(x)) - 1);
 }
 
-static void sgemm_generate_data(std::vector<float> &x,
+static void sgemm_generate_data(std::vector<net_t> &x,
                                 const int m, const int n,
                                 const int batch_size,
                                 const int m_ceil, const int n_ceil) {
@@ -178,7 +193,7 @@ static void sgemm_generate_data(std::vector<float> &x,
     }
 }
 
-static float compare_ref(std::vector<float> &x, std::vector<float> &ref,
+static float compare_ref(std::vector<net_t> &x, std::vector<net_t> &ref,
                          const int m, const int n, const int batch_size,
                          const int m_ceil, const int n_ceil) {
     auto sum = 0.0f;
@@ -248,10 +263,10 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
 
     auto total_flops = batch_size * 2.0 * m * n * k;
 
-    auto at = std::vector<float>(at_size);
-    auto b = std::vector<float>(b_size);
-    auto c = std::vector<float>(c_size);
-    auto c_ref = std::vector<float>(c_size);
+    auto at = std::vector<net_t>(at_size);
+    auto b = std::vector<net_t>(b_size);
+    auto c = std::vector<net_t>(c_size);
+    auto c_ref = std::vector<net_t>(c_size);
 
     sgemm_generate_data(at, k, m, batch_size, k, m);
     sgemm_generate_data(b, n, k, batch_size, n, k);
@@ -260,13 +275,13 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
 
     auto aBuffer = cl::Buffer(
         m_context,
-        CL_MEM_READ_WRITE, sizeof(float) * at_size, nullptr, nullptr);
+        CL_MEM_READ_WRITE, sizeof(net_t) * at_size, nullptr, nullptr);
     auto bBuffer = cl::Buffer(
         m_context,
-        CL_MEM_READ_WRITE, sizeof(float) * b_size, nullptr, nullptr);
+        CL_MEM_READ_WRITE, sizeof(net_t) * b_size, nullptr, nullptr);
     auto cBuffer = cl::Buffer(
         m_context,
-        CL_MEM_READ_WRITE, sizeof(float) * c_size, nullptr, nullptr);
+        CL_MEM_READ_WRITE, sizeof(net_t) * c_size, nullptr, nullptr);
 
     myprintf("\nStarted OpenCL SGEMM tuner.\n");
 
@@ -320,6 +335,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
             continue;
         }
 
+        // The kernel is (for now) named the same even in USE_HALF
         auto sgemm_kernel = cl::Kernel(program, "XgemmBatched");
 
         auto m_ceil = int(ceilMultiple(ceilMultiple(m, p["MWG"]), p["VWM"]));
@@ -337,9 +353,9 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
             sgemm_generate_data(b, n, k, batch_size, n_ceil, k_ceil);
 
             queue.enqueueWriteBuffer(aBuffer, CL_FALSE, 0,
-                                     at_size * sizeof(float), at.data());
+                                     at_size * sizeof(net_t), at.data());
             queue.enqueueWriteBuffer(bBuffer, CL_FALSE, 0,
-                                     b_size * sizeof(float), b.data());
+                                     b_size * sizeof(net_t), b.data());
             queue.finish();
         }
 
@@ -368,7 +384,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
                 event.wait();
 
                 queue.enqueueReadBuffer(cBuffer, CL_FALSE, 0,
-                                        c_size * sizeof(float), c.data());
+                                        c_size * sizeof(net_t), c.data());
                 queue.finish();
 
                 auto this_error = compare_ref(c, c_ref, n, m, batch_size,
@@ -424,8 +440,8 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
     auto tuning_params = std::stringstream{};
     tuning_params << m << ";" << n << ";" << k << ";" << batch_size;
 
-    auto tuning_line_prefix = std::to_string(TUNER_VERSION) + ";XgemmBatched;"
-        + tuning_params.str() + ";";
+    auto tuning_line_prefix = std::to_string(TUNER_VERSION) + ";"
+        + TUNER_KERNEL + ";" + tuning_params.str() + ";";
     auto tuning_line = tuning_line_prefix + tuners + ";" + device_name;
 
     // Write back previous data as long as it's not the device and
@@ -466,7 +482,7 @@ std::string Tuner::sgemm_tuners_from_line(std::string line,
         return "";
     }
 
-    if (s[1] != "XgemmBatched") {
+    if (s[1] != TUNER_KERNEL) {
         return "";
     }
 

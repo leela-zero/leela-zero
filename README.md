@@ -52,15 +52,15 @@ after each game. You can just close the autogtp window to stop it.
 ## macOS and Linux
 
 Follow the instructions below to compile the leelaz binary, then go into
-the autogtp subdirectory and follow [the instructions there](autogtp/README.md) to build the
-autogtp binary. Copy the leelaz binary into the autogtp dir, and launch
-autogtp.
+the autogtp subdirectory and follow [the instructions there](autogtp/README.md)
+to build the autogtp binary. Copy the leelaz binary into the autogtp dir, and
+launch autogtp.
 
 # I just want to play right now
 
 Download the best known network weights file from: http://zero.sjeng.org/best-network
 
-Un(gz)ip it and head to the [Usage](#usage) section of this README.
+And head to the [Usage](#usage) section of this README.
 
 If you prefer a more human style, a network trained from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
 
@@ -92,9 +92,8 @@ source and remove the line that says "#define USE_OPENCL".
     sudo apt install libboost-dev libboost-program-options-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
     make
     cd ..
-    wget https://sjeng.org/zero/best_v1.txt.zip
-    unzip best_v1.txt.zip
-    src/leelaz --weights weights.txt
+    wget http://zero.sjeng.org/best-network
+    src/leelaz --weights best-network
 
 ## Example of compiling and running - macOS
 
@@ -104,9 +103,8 @@ source and remove the line that says "#define USE_OPENCL".
     brew install boost
     make
     cd ..
-    curl -O https://sjeng.org/zero/best_v1.txt.zip
-    unzip best_v1.txt.zip
-    src/leelaz --weights weights.txt
+    curl -O http://zero.sjeng.org/best-network
+    src/leelaz --weights best-network
 
 ## Example of compiling and running - Windows
 
@@ -117,8 +115,8 @@ source and remove the line that says "#define USE_OPENCL".
     Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
     to the Visual Studio version you have.
     # Build from Visual Studio 2015 or 2017
-    # Download and extract <https://sjeng.org/zero/best_v1.txt.zip> to msvc\x64\Release
-    msvc\x64\Release\leelaz.exe --weights weights.txt
+    # Download <http://zero.sjeng.org/best-network> to msvc\x64\Release
+    msvc\x64\Release\leelaz.exe --weights best-network
 
 ## Example of compiling and running - CMake (macOS/Ubuntu)
 
@@ -133,9 +131,8 @@ source and remove the line that says "#define USE_OPENCL".
     make leelaz
     make tests
     ./tests
-    curl -O https://sjeng.org/zero/best_v1.txt.zip
-    unzip best_v1.txt.zip
-    ./leelaz --weights weights.txt
+    curl -O http://zero.sjeng.org/best-network
+    ./leelaz --weights best-network
 
 
 # Usage
@@ -176,11 +173,10 @@ the amounts on startup. The first line contains a version number.
     1) layer weights
     2) output biases
 
- The convolution weights are in [output, input, filter\_size, filter\_size] order,
- the fully connected layer weights are in [output, input] order.
- The residual tower is first, followed by the policy head, and then the value head.
- All convolution filters are 3x3 except for the ones at the start of the policy and
- value head, which are 1x1 (as in the paper).
+The convolution weights are in [output, input, filter\_size, filter\_size]
+order, the fully connected layer weights are in [output, input] order.
+The residual tower is first, followed by the policy head, and then the value
+head. All convolution filters are 3x3 except for the ones at the start of the policy and value head, which are 1x1 (as in the paper).
 
 There are 18 inputs to the first layer, instead of 17 as in the paper. The
 original AlphaGo Zero design has a slight imbalance in that it is easier
@@ -206,8 +202,17 @@ In the training/caffe directory there is a zero.prototxt file which contains a
 description of the full 40 residual block design, in (NVIDIA)-Caffe protobuff
 format. It can be used to set up nv-caffe for training a suitable network.
 The zero\_mini.prototxt file describes a smaller 12 residual block case. The
-training/tf directory contains a 6 residual block version in TensorFlow format,
+training/tf directory contains the network construction in TensorFlow format,
 in the tfprocess.py file.
+
+Expert note: the channel biases seem redundant in the network topology
+because they are followed by a batchnorm layer, which is supposed to normalize
+the mean. In reality, they encode "beta" parameters from a center/scale
+operation in the batchnorm layer, corrected for the effect of the batchnorm mean/variance adjustment. At inference time, Leela Zero will fuse the channel
+bias into the batchnorm mean, thereby offsetting it and performing the center operation. This roundabout construction exists solely for backwards
+compatibility. If this paragraph does not make any sense to you, ignore its
+existence and just add the channel bias layer as you normally would, output
+will be correct.
 
 # Training
 
@@ -301,4 +306,5 @@ https://medium.com/applied-data-science/alphago-zero-explained-in-one-diagram-36
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp and the clblast_level3 subdir, which have specific licenses (compatible with GPLv3) mentioned in those files.
+The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp,
+half.hpp and the clblast_level3 subdirs, which have specific licenses (compatible with GPLv3) mentioned in those files.
