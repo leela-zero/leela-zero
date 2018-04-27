@@ -99,7 +99,6 @@ private:
     static void winograd_sgemm(const std::vector<float>& U,
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
-    static int get_nn_idx_symmetry(const int vertex, int symmetry);
     static void fill_input_plane_pair(const FullBoard& board,
                                       std::vector<net_t>::iterator black,
                                       std::vector<net_t>::iterator white,

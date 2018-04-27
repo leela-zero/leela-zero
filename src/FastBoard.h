@@ -72,7 +72,7 @@ public:
     int get_boardsize(void) const;
     square_t get_square(int x, int y) const;
     square_t get_square(int vertex) const ;
-    int get_vertex(int i, int j) const;
+    int get_vertex(int x, int y) const;
     void set_square(int x, int y, square_t content);
     void set_square(int vertex, square_t content);
     std::pair<int, int> get_xy(int vertex) const;
@@ -124,6 +124,8 @@ protected:
 
     int m_boardsize;
     int m_squaresize;
+
+    std::array<std::array<unsigned short, MAXSQ>, 8> m_symmetry_idx;
 
     int calc_reach_color(int color) const;
 
