@@ -45,11 +45,12 @@
 #include <cblas.h>
 #endif
 
+const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
 #ifdef USE_HALF
-const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning_half");
+const auto TUNER_KERNEL = std::string("XgemmBatchedHalf");
 constexpr auto MAX_ERROR = 1e-2f;
 #else
-const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
+const auto TUNER_KERNEL = std::string("XgemmBatched");
 constexpr auto MAX_ERROR = 1e-4f;
 #endif
 
@@ -64,12 +65,9 @@ static void sgemmBatched_ref(const std::vector<net_t>& a,
     std::vector<float> br(b.size());
     std::vector<float> cr(c.size());
 
-    for(auto i=size_t{0}; i<a.size(); i++) {
-        ar[i] = a[i];
-    }
-    for(auto i=size_t{0}; i<b.size(); i++) {
-        br[i] = b[i];
-    }
+    std::copy(begin(a), end(a), begin(ar));
+    std::copy(begin(b), end(b), begin(br));
+
     for (auto batch = 0; batch < batch_size; batch++) {
         auto offset_u = batch * m * k;
         auto offset_v = batch * n * k;
@@ -83,9 +81,8 @@ static void sgemmBatched_ref(const std::vector<net_t>& a,
                     0.0f,
                     &cr[offset_m], n);
     }
-    for(auto i=size_t{0}; i<c.size(); i++) {
-        c[i] = cr[i];
-    }
+
+    std::copy(begin(cr), end(cr), begin(c));
 }
 
 
@@ -338,6 +335,7 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
             continue;
         }
 
+        // The kernel is (for now) named the same even in USE_HALF
         auto sgemm_kernel = cl::Kernel(program, "XgemmBatched");
 
         auto m_ceil = int(ceilMultiple(ceilMultiple(m, p["MWG"]), p["VWM"]));
@@ -442,8 +440,8 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
     auto tuning_params = std::stringstream{};
     tuning_params << m << ";" << n << ";" << k << ";" << batch_size;
 
-    auto tuning_line_prefix = std::to_string(TUNER_VERSION) + ";XgemmBatched;"
-        + tuning_params.str() + ";";
+    auto tuning_line_prefix = std::to_string(TUNER_VERSION) + ";"
+        + TUNER_KERNEL + ";" + tuning_params.str() + ";";
     auto tuning_line = tuning_line_prefix + tuners + ";" + device_name;
 
     // Write back previous data as long as it's not the device and
@@ -484,7 +482,7 @@ std::string Tuner::sgemm_tuners_from_line(std::string line,
         return "";
     }
 
-    if (s[1] != "XgemmBatched") {
+    if (s[1] != TUNER_KERNEL) {
         return "";
     }
 

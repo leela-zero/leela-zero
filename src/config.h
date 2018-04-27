@@ -69,7 +69,7 @@
  * faster if you have a recent GPU. Don't use it on CPUs even if they have
  * OpenCL drivers - the BLAS version is much faster for those.
  */
-#ifndef FEATURE_USE_CPU_ONLY
+#ifndef USE_CPU_ONLY
 #define USE_OPENCL
 #endif
 /*
