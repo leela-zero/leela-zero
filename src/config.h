@@ -92,7 +92,7 @@
 #endif
 
 #ifdef USE_HALF
-#include <half/half.hpp>
+#include "half/half.hpp"
 using net_t = half_float::half;
 #else
 using net_t = float;
