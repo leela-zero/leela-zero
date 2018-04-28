@@ -44,8 +44,8 @@ public:
     virtual Result execute() = 0;
     virtual void init(const Order &o);
     void finish() { m_state.store(FINISHING); }
-    void store() { 
-        m_state.store(STORING); 
+    void store() {
+        m_state.store(STORING);
     }
 
 protected:

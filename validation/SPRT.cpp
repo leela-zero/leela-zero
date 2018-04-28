@@ -132,7 +132,7 @@ double SprtProbability::pDraw() const
 }
 
 
-Sprt::Sprt(): 
+Sprt::Sprt():
     m_elo0(0),
     m_elo1(0),
     m_alpha(0),
