@@ -19,6 +19,7 @@
 #include "FastBoard.h"
 
 #include <cassert>
+#include <boost/format.hpp>
 #include <array>
 #include <iostream>
 #include <queue>
@@ -277,48 +278,58 @@ float FastBoard::area_score(float komi) const {
     return black - white - komi;
 }
 
-void FastBoard::display_board(int lastmove) {
-    int boardsize = get_boardsize();
 
-    myprintf("\n   ");
-    print_columns();
-    for (int j = boardsize-1; j >= 0; j--) {
-        myprintf("%2d", j+1);
-        if (lastmove == get_vertex(0, j))
-            myprintf("(");
-        else
-            myprintf(" ");
-        for (int i = 0; i < boardsize; i++) {
-            if (get_square(i,j) == WHITE) {
-                myprintf("O");
-            } else if (get_square(i,j) == BLACK)  {
-                myprintf("X");
-            } else if (starpoint(boardsize, i, j)) {
-                myprintf("+");
-            } else {
-                myprintf(".");
-            }
-            if (lastmove == get_vertex(i, j)) myprintf(")");
-            else if (i != boardsize-1 && lastmove == get_vertex(i, j)+1) myprintf("(");
-            else myprintf(" ");
-        }
-        myprintf("%2d\n", j+1);
-    }
-    myprintf("   ");
-    print_columns();
-    myprintf("\n");
+void FastBoard::display_board(int lastmove) {
+    myprintf("%s", FastBoard::serialize_board(lastmove).c_str());
 }
 
-void FastBoard::print_columns() {
-    for (int i = 0; i < get_boardsize(); i++) {
-        if (i < 25) {
-            myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
+std::string FastBoard::serialize_board(int lastmove) {
+    
+    int boardsize = get_boardsize();
+    std::ostringstream oss;
+
+    oss << "\n   ";
+    oss << get_columns();
+    for (int j = boardsize-1; j >= 0; j--) {
+        oss << boost::format("%2d") % (j + 1);
+        if (lastmove == get_vertex(0, j))
+            oss << "(";
+        else
+            oss << " ";
+        for (int i = 0; i < boardsize; i++) {
+            if (get_square(i,j) == WHITE) {
+                oss << "O";
+            } else if (get_square(i,j) == BLACK)  {
+                oss << "X";
+            } else if (starpoint(boardsize, i, j)) {
+                oss << "+";
+            } else {
+                oss << ".";
+            }
+            if (lastmove == get_vertex(i, j)) 
+                oss << ")";
+            else if (i != boardsize-1 && lastmove == get_vertex(i, j)+1) 
+                oss << "(";
+            else oss << " ";
         }
-        else {
-            myprintf("%c ", (('A' + (i - 25) < 'I') ? 'A' + (i - 25) : 'A' + (i - 25) + 1));
-        }
+        oss << boost::format("%2d\n") % (j + 1);
     }
-    myprintf("\n");
+    oss << "   ";
+    oss << get_columns();
+    oss << "\n";
+    return oss.str();
+}
+
+std::string FastBoard::get_columns() {
+    std::ostringstream oss;
+    for (int i = 0; i < get_boardsize(); i++) {
+        char c =  (i < 25) ?
+            (('a' + i < 'i') ? 'a' + i : 'a' + i + 1) :
+            (('A' + (i - 25) < 'I') ? 'A' + (i - 25) : 'A' + (i - 25) + 1);
+        oss << c << " ";
+    }
+    oss << "\n";
+    return oss.str();
 }
 
 void FastBoard::merge_strings(const int ip, const int aip) {

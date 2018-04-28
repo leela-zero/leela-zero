@@ -27,8 +27,8 @@
 
 // Test should fail about this often from distribution not looking uniform.
 // Increasing this allows better detection of bad RNG but increase the chance
-// of test failure with acceptable RNG implemantation. On my system RNG seems
-// to be a tiny bit not random and test fail about twice as often as predicted.
+// of test failure with acceptable RNG implementation. On my system RNG seems
+// to be a tiny bit non-random and test fails about twice as often as predicted.
 constexpr auto ALPHA = 0.0001;
 
 using namespace Utils;
@@ -47,13 +47,17 @@ TEST(UtilsTest, CeilMultiple) {
     EXPECT_EQ(ceilMultiple(0, 3), (size_t)0);
     EXPECT_EQ(ceilMultiple(3, 3), (size_t)3);
     EXPECT_EQ(ceilMultiple(9, 3), (size_t)9);
-
+    EXPECT_EQ(ceilMultiple(5, 5), (size_t)5);
+    
     // Requires rounding up
     EXPECT_EQ(ceilMultiple(3, 5), (size_t)5);
     EXPECT_EQ(ceilMultiple(6, 5), (size_t)10);
     EXPECT_EQ(ceilMultiple(9, 5), (size_t)10);
+    EXPECT_EQ(ceilMultiple(12, 5), (size_t)15);
+    EXPECT_EQ(ceilMultiple(13, 5), (size_t)15);
     EXPECT_EQ(ceilMultiple(23, 5), (size_t)25);
     EXPECT_EQ(ceilMultiple(99, 100), (size_t)100);
+    EXPECT_EQ(ceilMultiple(149, 10), (size_t)150);
 }
 
 double randomlyDistributedProbability(std::vector<short> values, double expected) {
