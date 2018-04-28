@@ -446,7 +446,7 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
 
     // Write back previous data as long as it's not the device and
     // tuning we just tuned
-    for (const auto& line: file_contents) {
+    for (const auto& line : file_contents) {
         if (line.find(tuning_line_prefix) == std::string::npos
             || line.find(device_name) == std::string::npos) {
             file << line << std::endl;

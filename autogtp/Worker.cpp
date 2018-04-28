@@ -36,10 +36,10 @@ Worker::Worker(int index, const QString& gpuIndex, Management *parent) :
     }
 }
 
-void Worker::doStore() { 
+void Worker::doStore() {
     QTextStream(stdout) << "Storing current game ..." << endl;
-    m_job->store(); 
-    m_state.store(STORING); 
+    m_job->store();
+    m_state.store(STORING);
 }
 
 void Worker::order(Order o)
@@ -104,6 +104,6 @@ void Worker::run() {
         fi.lock();
         m_todo.save("storefile" + unique + ".bin");
         fi.unlock();
-    }    
+    }
     QTextStream(stdout) << "Program ends: quitting current worker." << endl;
 }

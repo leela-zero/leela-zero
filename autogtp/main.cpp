@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
     if(parser.isSet(singleOption)) {
         gamesNum = 1;
         gpusNum = 1;
-        maxNum = 0;      
+        maxNum = 0;
     }
 
     // Map streams

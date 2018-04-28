@@ -7,5 +7,9 @@ services:
 before_install:
   - docker pull ubuntu:16.04
 
-script:
-  - docker build .
+jobs:
+  include:
+    - stage: test
+      script: docker build .
+    - stage: style
+      script: find . -regex ".*\.\(cpp\|h\|hpp\)" -not -path "./gtest/*" -not -path "./src/half/*" -not -path "./src/CL/*" | xargs python2 scripts/cpplint.py --filter=-build/c++11,-build/include,-build/include_order,-build/include_what_you_use,-build/namespaces,-legal/copyright,-readability/braces,-readability/casting,-readability/fn_size,-readability/namespace,-readability/todo,-runtime/explicit,-runtime/indentation_namespace,-runtime/int,-runtime/references,-whitespace/blank_line,-whitespace/braces,-whitespace/comma,-whitespace/comments,-whitespace/empty_loop_body,-whitespace/indent,-whitespace/line_length,-whitespace/parens,-whitespace/semicolon

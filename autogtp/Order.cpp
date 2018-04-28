@@ -15,7 +15,7 @@ void Order::save(const QString &file) {
         out << key << " " << m_parameters.value(key) << endl;
     }
     out.flush();
-    f.close();       
+    f.close();
 }
 
 void Order::load(const QString &file) {
