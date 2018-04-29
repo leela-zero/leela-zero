@@ -41,9 +41,9 @@ void Job::init(const Order &o) {
                 << "Unexpected Leela Zero version: " << o.parameters()["leelazVer"] << endl;
         exit(EXIT_FAILURE);
     }
-   if (version_list.size() < 3) {
-       version_list.append("0");
-   }
+    if (version_list.size() < 3) {
+        version_list.append("0");
+    }
     std::get<0>(m_leelazMinVersion) = version_list[0].toInt();
     std::get<1>(m_leelazMinVersion) = version_list[1].toInt();
     std::get<2>(m_leelazMinVersion) = version_list[2].toInt();
