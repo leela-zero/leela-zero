@@ -63,16 +63,16 @@ std::ostream& operator <<(std::ostream& stream, const TimeStep& timestep) {
 
 std::istream& operator>> (std::istream& stream, TimeStep& timestep) {
     int planes_size;
-    int prob_size;
-    Network::BoardPlane nn;
-    float prob;
     stream >> planes_size;
     for (auto i = 0; i < planes_size; ++i) {
-        stream >> nn;
-        timestep.planes.push_back(nn);
+        TimeStep::BoardPlane plane;
+        stream >> plane;
+        timestep.planes.push_back(plane);
     }
+    int prob_size;
     stream >> prob_size;
     for (auto i = 0; i < prob_size; ++i) {
+        float prob;
         stream >> prob;
         timestep.probabilities.push_back(prob);
     }
@@ -139,11 +139,26 @@ void Training::clear_training() {
     Training::m_data.clear();
 }
 
+void Training::fill_planes(const GameState* const state, 
+                           TimeStep::NNPlanes& planes) {
+
+    std::vector<net_t>features_vector;
+    Network::gather_features_vector(state, features_vector, 0);
+    
+    planes = TimeStep::NNPlanes{};
+    planes.resize(Network::INPUT_CHANNELS);
+
+    for (auto c = size_t{0}; c < Network::INPUT_CHANNELS; c++) {
+        for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
+            planes[c][idx] = bool(features_vector[c * BOARD_SQUARES + idx]);
+        }
+    }
+}
+
 void Training::record(GameState& state, UCTNode& root) {
     auto step = TimeStep{};
     step.to_move = state.board.get_to_move();
-    step.planes = Network::NNPlanes{};
-    Network::gather_features(&state, step.planes);
+    fill_planes(&state, step.planes);
 
     auto result =
         Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
@@ -316,8 +331,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
 
         auto step = TimeStep{};
         step.to_move = to_move;
-        step.planes = Network::NNPlanes{};
-        Network::gather_features(&state, step.planes);
+        fill_planes(&state, step.planes);
 
         step.probabilities.resize(BOARD_SQUARES + 1);
         step.probabilities[move_idx] = 1.0f;
