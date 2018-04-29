@@ -66,8 +66,7 @@ void UCTNode::kill_superkos(const KoState& state) {
     m_children.erase(
         std::remove_if(begin(m_children), end(m_children),
                        [](const auto &child) { return !child->valid(); }),
-        end(m_children)
-    );
+        end(m_children));
 }
 
 void UCTNode::dirichlet_noise(float epsilon, float alpha) {

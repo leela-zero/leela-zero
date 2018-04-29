@@ -28,7 +28,7 @@ void Order::save(const QString &file) {
     QTextStream out(&f);
     out << m_type << endl;
     out << m_parameters.size() << endl;
-    for(QString key : m_parameters.keys())
+    for (QString key : m_parameters.keys())
     {
         out << key << " " << m_parameters.value(key) << endl;
     }
@@ -46,9 +46,9 @@ void Order::load(const QString &file) {
     int count;
     in >> count;
     QString key;
-    for(int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         in >> key;
-        if(key == "options") {
+        if (key == "options") {
            m_parameters[key] = in.readLine();
         } else {
             in >> m_parameters[key];

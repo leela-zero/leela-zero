@@ -562,7 +562,7 @@ void UCTWorker::operator()() {
         if (result.valid()) {
             m_search->increment_playouts();
         }
-    } while(m_search->is_running());
+    } while (m_search->is_running());
 }
 
 void UCTSearch::increment_playouts() {
@@ -619,7 +619,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(elapsed_centis, time_for_move);
         keeprunning &= have_alternate_moves(elapsed_centis, time_for_move);
-    } while(keeprunning);
+    } while (keeprunning);
 
     // stop the search
     m_run = false;
@@ -676,7 +676,7 @@ void UCTSearch::ponder() {
         }
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(0, 1);
-    } while(!Utils::input_pending() && keeprunning);
+    } while (!Utils::input_pending() && keeprunning);
 
     // stop the search
     m_run = false;

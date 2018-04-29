@@ -29,7 +29,7 @@ void OpenCLScheduler::initialize(const int channels) {
     // multi-gpu?
     if (!cfg_gpus.empty()) {
         auto silent{false};
-        for(auto gpu : cfg_gpus) {
+        for (auto gpu : cfg_gpus) {
             auto opencl = std::make_unique<OpenCL>();
             auto net = std::make_unique<OpenCL_Network>(*opencl);
             opencl->initialize(channels, {gpu}, silent);
@@ -44,12 +44,12 @@ void OpenCLScheduler::initialize(const int channels) {
             silent = true;
         }
 
-        for(size_t gnum = 0; gnum < m_networks.size(); gnum++) {
+        for (size_t gnum = 0; gnum < m_networks.size(); gnum++) {
             // launch the worker thread.  2 threads so that we can fully
             // utilize GPU, since the worker thread consists of some CPU
             // work for task preparation.
             constexpr auto num_threads = 2;
-            for(auto i = 0; i < num_threads; i++) {
+            for (auto i = 0; i < num_threads; i++) {
                 m_threadpool.add_thread([gnum] {
                     current_thread_gpu_num = gnum;
                 });

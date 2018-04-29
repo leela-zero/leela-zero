@@ -141,9 +141,7 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
     if (new_min_psa > 0.0f) {
         m_children.reserve(
             std::count_if(cbegin(nodelist), cend(nodelist),
-                [=](const auto& node) { return node.first >= new_min_psa; }
-            )
-        );
+                [=](const auto& node) { return node.first >= new_min_psa; }));
     } else {
         m_children.reserve(nodelist.size());
     }
