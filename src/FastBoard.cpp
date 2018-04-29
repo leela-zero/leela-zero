@@ -313,8 +313,7 @@ void FastBoard::print_columns() {
     for (int i = 0; i < get_boardsize(); i++) {
         if (i < 25) {
             myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-        }
-        else {
+        } else {
             myprintf("%c ", (('A' + (i - 25) < 'I') ? 'A' + (i - 25) : 'A' + (i - 25) + 1));
         }
     }
