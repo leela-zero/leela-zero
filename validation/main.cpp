@@ -90,16 +90,16 @@ int main(int argc, char *argv[]) {
     while(binList.count() != 2) {
         binList << "./leelaz";
     }
-    
+
     QStringList optsList = parser.values(optionsOption);
     while(optsList.count() != 2) {
         optsList << " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ";
     }
-   
+
     QString sprtOpt = parser.value(sprtOption);
     QStringList sprtList = sprtOpt.split(":");
-    float h0 = sprtList[0].toFloat(); 
-    float h1 = sprtList[1].toFloat(); 
+    float h0 = sprtList[0].toFloat();
+    float h1 = sprtList[1].toFloat();
 
     int gamesNum = parser.value(gamesNumOption).toInt();
     QStringList gpusList = parser.values(gpusOption);

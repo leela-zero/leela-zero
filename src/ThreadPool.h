@@ -110,7 +110,7 @@ inline ThreadPool::~ThreadPool() {
         m_exit = true;
     }
     m_condvar.notify_all();
-    for (std::thread & worker: m_threads) {
+    for (std::thread & worker : m_threads) {
         worker.join();
     }
 }
@@ -125,7 +125,7 @@ public:
         );
     }
     void wait_all() {
-        for (auto && result: m_taskresults) {
+        for (auto && result : m_taskresults) {
             result.get();
         }
     }

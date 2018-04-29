@@ -42,7 +42,7 @@ void ValidationWorker::run() {
             first.getCmdLine() << endl <<
             "vs" << endl <<
             second.getCmdLine() << endl;
-            
+
         QString wmove = "play white ";
         QString bmove = "play black ";
         do {
@@ -145,7 +145,7 @@ Validation::Validation(const int gpus,
                        const QString& secondOpts,
                        const float& h0,
                        const float& h1) :
-        
+
     m_mainMutex(mutex),
     m_syncMutex(),
     m_gamesThreads(gpus*games),
