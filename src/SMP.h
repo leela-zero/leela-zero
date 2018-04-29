@@ -27,21 +27,21 @@ namespace SMP {
     int get_num_cpus();
 
     class Mutex {
-    public:
+      public:
         Mutex();
         ~Mutex() = default;
         friend class Lock;
-    private:
+      private:
         std::atomic<bool> m_lock;
     };
 
     class Lock {
-    public:
+      public:
         explicit Lock(Mutex & m);
         ~Lock();
         void lock();
         void unlock();
-    private:
+      private:
         Mutex * m_mutex;
         bool m_owns_lock{false};
     };

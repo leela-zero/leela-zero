@@ -29,7 +29,7 @@
 #include "TimeControl.h"
 
 class GameState : public KoState {
-public:
+  public:
     explicit GameState() = default;
     explicit GameState(const KoState* rhs) {
         // Copy in fields from base class.
@@ -65,7 +65,7 @@ public:
     bool has_resigned() const;
     int who_resigned() const;
 
-private:
+  private:
     bool valid_handicap(int stones);
 
     std::vector<std::shared_ptr<const KoState>> game_history;

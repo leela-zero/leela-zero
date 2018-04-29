@@ -23,7 +23,7 @@
 #include <QMap>
 
 class Order {
-public:
+  public:
     enum {
         Error = 0,
         Production,
@@ -46,7 +46,7 @@ public:
     void save(const QString &file);
     void load(const QString &file);
 
-private:
+  private:
     int m_type;
     QMap<QString,QString> m_parameters;
 };

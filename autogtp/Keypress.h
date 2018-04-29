@@ -25,10 +25,10 @@
 class KeyPress : public QObject
 {
     Q_OBJECT
-public:
+  public:
     explicit KeyPress(Management *boss, QObject *parent = nullptr);
 
-protected:
+  protected:
     bool eventFilter(QObject *obj, QEvent *event);
     Management *m_boss;
 };

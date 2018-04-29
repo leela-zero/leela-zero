@@ -39,7 +39,7 @@
 namespace Utils {
 
 class ThreadPool {
-public:
+  public:
     ThreadPool() = default;
     ~ThreadPool();
 
@@ -52,7 +52,7 @@ public:
     template<class F, class... Args>
     auto add_task(F&& f, Args&&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
-private:
+  private:
     std::vector<std::thread> m_threads;
     std::queue<std::function<void()>> m_tasks;
 
@@ -115,7 +115,7 @@ inline ThreadPool::~ThreadPool() {
 }
 
 class ThreadGroup {
-public:
+  public:
     ThreadGroup(ThreadPool & pool) : m_pool(pool) {}
     template<class F, class... Args>
     void add_task(F&& f, Args&&... args) {
@@ -127,7 +127,7 @@ public:
             result.get();
         }
     }
-private:
+  private:
     ThreadPool & m_pool;
     std::vector<std::future<void>> m_taskresults;
 };

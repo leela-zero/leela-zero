@@ -34,7 +34,7 @@ constexpr int AUTOGTP_VERSION = 15;
 
 class Management : public QObject {
     Q_OBJECT
-public:
+  public:
     Management(const int gpus,
                const int games,
                const QStringList& gpuslist,
@@ -47,13 +47,13 @@ public:
     void giveAssignments();
     void incMoves() { m_movesMade++; }
     void wait();
-signals:
+  signals:
     void sendQuit();
-public slots:
+  public slots:
     void getResult(Order ord, Result res, int index, int duration);
     void storeGames();
 
-private:
+  private:
 
     struct NetworkException: public std::runtime_error
     {

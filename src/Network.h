@@ -33,7 +33,7 @@
 #include "GameState.h"
 
 class Network {
-public:
+  public:
     enum Ensemble {
         DIRECT, RANDOM_SYMMETRY
     };
@@ -76,7 +76,7 @@ public:
                              const Netresult & netres, const bool topmoves);
 
     static void gather_features(const GameState* const state, NNPlanes& planes);
-private:
+  private:
     static std::pair<int, int> load_v1_network(std::istream& wtfile);
     static std::pair<int, int> load_network_file(const std::string& filename);
     static void process_bn_var(std::vector<float>& weights,

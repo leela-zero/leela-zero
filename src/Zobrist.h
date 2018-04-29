@@ -27,7 +27,7 @@
 #include "Random.h"
 
 class Zobrist {
-public:
+  public:
     static constexpr auto zobrist_empty = 0x1234567887654321;
     static constexpr auto zobrist_blacktomove = 0xABCDABCDABCDABCD;
 

@@ -27,7 +27,7 @@
 #include "ThreadPool.h"
 
 class OpenCLScheduler {
-public:
+  public:
     void initialize(const int channels);
     std::vector<std::unique_ptr<OpenCL_Network>> & get_networks() {
         return m_networks;
@@ -35,9 +35,9 @@ public:
     void forward(const std::vector<net_t>& input,
                  std::vector<net_t>& output_pol,
                  std::vector<net_t>& output_val);
-private:
+  private:
     class ForwardTask {
-    public:
+      public:
         const std::vector<net_t> *input;
         std::vector<net_t> * output;
         std::promise<void> prom;

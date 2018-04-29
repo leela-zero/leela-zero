@@ -29,7 +29,7 @@ using VersionTuple = std::tuple<int, int, int>;
 
 class Job : public QObject {
     Q_OBJECT
-public:
+  public:
     enum {
         RUNNING = 0,
         FINISHING,
@@ -48,7 +48,7 @@ public:
         m_state.store(STORING);
     }
 
-protected:
+  protected:
     QAtomicInt m_state;
     QString m_option;
     QString m_gpu;
@@ -60,12 +60,12 @@ protected:
 
 class ProductionJob : public Job {
     Q_OBJECT
-public:
+  public:
     ProductionJob(QString gpu, Management *parent);
     ~ProductionJob() = default;
     void init(const Order &o);
     Result execute();
-private:
+  private:
     QString m_network;
     QString m_sgf;
     bool m_debug;
@@ -73,12 +73,12 @@ private:
 
 class ValidationJob : public Job {
     Q_OBJECT
-public:
+  public:
     ValidationJob(QString gpu, Management *parent);
     ~ValidationJob() = default;
     void init(const Order &o);
     Result execute();
-private:
+  private:
     QString m_firstNet;
     QString m_secondNet;
     QString m_sgfFirst;
@@ -87,12 +87,12 @@ private:
 
 class WaitJob : public Job {
     Q_OBJECT
-public:
+  public:
     WaitJob(QString gpu, Management *parent);
     ~WaitJob() = default;
     void init(const Order &o);
     Result execute();
-private:
+  private:
     int m_minutes;
 };
 

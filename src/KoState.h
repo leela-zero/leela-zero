@@ -27,7 +27,7 @@
 #include "FullBoard.h"
 
 class KoState : public FastState {
-public:
+  public:
     void init_game(int size, float komi);
     bool superko(void) const;
     void reset_game();
@@ -35,7 +35,7 @@ public:
     void play_move(int color, int vertex);
     void play_move(int vertex);
 
-private:
+  private:
     std::vector<std::uint64_t> m_ko_hash_history;
 };
 

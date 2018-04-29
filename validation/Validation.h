@@ -30,7 +30,7 @@
 
 class ValidationWorker : public QThread {
     Q_OBJECT
-public:
+  public:
     enum {
         RUNNING = 0,
         FINISHING
@@ -50,9 +50,9 @@ public:
     void run() override;
     void doFinish() { m_state.store(FINISHING); }
 
-signals:
+  signals:
     void resultReady(Sprt::GameResult r, int net_one_color);
-private:
+  private:
     QString m_firstNet;
     QString m_secondNet;
     int m_expected;
@@ -67,7 +67,7 @@ private:
 class Validation : public QObject {
     Q_OBJECT
 
-public:
+  public:
     Validation(const int gpus, const int games,
                const QStringList& gpusList,
                const QString& firstNet,
@@ -84,12 +84,12 @@ public:
     void startGames();
     void wait();
     void loadSprt();
-signals:
+  signals:
     void sendQuit();
-public slots:
+  public slots:
     void getResult(Sprt::GameResult result, int net_one_color);
     void storeSprt();
-private:
+  private:
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
     Sprt m_statistic;

@@ -25,7 +25,7 @@
 using VersionTuple = std::tuple<int, int, int>;
 
 class Game : QProcess {
-public:
+  public:
     Game(const QString& weights,
          const QString& opt,
          const QString& binary = QString("./leelaz"));
@@ -60,7 +60,7 @@ public:
         WHITE = 1,
     };
 
-private:
+  private:
     enum {
         NO_LEELAZ = 1,
         PROCESS_DIED,

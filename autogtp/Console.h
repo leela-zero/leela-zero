@@ -38,7 +38,7 @@
 class Console : public QObject
 {
     Q_OBJECT
-public:
+  public:
     Console(QObject *parent = nullptr)
         : QObject(parent),
 #ifdef Q_OS_WIN
@@ -50,10 +50,10 @@ public:
         }
     ~Console() = default;
 
-signals:
+  signals:
     void sendQuit();
 
-public slots:
+  public slots:
     void readInput() {
         QTextStream qin(stdin);
         QString line = qin.readLine();
@@ -61,7 +61,7 @@ public slots:
             emit sendQuit();
         }
     }
-private:
+  private:
     Notifier m_notifier;
 };
 

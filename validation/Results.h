@@ -24,7 +24,7 @@
 
 
 class Results {
-public:
+  public:
     Results() = default;
     int getGamesPlayed() const { return m_gamesPlayed; }
     void addGameResult(Sprt::GameResult result, int side);
@@ -33,7 +33,7 @@ public:
 
     friend QTextStream& operator<<(QTextStream& stream, const Results& r);
     friend QTextStream& operator>>(QTextStream& stream, Results& r);
-private:
+  private:
     int m_gamesPlayed{0};
     int m_blackWins{0};
     int m_blackLosses{0};

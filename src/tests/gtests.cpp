@@ -51,7 +51,7 @@ void expect_regex(std::string s, std::string re, bool positive = true) {
 }
 
 class LeelaEnv: public ::testing::Environment {
-public:
+  public:
     ~LeelaEnv() {}
     void SetUp() {
         GTP::setup_default_parameters();
@@ -80,7 +80,7 @@ public:
 ::testing::Environment* const leela_env = ::testing::AddGlobalTestEnvironment(new LeelaEnv);
 
 class LeelaTest: public ::testing::Test {
-public:
+  public:
     LeelaTest() {
         // Reset engine parameters
         GTP::setup_default_parameters();
@@ -102,7 +102,7 @@ public:
                               testing::internal::GetCapturedStderr());
     }
 
-private:
+  private:
     std::unique_ptr<GameState> m_gamestate;
 };
 
