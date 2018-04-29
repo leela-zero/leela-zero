@@ -74,8 +74,8 @@ public:
                                 const std::string& out_filename);
     static void save_training(const std::string& filename);
     static void load_training(const std::string& filename);
-private:
 
+private:
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,
                              OutputChunker& outchunker);

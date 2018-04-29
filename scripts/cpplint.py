@@ -2481,10 +2481,10 @@ class NestingState(object):
       if access_match:
         classinfo.access = access_match.group(2)
 
-        # Check that access keywords are indented +1 space.  Skip this
+        # Check that access keywords are not indented. Skip this
         # check if the keywords are not preceded by whitespaces.
         indent = access_match.group(1)
-        if (len(indent) != classinfo.class_indent + 2 and
+        if (len(indent) != classinfo.class_indent + 0 and
             Match(r'^\s*$', indent)):
           if classinfo.is_struct:
             parent = 'struct ' + classinfo.name
@@ -2494,7 +2494,7 @@ class NestingState(object):
           if access_match.group(3):
             slots = access_match.group(3)
           error(filename, linenum, 'whitespace/indent', 3,
-                '%s%s: should be indented by 2 spaces %s' % (
+                '%s%s: should not be indented %s' % (
                     access_match.group(2), slots, parent))
 
     # Consume braces or semicolons from what's left of the line
@@ -2797,17 +2797,6 @@ def CheckSpacingForFunctionCall(filename, clean_lines, linenum, error):
       else:
         error(filename, linenum, 'whitespace/parens', 4,
               'Extra space before ( in function call')
-    # If the ) is followed only by a newline or a { + newline, assume it's
-    # part of a control statement (if/while/etc), and don't complain
-    if Search(r'[^)]\s+\)\s*[^{\s]', fncall):
-      # If the closing parenthesis is preceded by only whitespaces,
-      # try to give a more descriptive error message.
-      if Search(r'^\s+\)', fncall):
-        error(filename, linenum, 'whitespace/parens', 2,
-              'Closing ) should be moved to the previous line')
-      else:
-        error(filename, linenum, 'whitespace/parens', 2,
-              'Extra space before )')
 
 
 def IsBlankLine(line):
