@@ -49,6 +49,7 @@ bool cfg_gtp_mode;
 bool cfg_allow_pondering;
 int cfg_num_threads;
 int cfg_max_threads;
+int cfg_max_tree_size;
 int cfg_max_playouts;
 int cfg_max_visits;
 TimeManagement::enabled_t cfg_timemanage;
@@ -83,6 +84,12 @@ void GTP::setup_default_parameters() {
 #else
     cfg_num_threads = cfg_max_threads;
 #endif
+
+    // Maximum size of the tree in memory. Nodes are
+    // about 56 bytes, so by default limit to ~1.3 GiB
+    // on 32-bits and about 5.2 GiB on 64-bits.
+    cfg_max_tree_size = (sizeof(void*) >= 8 ? 100'000'000 : 25'000'000);
+
     cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
     cfg_max_visits = std::numeric_limits<decltype(cfg_max_visits)>::max();
     cfg_timemanage = TimeManagement::AUTO;
