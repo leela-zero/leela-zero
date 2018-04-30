@@ -696,24 +696,18 @@ void UCTSearch::set_playout_limit(int playouts) {
     static_assert(std::is_convertible<decltype(playouts),
                                       decltype(m_maxplayouts)>::value,
                   "Inconsistent types for playout amount.");
-    if (playouts == 0) {
-        // Divide max by 2 to prevent overflow when multithreading.
-        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max()
-                        / 2;
-    } else {
-        m_maxplayouts = playouts;
-    }
+    // Limit to type max / 2 to prevent overflow when multithreading.
+    m_maxplayouts =
+        std::min(playouts,
+            std::numeric_limits<decltype(m_maxplayouts)>::max() / 2);
 }
 
 void UCTSearch::set_visit_limit(int visits) {
     static_assert(std::is_convertible<decltype(visits),
                                       decltype(m_maxvisits)>::value,
                   "Inconsistent types for visits amount.");
-    if (visits == 0) {
-        // Divide max by 2 to prevent overflow when multithreading.
-        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max()
-                      / 2;
-    } else {
-        m_maxvisits = visits;
-    }
+    // Limit to type max / 2 to prevent overflow when multithreading.
+    m_maxvisits =
+        std::min(visits,
+            std::numeric_limits<decltype(m_maxvisits)>::max() / 2);
 }
