@@ -533,7 +533,8 @@ bool UCTSearch::have_alternate_moves(int elapsed_centis, int time_for_move) {
     // think ahead about her next moves in the remaining time.
     auto my_color = m_rootstate.get_to_move();
     auto tc = m_rootstate.get_timecontrol();
-    if (!tc.can_accumulate_time(my_color)) {
+    if (!tc.can_accumulate_time(my_color)
+        || m_maxplayouts < UCTSearch::UNLIMITED_PLAYOUTS) {
         if (cfg_timemanage != TimeManagement::FAST) {
             return true;
         }
@@ -696,10 +697,7 @@ void UCTSearch::set_playout_limit(int playouts) {
     static_assert(std::is_convertible<decltype(playouts),
                                       decltype(m_maxplayouts)>::value,
                   "Inconsistent types for playout amount.");
-    // Limit to type max / 2 to prevent overflow when multithreading.
-    m_maxplayouts =
-        std::min(playouts,
-            std::numeric_limits<decltype(m_maxplayouts)>::max() / 2);
+    m_maxplayouts = std::min(playouts, UNLIMITED_PLAYOUTS);
 }
 
 void UCTSearch::set_visit_limit(int visits) {
@@ -707,7 +705,5 @@ void UCTSearch::set_visit_limit(int visits) {
                                       decltype(m_maxvisits)>::value,
                   "Inconsistent types for visits amount.");
     // Limit to type max / 2 to prevent overflow when multithreading.
-    m_maxvisits =
-        std::min(visits,
-            std::numeric_limits<decltype(m_maxvisits)>::max() / 2);
+    m_maxvisits = std::min(visits, UNLIMITED_PLAYOUTS);
 }

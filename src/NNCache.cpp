@@ -21,6 +21,7 @@
 
 #include "NNCache.h"
 #include "Utils.h"
+#include "UCTSearch.h"
 
 NNCache::NNCache(int size) : m_size(size) {}
 
@@ -80,15 +81,15 @@ void NNCache::set_size_from_playouts(int max_playouts) {
     constexpr auto num_cache_moves = 3;
     auto max_playouts_per_move =
         std::min(max_playouts,
-            std::numeric_limits<decltype(max_playouts)>::max() /
-            num_cache_moves);
+                 UCTSearch::UNLIMITED_PLAYOUTS / num_cache_moves);
     auto max_size = num_cache_moves * max_playouts_per_move;
     max_size = std::min(150'000, std::max(6'000, max_size));
     NNCache::get_NNCache().resize(max_size);
 }
 
 void NNCache::dump_stats() {
-    Utils::myprintf("NNCache: %d/%d hits/lookups = %.1f%% hitrate, %d inserts, %u size\n",
+    Utils::myprintf(
+        "NNCache: %d/%d hits/lookups = %.1f%% hitrate, %d inserts, %u size\n",
         m_hits, m_lookups, 100. * m_hits / (m_lookups + 1),
         m_inserts, m_cache.size());
 }

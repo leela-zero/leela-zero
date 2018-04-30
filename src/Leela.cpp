@@ -213,8 +213,7 @@ static void parse_commandline(int argc, char *argv[]) {
 
         // 0 may be specified to mean "no limit"
         if (cfg_max_playouts == 0) {
-            cfg_max_playouts =
-                std::numeric_limits<decltype(cfg_max_playouts)>::max();
+            cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
         }
     }
 
@@ -223,8 +222,7 @@ static void parse_commandline(int argc, char *argv[]) {
 
         // 0 may be specified to mean "no limit"
         if (cfg_max_visits == 0) {
-            cfg_max_visits =
-                std::numeric_limits<decltype(cfg_max_visits)>::max();
+            cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
         }
     }
 

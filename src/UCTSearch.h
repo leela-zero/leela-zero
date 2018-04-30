@@ -83,6 +83,14 @@ public:
     static constexpr auto MAX_TREE_SIZE =
         (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
 
+    /*
+        Value representing unlimited visits or playouts. Due to
+        concurrent updates while multithreading, we need some
+        headroom within the native type.
+    */
+    static constexpr auto UNLIMITED_PLAYOUTS =
+        std::numeric_limits<int>::max() / 2;
+
     UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
