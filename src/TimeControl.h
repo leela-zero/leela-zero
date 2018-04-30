@@ -25,7 +25,7 @@
 #include "Timing.h"
 
 class TimeControl {
-public:
+  public:
     /*
         Initialize time control. Timing info is per GTP and in centiseconds
     */
@@ -44,7 +44,7 @@ public:
     bool can_accumulate_time(int color);
     std::string to_text_sgf();
 
-private:
+  private:
     void display_color_time(int color);
 
     int m_maintime;

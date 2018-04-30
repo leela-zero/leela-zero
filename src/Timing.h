@@ -22,7 +22,7 @@
 #include <chrono>
 
 class Time {
-public:
+  public:
     /* sets to current time */
     Time(void);
 
@@ -32,7 +32,7 @@ public:
     /* time difference in seconds */
     static double timediff_seconds(Time start, Time end);
 
-private:
+  private:
     std::chrono::steady_clock::time_point m_time;
 };
 

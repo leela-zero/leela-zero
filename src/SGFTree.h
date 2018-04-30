@@ -30,7 +30,7 @@
 #include "KoState.h"
 
 class SGFTree {
-public:
+  public:
     static const int EOT = 0;               // End-Of-Tree marker
 
     SGFTree() = default;
@@ -53,7 +53,7 @@ public:
 
     static std::string state_to_string(GameState& state, int compcolor);
 
-private:
+  private:
     void populate_states(void);
     void apply_move(int color, int move);
     void apply_move(int move);

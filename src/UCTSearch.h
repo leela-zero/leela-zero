@@ -34,7 +34,7 @@
 
 
 class SearchResult {
-public:
+  public:
     SearchResult() = default;
     bool valid() const { return m_valid;  }
     float eval() const { return m_eval;  }
@@ -50,7 +50,7 @@ public:
             return SearchResult(0.5f);
         }
     }
-private:
+  private:
     explicit SearchResult(float eval)
         : m_valid(true), m_eval(eval) {}
     bool m_valid{false};
@@ -64,7 +64,7 @@ namespace TimeManagement {
 };
 
 class UCTSearch {
-public:
+  public:
     /*
         Depending on rule set and state of the game, we might
         prefer to pass, or we might prefer not to pass unless
@@ -100,7 +100,7 @@ public:
     void increment_playouts();
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
-private:
+  private:
     float get_min_psa_ratio() const;
     void dump_stats(FastState& state, UCTNode& parent);
     void tree_stats(const UCTNode& node);
@@ -128,11 +128,11 @@ private:
 };
 
 class UCTWorker {
-public:
+  public:
     UCTWorker(GameState & state, UCTSearch * search, UCTNode * root)
       : m_rootstate(state), m_search(search), m_root(root) {}
     void operator()();
-private:
+  private:
     GameState & m_rootstate;
     UCTSearch * m_search;
     UCTNode * m_root;

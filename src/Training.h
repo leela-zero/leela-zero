@@ -31,7 +31,7 @@
 #include "UCTNode.h"
 
 class TimeStep {
-public:
+  public:
     Network::NNPlanes planes;
     std::vector<float> probabilities;
     int to_move;
@@ -45,14 +45,14 @@ std::ostream& operator<< (std::ostream& stream, const TimeStep& timestep);
 std::istream& operator>> (std::istream& stream, TimeStep& timestep);
 
 class OutputChunker {
-public:
+  public:
     OutputChunker(const std::string& basename, bool compress = false);
     ~OutputChunker();
     void append(const std::string& str);
 
     // Group this many games in a batch.
     static constexpr size_t CHUNK_SIZE = 32;
-private:
+  private:
     std::string gen_chunk_name() const;
     void flush_chunks();
     size_t m_game_count{0};
@@ -63,7 +63,7 @@ private:
 };
 
 class Training {
-public:
+  public:
     static void clear_training();
     static void dump_training(int winner_color,
                               const std::string& out_filename);
@@ -74,7 +74,7 @@ public:
                                 const std::string& out_filename);
     static void save_training(const std::string& filename);
     static void load_training(const std::string& filename);
-private:
+  private:
 
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,

@@ -27,7 +27,7 @@
     Random number generator xoroshiro128+
 */
 class Random {
-public:
+  public:
     Random() = delete;
     Random(std::uint64_t seed = 0);
     void seedrandom(std::uint64_t s);
@@ -64,7 +64,7 @@ public:
         return gen();
     }
 
-private:
+  private:
     std::uint64_t gen(void);
     std::uint64_t m_s[2];
 };

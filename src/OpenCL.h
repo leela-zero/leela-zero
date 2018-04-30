@@ -40,7 +40,7 @@ class OpenCL;
 
 class Layer {
     friend class OpenCL_Network;
-private:
+  private:
     unsigned int channels{0};
     unsigned int outputs{0};
     unsigned int filter_size{0};
@@ -53,7 +53,7 @@ private:
 class ThreadData {
     friend class OpenCL;
     friend class OpenCL_Network;
-private:
+  private:
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
     cl::Kernel m_convolve1_kernel;
@@ -72,7 +72,7 @@ private:
 };
 
 class OpenCL_Network {
-public:
+  public:
     OpenCL_Network(OpenCL & opencl) : m_opencl(opencl) {}
     OpenCL & getOpenCL() {
         return m_opencl;
@@ -134,7 +134,7 @@ public:
             std::vector<net_t>& output_pol,
             std::vector<net_t>& output_val);
 
-private:
+  private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
 
     void push_weights(size_t layer, const std::vector<float>& weights) {
@@ -171,7 +171,7 @@ private:
 class OpenCL {
     friend class OpenCL_Network;
     friend class Tuner;
-public:
+  public:
     void initialize(const int channels, const std::vector<int> & gpus,
                     bool silent = false);
     void ensure_thread_initialized(void);
@@ -181,7 +181,7 @@ public:
 
     cl::Device m_device;
     cl::Context m_context;
-private:
+  private:
     void tune_sgemm(void);
     void process_tuners(std::string tuners);
 

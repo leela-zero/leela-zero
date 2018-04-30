@@ -24,7 +24,7 @@
 #include "FastBoard.h"
 
 class FullBoard : public FastBoard {
-public:
+  public:
     int remove_string(int i);
     int update_board(const int color, const int i);
 

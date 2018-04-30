@@ -29,7 +29,7 @@
 
 class FastBoard {
     friend class FastState;
-public:
+  public:
     /*
         neighbor counts are up to 4, so 3 bits is ok,
         but a power of 2 makes things a bit faster
@@ -100,7 +100,7 @@ public:
     static bool starpoint(int size, int point);
     static bool starpoint(int size, int x, int y);
 
-protected:
+  protected:
     /*
         bit masks to detect eyes on neighbors
     */

@@ -43,7 +43,7 @@ class UCTNode;
 // by an external lock.
 
 class UCTNodePointer {
-private:
+  private:
     // the raw storage used here.
     // if bit 0 is 0, m_data is the actual pointer.
     // if bit 0 is 1, bit [31:16] is the vertex value, bit [63:32] is the score.
@@ -71,7 +71,7 @@ private:
         return ret;
     }
 
-public:
+  public:
     ~UCTNodePointer();
     UCTNodePointer(UCTNodePointer&& n);
     UCTNodePointer(std::int16_t vertex, float score);

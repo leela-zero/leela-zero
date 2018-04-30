@@ -29,10 +29,10 @@
 #include "SGFTree.h"
 
 class SGFParser {
-private:
+  private:
     static std::string parse_property_name(std::istringstream & strm);
     static bool parse_property_value(std::istringstream & strm, std::string & result);
-public:
+  public:
     static std::string chop_from_file(std::string fname, size_t index);
     static std::vector<std::string> chop_all(std::string fname,
                                              size_t stopat = SIZE_MAX);

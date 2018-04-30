@@ -28,7 +28,7 @@
 #include "Network.h"
 
 class NNCache {
-public:
+  public:
     // return the global NNCache
     static NNCache& get_NNCache(void);
 
@@ -52,7 +52,7 @@ public:
 
     void dump_stats();
 
-private:
+  private:
     NNCache(int size = 150000);  // ~ 225MB
 
     std::mutex m_mutex;
@@ -65,7 +65,7 @@ private:
     int m_inserts{0};
 
     struct Entry {
-        Entry( const Network::Netresult& r)
+        Entry(const Network::Netresult& r)
             : result(r) {}
         Network::Netresult result;  // ~ 1.5KB
     };

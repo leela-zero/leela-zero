@@ -62,10 +62,10 @@ extern bool cfg_benchmark;
     GTP is meant to be used between programs. It's not a human interface.
 */
 class GTP {
-public:
+  public:
     static bool execute(GameState & game, std::string xinput);
     static void setup_default_parameters();
-private:
+  private:
     static constexpr int GTP_VERSION = 2;
 
     static std::string get_life_list(const GameState & game, bool live);

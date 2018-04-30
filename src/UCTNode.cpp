@@ -141,9 +141,7 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
     if (new_min_psa > 0.0f) {
         m_children.reserve(
             std::count_if(cbegin(nodelist), cend(nodelist),
-                [=](const auto& node) { return node.first >= new_min_psa; }
-            )
-        );
+                [=](const auto& node) { return node.first >= new_min_psa; }));
     } else {
         m_children.reserve(nodelist.size());
     }
@@ -294,7 +292,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 
 class NodeComp : public std::binary_function<UCTNodePointer&,
                                              UCTNodePointer&, bool> {
-public:
+  public:
     NodeComp(int color) : m_color(color) {};
     bool operator()(const UCTNodePointer& a,
                     const UCTNodePointer& b) {
@@ -311,7 +309,7 @@ public:
         // both have same non-zero number of visits
         return a.get_eval(m_color) < b.get_eval(m_color);
     }
-private:
+  private:
     int m_color;
 };
 

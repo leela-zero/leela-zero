@@ -443,7 +443,7 @@ void OpenCL_Network::add_weights(size_t layer,
     }
 
     auto converted_weights = std::vector<net_t>();
-    for(auto i = size_t{0}; i < size; i++) {
+    for (auto i = size_t{0}; i < size; i++) {
         converted_weights.emplace_back(weights[i]);
     }
 

@@ -27,7 +27,7 @@
 #include "FullBoard.h"
 
 class FastState {
-public:
+  public:
     void init_game(int size, float komi);
     void reset_game();
     void reset_board();
@@ -62,7 +62,7 @@ public:
     size_t m_movenum;
     int m_lastmove;
 
-protected:
+  protected:
     void play_move(int color, int vertex);
 };
 

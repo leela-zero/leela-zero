@@ -23,7 +23,7 @@
 #include <QMap>
 
 class Result {
-public:
+  public:
     enum Type {
         File = 0,
         Win,
@@ -41,7 +41,7 @@ public:
     void add(const QString &name, const QString &value) { m_parameters[name] = value; }
     QMap<QString,QString> parameters() { return m_parameters; }
     void clear() { m_parameters.clear(); }
-private:
+  private:
     int m_type;
     QMap<QString,QString> m_parameters;
 };

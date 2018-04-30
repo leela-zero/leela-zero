@@ -46,8 +46,7 @@ static void license_blurb() {
         "This program comes with ABSOLUTELY NO WARRANTY.\n"
         "This is free software, and you are welcome to redistribute it\n"
         "under certain conditions; see the COPYING file for details.\n\n",
-        PROGRAM_VERSION
-    );
+        PROGRAM_VERSION);
 }
 
 static void parse_commandline(int argc, char *argv[]) {
@@ -331,7 +330,7 @@ void benchmark(GameState& game) {
     search->think(FastBoard::WHITE);
 }
 
-int main (int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     auto input = std::string{};
 
     // Set up engine parameters
@@ -367,7 +366,7 @@ int main (int argc, char *argv[]) {
         return 0;
     }
 
-    for(;;) {
+    for (;;) {
         if (!cfg_gtp_mode) {
             maingame->display_state();
             std::cout << "Leela: ";

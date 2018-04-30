@@ -39,7 +39,7 @@
 namespace Utils {
 
 class ThreadPool {
-public:
+  public:
     ThreadPool() = default;
     ~ThreadPool();
 
@@ -52,7 +52,7 @@ public:
     template<class F, class... Args>
     auto add_task(F&& f, Args&&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
-private:
+  private:
     std::vector<std::thread> m_threads;
     std::queue<std::function<void()>> m_tasks;
 
@@ -82,7 +82,7 @@ inline void ThreadPool::add_thread(std::function<void()> initializer) {
 
 inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
-        add_thread( [](){} /* null function */);
+        add_thread([](){} /* null function */);
     }
 }
 
@@ -92,8 +92,7 @@ auto ThreadPool::add_task(F&& f, Args&&... args)
     using return_type = typename std::result_of<F(Args...)>::type;
 
     auto task = std::make_shared< std::packaged_task<return_type()> >(
-        std::bind(std::forward<F>(f), std::forward<Args>(args)...)
-    );
+        std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 
     std::future<return_type> res = task->get_future();
     {
@@ -116,20 +115,19 @@ inline ThreadPool::~ThreadPool() {
 }
 
 class ThreadGroup {
-public:
+  public:
     ThreadGroup(ThreadPool & pool) : m_pool(pool) {}
     template<class F, class... Args>
     void add_task(F&& f, Args&&... args) {
         m_taskresults.emplace_back(
-            m_pool.add_task(std::forward<F>(f), std::forward<Args>(args)...)
-        );
+            m_pool.add_task(std::forward<F>(f), std::forward<Args>(args)...));
     }
     void wait_all() {
         for (auto && result : m_taskresults) {
             result.get();
         }
     }
-private:
+  private:
     ThreadPool & m_pool;
     std::vector<std::future<void>> m_taskresults;
 };

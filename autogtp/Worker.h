@@ -28,8 +28,8 @@
 class Management;
 
 class Worker : public QThread {
-   Q_OBJECT
-public:
+    Q_OBJECT
+  public:
     enum {
         RUNNING = 0,
         FINISHING,
@@ -41,9 +41,9 @@ public:
     void doFinish() { m_job->finish(); m_state.store(FINISHING); }
     void doStore();
     void run() override;
-signals:
+  signals:
     void resultReady(Order o, Result r, int index, int duration);
-private:
+  private:
     int m_index;
     QAtomicInt m_state;
     QString m_gpu;

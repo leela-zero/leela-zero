@@ -33,7 +33,7 @@
 #include "UCTNodePointer.h"
 
 class UCTNode {
-public:
+  public:
     // When we visit a node, add this amount of virtual losses
     // to it to encourage other CPUs to explore other parts of the
     // search tree.
@@ -82,7 +82,7 @@ public:
     std::unique_ptr<UCTNode> find_child(const int move);
     void inflate_all_children();
 
-private:
+  private:
     enum Status : char {
         INVALID, // superko
         PRUNED,
