@@ -38,6 +38,8 @@
 
 using namespace Utils;
 
+constexpr int UCTSearch::UNLIMITED_PLAYOUTS;
+
 UCTSearch::UCTSearch(GameState& g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
