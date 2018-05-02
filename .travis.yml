@@ -10,7 +10,7 @@ before_install:
 
 jobs:
   include:
-    - stage: build
+    - stage: test
       script:
       - docker build -f Dockerfiles/Dockerfile.gpu -t leela-zero:gpu .
       - docker run leela-zero:gpu
@@ -20,8 +20,7 @@ jobs:
     - script:
       - docker build -f Dockerfiles/Dockerfile.cpu -t leela-zero:cpu .
       - docker run leela-zero:cpu
-    - stage: test
-      script:
+    - script:
       - docker build -f Dockerfiles/Dockerfile.tests -t leela-zero:tests .
       - docker run leela-zero:tests
     - stage: style
