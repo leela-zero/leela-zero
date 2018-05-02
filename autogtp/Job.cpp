@@ -41,9 +41,9 @@ void Job::init(const Order &o) {
                 << "Unexpected Leela Zero version: " << o.parameters()["leelazVer"] << endl;
         exit(EXIT_FAILURE);
     }
-   if(version_list.size() < 3) {
-       version_list.append("0");
-   }
+    if (version_list.size() < 3) {
+        version_list.append("0");
+    }
     std::get<0>(m_leelazMinVersion) = version_list[0].toInt();
     std::get<1>(m_leelazMinVersion) = version_list[1].toInt();
     std::get<2>(m_leelazMinVersion) = version_list[2].toInt();
@@ -71,7 +71,7 @@ Result ProductionJob::execute(){
     if (!game.gameStart(m_leelazMinVersion)) {
         return res;
     }
-    if(!m_sgf.isEmpty()) {
+    if (!m_sgf.isEmpty()) {
         game.loadSgf(m_sgf);
         game.loadTraining(m_sgf);
         game.setMovesCount(m_moves);
@@ -86,7 +86,7 @@ Result ProductionJob::execute(){
         game.readMove();
         m_boss->incMoves();
     } while (game.nextMove() && m_state.load() == RUNNING);
-    switch(m_state.load()) {
+    switch (m_state.load()) {
     case RUNNING:
         QTextStream(stdout) << "Game has ended." << endl;
         if (game.getScore()) {
@@ -120,7 +120,7 @@ void ProductionJob::init(const Order &o) {
     Job::init(o);
     m_network = o.parameters()["network"];
     m_debug = o.parameters()["debug"] == "true";
-    if(o.type() == Order::RestoreSelfPlayed) {
+    if (o.type() == Order::RestoreSelfPlayed) {
         m_sgf = o.parameters()["sgf"];
         m_moves = o.parameters()["moves"].toInt();
     } else {
@@ -135,7 +135,7 @@ Result ValidationJob::execute(){
     if (!first.gameStart(m_leelazMinVersion)) {
         return res;
     }
-    if(!m_sgfFirst.isEmpty()) {
+    if (!m_sgfFirst.isEmpty()) {
         first.loadSgf(m_sgfFirst);
         first.setMovesCount(m_moves);
         QFile::remove(m_sgfFirst + ".sgf");
@@ -144,7 +144,7 @@ Result ValidationJob::execute(){
     if (!second.gameStart(m_leelazMinVersion)) {
         return res;
     }
-    if(!m_sgfSecond.isEmpty()) {
+    if (!m_sgfSecond.isEmpty()) {
         second.loadSgf(m_sgfSecond);
         second.setMovesCount(m_moves);
         QFile::remove(m_sgfSecond + ".sgf");
@@ -173,7 +173,7 @@ Result ValidationJob::execute(){
         second.nextMove();
     } while (first.nextMove() && m_state.load() == RUNNING);
 
-    switch(m_state.load()) {
+    switch (m_state.load()) {
     case RUNNING:
         res.add("moves", QString::number(first.getMovesCount()));
        QTextStream(stdout) << "Game has ended." << endl;
@@ -207,7 +207,7 @@ void ValidationJob::init(const Order &o) {
     Job::init(o);
     m_firstNet = o.parameters()["firstNet"];
     m_secondNet = o.parameters()["secondNet"];
-    if(o.type() == Order::RestoreMatch) {
+    if (o.type() == Order::RestoreMatch) {
         m_sgfFirst = o.parameters()["sgfFirst"];
         m_sgfSecond = o.parameters()["sgfSecond"];
         m_moves = o.parameters()["moves"].toInt();

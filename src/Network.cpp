@@ -116,7 +116,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
 }
 
 void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
-    for(auto&& w : weights) {
+    for (auto&& w : weights) {
         w = 1.0f / std::sqrt(w + epsilon);
     }
 }
@@ -171,10 +171,10 @@ std::vector<float> Network::zeropad_U(const std::vector<float>& U,
     // Fill with zeroes
     auto Upad = std::vector<float>(WINOGRAD_TILE * outputs_pad * channels_pad);
 
-    for(auto o = 0; o < outputs; o++) {
-        for(auto c = 0; c < channels; c++) {
-            for(auto xi = 0; xi < WINOGRAD_ALPHA; xi++){
-                for(auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
+    for (auto o = 0; o < outputs; o++) {
+        for (auto c = 0; c < channels; c++) {
+            for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++){
+                for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
                     Upad[xi * (WINOGRAD_ALPHA * outputs_pad * channels_pad)
                          + nu * (outputs_pad * channels_pad)
                          + c * outputs_pad +
@@ -338,8 +338,8 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
 
 void Network::initialize() {
     // Prepare symmetry table
-    for(auto s = 0; s < 8; s++) {
-        for(auto v = 0; v < BOARD_SQUARES; v++) {
+    for (auto s = 0; s < 8; s++) {
+        for (auto v = 0; v < BOARD_SQUARES; v++) {
             symmetry_nn_idx_table[s][v] = get_nn_idx_symmetry(v, s);
         }
     }
@@ -392,7 +392,7 @@ void Network::initialize() {
     myprintf("Initializing OpenCL.\n");
     opencl.initialize(channels);
 
-    for(const auto & opencl_net : opencl.get_networks()) {
+    for (const auto & opencl_net : opencl.get_networks()) {
         const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
 
         const auto mwg = tuners[0];
@@ -1029,7 +1029,7 @@ void Network::fill_input_plane_pair(const FullBoard& board,
                                     BoardPlane& black, BoardPlane& white) {
     auto idx = 0;
     for (auto j = 0; j < BOARD_SIZE; j++) {
-        for(auto i = 0; i < BOARD_SIZE; i++) {
+        for (auto i = 0; i < BOARD_SIZE; i++) {
             const auto vtx = board.get_vertex(i, j);
             const auto color = board.get_square(vtx);
             if (color != FastBoard::EMPTY) {

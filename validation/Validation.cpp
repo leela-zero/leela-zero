@@ -47,17 +47,17 @@ void ValidationWorker::run() {
         QString bmove = "play black ";
         do {
             first.move();
-            if(!first.waitForMove()) {
+            if (!first.waitForMove()) {
                 emit resultReady(Sprt::NoResult, Game::BLACK);
                 return;
             }
             first.readMove();
-            if(first.checkGameEnd()) {
+            if (first.checkGameEnd()) {
                 break;
             }
             second.setMove(bmove + first.getMove());
             second.move();
-            if(!second.waitForMove()) {
+            if (!second.waitForMove()) {
                 emit resultReady(Sprt::NoResult, Game::BLACK);
                 return;
             }
@@ -74,7 +74,7 @@ void ValidationWorker::run() {
                 if (!m_keepPath.isEmpty()) {
                     first.writeSgf();
                     QString prefix = m_keepPath + '/';
-                    if(m_expected == Game::BLACK) {
+                    if (m_expected == Game::BLACK) {
                         prefix.append("black_");
                     } else {
                         prefix.append("white_");
@@ -167,8 +167,8 @@ void Validation::startGames() {
     QString n1, n2, b1 ,b2 ,o1, o2;
     int expected;
     QString myGpu;
-    for(int gpu = 0; gpu < m_gpus; ++gpu) {
-        for(int game = 0; game < m_games; ++game) {
+    for (int gpu = 0; gpu < m_gpus; ++gpu) {
+        for (int game = 0; game < m_games; ++game) {
             auto thread_index = gpu * m_games + game;
             connect(&m_gamesThreads[thread_index],
                     &ValidationWorker::resultReady,
@@ -252,7 +252,7 @@ void Validation::printSprtStatus(const Sprt::Status& status) {
 }
 
 void Validation::getResult(Sprt::GameResult result, int net_one_color) {
-    if(result == Sprt::NoResult) {
+    if (result == Sprt::NoResult) {
         QTextStream(stdout) << "Engine Error." << endl;
         return;
     }
@@ -264,7 +264,7 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
     auto wdl = m_statistic.getWDL();
     QTextStream(stdout) << std::get<0>(wdl) << " wins, "
                         << std::get<2>(wdl) << " losses" << endl;
-    if(status.result != Sprt::Continue) {
+    if (status.result != Sprt::Continue) {
         quitThreads();
         QTextStream(stdout)
             << "The first net is "
@@ -279,13 +279,13 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
 }
 
 void Validation::quitThreads() {
-    for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
+    for (int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
         m_gamesThreads[gpu].doFinish();
     }
 }
 
 void Validation::wait() {
-    for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
+    for (int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
         m_gamesThreads[gpu].wait();
     }
 }

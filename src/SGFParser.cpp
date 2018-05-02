@@ -57,7 +57,7 @@ std::vector<std::string> SGFParser::chop_stream(std::istream& ins,
                 // eat ; too
                 do {
                     ins >> c;
-                } while(std::isspace(c) && c != ';');
+                } while (std::isspace(c) && c != ';');
                 gamebuff.clear();
             }
             nesting++;
