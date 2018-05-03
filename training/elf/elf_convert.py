@@ -39,7 +39,8 @@ if 0:
         print(key, state[key].shape)
 
 with open('elf_converted_weights.txt', 'w') as f:
-    f.write('1\n')
+    # version 2 means value head is for black, not for side to move
+    f.write('2\n')
     b = convert_block(state, 'init_conv')
 
     # Permutate input planes
