@@ -911,8 +911,8 @@ Network::Netresult Network::get_scored_moves(
     } else {
         assert(ensemble == RANDOM_SYMMETRY);
         assert(symmetry == -1);
-        const auto rand_rot = Random::get_Rng().randfix<8>();
-        result = get_scored_moves_internal(planes, rand_rot);
+        const auto rand_sym = Random::get_Rng().randfix<8>();
+        result = get_scored_moves_internal(planes, rand_sym);
     }
 
     // v2 format (ELF Open Go) returns black value, not stm
