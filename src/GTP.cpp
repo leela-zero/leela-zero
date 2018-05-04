@@ -532,8 +532,13 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 vec = Network::get_scored_moves(
                     &game, Network::Ensemble::MULTI_AVG, 8, true);
             } else {
-                vec = Network::get_scored_moves(
-                    &game, Network::Ensemble::DIRECT, cmdstream.fail() ? 0 : std::stoi(symmetry), true);
+                if (cmdstream.fail()) {
+                    vec = Network::get_scored_moves(
+                        &game, Network::Ensemble::DIRECT, 0, true);
+                } else {
+                    vec = Network::get_scored_moves(
+                        &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
+                }
             }
 
             Network::show_heatmap(&game, vec, false);
