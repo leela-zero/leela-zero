@@ -892,10 +892,8 @@ Network::Netresult Network::get_scored_moves(
         assert(symmetry >= 0 && symmetry <= 7);
         result = get_scored_moves_internal(planes, symmetry);
     } else if (ensemble == MULTI_AVG) {
-        result = get_scored_moves_internal(planes, r_list[0]);
-
-        for (int r = 1; r < 8; ++r) {
-            Netresult tmpresult = get_scored_moves_internal(planes, r_list[r]);
+        for (int r = 0; r < 8; ++r) {
+            Netresult tmpresult = get_scored_moves_internal(planes, r);
             result.winrate += tmpresult.winrate;
             result.policy_pass += tmpresult.policy_pass;
 
@@ -912,7 +910,7 @@ Network::Netresult Network::get_scored_moves(
         result.policy_pass /= 8;
     } else {
         assert(ensemble == RANDOM_ROTATION);
-        asset (symmetry == -1);
+        assert(symmetry == -1);
         const auto rand_rot = Random::get_Rng().randfix<8>();
         result = get_scored_moves_internal(planes, rand_rot);
     }

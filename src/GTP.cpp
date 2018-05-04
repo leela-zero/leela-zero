@@ -538,8 +538,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
         }
 
-            Network::show_heatmap(&game, vec, false);
-        }
+        Network::show_heatmap(&game, vec, false);
 
         gtp_printf(id, "");
         return true;
