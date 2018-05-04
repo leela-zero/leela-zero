@@ -29,14 +29,14 @@ We use SPRT to decide if a newly trained network is better. A better network is 
 ## 自对弈时产生的棋谱为什么下得很糟 ##
 ## Why the game generated during self-play contains quite a few bad moves ##
 
-生成自对弈棋谱时，使用的MCTS模拟次数只有1000，还加入了噪声，这是为了增加随机性，之后的训练才有进步的空间。如果用图形界面（如sabiki）加载Leela Zero，并设置好参数与之对弈，你会发现它其实表现得并不赖。
+生成自对弈棋谱时，使用的MCTS模拟次数只有3200，还加入了噪声，这是为了增加随机性，之后的训练才有进步的空间。如果用图形界面（如sabiki）加载Leela Zero，并设置好参数与之对弈，你会发现它其实表现得并不赖。
 
-The MCTS playouts of self-play games is only 1000, and with noises added (For randomness of each move thus training has something to learn from). If you load Leela Zero with Sabaki, you'll probably find it is actually not that weak.
+The MCTS playouts of self-play games is only 3200, and with noise added (For randomness of each move thus training has something to learn from). If you load Leela Zero with Sabaki, you'll probably find it is actually not that weak.
 
 ## 自对弈为什么使用1000的模拟次数，而不是AZ的1600 ##
-## For self-play, why use 1000 playouts instead of 1600 playouts as AZ ##
+## For self-play, why use 3200 visits instead of 1600 playouts as AZ ##
 
-没人知道AZ的1600是怎么得到的。这里的1000是基于下面几点估计得到的：
+没人知道AZ的1600是怎么得到的。这里的3200是基于下面几点估计得到的：
 
 1. 对于某一个选点，MCTS需要模拟几次才能得出概率结果。在开始阶段，每个选点的概率不会差太多，所以开始的360次模拟大概会覆盖整个棋盘。所以如果要让某些选点可以做几次模拟的话，大概需要2到3 x 360次的模拟。
 
@@ -66,4 +66,4 @@ This is expected. Due to randomness of self-play games, once Black choose to pas
 
 Leela Zero使用Tromp-Taylor规则(详见<https://senseis.xmp.net/?TrompTaylorRules>)。虽然与中国规则一样贴7.5目，但为计算方便，并不去除死子。因此，结果与使用中国规则计算可能有所不同。不过，不去除死子并不影响模型的训练结果，因为双方会将死子自行提掉。
 
-Leela Zero uses Tromp-Taylor rules (see https://senseis.xmp.net/?TrompTaylorRules). Although its komi is 7.5 as in Chinese rule, for simplicity, Tromp-Taylor rules do not remvoe dead stones. Thus, the result may be different from that calcuated using Chinese rule. However, keeping dead stones does not affect training results because both players are expected to capture dead stones themselves.
+Leela Zero uses Tromp-Taylor rules (see https://senseis.xmp.net/?TrompTaylorRules). Although its komi is 7.5 as in Chinese rule, for simplicity, Tromp-Taylor rules do not remove dead stones. Thus, the result may be different from that calcuated using Chinese rule. However, keeping dead stones does not affect training results because both players are expected to capture dead stones themselves.

@@ -82,24 +82,24 @@ int main(int argc, char *argv[]) {
     // Process the actual command line arguments given by the user
     parser.process(app);
     QStringList netList = parser.values(networkOption);
-    if(netList.count() != 2) {
+    if (netList.count() != 2) {
         parser.showHelp();
     }
 
     QStringList binList = parser.values(binaryOption);
-    while(binList.count() != 2) {
+    while (binList.count() != 2) {
         binList << "./leelaz";
     }
-    
+
     QStringList optsList = parser.values(optionsOption);
-    while(optsList.count() != 2) {
+    while (optsList.count() != 2) {
         optsList << " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ";
     }
-   
+
     QString sprtOpt = parser.value(sprtOption);
     QStringList sprtList = sprtOpt.split(":");
-    float h0 = sprtList[0].toFloat(); 
-    float h1 = sprtList[1].toFloat(); 
+    float h0 = sprtList[0].toFloat();
+    float h1 = sprtList[1].toFloat();
 
     int gamesNum = parser.value(gamesNumOption).toInt();
     QStringList gpusList = parser.values(gpusOption);
@@ -125,8 +125,7 @@ int main(int argc, char *argv[]) {
                         parser.value(keepSgfOption), &mutex,
                         binList.at(0), binList.at(1),
                         optsList.at(0), optsList.at(1),
-                        h0, h1
-                        );
+                        h0, h1);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, validate, &Validation::storeSprt);
     validate->loadSprt();
     validate->startGames();

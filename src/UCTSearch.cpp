@@ -38,6 +38,8 @@
 
 using namespace Utils;
 
+constexpr int UCTSearch::UNLIMITED_PLAYOUTS;
+
 UCTSearch::UCTSearch(GameState& g)
     : m_rootstate(g) {
     set_playout_limit(cfg_max_playouts);
@@ -519,22 +521,35 @@ size_t UCTSearch::prune_noncontenders(int elapsed_centis, int time_for_move) {
 }
 
 bool UCTSearch::have_alternate_moves(int elapsed_centis, int time_for_move) {
-    if (cfg_timemanage != TimeManagement::ON) {
+    if (cfg_timemanage == TimeManagement::OFF) {
         return true;
     }
     auto pruned = prune_noncontenders(elapsed_centis, time_for_move);
-    if (pruned == m_root->get_children().size() - 1) {
-        // In a timed search we will essentially always exit because
-        // the remaining time is too short to let another move win, so
-        // avoid spamming this message every move. We'll print it if we
-        // save at least half a second.
-        if (time_for_move - elapsed_centis > 50) {
-            myprintf("%.1fs left, stopping early.\n",
-                     (time_for_move - elapsed_centis) / 100.0f);
-        }
-        return false;
+    if (pruned < m_root->get_children().size() - 1) {
+        return true;
     }
-    return true;
+    // If we cannot save up time anyway, use all of it. This
+    // behavior can be overruled by setting "fast" time management,
+    // which will cause Leela to quickly respond to obvious/forced moves.
+    // That comes at the cost of some playing strength as she now cannot
+    // think ahead about her next moves in the remaining time.
+    auto my_color = m_rootstate.get_to_move();
+    auto tc = m_rootstate.get_timecontrol();
+    if (!tc.can_accumulate_time(my_color)
+        || m_maxplayouts < UCTSearch::UNLIMITED_PLAYOUTS) {
+        if (cfg_timemanage != TimeManagement::FAST) {
+            return true;
+        }
+    }
+    // In a timed search we will essentially always exit because
+    // the remaining time is too short to let another move win, so
+    // avoid spamming this message every move. We'll print it if we
+    // save at least half a second.
+    if (time_for_move - elapsed_centis > 50) {
+        myprintf("%.1fs left, stopping early.\n",
+                    (time_for_move - elapsed_centis) / 100.0f);
+    }
+    return false;
 }
 
 bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
@@ -550,7 +565,7 @@ void UCTWorker::operator()() {
         if (result.valid()) {
             m_search->increment_playouts();
         }
-    } while(m_search->is_running());
+    } while (m_search->is_running());
 }
 
 void UCTSearch::increment_playouts() {
@@ -607,7 +622,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(elapsed_centis, time_for_move);
         keeprunning &= have_alternate_moves(elapsed_centis, time_for_move);
-    } while(keeprunning);
+    } while (keeprunning);
 
     // stop the search
     m_run = false;
@@ -664,7 +679,7 @@ void UCTSearch::ponder() {
         }
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(0, 1);
-    } while(!Utils::input_pending() && keeprunning);
+    } while (!Utils::input_pending() && keeprunning);
 
     // stop the search
     m_run = false;
@@ -684,24 +699,13 @@ void UCTSearch::set_playout_limit(int playouts) {
     static_assert(std::is_convertible<decltype(playouts),
                                       decltype(m_maxplayouts)>::value,
                   "Inconsistent types for playout amount.");
-    if (playouts == 0) {
-        // Divide max by 2 to prevent overflow when multithreading.
-        m_maxplayouts = std::numeric_limits<decltype(m_maxplayouts)>::max()
-                        / 2;
-    } else {
-        m_maxplayouts = playouts;
-    }
+    m_maxplayouts = std::min(playouts, UNLIMITED_PLAYOUTS);
 }
 
 void UCTSearch::set_visit_limit(int visits) {
     static_assert(std::is_convertible<decltype(visits),
                                       decltype(m_maxvisits)>::value,
                   "Inconsistent types for visits amount.");
-    if (visits == 0) {
-        // Divide max by 2 to prevent overflow when multithreading.
-        m_maxvisits = std::numeric_limits<decltype(m_maxvisits)>::max()
-                      / 2;
-    } else {
-        m_maxvisits = visits;
-    }
+    // Limit to type max / 2 to prevent overflow when multithreading.
+    m_maxvisits = std::min(visits, UNLIMITED_PLAYOUTS);
 }

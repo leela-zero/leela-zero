@@ -37,7 +37,7 @@
 
 using namespace Utils;
 
-void expect_regex(std::string s, std::string re, bool positive=true) {
+void expect_regex(std::string s, std::string re, bool positive = true) {
     auto m = std::regex_search(s, std::regex(re));
     if (positive && !m) {
         FAIL() << "Output:" << std::endl << s
@@ -81,7 +81,7 @@ public:
 
 class LeelaTest: public ::testing::Test {
 public:
-    LeelaTest( ) {
+    LeelaTest() {
         // Reset engine parameters
         GTP::setup_default_parameters();
         cfg_max_playouts = 1;

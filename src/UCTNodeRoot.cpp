@@ -88,7 +88,7 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
         return;
     }
 
-    for (auto& v: dirichlet_vector) {
+    for (auto& v : dirichlet_vector) {
         v /= sample_sum;
     }
 

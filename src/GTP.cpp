@@ -83,8 +83,8 @@ void GTP::setup_default_parameters() {
 #else
     cfg_num_threads = cfg_max_threads;
 #endif
-    cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
-    cfg_max_visits = std::numeric_limits<decltype(cfg_max_visits)>::max();
+    cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
+    cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
     cfg_timemanage = TimeManagement::AUTO;
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL
@@ -515,29 +515,30 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("heatmap") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        std::string rotation;
+        std::string symmetry;
         Network::Netresult vec;
 
         cmdstream >> tmp;   // eat heatmap
-        cmdstream >> rotation;
+        cmdstream >> symmetry;
 
-        if (!cmdstream.fail() && rotation == "all") {
+        if (!cmdstream.fail() && symmetry == "all") {
             for (int r=0; r<8; r++) {
                 vec = Network::get_scored_moves(
                     &game, Network::Ensemble::DIRECT, r, true);
                 Network::show_heatmap(&game, vec, false);
             }
         } else {
-            if (!cmdstream.fail() && (rotation == "average" || rotation == "avg")) {
+            if (!cmdstream.fail() && (symmetry == "average" || symmetry == "avg")) {
                 vec = Network::get_scored_moves(
                     &game, Network::Ensemble::MULTI_AVG, 8, true);
             } else {
                 vec = Network::get_scored_moves(
-                    &game, Network::Ensemble::DIRECT, cmdstream.fail() ? 0 : std::stoi(rotation), true);
+                    &game, Network::Ensemble::DIRECT, cmdstream.fail() ? 0 : std::stoi(symmetry), true);
             }
 
             Network::show_heatmap(&game, vec, false);
         }
+
         gtp_printf(id, "");
         return true;
     } else if (command.find("fixed_handicap") == 0) {

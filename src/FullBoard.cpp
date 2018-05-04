@@ -173,7 +173,7 @@ int FullBoard::update_board(const int color, const int i) {
 
     /* check for possible simple ko */
     if (captured_stones == 1 && eyeplay) {
-        assert (get_square(captured_sq) == FastBoard::EMPTY
+        assert(get_square(captured_sq) == FastBoard::EMPTY
                 && !is_suicide(captured_sq, !color));
         return captured_sq;
     }

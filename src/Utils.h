@@ -44,7 +44,7 @@ namespace Utils {
 
     template<typename T>
     T rotl(const T x, const int k) {
-	    return (x << k) | (x >> (std::numeric_limits<T>::digits - k));
+        return (x << k) | (x >> (std::numeric_limits<T>::digits - k));
     }
 
     inline bool is7bit(int c) {

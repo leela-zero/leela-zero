@@ -1,10 +1,10 @@
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
+cmake_minimum_required(VERSION 3.1)
 
-ADD_EXECUTABLE(validation
+add_executable(validation
         main.cpp ../autogtp/Game.cpp SPRT.cpp Validation.cpp Results.cpp
         ../autogtp/Game.h SPRT.h Validation.h Results.h ../autogtp/Console.h)
-SET_TARGET_PROPERTIES(validation PROPERTIES AUTOMOC 1)
-TARGET_LINK_LIBRARIES(validation Qt5::Core)
+set_target_properties(validation PROPERTIES AUTOMOC 1)
+target_link_libraries(validation Qt5::Core)
 
-INSTALL(TARGETS validation DESTINATION bin)
+install(TARGETS validation DESTINATION bin)
