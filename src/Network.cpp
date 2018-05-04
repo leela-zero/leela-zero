@@ -909,7 +909,7 @@ Network::Netresult Network::get_scored_moves(
         result.winrate /= 8;
         result.policy_pass /= 8;
     } else {
-        assert(ensemble == RANDOM_ROTATION);
+        assert(ensemble == RANDOM_SYMMETRY);
         assert(symmetry == -1);
         const auto rand_rot = Random::get_Rng().randfix<8>();
         result = get_scored_moves_internal(planes, rand_rot);
