@@ -523,9 +523,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         if (cmdstream.fail()) {
             vec = Network::get_scored_moves(
-                &game, Network::Ensemble::DIRECT, 0, true); 
+                &game, Network::Ensemble::DIRECT, 0, true);
         } else if (symmetry == "all") {
-            for (int r=0; r<8; r++) {
+            for (int r = 0; r < 8; r++) {
                 vec = Network::get_scored_moves(
                     &game, Network::Ensemble::DIRECT, r, true);
                 Network::show_heatmap(&game, vec, false);
