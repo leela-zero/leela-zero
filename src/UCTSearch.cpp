@@ -585,7 +585,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     m_rootstate.get_timecontrol().set_boardsize(
         m_rootstate.board.get_boardsize());
-    auto time_for_move = m_rootstate.get_timecontrol().max_time_for_move(color);
+    auto time_for_move = m_rootstate.get_timecontrol().max_time_for_move(color, m_rootstate.get_movenum());
 
     myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
 
