@@ -59,7 +59,6 @@ public:
                                       const int symmetry = -1,
                                       const bool skip_cache = false);
     // File format version
-    static constexpr auto FORMAT_VERSION = 1;
     static constexpr auto INPUT_MOVES = 8;
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
     static constexpr auto OUTPUTS_POLICY = 2;

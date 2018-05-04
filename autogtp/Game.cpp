@@ -48,7 +48,7 @@ bool Game::checkGameEnd() {
 
 void Game::error(int errnum) {
     QTextStream(stdout) << "*ERROR*: ";
-    switch(errnum) {
+    switch (errnum) {
         case Game::NO_LEELAZ:
             QTextStream(stdout)
                 << "No 'leelaz' binary found." << endl;
@@ -80,7 +80,7 @@ bool Game::eatNewLine() {
         return false;
     }
     auto readCount = readLine(readBuffer, 256);
-    if(readCount < 0) {
+    if (readCount < 0) {
         error(Game::WRONG_GTP);
         return false;
     }
@@ -226,7 +226,7 @@ bool Game::readMove() {
         error(Game::PROCESS_DIED);
         return false;
     }
-    if(readCount == 0) {
+    if (readCount == 0) {
         error(Game::WRONG_GTP);
     }
     QTextStream(stdout) << m_moveNum << " (";
@@ -266,7 +266,7 @@ bool Game::setMove(const QString& m) {
 }
 
 bool Game::nextMove() {
-    if(checkGameEnd()) {
+    if (checkGameEnd()) {
         return false;
     }
     m_blackToMove = !m_blackToMove;
@@ -274,7 +274,7 @@ bool Game::nextMove() {
 }
 
 bool Game::getScore() {
-    if(m_resignation) {
+    if (m_resignation) {
         if (m_blackResigned) {
             m_winner = QString(QStringLiteral("white"));
             m_result = "W+Resign ";
@@ -315,7 +315,7 @@ bool Game::getScore() {
 }
 
 int Game::getWinner() {
-    if(m_winner.compare(QStringLiteral("white"), Qt::CaseInsensitive) == 0)
+    if (m_winner.compare(QStringLiteral("white"), Qt::CaseInsensitive) == 0)
         return Game::WHITE;
     else
         return Game::BLACK;
@@ -360,11 +360,11 @@ bool Game::fixSgf(QString& weightFile, bool resignation) {
     playerName += "]";
     sgfData.replace(re, playerName);
 
-    if(resignation) {
+    if (resignation) {
         QRegularExpression oldResult("RE\\[B\\+.*\\]");
         QString newResult("RE[B+Resign] ");
         sgfData.replace(oldResult, newResult);
-        if(!sgfData.contains(newResult, Qt::CaseInsensitive)) {
+        if (!sgfData.contains(newResult, Qt::CaseInsensitive)) {
             QRegularExpression oldwResult("RE\\[W\\+.*\\]");
             sgfData.replace(oldwResult, newResult);
         }
@@ -374,7 +374,7 @@ bool Game::fixSgf(QString& weightFile, bool resignation) {
     }
 
     sgfFile.close();
-    if(sgfFile.open(QFile::WriteOnly | QFile::Truncate)) {
+    if (sgfFile.open(QFile::WriteOnly | QFile::Truncate)) {
         QTextStream out(&sgfFile);
         out << sgfData;
     }

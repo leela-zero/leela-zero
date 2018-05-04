@@ -1,6 +1,6 @@
 # This file is part of Leela Zero.
 # Copyright (C) 2017 Marco Calignano
-# Copyright (C) 2017 Gian-Carlo Pascutto
+# Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 # Leela Zero is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -119,7 +119,7 @@ if(Qt5Core_FOUND)
         build target for `autogtp` and `validation` is disabled.")
     endif()
 else()
-    message(WARNNING "Qt is not found, build for `autogtp` and `validation` is disabled")
+    message(WARNING "Qt is not found, build for `autogtp` and `validation` is disabled")
 endif()
 
 # Google Test below
