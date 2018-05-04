@@ -891,20 +891,10 @@ Network::Netresult Network::get_scored_moves(
     if (ensemble == DIRECT) {
         assert(symmetry >= 0 && symmetry <= 7);
         result = get_scored_moves_internal(planes, symmetry);
-    } else if (ensemble == MULTI_AVG && symmetry > 1) {
-        // MULTI_AVG symmetry is the # of random rotations to provide
-        int num_rotations = symmetry;
-
-        assert(num_rotations >= 1 && num_rotations <= 8);
-        std::vector<int> r_list{0, 1, 2, 3, 4, 5, 6, 7};
-
-        if (num_rotations < 8) {
-            std::shuffle(r_list.begin(), r_list.end(), Random::get_Rng());
-        }
-
+    } else if (ensemble == MULTI_AVG) {
         result = get_scored_moves_internal(planes, r_list[0]);
 
-        for (int r = 1; r < num_rotations; ++r) {
+        for (int r = 1; r < 8; ++r) {
             Netresult tmpresult = get_scored_moves_internal(planes, r_list[r]);
             result.winrate += tmpresult.winrate;
             result.policy_pass += tmpresult.policy_pass;
@@ -915,14 +905,14 @@ Network::Netresult Network::get_scored_moves(
         }
 
         for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
-            result.policy[idx] /= num_rotations;
+            result.policy[idx] /= 8;
         }
 
-        result.winrate /= num_rotations;
-        result.policy_pass /= num_rotations;
+        result.winrate /= 8;
+        result.policy_pass /= 8;
     } else {
-        assert((ensemble == RANDOM_ROTATION && symmetry == -1) ||
-               (ensemble == MULTI_AVG && symmetry == 1));
+        assert(ensemble == RANDOM_ROTATION);
+        asset (symmetry == -1);
         const auto rand_rot = Random::get_Rng().randfix<8>();
         result = get_scored_moves_internal(planes, rand_rot);
     }
