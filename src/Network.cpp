@@ -891,7 +891,7 @@ Network::Netresult Network::get_scored_moves(
     if (ensemble == DIRECT) {
         assert(symmetry >= 0 && symmetry <= 7);
         result = get_scored_moves_internal(planes, symmetry);
-    } else if (ensemble == MULTI_AVG) {
+    } else if (ensemble == AVERAGE) {
         for (int r = 0; r < 8; ++r) {
             Netresult tmpresult = get_scored_moves_internal(planes, r);
             result.winrate += tmpresult.winrate;

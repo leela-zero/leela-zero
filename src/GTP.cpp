@@ -532,7 +532,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
         } else if (symmetry == "average" || symmetry == "avg") {
             vec = Network::get_scored_moves(
-                &game, Network::Ensemble::MULTI_AVG, 8, true);
+                &game, Network::Ensemble::AVERAGE, 8, true);
         } else {
             vec = Network::get_scored_moves(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
