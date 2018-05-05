@@ -80,7 +80,7 @@
 //#define USE_TUNER
 
 #define PROGRAM_NAME "Leela Zero"
-#define PROGRAM_VERSION "0.13"
+#define PROGRAM_VERSION "0.14"
 
 /*
  * OpenBLAS limitation: the default configuration on some Linuxes

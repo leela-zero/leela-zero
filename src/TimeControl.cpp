@@ -33,10 +33,10 @@ TimeControl::TimeControl(int boardsize, int maintime, int byotime,
     : m_maintime(maintime),
       m_byotime(byotime),
       m_byostones(byostones),
-      m_byoperiods(byoperiods) {
+      m_byoperiods(byoperiods),
+      m_boardsize(boardsize) {
 
     reset_clocks();
-    set_boardsize(boardsize);
 }
 
 std::string TimeControl::to_text_sgf() {
@@ -137,10 +137,10 @@ void TimeControl::display_times() {
     myprintf("\n");
 }
 
-int TimeControl::max_time_for_move(int color) {
+int TimeControl::max_time_for_move(int color, int movenum) {
     // default: no byo yomi (absolute)
     auto time_remaining = m_remaining_time[color];
-    auto moves_remaining = m_moves_expected;
+    auto moves_remaining = get_moves_expected(movenum);
     auto extra_time_per_move = 0;
 
     if (m_byotime != 0) {
@@ -215,16 +215,36 @@ void TimeControl::adjust_time(int color, int time, int stones) {
     }
 }
 
+
 void TimeControl::set_boardsize(int boardsize) {
+    m_boardsize = boardsize;
+}
+
+
+int TimeControl::get_moves_expected(int movenum) {
     auto board_div = 5;
     if (cfg_timemanage != TimeManagement::OFF) {
         // We will take early exits with time management on, so
         // it's OK to make our base time bigger.
         board_div = 9;
     }
+
     // Note this is constant as we play, so it's fair
     // to underestimate quite a bit.
-    m_moves_expected = (boardsize * boardsize) / board_div;
+    auto base_remaining = (m_boardsize * m_boardsize) / board_div;
+
+    // Don't think too long in the opening.
+    auto fast_moves = 60;
+    if (m_boardsize < 19) {
+        // Alternative value tuned for 9x9.
+        fast_moves = 16;
+    }
+
+    if (movenum < fast_moves) {
+        return (base_remaining + fast_moves) - movenum;
+    } else {
+        return base_remaining;
+    }
 }
 
 // Returns true if we are in a time control where we

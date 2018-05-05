@@ -36,7 +36,7 @@ public:
 
     void start(int color);
     void stop(int color);
-    int max_time_for_move(int color);
+    int max_time_for_move(int color, int movenum);
     void adjust_time(int color, int time, int stones);
     void set_boardsize(int boardsize);
     void display_times();
@@ -46,12 +46,13 @@ public:
 
 private:
     void display_color_time(int color);
+    int get_moves_expected(int movenum);
 
     int m_maintime;
     int m_byotime;
     int m_byostones;
     int m_byoperiods;
-    int m_moves_expected;
+    int m_boardsize;
 
     std::array<int,  2> m_remaining_time;    /* main time per player */
     std::array<int,  2> m_stones_left;       /* stones to play in byo period */
