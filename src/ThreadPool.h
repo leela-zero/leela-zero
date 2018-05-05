@@ -82,7 +82,7 @@ inline void ThreadPool::add_thread(std::function<void()> initializer) {
 
 inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
-        add_thread( [](){} /* null function */);
+        add_thread([](){} /* null function */);
     }
 }
 

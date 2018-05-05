@@ -28,34 +28,34 @@ class SprtProbability;
 
 class BayesElo
 {
-    public:
-        BayesElo(double bayesElo, double drawElo);
-        BayesElo(const SprtProbability& p);
+public:
+    BayesElo(double bayesElo, double drawElo);
+    BayesElo(const SprtProbability& p);
 
-        double bayesElo() const;
-        double drawElo() const;
-        double scale() const;
+    double bayesElo() const;
+    double drawElo() const;
+    double scale() const;
 
-    private:
-        double m_bayesElo;
-        double m_drawElo;
+private:
+    double m_bayesElo;
+    double m_drawElo;
 };
 
 class SprtProbability
 {
-    public:
-        SprtProbability(int wins, int losses, int draws);
-        SprtProbability(const BayesElo& b);
+public:
+    SprtProbability(int wins, int losses, int draws);
+    SprtProbability(const BayesElo& b);
 
-        bool isValid() const;
-        double pWin() const;
-        double pLoss() const;
-        double pDraw() const;
+    bool isValid() const;
+    double pWin() const;
+    double pLoss() const;
+    double pDraw() const;
 
-    private:
-        double m_pWin;
-        double m_pLoss;
-        double m_pDraw;
+private:
+    double m_pWin;
+    double m_pLoss;
+    double m_pDraw;
 };
 
 

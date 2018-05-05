@@ -65,7 +65,7 @@ private:
     int m_inserts{0};
 
     struct Entry {
-        Entry( const Network::Netresult& r)
+        Entry(const Network::Netresult& r)
             : result(r) {}
         Network::Netresult result;  // ~ 1.5KB
     };

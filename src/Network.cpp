@@ -88,6 +88,7 @@ static std::array<float, 256> ip1_val_b;
 
 static std::array<float, 256> ip2_val_w;
 static std::array<float, 1> ip2_val_b;
+static bool value_head_not_stm;
 
 // Symmetry helper
 static std::array<std::array<int, BOARD_SQUARES>, 8> symmetry_nn_idx_table;
@@ -116,7 +117,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
 }
 
 void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
-    for(auto&& w : weights) {
+    for (auto&& w : weights) {
         w = 1.0f / std::sqrt(w + epsilon);
     }
 }
@@ -171,10 +172,10 @@ std::vector<float> Network::zeropad_U(const std::vector<float>& U,
     // Fill with zeroes
     auto Upad = std::vector<float>(WINOGRAD_TILE * outputs_pad * channels_pad);
 
-    for(auto o = 0; o < outputs; o++) {
-        for(auto c = 0; c < channels; c++) {
-            for(auto xi = 0; xi < WINOGRAD_ALPHA; xi++){
-                for(auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
+    for (auto o = 0; o < outputs; o++) {
+        for (auto c = 0; c < channels; c++) {
+            for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++){
+                for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
                     Upad[xi * (WINOGRAD_ALPHA * outputs_pad * channels_pad)
                          + nu * (outputs_pad * channels_pad)
                          + c * outputs_pad +
@@ -194,8 +195,12 @@ std::vector<float> Network::zeropad_U(const std::vector<float>& U,
 std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     // Count size of the network
     myprintf("Detecting residual layers...");
-    // We are version 1
-    myprintf("v%d...", 1);
+    // We are version 1 or 2
+    if (value_head_not_stm) {
+        myprintf("v%d...", 2);
+    } else {
+        myprintf("v%d...", 1);
+    }
     // First line was the version number
     auto linecount = size_t{1};
     auto channels = 0;
@@ -325,11 +330,18 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
         auto iss = std::stringstream{line};
         // First line is the file format version id
         iss >> format_version;
-        if (iss.fail() || format_version != FORMAT_VERSION) {
+        if (iss.fail() || (format_version != 1 && format_version != 2)) {
             myprintf("Weights file is the wrong version.\n");
             return {0, 0};
         } else {
-            assert(format_version == FORMAT_VERSION);
+            // Version 2 networks are identical to v1, except
+            // that they return the score for black instead of
+            // the player to move. This is used by ELF Open Go.
+            if (format_version == 2) {
+                value_head_not_stm = true;
+            } else {
+                value_head_not_stm = false;
+            }
             return load_v1_network(buffer);
         }
     }
@@ -338,8 +350,8 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
 
 void Network::initialize() {
     // Prepare symmetry table
-    for(auto s = 0; s < 8; s++) {
-        for(auto v = 0; v < BOARD_SQUARES; v++) {
+    for (auto s = 0; s < 8; s++) {
+        for (auto v = 0; v < BOARD_SQUARES; v++) {
             symmetry_nn_idx_table[s][v] = get_nn_idx_symmetry(v, s);
         }
     }
@@ -392,7 +404,7 @@ void Network::initialize() {
     myprintf("Initializing OpenCL.\n");
     opencl.initialize(channels);
 
-    for(const auto & opencl_net : opencl.get_networks()) {
+    for (const auto & opencl_net : opencl.get_networks()) {
         const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
 
         const auto mwg = tuners[0];
@@ -886,6 +898,13 @@ Network::Netresult Network::get_scored_moves(
         result = get_scored_moves_internal(planes, rand_sym);
     }
 
+    // v2 format (ELF Open Go) returns black value, not stm
+    if (value_head_not_stm) {
+        if (state->board.get_to_move() == FastBoard::WHITE) {
+            result.winrate = 1.0f - result.winrate;
+        }
+    }
+
     // Insert result into cache.
     NNCache::get_NNCache().insert(state->board.get_hash(), result);
 
@@ -1029,7 +1048,7 @@ void Network::fill_input_plane_pair(const FullBoard& board,
                                     BoardPlane& black, BoardPlane& white) {
     auto idx = 0;
     for (auto j = 0; j < BOARD_SIZE; j++) {
-        for(auto i = 0; i < BOARD_SIZE; i++) {
+        for (auto i = 0; i < BOARD_SIZE; i++) {
             const auto vtx = board.get_vertex(i, j);
             const auto color = board.get_square(vtx);
             if (color != FastBoard::EMPTY) {

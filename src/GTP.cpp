@@ -83,8 +83,8 @@ void GTP::setup_default_parameters() {
 #else
     cfg_num_threads = cfg_max_threads;
 #endif
-    cfg_max_playouts = std::numeric_limits<decltype(cfg_max_playouts)>::max();
-    cfg_max_visits = std::numeric_limits<decltype(cfg_max_visits)>::max();
+    cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
+    cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
     cfg_timemanage = TimeManagement::AUTO;
     cfg_lagbuffer_cs = 100;
 #ifdef USE_OPENCL
