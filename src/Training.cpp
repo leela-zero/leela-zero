@@ -139,12 +139,12 @@ void Training::clear_training() {
     Training::m_data.clear();
 }
 
-void Training::fill_planes(const GameState* const state, 
+void Training::fill_planes(const GameState* const state,
                            TimeStep::NNPlanes& planes) {
 
     std::vector<net_t>features_vector;
     Network::gather_features_vector(state, features_vector, 0);
-    
+
     planes = TimeStep::NNPlanes{};
     planes.resize(Network::INPUT_CHANNELS);
 

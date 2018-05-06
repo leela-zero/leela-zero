@@ -1044,9 +1044,9 @@ void Network::show_heatmap(const FastState* const state,
     }
 }
 
-void Network::get_input_moves(const GameState* const state, 
-                              std::vector<net_t>& input_data, 
-                              const int symmetry, 
+void Network::get_input_moves(const GameState* const state,
+                              std::vector<net_t>& input_data,
+                              const int symmetry,
                               const int color)
 {
     assert(symmetry >= 0 && symmetry <= 7);
@@ -1068,7 +1068,7 @@ void Network::get_input_moves(const GameState* const state,
 }
 
 void Network::gather_features_vector(const GameState* const state,
-                                     std::vector<net_t>& input_data, 
+                                     std::vector<net_t>& input_data,
                                      const int symmetry) {
     const auto to_move = state->get_to_move();
     const auto blacks_move = to_move == FastBoard::BLACK;
