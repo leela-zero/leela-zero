@@ -55,7 +55,7 @@ public:
                                       const Ensemble ensemble,
                                       const int symmetry = -1,
                                       const bool skip_cache = false);
-    // File format version
+
     static constexpr auto INPUT_MOVES = 8;
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
     static constexpr auto OUTPUTS_POLICY = 2;
@@ -71,9 +71,9 @@ public:
     static void show_heatmap(const FastState * const state,
                              const Netresult & netres, const bool topmoves);
 
-    static void gather_features_vector(const GameState* const state,
-                                       std::vector<net_t>& input_data,
-                                       const int symmetry);
+    static void gather_features(const GameState* const state,
+                                std::vector<net_t>& input_data,
+                                const int symmetry);
 private:
     static std::pair<int, int> load_v1_network(std::istream& wtfile);
     static std::pair<int, int> load_network_file(const std::string& filename);
@@ -101,11 +101,7 @@ private:
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
     static int get_nn_idx_symmetry(const int vertex, int symmetry);
-    static void get_input_moves(const GameState* const state,
-                                std::vector<net_t>& input_data,
-                                const int symmetry,
-                                const int color);
-    static Netresult get_scored_moves_internal(const GameState* const state, 
+    static Netresult get_scored_moves_internal(const GameState* const state,
                                                const int symmetry);
 #if defined(USE_BLAS)
     static void forward_cpu(const std::vector<float>& input,

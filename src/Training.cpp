@@ -139,26 +139,25 @@ void Training::clear_training() {
     Training::m_data.clear();
 }
 
-void Training::fill_planes(const GameState* const state,
-                           TimeStep::NNPlanes& planes) {
+TimeStep::NNPlanes Training::get_planes(const GameState* const state) {
+    auto input_data = std::vector<net_t>{};
+    Network::gather_features(state, input_data, 0);
 
-    std::vector<net_t>features_vector;
-    Network::gather_features_vector(state, features_vector, 0);
-
-    planes = TimeStep::NNPlanes{};
+    auto planes = TimeStep::NNPlanes{};
     planes.resize(Network::INPUT_CHANNELS);
 
     for (auto c = size_t{0}; c < Network::INPUT_CHANNELS; c++) {
         for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
-            planes[c][idx] = bool(features_vector[c * BOARD_SQUARES + idx]);
+            planes[c][idx] = bool(input_data[c * BOARD_SQUARES + idx]);
         }
     }
+    return planes;
 }
 
 void Training::record(GameState& state, UCTNode& root) {
     auto step = TimeStep{};
     step.to_move = state.board.get_to_move();
-    fill_planes(&state, step.planes);
+    step.planes = get_planes(&state);
 
     auto result =
         Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
@@ -331,7 +330,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
 
         auto step = TimeStep{};
         step.to_move = to_move;
-        fill_planes(&state, step.planes);
+        step.planes = get_planes(&state);
 
         step.probabilities.resize(BOARD_SQUARES + 1);
         step.probabilities[move_idx] = 1.0f;

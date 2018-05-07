@@ -924,16 +924,15 @@ Network::Netresult Network::get_scored_moves_internal(
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
 
-    std::vector<net_t> input_data;
+    auto input_data = std::vector<net_t>{};
+    gather_features(state, input_data, symmetry);
+
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
 #ifdef USE_HALF
     std::vector<net_t> policy_data_n(OUTPUTS_POLICY * width * height);
     std::vector<net_t> value_data_n(OUTPUTS_VALUE * width * height);
 #endif
-
-    gather_features_vector(state, input_data, symmetry);
-
 #ifdef USE_OPENCL
 #ifdef USE_HALF
     opencl.forward(input_data, policy_data_n, value_data_n);
@@ -1044,43 +1043,48 @@ void Network::show_heatmap(const FastState* const state,
     }
 }
 
-void Network::get_input_moves(const GameState* const state,
+void Network::gather_features(const GameState* const state,
                               std::vector<net_t>& input_data,
-                              const int symmetry,
-                              const int color)
-{
+                              const int symmetry) {
     assert(symmetry >= 0 && symmetry <= 7);
-    const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
 
+    const auto color_to_move = state->get_to_move();
+    const auto color_not_to_move = color_to_move == FastBoard::BLACK ?
+                                                    FastBoard::WHITE :
+                                                    FastBoard::BLACK;
+    auto color_not_to_move_data = std::vector<net_t>{};
+
+    input_data.reserve(INPUT_CHANNELS * BOARD_SQUARES);
+    color_not_to_move_data.reserve(INPUT_MOVES * BOARD_SQUARES);
+
+    const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
     for (auto c = size_t{0}; c < moves; c++) {
         auto const board = state->get_past_board(c);
         for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
             const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
             const auto x = sym_idx % BOARD_SIZE;
             const auto y = sym_idx / BOARD_SIZE;
-            const auto color_is_at_vtx = (color == board.get_square(x, y));
-            input_data.emplace_back(net_t(color_is_at_vtx));
+            const auto color = board.get_square(x, y);
+            input_data.emplace_back(
+                net_t(color == color_to_move));
+            color_not_to_move_data.emplace_back(
+                net_t(color == color_not_to_move));
         }
     }
     for (auto c = moves; c < INPUT_MOVES; c++) {
-        input_data.insert(input_data.cend(), BOARD_SQUARES, net_t(false));
+        input_data.insert(cend(input_data), BOARD_SQUARES, net_t(false));
+        color_not_to_move_data.insert(cend(color_not_to_move_data),
+            BOARD_SQUARES, net_t(false));
     }
-}
 
-void Network::gather_features_vector(const GameState* const state,
-                                     std::vector<net_t>& input_data,
-                                     const int symmetry) {
-    const auto to_move = state->get_to_move();
-    const auto blacks_move = to_move == FastBoard::BLACK;
-    const auto not_to_move = blacks_move ? FastBoard::WHITE : FastBoard::BLACK;
+    input_data.insert(cend(input_data),
+        std::make_move_iterator(cbegin(color_not_to_move_data)),
+        std::make_move_iterator(cend(color_not_to_move_data)));
 
-    input_data.reserve(INPUT_CHANNELS * BOARD_SQUARES);
-
-    get_input_moves(state, input_data, symmetry, to_move);
-    get_input_moves(state, input_data, symmetry, not_to_move);
-
-    input_data.insert(input_data.cend(), BOARD_SQUARES, net_t(blacks_move));
-    input_data.insert(input_data.cend(), BOARD_SQUARES, net_t(!blacks_move));
+    input_data.insert(cend(input_data), BOARD_SQUARES,
+                      net_t(color_to_move == FastBoard::BLACK));
+    input_data.insert(cend(input_data), BOARD_SQUARES,
+                      net_t(color_to_move == FastBoard::WHITE));
 }
 
 int Network::get_nn_idx_symmetry(const int vertex, int symmetry) {

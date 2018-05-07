@@ -79,8 +79,7 @@ public:
     static void load_training(const std::string& filename);
 
 private:
-    static void fill_planes(const GameState* const state,
-                            TimeStep::NNPlanes& planes);
+    static TimeStep::NNPlanes get_planes(const GameState* const state);
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,
                              OutputChunker& outchunker);
