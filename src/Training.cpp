@@ -140,8 +140,7 @@ void Training::clear_training() {
 }
 
 TimeStep::NNPlanes Training::get_planes(const GameState* const state) {
-    auto input_data = std::vector<net_t>{};
-    Network::gather_features(state, input_data, 0);
+    const auto input_data = Network::gather_features(state, 0);
 
     auto planes = TimeStep::NNPlanes{};
     planes.resize(Network::INPUT_CHANNELS);
