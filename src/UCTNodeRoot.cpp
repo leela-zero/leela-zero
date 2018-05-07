@@ -123,7 +123,7 @@ void UCTNode::randomize_first_proportionally() {
         return;
     }
 
-    assert(m_children.size() >= index);
+    assert(m_children.size() > index);
 
     // Now swap the child at index with the first child
     std::iter_swap(begin(m_children), begin(m_children) + index);

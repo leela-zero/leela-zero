@@ -891,6 +891,16 @@ Network::Netresult Network::get_scored_moves(
     if (ensemble == DIRECT) {
         assert(symmetry >= 0 && symmetry <= 7);
         result = get_scored_moves_internal(planes, symmetry);
+    } else if (ensemble == AVERAGE) {
+        for (auto r = 0; r < 8; ++r) {
+            auto tmpresult = get_scored_moves_internal(planes, r);
+            result.winrate += tmpresult.winrate / 8.0f;
+            result.policy_pass += tmpresult.policy_pass / 8.0f;
+
+            for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+                result.policy[idx] += tmpresult.policy[idx] / 8.0f;
+            }
+        }
     } else {
         assert(ensemble == RANDOM_SYMMETRY);
         assert(symmetry == -1);
