@@ -31,10 +31,11 @@
 #endif
 
 /*
- * BOARD_SIZE: Define size of the board to compile Leela with, must be an odd number due to winograd tiles
+ * BOARD_SIZE: Define size of the board to compile Leela with, must be an odd
+   number due to winograd tiles
  */
 #define BOARD_SIZE 19
-#define BOARD_SQUARES BOARD_SIZE*BOARD_SIZE
+#define BOARD_SQUARES (BOARD_SIZE*BOARD_SIZE)
 
 #if (BOARD_SIZE % 2 == 0)
 #error Code assumes odd board size, remove at your own risk!
