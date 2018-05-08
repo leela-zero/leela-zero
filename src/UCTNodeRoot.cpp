@@ -102,14 +102,28 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 }
 
 void UCTNode::randomize_first_proportionally() {
-    auto accum = std::uint64_t{0};
-    auto accum_vector = std::vector<decltype(accum)>{};
+    auto accum = 0.0;
+    auto norm_factor = 0.0;
+    auto accum_vector = std::vector<double>{};
+
     for (const auto& child : m_children) {
-        accum += child->get_visits();
-        accum_vector.emplace_back(accum);
+        auto visits = child->get_visits();
+        if (norm_factor == 0.0) {
+            norm_factor = visits;
+            // Nonsensical options? End of game?
+            if (visits <= cfg_random_min_visits) {
+                return;
+            }
+        }
+        if (visits > cfg_random_min_visits) {
+            accum += std::pow(visits / norm_factor,
+                              1.0 / cfg_random_temp);
+            accum_vector.emplace_back(accum);
+        }
     }
 
-    auto pick = Random::get_Rng().randuint64(accum);
+    auto distribution = std::uniform_real_distribution<double>{0.0, accum};
+    auto pick = distribution(Random::get_Rng());
     auto index = size_t{0};
     for (size_t i = 0; i < accum_vector.size(); i++) {
         if (pick < accum_vector[i]) {
