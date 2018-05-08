@@ -885,15 +885,12 @@ Network::Netresult Network::get_scored_moves(
         }
     }
 
-    NNPlanes planes;
-    gather_features(state, planes);
-
     if (ensemble == DIRECT) {
         assert(symmetry >= 0 && symmetry <= 7);
-        result = get_scored_moves_internal(planes, symmetry);
+        result = get_scored_moves_internal(state, symmetry);
     } else if (ensemble == AVERAGE) {
-        for (auto r = 0; r < 8; ++r) {
-            auto tmpresult = get_scored_moves_internal(planes, r);
+        for (auto sym = 0; sym < 8; ++sym) {
+            auto tmpresult = get_scored_moves_internal(state, sym);
             result.winrate += tmpresult.winrate / 8.0f;
             result.policy_pass += tmpresult.policy_pass / 8.0f;
 
@@ -905,7 +902,7 @@ Network::Netresult Network::get_scored_moves(
         assert(ensemble == RANDOM_SYMMETRY);
         assert(symmetry == -1);
         const auto rand_sym = Random::get_Rng().randfix<8>();
-        result = get_scored_moves_internal(planes, rand_sym);
+        result = get_scored_moves_internal(state, rand_sym);
     }
 
     // v2 format (ELF Open Go) returns black value, not stm
@@ -922,28 +919,18 @@ Network::Netresult Network::get_scored_moves(
 }
 
 Network::Netresult Network::get_scored_moves_internal(
-    const NNPlanes& planes, const int symmetry) {
+    const GameState* const state, const int symmetry) {
     assert(symmetry >= 0 && symmetry <= 7);
-    assert(INPUT_CHANNELS == planes.size());
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
-    std::vector<net_t> input_data;
+
+    const auto input_data = gather_features(state, symmetry);
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
 #ifdef USE_HALF
     std::vector<net_t> policy_data_n(OUTPUTS_POLICY * width * height);
     std::vector<net_t> value_data_n(OUTPUTS_VALUE * width * height);
 #endif
-    // Data layout is input_data[(c * height + h) * width + w]
-    input_data.reserve(INPUT_CHANNELS * width * height);
-    for (auto c = 0; c < INPUT_CHANNELS; ++c) {
-        for (auto h = 0; h < height; ++h) {
-            for (auto w = 0; w < width; ++w) {
-                const auto sym_idx = symmetry_nn_idx_table[symmetry][h * width + w];
-                input_data.emplace_back(net_t(planes[c][sym_idx]));
-            }
-        }
-    }
 #ifdef USE_OPENCL
 #ifdef USE_HALF
     opencl.forward(input_data, policy_data_n, value_data_n);
@@ -1055,49 +1042,53 @@ void Network::show_heatmap(const FastState* const state,
 }
 
 void Network::fill_input_plane_pair(const FullBoard& board,
-                                    BoardPlane& black, BoardPlane& white) {
-    auto idx = 0;
-    for (auto j = 0; j < BOARD_SIZE; j++) {
-        for (auto i = 0; i < BOARD_SIZE; i++) {
-            const auto vtx = board.get_vertex(i, j);
-            const auto color = board.get_square(vtx);
-            if (color != FastBoard::EMPTY) {
-                if (color == FastBoard::BLACK) {
-                    black[idx] = true;
-                } else {
-                    white[idx] = true;
-                }
-            }
-            idx++;
+                                    std::vector<net_t>::iterator black,
+                                    std::vector<net_t>::iterator white,
+                                    const int symmetry) {
+    for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
+        const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
+        const auto x = sym_idx % BOARD_SIZE;
+        const auto y = sym_idx / BOARD_SIZE;
+        const auto color = board.get_square(x, y);
+        if (color == FastBoard::BLACK) {
+            black[idx] = net_t(true);
+        } else if (color == FastBoard::WHITE) {
+            white[idx] = net_t(true);
         }
     }
 }
 
-void Network::gather_features(const GameState* const state, NNPlanes & planes) {
-    planes.resize(INPUT_CHANNELS);
-    auto& black_to_move = planes[2 * INPUT_MOVES];
-    auto& white_to_move = planes[2 * INPUT_MOVES + 1];
+std::vector<net_t> Network::gather_features(const GameState* const state,
+                                            const int symmetry) {
+    assert(symmetry >= 0 && symmetry <= 7);
+    auto input_data = std::vector<net_t>(INPUT_CHANNELS * BOARD_SQUARES);
 
     const auto to_move = state->get_to_move();
     const auto blacks_move = to_move == FastBoard::BLACK;
 
-    const auto black_offset = blacks_move ? 0 : INPUT_MOVES;
-    const auto white_offset = blacks_move ? INPUT_MOVES : 0;
-
-    if (blacks_move) {
-        black_to_move.set();
-    } else {
-        white_to_move.set();
-    }
+    const auto black_it = blacks_move ?
+                          begin(input_data) :
+                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES;
+    const auto white_it = blacks_move ?
+                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES :
+                          begin(input_data);
+    const auto to_move_it = blacks_move ?
+        begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES :
+        begin(input_data) + (2 * INPUT_MOVES + 1) * BOARD_SQUARES;
 
     const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
     // Go back in time, fill history boards
     for (auto h = size_t{0}; h < moves; h++) {
         // collect white, black occupation planes
         fill_input_plane_pair(state->get_past_board(h),
-                              planes[black_offset + h],
-                              planes[white_offset + h]);
+                              black_it + h * BOARD_SQUARES,
+                              white_it + h * BOARD_SQUARES,
+                              symmetry);
     }
+
+    std::fill(to_move_it, to_move_it + BOARD_SQUARES, net_t(true));
+
+    return input_data;
 }
 
 int Network::get_nn_idx_symmetry(const int vertex, int symmetry) {
