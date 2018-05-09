@@ -56,6 +56,8 @@ int cfg_lagbuffer_cs;
 int cfg_resignpct;
 int cfg_noise;
 int cfg_random_cnt;
+int cfg_random_min_visits;
+float cfg_random_temp;
 std::uint64_t cfg_rng_seed;
 bool cfg_dumbpass;
 #ifdef USE_OPENCL
@@ -99,6 +101,8 @@ void GTP::setup_default_parameters() {
     cfg_resignpct = -1;
     cfg_noise = false;
     cfg_random_cnt = 0;
+    cfg_random_min_visits = 1;
+    cfg_random_temp = 1.0f;
     cfg_dumbpass = false;
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
