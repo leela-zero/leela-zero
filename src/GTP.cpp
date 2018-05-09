@@ -72,6 +72,7 @@ std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
+int cfg_move_stats;
 std::string cfg_options_str;
 bool cfg_benchmark;
 
@@ -105,6 +106,7 @@ void GTP::setup_default_parameters() {
     cfg_random_temp = 1.0f;
     cfg_dumbpass = false;
     cfg_logfile_handle = nullptr;
+    cfg_move_stats = 0;
     cfg_quiet = false;
     cfg_benchmark = false;
 
@@ -147,6 +149,7 @@ const std::string GTP::s_commands[] = {
     "kgs-time_settings",
     "kgs-game_over",
     "heatmap",
+    "dump_move_stats"
     ""
 };
 
@@ -807,6 +810,33 @@ bool GTP::execute(GameState & game, std::string xinput) {
         if (!cmdstream.fail()) {
             gtp_printf(id, "");
         } else {
+            gtp_fail_printf(id, "syntax not understood");
+        }
+
+        return true;
+    } else if (command.find("dump_move_stats") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp;
+        int period;
+
+        // tmp will eat dump_move_stats
+        cmdstream >> tmp >> period;
+
+        if (!cmdstream.fail()) {
+            if (period >= 0) {
+                cfg_move_stats = period;
+                gtp_printf(id, "");
+            } else {
+                gtp_fail_printf(id, "invalid period");
+            }
+            if (cfg_allow_pondering) {
+                // Could be send anytime even while pondering
+                if (!game.has_resigned()) {
+                    search->ponder();
+                }
+            }
+        }
+        else {
             gtp_fail_printf(id, "syntax not understood");
         }
 
