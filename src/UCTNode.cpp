@@ -148,8 +148,18 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
         m_children.reserve(nodelist.size());
     }
 
+	// ThorAvaTahr: perhaps we should limit the nodelist to BOARD_SQUARES/2 or 
+	//		BOARD_SQUARES/4. this should allow taking up a lot less of our 
+	//		MAX_TREE_SIZE, preventing requiring to re-evaluate nodes (min_psa
+	//		systemic) that we have previously all ready visited. The disadvantage of 
+	//      course is that we might miss the best move, but it should be learnable 
+	//		that the best move is in the first quarter of the vector of moves.
+
+
+	auto iter = 0;
     auto skipped_children = false;
     for (const auto& node : nodelist) {
+		if (++iter > BOARD_SQUARES / 4) break; // ThorAvaTahr tree reduction.
         if (node.first < new_min_psa) {
             skipped_children = true;
         } else if (node.first < old_min_psa) {
