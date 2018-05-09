@@ -74,6 +74,7 @@ FILE* cfg_logfile_handle;
 bool cfg_quiet;
 std::string cfg_options_str;
 bool cfg_benchmark;
+int cfg_analyze_interval_centis;
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
@@ -107,6 +108,7 @@ void GTP::setup_default_parameters() {
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
     cfg_benchmark = false;
+    cfg_analyze_interval_centis = 0;
 
     // C++11 doesn't guarantee *anything* about how random this is,
     // and in MinGW it isn't random at all. But we can mix it in, which
@@ -147,6 +149,8 @@ const std::string GTP::s_commands[] = {
     "kgs-time_settings",
     "kgs-game_over",
     "heatmap",
+    "lz-analyze",
+    "lz-genmove_analyze",
     ""
 };
 
@@ -345,12 +349,18 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
         }
         return true;
-    } else if (command.find("genmove") == 0) {
+    } else if (command.find("genmove") == 0 || command.find("lz-genmove_analyze") == 0 ) {
+        bool analysis_output = command.find("lz-genmove_analyze") == 0;
+        int interval;
+
         std::istringstream cmdstream(command);
         std::string tmp;
 
         cmdstream >> tmp;  // eat genmove
         cmdstream >> tmp;
+        if (analysis_output) {
+            cmdstream >> interval;
+        }
 
         if (!cmdstream.fail()) {
             int who;
@@ -362,6 +372,11 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 gtp_fail_printf(id, "syntax error");
                 return 1;
             }
+            if (analysis_output) {
+                cfg_analyze_interval_centis = interval;
+                if (id != -1) gtp_printf_raw("=%d\n", id);
+                else gtp_printf_raw("=\n");
+            }
             // start thinking
             {
                 game.set_to_move(who);
@@ -369,7 +384,11 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
-                gtp_printf(id, "%s", vertex.c_str());
+                if (!analysis_output) {
+                    gtp_printf(id, "%s", vertex.c_str());
+                } else {
+                    gtp_printf_raw("play %s\n", vertex.c_str());
+                }
             }
             if (cfg_allow_pondering) {
                 // now start pondering
@@ -377,9 +396,35 @@ bool GTP::execute(GameState & game, std::string xinput) {
                     search->ponder();
                 }
             }
+            if (analysis_output) {
+                gtp_printf_raw("\n");
+            }
         } else {
             gtp_fail_printf(id, "syntax not understood");
         }
+        analysis_output = false;
+        return true;
+    } else if (command.find("lz-analyze") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp;
+        int interval;
+        
+        cmdstream >> tmp; // eat lz-analyze
+        cmdstream >> interval;
+        if (!cmdstream.fail()) {
+            cfg_analyze_interval_centis = interval;
+        } else {
+            gtp_fail_printf(id, "syntax not understood");
+            return true;
+        }
+        if (id != -1) gtp_printf_raw("=%d\n", id);
+        else gtp_printf_raw("=\n");
+        // now start pondering
+        if (!game.has_resigned()) {
+            search->ponder();
+        }
+        cfg_analyze_interval_centis = 0;
+        gtp_printf_raw("\n");
         return true;
     } else if (command.find("kgs-genmove_cleanup") == 0) {
         std::istringstream cmdstream(command);
