@@ -250,7 +250,7 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
     }
     
     int movecount = 0;
-    std::string separator = "info ";
+    std::string separator = "info";
     for (const auto& node : parent.get_children()) {
         // Always display at least two moves. In the case there is
         // only one move searched the user could get an idea why.
@@ -260,9 +260,9 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         FastState tmpstate = state;
         tmpstate.play_move(node->get_move());
         std::string pv = move + " " + get_pv(tmpstate, *node);
-        gtp_printf_raw("%s%s %d %.2f %s", separator.c_str(), move.c_str(),node->get_visits(),
-                 node->get_visits() ? node->get_eval(color)*100.0f : 0.0f, pv.c_str());
-        separator = " | ";
+        gtp_printf_raw("%s %s %s %s %d %s %d %s %s", separator.c_str(), "move", move.c_str(), "visits", node->get_visits(),
+                 "winrate", node->get_visits() ? (int)(node->get_eval(color)*10000) : 0, "pv", pv.c_str());
+        separator = " info";
     }
     gtp_printf_raw("\n");
     
@@ -633,9 +633,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
 
-    bool keeprunning = true;
-    int last_update = 0;
-    int last_output = 0;
+    auto keeprunning = true;
+    auto last_update = 0;
+    auto last_output = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
 
@@ -712,7 +712,7 @@ void UCTSearch::ponder() {
     }
     Time start;
     auto keeprunning = true;
-    int last_output = 0;
+    auto last_output = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = play_simulation(*currstate, m_root.get());
