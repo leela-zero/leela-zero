@@ -115,7 +115,7 @@ private:
     void update_root();
     bool advance_to_new_rootstate();
     void output_analysis(FastState & state, UCTNode & parent);
-    
+
     GameState & m_rootstate;
     std::unique_ptr<GameState> m_last_rootstate;
     std::unique_ptr<UCTNode> m_root;

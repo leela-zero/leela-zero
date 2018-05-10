@@ -349,7 +349,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
         }
         return true;
-    } else if (command.find("genmove") == 0 || command.find("lz-genmove_analyze") == 0 ) {
+    } else if (command.find("genmove") == 0 || command.find("lz-genmove_analyze") == 0) {
         auto analysis_output = command.find("lz-genmove_analyze") == 0;
         auto interval = 0;
 
@@ -408,7 +408,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         std::istringstream cmdstream(command);
         std::string tmp;
         int interval;
-        
+
         cmdstream >> tmp; // eat lz-analyze
         cmdstream >> interval;
         if (!cmdstream.fail()) {
