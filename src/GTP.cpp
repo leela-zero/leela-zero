@@ -373,6 +373,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 return 1;
             }
             if (analysis_output) {
+                // Start of multi-line response
                 cfg_analyze_interval_centis = interval;
                 if (id != -1) gtp_printf_raw("=%d\n", id);
                 else gtp_printf_raw("=\n");
@@ -380,6 +381,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             // start thinking
             {
                 game.set_to_move(who);
+                // Outputs winrate and pvs for lz-genmove_analyze
                 int move = search->think(who);
                 game.play_move(move);
 
@@ -393,10 +395,12 @@ bool GTP::execute(GameState & game, std::string xinput) {
             if (cfg_allow_pondering) {
                 // now start pondering
                 if (!game.has_resigned()) {
+                    // Outputs winrate and pvs through gtp for lz-genmove_analyze
                     search->ponder();
                 }
             }
             if (analysis_output) {
+                // Terminate multi-line response
                 gtp_printf_raw("\n");
             }
         } else {
@@ -417,13 +421,16 @@ bool GTP::execute(GameState & game, std::string xinput) {
             gtp_fail_printf(id, "syntax not understood");
             return true;
         }
+        // Start multi-line response
         if (id != -1) gtp_printf_raw("=%d\n", id);
         else gtp_printf_raw("=\n");
         // now start pondering
         if (!game.has_resigned()) {
+            // Outputs winrate and pvs through gtp
             search->ponder();
         }
         cfg_analyze_interval_centis = 0;
+        // Terminate multi-line response
         gtp_printf_raw("\n");
         return true;
     } else if (command.find("kgs-genmove_cleanup") == 0) {

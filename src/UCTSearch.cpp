@@ -242,19 +242,10 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
 
     const int color = state.get_to_move();
 
-    // sort children, put best move on top
-    parent.sort_children(color);
-
-    if (parent.get_first_child()->first_visit()) {
-        return;
-    }
-
-    int movecount = 0;
     std::string separator = "info";
     for (const auto& node : parent.get_children()) {
-        // Always display at least two moves. In the case there is
-        // only one move searched the user could get an idea why.
-        if (++movecount > 2 && !node->get_visits()) break;
+        // Only send variations with visits
+        if (!node->get_visits()) continue;
 
         std::string move = state.move_to_text(node->get_move());
         FastState tmpstate = state;
