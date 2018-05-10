@@ -147,7 +147,6 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
     } else {
         m_children.reserve(nodelist.size());
     }
-
 	auto iter = 0;
     auto skipped_children = false;
     for (const auto& node : nodelist) {
