@@ -27,6 +27,8 @@
 #include <utility>
 #include <vector>
 
+#include "Utils.h"
+
 class FastBoard {
     friend class FastState;
 public:
@@ -125,7 +127,7 @@ protected:
     int m_boardsize;
     int m_squaresize;
 
-    std::array<std::array<unsigned short, MAXSQ>, 8> m_symmetry_idx;
+    std::array<std::array<unsigned short, MAXSQ>, NUM_SYMMETRIES> m_symmetry_idx;
 
     int calc_reach_color(int color) const;
 

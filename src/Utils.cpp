@@ -148,7 +148,7 @@ size_t Utils::ceilMultiple(size_t a, size_t b) {
 std::pair<int, int> Utils::get_symmetry(const std::pair<int, int>& vertex, const int symmetry, const int board_size) {
     assert(vertex.first >= 0 && vertex.first < board_size);
     assert(vertex.second >= 0 && vertex.second < board_size);
-    assert(symmetry >= 0 && symmetry < 8);
+    assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
     auto x = vertex.first;
     auto y = vertex.second;
 

@@ -147,7 +147,7 @@ void FastBoard::reset_board(int size) {
     m_libs[MAXSQ]   = 16384;    /* we will subtract from this */
     m_next[MAXSQ]   = MAXSQ;
 
-    for (auto symmetry = 0; symmetry < 8; ++symmetry) {
+    for (auto symmetry = 0; symmetry < NUM_SYMMETRIES; ++symmetry) {
         m_symmetry_idx[symmetry][0] = 0; // Make sure the special value for the lack of ko stays unchanged.
         for (auto y = 0; y < size; ++y) {
             for (auto x = 0; x < size; ++x) {

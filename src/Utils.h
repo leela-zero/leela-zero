@@ -27,6 +27,8 @@
 
 #include "ThreadPool.h"
 
+static constexpr auto NUM_SYMMETRIES = 8;
+
 extern Utils::ThreadPool thread_pool;
 
 namespace Utils {
