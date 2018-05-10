@@ -147,9 +147,10 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
     } else {
         m_children.reserve(nodelist.size());
     }
-
+    auto iter = 0;
     auto skipped_children = false;
     for (const auto& node : nodelist) {
+        if (++iter > BOARD_SQUARES / 4) break; //limit tree width to BOARD_SQUARES_4 at all times
         if (node.first < new_min_psa) {
             skipped_children = true;
         } else if (node.first < old_min_psa) {
