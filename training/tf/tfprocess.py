@@ -214,7 +214,8 @@ class TFProcess:
             # Count of networks accumulated into SWA
             self.swa_count = tf.Variable(0., name='swa_count', trainable=False)
             # Count of networks to skip
-            self.swa_skip = tf.Variable(self.swa_c, name='swa_skip', trainable=False)
+            self.swa_skip = tf.Variable(self.swa_c, name='swa_skip',
+                trainable=False)
             # Build the SWA variables and accumulators
             accum=[]
             load=[]
@@ -383,14 +384,13 @@ class TFProcess:
         ops = [self.policy_loss, self.mse_loss, self.reg_term, self.accuracy ]
         if training:
             ops += [self.grad_op, self.step_op],
-        r = self.session.run(ops, feed_dict={
-                           self.training: training,
+        r = self.session.run(ops, feed_dict={self.training: training,
                            self.planes: batch[0],
                            self.probs: batch[1],
                            self.winner: batch[2]})
         # Google's paper scales mse by 1/4 to a [0,1] range, so we do the same here
         return {'policy': r[0], 'mse': r[1]/4., 'reg': r[2],
-                'accuracy': r[3], 'total': r[0]+r[1]+r[2]}
+                'accuracy': r[3], 'total': r[0]+r[1]+r[2] }
 
     def process(self, train_data, test_data):
         info_steps=1000
@@ -664,14 +664,12 @@ class TFProcess:
 
         print("Wrote averaged network to {}".format(swa_path))
 
-
 # Unit tests for TFProcess.
 def gen_block(size, f_in, f_out):
     return [ [1.1] * size * size * f_in * f_out, # conv
              [-.1] * f_out,  # bias weights
              [-.2] * f_out,  # batch norm mean
              [-.3] * f_out ] # batch norm var
-
 
 class TFProcessTest(unittest.TestCase):
     def test_can_replace_weights(self):
@@ -680,13 +678,13 @@ class TFProcessTest(unittest.TestCase):
         # use known data to test replace_weights() works.
         data = gen_block(3, 18, tfprocess.RESIDUAL_FILTERS) # input conv
         for _ in range(tfprocess.RESIDUAL_BLOCKS):
-            data.extend(
-                gen_block(3, tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
-            data.extend(
-                gen_block(3, tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
+            data.extend(gen_block(3,
+                tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
+            data.extend(gen_block(3,
+                tfprocess.RESIDUAL_FILTERS, tfprocess.RESIDUAL_FILTERS))
         # policy
         data.extend(gen_block(1, tfprocess.RESIDUAL_FILTERS, 2))
-        data.append([0.4] * 2 *19*19 * (19*19+1))
+        data.append([0.4] * 2*19*19 * (19*19+1))
         data.append([0.5] * (19*19+1))
         # value
         data.extend(gen_block(1, tfprocess.RESIDUAL_FILTERS, 1))
