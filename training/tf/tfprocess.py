@@ -511,13 +511,13 @@ class TFProcess:
         scope = self.get_batchnorm_key()
         with tf.variable_scope(scope):
             net = tf.layers.batch_normalization(
-                net,
-                epsilon=1e-5, axis=1, fused=True,
-                center=True, scale=False,
-                training=self.training,
-                reuse=self.reuse_var)
+                    net,
+                    epsilon=1e-5, axis=1, fused=True,
+                    center=True, scale=False,
+                    training=self.training,
+                    reuse=self.reuse_var)
 
-        for v in ['beta', 'moving_mean', 'moving_variance']:
+        for v in ['beta', 'moving_mean', 'moving_variance' ]:
             name = scope + '/batch_normalization/' + v + ':0'
             var = tf.get_default_graph().get_tensor_by_name(name)
             self.add_weights(var)
