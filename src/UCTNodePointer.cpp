@@ -84,10 +84,10 @@ bool UCTNodePointer::active() const {
     return true;
 }
 
-float UCTNodePointer::get_eval(int tomove) const {
+float UCTNodePointer::get_eval(int tomove, bool no_VL) const {
     // this can only be called if it is an inflated pointer
     assert(is_inflated());
-    return read_ptr()->get_eval(tomove);
+    return read_ptr()->get_eval(tomove, false);
 }
 
 int UCTNodePointer::get_move() const {

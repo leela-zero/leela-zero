@@ -228,7 +228,7 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: %s\n",
             move.c_str(),
             node->get_visits(),
-            node->get_visits() ? node->get_eval(color)*100.0f : 0.0f,
+            node->get_visits() ? node->get_eval(color, true)*100.0f : 0.0f,
             node->get_score() * 100.0f,
             pv.c_str());
     }
@@ -343,7 +343,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     assert(first_child != nullptr);
 
     auto bestmove = first_child->get_move();
-    auto bestscore = first_child->get_eval(color);
+    auto bestscore = first_child->get_eval(color, false);
 
     // do we want to fiddle with the best move because of the rule set?
     if (passflag & UCTSearch::NOPASS) {
@@ -357,7 +357,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 if (nopass->first_visit()) {
                     bestscore = 1.0f;
                 } else {
-                    bestscore = nopass->get_eval(color);
+                    bestscore = nopass->get_eval(color, false);
                 }
             } else {
                 myprintf("Pass is the only acceptable move.\n");
@@ -397,7 +397,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                     if (nopass->first_visit()) {
                         bestscore = 1.0f;
                     } else {
-                        bestscore = nopass->get_eval(color);
+                        bestscore = nopass->get_eval(color, false);
                     }
                 } else {
                     myprintf("No alternative to passing.\n");
@@ -465,7 +465,7 @@ void UCTSearch::dump_analysis(int playouts) {
     int color = tempstate.board.get_to_move();
 
     std::string pvstring = get_pv(tempstate, *m_root);
-    float winrate = 100.0f * m_root->get_eval(color);
+    float winrate = 100.0f * m_root->get_eval(color, true);
     myprintf("Playouts: %d, Win: %5.2f%%, PV: %s\n",
              playouts, winrate, pvstring.c_str());
 }
