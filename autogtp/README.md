@@ -16,7 +16,7 @@ the SGF and training data at the end of the game.
     sudo apt install qt5-default qt5-qmake curl
     qmake -qt5
     make
-## Example of compliling - macOS
+## Example of compiling - macOS
 
 	brew install qt5
 	brew link qt5 --force
