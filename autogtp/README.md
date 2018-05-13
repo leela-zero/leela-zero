@@ -16,6 +16,15 @@ the SGF and training data at the end of the game.
     sudo apt install qt5-default qt5-qmake curl
     qmake -qt5
     make
+## Example of compliling - macOS
+
+	brew install qt5
+	brew link qt5 --force
+
+then go to autoatp folder, and execute:
+
+	qmake
+	make
 
 ## Compiling under Visual Studio - Windows
 
