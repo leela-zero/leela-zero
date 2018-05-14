@@ -94,17 +94,23 @@ void Utils::myprintf(const char *fmt, ...) {
     }
 }
 
+static void gtp_fprintf(FILE* file, const std::string& prefix,
+                        const char *fmt, va_list ap) {
+    fprintf(file, "%s ", prefix.c_str());
+    vfprintf(file, fmt, ap);
+    fprintf(file, "\n\n");
+}
+
 static void gtp_base_printf(int id, std::string prefix,
                             const char *fmt, va_list ap) {
     if (id != -1) {
         prefix += std::to_string(id);
     }
-    prefix += " ";
-
-    Utils::gtp_printf_raw(prefix.c_str());
-    Utils::gtp_printf_raw(fmt, ap);
-    Utils::gtp_printf_raw("\n\n");
-
+    gtp_fprintf(stdout, prefix, fmt, ap);
+    if (cfg_logfile_handle) {
+        std::lock_guard<std::mutex> lock(IOmutex);
+        gtp_fprintf(cfg_logfile_handle, prefix, fmt, ap);
+    }
 }
 
 void Utils::gtp_printf(int id, const char *fmt, ...) {
@@ -118,11 +124,14 @@ void Utils::gtp_printf_raw(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stdout, fmt, ap);
+    va_end(ap);
+
     if (cfg_logfile_handle) {
         std::lock_guard<std::mutex> lock(IOmutex);
+        va_start(ap, fmt);
         vfprintf(cfg_logfile_handle, fmt, ap);
+        va_end(ap);
     }
-    va_end(ap);
 }
 
 void Utils::gtp_fail_printf(int id, const char *fmt, ...) {
