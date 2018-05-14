@@ -147,3 +147,28 @@ size_t Utils::ceilMultiple(size_t a, size_t b) {
     auto ret = a + (b - a % b);
     return ret;
 }
+
+std::pair<int, int> Utils::get_symmetry(const std::pair<int, int>& vertex, const int symmetry, const int board_size) {
+    assert(vertex.first >= 0 && vertex.first < board_size);
+    assert(vertex.second >= 0 && vertex.second < board_size);
+    assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
+    auto x = vertex.first;
+    auto y = vertex.second;
+
+    if ((symmetry & 4) != 0) {
+        std::swap(x, y);
+    }
+
+    if ((symmetry & 2) != 0) {
+        x = board_size - x - 1;
+    }
+
+    if ((symmetry & 1) != 0) {
+        y = board_size - y - 1;
+    }
+
+    assert(x >= 0 && x < board_size);
+    assert(y >= 0 && y < board_size);
+    assert(symmetry != 0 || vertex == std::make_pair(x, y));
+    return {x, y};
+}

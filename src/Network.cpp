@@ -91,7 +91,7 @@ static std::array<float, 1> ip2_val_b;
 static bool value_head_not_stm;
 
 // Symmetry helper
-static std::array<std::array<int, BOARD_SQUARES>, 8> symmetry_nn_idx_table;
+static std::array<std::array<int, BOARD_SQUARES>, NUM_SYMMETRIES> symmetry_nn_idx_table;
 
 void Network::benchmark(const GameState* const state, const int iterations) {
     const auto cpus = cfg_num_threads;
@@ -350,9 +350,11 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
 
 void Network::initialize() {
     // Prepare symmetry table
-    for (auto s = 0; s < 8; s++) {
-        for (auto v = 0; v < BOARD_SQUARES; v++) {
-            symmetry_nn_idx_table[s][v] = get_nn_idx_symmetry(v, s);
+    for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
+        for (auto v = 0; v < BOARD_SQUARES; ++v) {
+            const auto newvtx = get_symmetry({v % BOARD_SIZE, v / BOARD_SIZE}, s);
+            symmetry_nn_idx_table[s][v] = (newvtx.second * BOARD_SIZE) + newvtx.first;
+            assert(symmetry_nn_idx_table[s][v] >= 0 && symmetry_nn_idx_table[s][v] < BOARD_SQUARES);
         }
     }
 
@@ -880,28 +882,39 @@ Network::Netresult Network::get_scored_moves(
 
     if (!skip_cache) {
         // See if we already have this in the cache.
-        if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
-            return result;
+        for (auto symmetry = 0; symmetry < NUM_SYMMETRIES; ++symmetry) {
+            const auto hash = state->get_hash(symmetry);
+            assert(symmetry != 0 || hash == state->board.get_hash());
+            if (NNCache::get_NNCache().lookup(hash, result)) {
+                decltype(result.policy) corrected_policy;
+                corrected_policy.reserve(BOARD_SQUARES);
+                for (auto idx = size_t{0}; idx < BOARD_SQUARES; ++idx) {
+                    const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
+                    corrected_policy.emplace_back(result.policy[sym_idx]);
+                }
+                result.policy = std::move(corrected_policy);
+                return result;
+            }
         }
     }
 
     if (ensemble == DIRECT) {
-        assert(symmetry >= 0 && symmetry <= 7);
+        assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
         result = get_scored_moves_internal(state, symmetry);
     } else if (ensemble == AVERAGE) {
-        for (auto sym = 0; sym < 8; ++sym) {
+        for (auto sym = 0; sym < NUM_SYMMETRIES; ++sym) {
             auto tmpresult = get_scored_moves_internal(state, sym);
-            result.winrate += tmpresult.winrate / 8.0f;
-            result.policy_pass += tmpresult.policy_pass / 8.0f;
+            result.winrate += tmpresult.winrate / static_cast<float>(NUM_SYMMETRIES);
+            result.policy_pass += tmpresult.policy_pass / static_cast<float>(NUM_SYMMETRIES);
 
             for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
-                result.policy[idx] += tmpresult.policy[idx] / 8.0f;
+                result.policy[idx] += tmpresult.policy[idx] / static_cast<float>(NUM_SYMMETRIES);
             }
         }
     } else {
         assert(ensemble == RANDOM_SYMMETRY);
         assert(symmetry == -1);
-        const auto rand_sym = Random::get_Rng().randfix<8>();
+        const auto rand_sym = Random::get_Rng().randfix<NUM_SYMMETRIES>();
         result = get_scored_moves_internal(state, rand_sym);
     }
 
@@ -920,7 +933,7 @@ Network::Netresult Network::get_scored_moves(
 
 Network::Netresult Network::get_scored_moves_internal(
     const GameState* const state, const int symmetry) {
-    assert(symmetry >= 0 && symmetry <= 7);
+    assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
 
@@ -1060,7 +1073,7 @@ void Network::fill_input_plane_pair(const FullBoard& board,
 
 std::vector<net_t> Network::gather_features(const GameState* const state,
                                             const int symmetry) {
-    assert(symmetry >= 0 && symmetry <= 7);
+    assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
     auto input_data = std::vector<net_t>(INPUT_CHANNELS * BOARD_SQUARES);
 
     const auto to_move = state->get_to_move();
@@ -1089,37 +1102,4 @@ std::vector<net_t> Network::gather_features(const GameState* const state,
     std::fill(to_move_it, to_move_it + BOARD_SQUARES, net_t(true));
 
     return input_data;
-}
-
-int Network::get_nn_idx_symmetry(const int vertex, int symmetry) {
-    assert(vertex >= 0 && vertex < BOARD_SQUARES);
-    assert(symmetry >= 0 && symmetry < 8);
-    auto x = vertex % BOARD_SIZE;
-    auto y = vertex / BOARD_SIZE;
-    int newx;
-    int newy;
-
-    if (symmetry >= 4) {
-        std::swap(x, y);
-        symmetry -= 4;
-    }
-
-    if (symmetry == 0) {
-        newx = x;
-        newy = y;
-    } else if (symmetry == 1) {
-        newx = x;
-        newy = BOARD_SIZE - y - 1;
-    } else if (symmetry == 2) {
-        newx = BOARD_SIZE - x - 1;
-        newy = y;
-    } else {
-        assert(symmetry == 3);
-        newx = BOARD_SIZE - x - 1;
-        newy = BOARD_SIZE - y - 1;
-    }
-
-    const auto newvtx = (newy * BOARD_SIZE) + newx;
-    assert(newvtx >= 0 && newvtx < BOARD_SQUARES);
-    return newvtx;
 }

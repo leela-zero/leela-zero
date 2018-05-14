@@ -53,6 +53,10 @@ public:
     void display_state();
     std::string move_to_text(int move);
 
+    std::uint64_t get_hash(const int symmetry) const {
+        return board.calc_hash(m_komove, symmetry);
+    }
+
     FullBoard board;
 
     float m_komi;

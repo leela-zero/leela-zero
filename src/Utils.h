@@ -27,6 +27,8 @@
 
 #include "ThreadPool.h"
 
+static constexpr auto NUM_SYMMETRIES = 8;
+
 extern Utils::ThreadPool thread_pool;
 
 namespace Utils {
@@ -53,6 +55,7 @@ namespace Utils {
     }
 
     size_t ceilMultiple(size_t a, size_t b);
+    std::pair<int, int> get_symmetry(const std::pair<int, int>& vertex, const int symmetry, const int board_size = BOARD_SIZE);
 }
 
 #endif

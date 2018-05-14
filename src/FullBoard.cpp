@@ -55,7 +55,7 @@ int FullBoard::remove_string(int i) {
     return removed;
 }
 
-std::uint64_t FullBoard::calc_ko_hash(void) {
+std::uint64_t FullBoard::calc_ko_hash() const {
     auto res = Zobrist::zobrist_empty;
 
     for (int i = 0; i < m_maxsq; i++) {
@@ -65,16 +65,15 @@ std::uint64_t FullBoard::calc_ko_hash(void) {
     }
 
     /* Tromp-Taylor has positional superko */
-    m_ko_hash = res;
     return res;
 }
 
-std::uint64_t FullBoard::calc_hash(int komove) {
+std::uint64_t FullBoard::calc_hash(const int komove, const int symmetry) const {
     auto res = Zobrist::zobrist_empty;
 
     for (int i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
-            res ^= Zobrist::zobrist[m_square[i]][i];
+            res ^= Zobrist::zobrist[m_square[i]][m_symmetry_idx[symmetry][i]];
         }
     }
 
@@ -86,18 +85,16 @@ std::uint64_t FullBoard::calc_hash(int komove) {
         res ^= Zobrist::zobrist_blacktomove;
     }
 
-    res ^= Zobrist::zobrist_ko[komove];
-
-    m_hash = res;
+    res ^= Zobrist::zobrist_ko[m_symmetry_idx[symmetry][komove]];
 
     return res;
 }
 
-std::uint64_t FullBoard::get_hash(void) const {
+std::uint64_t FullBoard::get_hash() const {
     return m_hash;
 }
 
-std::uint64_t FullBoard::get_ko_hash(void) const {
+std::uint64_t FullBoard::get_ko_hash() const {
     return m_ko_hash;
 }
 
@@ -191,6 +188,6 @@ void FullBoard::display_board(int lastmove) {
 void FullBoard::reset_board(int size) {
     FastBoard::reset_board(size);
 
-    calc_hash();
-    calc_ko_hash();
+    m_hash = calc_hash();
+    m_ko_hash = calc_ko_hash();
 }

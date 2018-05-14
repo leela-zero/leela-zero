@@ -28,10 +28,10 @@ public:
     int remove_string(int i);
     int update_board(const int color, const int i);
 
-    std::uint64_t calc_hash(int komove = 0);
-    std::uint64_t calc_ko_hash(void);
-    std::uint64_t get_hash(void) const;
-    std::uint64_t get_ko_hash(void) const;
+    std::uint64_t calc_hash(const int komove = 0, const int symmetry = 0) const;
+    std::uint64_t calc_ko_hash() const;
+    std::uint64_t get_hash() const;
+    std::uint64_t get_ko_hash() const;
     void set_to_move(int tomove);
 
     void reset_board(int size);
