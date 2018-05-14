@@ -29,6 +29,7 @@
 #include <numeric>
 #include <utility>
 #include <vector>
+#include <boost/math/distributions/binomial.hpp>
 
 #include "UCTNode.h"
 #include "FastBoard.h"
@@ -39,6 +40,7 @@
 #include "Utils.h"
 
 using namespace Utils;
+using namespace boost::math;
 
 UCTNode::UCTNode(int vertex, float score) : m_move(vertex), m_score(score) {
 }
@@ -241,6 +243,16 @@ float UCTNode::get_net_eval(int tomove) const {
     return m_net_eval;
 }
 
+// Use CI_ALPHA / 2 if calculating double sided bounds.
+float UCTNode::get_lcb(int color) const {
+    return get_visits() ? binomial_distribution<>::find_lower_bound_on_p( get_visits(), get_eval(color) * get_visits(), CI_ALPHA) : 0.0f;
+}
+
+// Use CI_ALPHA / 2 if calculating double sided bounds.
+float UCTNode::get_ucb(int color) const {
+    return get_visits() ? binomial_distribution<>::find_upper_bound_on_p( get_visits(), get_eval(color) * get_visits(), CI_ALPHA) : 1.0f;
+}
+
 double UCTNode::get_blackevals() const {
     return m_blackevals;
 }
@@ -310,6 +322,17 @@ public:
     NodeComp(int color) : m_color(color) {};
     bool operator()(const UCTNodePointer& a,
                     const UCTNodePointer& b) {
+        // Calculate the lower confidence bound for each node.
+        if (a.get_visits() && b.get_visits()) {
+            float a_lb = a.get_lcb(m_color);
+            float b_lb = b.get_lcb(m_color);
+
+            // Sort on lower confidence bounds
+            if (a_lb != b_lb) {
+                return a_lb < b_lb;
+            }
+        }
+
         // if visits are not same, sort on visits
         if (a.get_visits() != b.get_visits()) {
             return a.get_visits() < b.get_visits();

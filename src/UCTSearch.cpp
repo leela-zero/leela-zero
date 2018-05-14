@@ -25,6 +25,7 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+#include <boost/math/distributions/binomial.hpp>
 
 #include "FastBoard.h"
 #include "FastState.h"
@@ -37,6 +38,7 @@
 #include "Utils.h"
 
 using namespace Utils;
+using namespace boost::math;
 
 constexpr int UCTSearch::UNLIMITED_PLAYOUTS;
 
@@ -225,11 +227,13 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         tmpstate.play_move(node->get_move());
         std::string pv = move + " " + get_pv(tmpstate, *node);
 
-        myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: %s\n",
+        myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) (LCB: %5.2f%%) (UCB: %5.2f%%) PV: %s\n",
             move.c_str(),
             node->get_visits(),
             node->get_visits() ? node->get_pure_eval(color)*100.0f : 0.0f,
             node->get_score() * 100.0f,
+            node->get_lcb(color) * 100.0f,
+            node->get_ucb(color) * 100.0f,
             pv.c_str());
     }
     tree_stats(parent);
