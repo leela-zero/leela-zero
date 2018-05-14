@@ -242,7 +242,6 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
 
     const int color = state.get_to_move();
 
-    std::string separator = "info";
     for (const auto& node : parent.get_children()) {
         // Only send variations with visits
         if (!node->get_visits()) continue;
@@ -253,14 +252,12 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         std::string pv = move + " " + get_pv(tmpstate, *node);
         auto move_eval = node->get_visits() ?
             static_cast<int>(node->get_pure_eval(color) * 10000) : 0;
-        gtp_printf_raw("%s %s %s %s %d %s %d %s %s", separator.c_str(),
-                       "move", move.c_str(), "visits", node->get_visits(),
+        gtp_printf_raw("info %s %s %s %d %s %d %s %s\n",
+                       "move", move.c_str(),
+                       "visits", node->get_visits(),
                        "winrate", move_eval,
                        "pv", pv.c_str());
-        separator = " info";
     }
-    gtp_printf_raw("\n");
-
 }
 
 void tree_stats_helper(const UCTNode& node, size_t depth,
