@@ -870,19 +870,12 @@ std::vector<float> softmax(const std::vector<float>& input,
     return output;
 }
 
-Network::Netresult Network::get_scored_moves(
-    const GameState* const state, const Ensemble ensemble,
-    const int symmetry, const bool skip_cache) {
-    Netresult result;
-    if (state->board.get_boardsize() != BOARD_SIZE) {
-        return result;
+static bool probe_cache(const GameState* const state,
+                        Network::Netresult& result) {
+    if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
+        return true;
     }
-
-    if (!skip_cache) {
-        // See if we already have this in the cache.
-        if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
-            return result;
-        }
+    if (!cfg_noise && !cfg_random_cnt) {
         // Try additional symmetries
         for (auto sym = 1; sym < 8; ++sym) {
             const auto hash = state->get_rotated_hash(sym);
@@ -894,8 +887,26 @@ Network::Netresult Network::get_scored_moves(
                     corrected_policy.emplace_back(result.policy[sym_idx]);
                 }
                 result.policy = std::move(corrected_policy);
-                return result;
+                return true;
             }
+        }
+    }
+
+    return false;
+}
+
+Network::Netresult Network::get_scored_moves(
+    const GameState* const state, const Ensemble ensemble,
+    const int symmetry, const bool skip_cache) {
+    Netresult result;
+    if (state->board.get_boardsize() != BOARD_SIZE) {
+        return result;
+    }
+
+    if (!skip_cache) {
+        // See if we already have this in the cache.
+        if (probe_cache(state, result)) {
+            return result;
         }
     }
 
