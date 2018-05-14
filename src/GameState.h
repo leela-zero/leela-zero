@@ -55,10 +55,9 @@ public:
 
     void start_clock(int color);
     void stop_clock(int color);
-    TimeControl& get_timecontrol();
+    const TimeControl& get_timecontrol() const;
     void set_timecontrol(int maintime, int byotime, int byostones,
                          int byoperiods);
-    void set_timecontrol(TimeControl tmc);
     void adjust_time(int color, int time, int stones);
 
     void display_state();

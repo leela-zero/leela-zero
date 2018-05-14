@@ -875,7 +875,9 @@ static bool probe_cache(const GameState* const state,
     if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
         return true;
     }
-    if (!cfg_noise && !cfg_random_cnt) {
+    if (!cfg_noise && !cfg_random_cnt
+        && state->get_movenum()
+           < state->get_timecontrol().opening_moves(BOARD_SIZE)) {
         // Try additional symmetries
         for (auto sym = 1; sym < 8; ++sym) {
             const auto hash = state->get_rotated_hash(sym);
