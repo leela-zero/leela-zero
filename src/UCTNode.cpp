@@ -204,6 +204,18 @@ int UCTNode::get_visits() const {
     return m_visits;
 }
 
+// Return the true score, without taking into account virtual losses.
+float UCTNode::get_pure_eval(int tomove) const {
+    auto visits = get_visits();
+    assert(visits > 0);
+    auto blackeval = get_blackevals();
+    auto score = static_cast<float>(blackeval / double(visits));
+    if (tomove == FastBoard::WHITE) {
+        score = 1.0f - score;
+    }
+    return score;
+}
+
 float UCTNode::get_eval(int tomove) const {
     // Due to the use of atomic updates and virtual losses, it is
     // possible for the visit count to change underneath us. Make sure
