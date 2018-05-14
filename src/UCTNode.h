@@ -65,7 +65,7 @@ public:
     int get_visits() const;
     float get_score() const;
     void set_score(float score);
-    float get_eval(int tomove) const;
+    float get_eval(int tomove, bool no_VL) const;
     float get_net_eval(int tomove) const;
     void virtual_loss(void);
     void virtual_loss_undo(void);

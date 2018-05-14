@@ -204,15 +204,18 @@ int UCTNode::get_visits() const {
     return m_visits;
 }
 
-float UCTNode::get_eval(int tomove) const {
+float UCTNode::get_eval(int tomove, bool no_VL) const {
     // Due to the use of atomic updates and virtual losses, it is
     // possible for the visit count to change underneath us. Make sure
     // to return a consistent result to the caller by caching the values.
     auto virtual_loss = int{m_virtual_loss};
-    auto visits = get_visits() + virtual_loss;
+    auto visits = get_visits();
+    if (!no_VL) {
+        visits += virtual_loss;
+    }
     assert(visits > 0);
     auto blackeval = get_blackevals();
-    if (tomove == FastBoard::WHITE) {
+    if ((tomove == FastBoard::WHITE) && !no_VL) {
         blackeval += static_cast<double>(virtual_loss);
     }
     auto score = static_cast<float>(blackeval / double(visits));
@@ -273,7 +276,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 
         auto winrate = fpu_eval;
         if (child.get_visits() > 0) {
-            winrate = child.get_eval(color);
+            winrate = child.get_eval(color, false);
         }
         auto psa = child.get_score();
         auto denom = 1.0 + child.get_visits();
@@ -309,7 +312,7 @@ public:
         }
 
         // both have same non-zero number of visits
-        return a.get_eval(m_color) < b.get_eval(m_color);
+        return a.get_eval(m_color, false) < b.get_eval(m_color, false);
     }
 private:
     int m_color;
