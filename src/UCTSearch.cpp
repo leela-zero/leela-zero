@@ -235,6 +235,30 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
     tree_stats(parent);
 }
 
+void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
+    if (!parent.has_children()) {
+        return;
+    }
+
+    const int color = state.get_to_move();
+
+    std::string separator = "info";
+    for (const auto& node : parent.get_children()) {
+        // Only send variations with visits
+        if (!node->get_visits()) continue;
+
+        std::string move = state.move_to_text(node->get_move());
+        FastState tmpstate = state;
+        tmpstate.play_move(node->get_move());
+        std::string pv = move + " " + get_pv(tmpstate, *node);
+        gtp_printf_raw("%s %s %s %s %d %s %d %s %s", separator.c_str(), "move", move.c_str(), "visits", node->get_visits(),
+                 "winrate", node->get_visits() ? (int)(node->get_eval(color)*10000) : 0, "pv", pv.c_str());
+        separator = " info";
+    }
+    gtp_printf_raw("\n");
+
+}
+
 void tree_stats_helper(const UCTNode& node, size_t depth,
                        size_t& nodes, size_t& non_leaf_nodes,
                        size_t& depth_sum, size_t& max_depth,
@@ -600,8 +624,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
 
-    bool keeprunning = true;
-    int last_update = 0;
+    auto keeprunning = true;
+    auto last_update = 0;
+    auto last_output = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
 
@@ -612,6 +637,12 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
         Time elapsed;
         int elapsed_centis = Time::timediff_centis(start, elapsed);
+
+        if (cfg_analyze_interval_centis &&
+            elapsed_centis - last_output > cfg_analyze_interval_centis) {
+            last_output = elapsed_centis;
+            output_analysis(m_rootstate, *m_root);
+        }
 
         // output some stats every few seconds
         // check if we should still search
@@ -670,12 +701,22 @@ void UCTSearch::ponder() {
     for (int i = 1; i < cfg_num_threads; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
+    Time start;
     auto keeprunning = true;
+    auto last_output = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = play_simulation(*currstate, m_root.get());
         if (result.valid()) {
             increment_playouts();
+        }
+        if (cfg_analyze_interval_centis) {
+            Time elapsed;
+            int elapsed_centis = Time::timediff_centis(start, elapsed);
+            if (elapsed_centis - last_output > cfg_analyze_interval_centis) {
+                last_output = elapsed_centis;
+                output_analysis(m_rootstate, *m_root);
+            }
         }
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(0, 1);
