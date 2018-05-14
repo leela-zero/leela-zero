@@ -162,3 +162,7 @@ void FastState::set_handicap(int hcap) {
 int FastState::get_handicap() const {
     return m_handicap;
 }
+
+std::uint64_t FastState::get_rotated_hash(int symmetry) const {
+    return board.calc_rotated_hash(m_komove, symmetry);
+}

@@ -883,6 +883,20 @@ Network::Netresult Network::get_scored_moves(
         if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
             return result;
         }
+        // Try additional symmetries
+        for (auto sym = 1; sym < 8; ++sym) {
+            const auto hash = state->get_rotated_hash(sym);
+            if (NNCache::get_NNCache().lookup(hash, result)) {
+                decltype(result.policy) corrected_policy;
+                corrected_policy.reserve(BOARD_SQUARES);
+                for (auto idx = size_t{0}; idx < BOARD_SQUARES; ++idx) {
+                    const auto sym_idx = symmetry_nn_idx_table[sym][idx];
+                    corrected_policy.emplace_back(result.policy[sym_idx]);
+                }
+                result.policy = std::move(corrected_policy);
+                return result;
+            }
+        }
     }
 
     if (ensemble == DIRECT) {
