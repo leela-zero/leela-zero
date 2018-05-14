@@ -16,7 +16,7 @@ debug:
 
 clang:
 	@echo "Detected OS: ${THE_OS}"
-	$(MAKE) CC=clang-5.0 CXX=clang++-5.0 \
+	$(MAKE) CC=clang CXX=clang++ \
 		CXXFLAGS='$(CXXFLAGS) -Wall -Wextra -Wno-missing-braces -O3 -ffast-math -flto -march=native -std=c++14 -DNDEBUG' \
 		LDFLAGS='$(LDFLAGS) -flto -fuse-linker-plugin' \
 		leelaz

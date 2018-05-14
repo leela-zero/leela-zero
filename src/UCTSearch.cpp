@@ -228,11 +228,36 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: %s\n",
             move.c_str(),
             node->get_visits(),
-            node->get_visits() ? node->get_eval(color)*100.0f : 0.0f,
+            node->get_visits() ? node->get_pure_eval(color)*100.0f : 0.0f,
             node->get_score() * 100.0f,
             pv.c_str());
     }
     tree_stats(parent);
+}
+
+void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
+    if (!parent.has_children()) {
+        return;
+    }
+
+    const int color = state.get_to_move();
+
+    for (const auto& node : parent.get_children()) {
+        // Only send variations with visits
+        if (!node->get_visits()) continue;
+
+        std::string move = state.move_to_text(node->get_move());
+        FastState tmpstate = state;
+        tmpstate.play_move(node->get_move());
+        std::string pv = move + " " + get_pv(tmpstate, *node);
+        auto move_eval = node->get_visits() ?
+            static_cast<int>(node->get_pure_eval(color) * 10000) : 0;
+        gtp_printf_raw("info %s %s %s %d %s %d %s %s\n",
+                       "move", move.c_str(),
+                       "visits", node->get_visits(),
+                       "winrate", move_eval,
+                       "pv", pv.c_str());
+    }
 }
 
 void tree_stats_helper(const UCTNode& node, size_t depth,
@@ -465,7 +490,7 @@ void UCTSearch::dump_analysis(int playouts) {
     int color = tempstate.board.get_to_move();
 
     std::string pvstring = get_pv(tempstate, *m_root);
-    float winrate = 100.0f * m_root->get_eval(color);
+    float winrate = 100.0f * m_root->get_pure_eval(color);
     myprintf("Playouts: %d, Win: %5.2f%%, PV: %s\n",
              playouts, winrate, pvstring.c_str());
 }
@@ -600,8 +625,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
 
-    bool keeprunning = true;
-    int last_update = 0;
+    auto keeprunning = true;
+    auto last_update = 0;
+    auto last_output = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
 
@@ -612,6 +638,12 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
         Time elapsed;
         int elapsed_centis = Time::timediff_centis(start, elapsed);
+
+        if (cfg_analyze_interval_centis &&
+            elapsed_centis - last_output > cfg_analyze_interval_centis) {
+            last_output = elapsed_centis;
+            output_analysis(m_rootstate, *m_root);
+        }
 
         // output some stats every few seconds
         // check if we should still search
@@ -670,12 +702,22 @@ void UCTSearch::ponder() {
     for (int i = 1; i < cfg_num_threads; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
+    Time start;
     auto keeprunning = true;
+    auto last_output = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = play_simulation(*currstate, m_root.get());
         if (result.valid()) {
             increment_playouts();
+        }
+        if (cfg_analyze_interval_centis) {
+            Time elapsed;
+            int elapsed_centis = Time::timediff_centis(start, elapsed);
+            if (elapsed_centis - last_output > cfg_analyze_interval_centis) {
+                last_output = elapsed_centis;
+                output_analysis(m_rootstate, *m_root);
+            }
         }
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(0, 1);

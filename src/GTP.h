@@ -39,6 +39,8 @@ extern int cfg_lagbuffer_cs;
 extern int cfg_resignpct;
 extern int cfg_noise;
 extern int cfg_random_cnt;
+extern int cfg_random_min_visits;
+extern float cfg_random_temp;
 extern std::uint64_t cfg_rng_seed;
 extern bool cfg_dumbpass;
 #ifdef USE_OPENCL
@@ -55,6 +57,7 @@ extern FILE* cfg_logfile_handle;
 extern bool cfg_quiet;
 extern std::string cfg_options_str;
 extern bool cfg_benchmark;
+extern int cfg_analyze_interval_centis;
 
 /*
     A list of all valid GTP2 commands is defined here:
