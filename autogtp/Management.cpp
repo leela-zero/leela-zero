@@ -95,7 +95,7 @@ void Management::giveAssignments() {
 
     Order tuneOrder = getWork(true);
     QString tuneCmdLine("./leelaz --tune-only -w networks/");
-    tuneCmdLine.append(tuneOrder.parameters()["network"]);
+    tuneCmdLine.append(tuneOrder.parameters()["network"] + ".gz");
     if (m_gpusList.isEmpty()) {
         runTuningProcess(tuneCmdLine);
     } else {
@@ -393,8 +393,8 @@ Order Management::getWorkInternal(bool tuning) {
         o.parameters(parameters);
         if (m_delNetworks &&
             m_fallBack.parameters()["network"] != net) {
-            QTextStream(stdout) << "Deleting network " << "networks/" + m_fallBack.parameters()["network"] << endl;
-            QFile::remove("networks/" + m_fallBack.parameters()["network"]);
+            QTextStream(stdout) << "Deleting network " << "networks/" + m_fallBack.parameters()["network"] + ".gz" << endl;
+            QFile::remove("networks/" + m_fallBack.parameters()["network"] + ".gz");
         }
         m_fallBack = o;
         QTextStream(stdout) << "net: " << net << "." << endl;
@@ -411,13 +411,13 @@ Order Management::getWorkInternal(bool tuning) {
         if (m_delNetworks) {
             if (m_lastMatch.parameters()["firstNet"] != net1 &&
                 m_lastMatch.parameters()["firstNet"] != net2) {
-                QTextStream(stdout) << "Deleting network " << "networks/" + m_lastMatch.parameters()["firstNet"] << endl;
-                QFile::remove("networks/" + m_lastMatch.parameters()["firstNet"]);
+                QTextStream(stdout) << "Deleting network " << "networks/" + m_lastMatch.parameters()["firstNet"] + ".gz" << endl;
+                QFile::remove("networks/" + m_lastMatch.parameters()["firstNet"] + ".gz");
             }
             if (m_lastMatch.parameters()["secondNet"] != net1 &&
                 m_lastMatch.parameters()["secondNet"] != net2) {
-                QTextStream(stdout) << "Deleting network " << "networks/" + m_lastMatch.parameters()["secondNet"] << endl;
-                QFile::remove("networks/" + m_lastMatch.parameters()["secondNet"]);
+                QTextStream(stdout) << "Deleting network " << "networks/" + m_lastMatch.parameters()["secondNet"] + ".gz" << endl;
+                QFile::remove("networks/" + m_lastMatch.parameters()["secondNet"] + ".gz");
             }
         }
         m_lastMatch = o;
@@ -472,8 +472,15 @@ Order Management::getWork(bool tuning) {
 bool Management::networkExists(const QString &name) {
     QString realHash = name;
     realHash.remove(0,9);
+    realHash.chop(3);
     if (QFileInfo::exists(name)) {
-        QFile f(name);
+#ifdef WIN32
+        QProcess::execute("gzip.exe -k -d -q " + name);
+#else
+        QProcess::execute("gunzip -k -q " + name);
+#endif
+
+        QFile f(QString("networks/" + realHash));
         if (f.open(QFile::ReadOnly)) {
             QCryptographicHash hash(QCryptographicHash::Sha256);
             if (!hash.addData(&f)) {
@@ -481,8 +488,10 @@ bool Management::networkExists(const QString &name) {
             }
             QString result = hash.result().toHex();
             if (result == realHash) {
+                f.remove();
                 return true;
             }
+            QTextStream(stdout) << "Downloaded network hash doesn't match, calculated: " << result << " it should be: " << realHash << endl;
         } else {
             QTextStream(stdout)
                 << "Unable to open network file for reading." << endl;
@@ -492,19 +501,18 @@ bool Management::networkExists(const QString &name) {
             throw NetworkException("Unable to delete the network file."
                                    " Check permissions.");
         }
-        QTextStream(stdout) << "Downloaded network hash doesn't match." << endl;
         f.remove();
     }
     return false;
 }
 
 void Management::fetchNetwork(const QString &net) {
-    QString name = "networks/" + net;
+    QString name = "networks/" + net + ".gz";
     if (networkExists(name)) {
         return;
     }
-    if (QFileInfo::exists(name + ".gz")) {
-        QFile f_gz(name + ".gz");
+    if (QFileInfo::exists(name)) {
+        QFile f_gz(name);
         // Curl refuses to overwrite, so make sure to delete the gzipped
         // network if it exists
         f_gz.remove();
@@ -516,9 +524,9 @@ void Management::fetchNetwork(const QString &net) {
 #endif
     // Be quiet, but output the real file name we saved.
     // Use the filename from the server.
-    prog_cmdline.append(" -s -J -o " + name + ".gz ");
+    prog_cmdline.append(" -s -J -o " + name + " ");
     prog_cmdline.append(" -w %{filename_effective}");
-    prog_cmdline.append(" http://zero.sjeng.org/" + name + ".gz");
+    prog_cmdline.append(" http://zero.sjeng.org/" + name);
 
     QProcess curl;
     curl.start(prog_cmdline);
@@ -533,22 +541,7 @@ void Management::fetchNetwork(const QString &net) {
     QString outstr(output);
     QStringList outlst = outstr.split("\n");
     QString outfile = outlst[0];
-#ifdef WIN32
-    QProcess::execute("gzip.exe -d -q " + outfile);
-#else
-    QProcess::execute("gunzip -q " + outfile);
-#endif
-    // Remove extension (.gz)
-    outfile.chop(3);
     QTextStream(stdout) << "Net filename: " << outfile << endl;
-
-    if (!networkExists(name)) {
-        //If gunzip failed remove the .gz file
-        QFile f_gz(name + ".gz");
-        f_gz.remove();
-        throw NetworkException("Failed to fetch the network");
-    }
-
     return;
 }
 
