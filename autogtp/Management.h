@@ -82,6 +82,7 @@ private:
     int m_threadsLeft;
     bool m_delNetworks;
     QLockFile *m_lockFile;
+    QString m_leelaversion;
 
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);
