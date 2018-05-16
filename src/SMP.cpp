@@ -33,9 +33,11 @@ SMP::Lock::Lock(Mutex & m) {
 void SMP::Lock::lock() {
     assert(!m_owns_lock);
     // Test and Test-and-Set reduces memory contention
-    do {
-      while (m_mutex->m_lock);
-    } while (m_mutex->m_lock.exchange(true, std::memory_order_acquire) == true);
+    // However, just trying to Test-and-Set first improves performance in almost
+    // all cases
+    while (m_mutex->m_lock.exchange(true, std::memory_order_acquire)) {
+      while (m_mutex->m_lock.load(std::memory_order_relaxed));
+    }
     m_owns_lock = true;
 }
 
