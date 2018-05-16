@@ -269,11 +269,13 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     // Lower the expected eval for moves that are likely not the best.
     // Do not do this if we have introduced noise at this node exactly
     // to explore more.
+    
+    auto pure_eval = get_pure_eval(color); 
     if (!is_root || !cfg_noise) {
-        fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
+        fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy) * pure_eval / 0.5;
     }
     // Estimated eval for unknown nodes = original parent NN eval - reduction
-    auto fpu_eval = get_net_eval(color) - fpu_reduction;
+    auto fpu_eval = pure_eval - fpu_reduction;
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
@@ -289,7 +291,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
         auto psa = child.get_score();
         auto denom = 1.0 + child.get_visits();
-        auto puct = cfg_puct * psa * (numerator / denom);
+        auto puct = cfg_puct * psa * (numerator / denom) * pure_eval / 0.5;
         auto value = winrate + puct;
         assert(value > std::numeric_limits<double>::lowest());
 
