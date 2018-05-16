@@ -32,7 +32,10 @@ SMP::Lock::Lock(Mutex & m) {
 
 void SMP::Lock::lock() {
     assert(!m_owns_lock);
-    while (m_mutex->m_lock.exchange(true, std::memory_order_acquire) == true);
+    // Test and Test-and-Set reduces memory contention
+    do {
+      while (m_mutex->m_lock);
+    } while (m_mutex->m_lock.exchange(true, std::memory_order_acquire) == true);
     m_owns_lock = true;
 }
 
