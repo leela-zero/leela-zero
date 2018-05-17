@@ -132,7 +132,7 @@ class TFProcess:
         self.swa_recalc_bn = True
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
-        config = tf.ConfigProto(gpu_options=gpu_options)
+        config = tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)
         self.session = tf.Session(config=config)
 
         self.training = tf.placeholder(tf.bool)
