@@ -126,7 +126,6 @@
     <ClInclude Include="..\..\src\UCTSearch.h" />
     <ClInclude Include="..\..\src\Utils.h" />
     <ClInclude Include="..\..\src\Zobrist.h" />
-    <ClInclude Include="Header.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
