@@ -27,6 +27,7 @@
 #include <iterator>
 #include <limits>
 #include <numeric>
+#include <tuple>    
 #include <utility>
 #include <vector>
 
@@ -51,34 +52,34 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(std::atomic<int>& nodecount,
-                              GameState& state,
-                              float& eval,
-                              float min_psa_ratio) {
+std::pair<bool, bool> UCTNode::create_children(
+    std::atomic<int>& nodecount, GameState& state,
+    float& eval, float min_psa_ratio) {
     // check whether somebody beat us to it (atomic)
     if (!expandable(min_psa_ratio)) {
-        return false;
+        return std::make_pair(false, false);
     }
     // acquire the lock
     LOCK(get_mutex(), lock);
     // no successors in final state
     if (state.get_passes() >= 2) {
-        return false;
+        return std::make_pair(false, false);
     }
     // check whether somebody beat us to it (after taking the lock)
     if (!expandable(min_psa_ratio)) {
-        return false;
+        return std::make_pair(false, false);
     }
     // Someone else is running the expansion
     if (m_is_expanding) {
-        return false;
+        return std::make_pair(false, false);
     }
     // We'll be the one queueing this node for expansion, stop others
     m_is_expanding = true;
     lock.unlock();
 
-    const auto raw_netlist = Network::get_scored_moves(
+    const auto result = Network::get_scored_moves(
         &state, Network::Ensemble::RANDOM_SYMMETRY);
+    const auto raw_netlist = result.first;
 
     // DCNN returns winrate as side to move
     m_net_eval = raw_netlist.winrate;
@@ -118,7 +119,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     }
 
     link_nodelist(nodecount, nodelist, min_psa_ratio);
-    return true;
+    return std::make_pair(true, result.second);
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,

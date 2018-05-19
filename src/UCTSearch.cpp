@@ -205,7 +205,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             const auto success =
                 node->create_children(m_nodes, currstate, eval,
                                       get_min_psa_ratio());
-            if (!had_children && success) {
+            if (!had_children && success.first && !success.second) {
                 result = SearchResult::from_eval(eval);
             }
         }

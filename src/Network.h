@@ -51,10 +51,9 @@ public:
         Netresult() : policy(BOARD_SQUARES), policy_pass(0.0f), winrate(0.0f) {}
     };
 
-    static Netresult get_scored_moves(const GameState* const state,
-                                      const Ensemble ensemble,
-                                      const int symmetry = -1,
-                                      const bool skip_cache = false);
+    static std::pair<Netresult, bool> get_scored_moves(
+        const GameState* const state, const Ensemble ensemble,
+        const int symmetry = -1, const bool skip_cache = false);
 
     static constexpr auto INPUT_MOVES = 8;
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;

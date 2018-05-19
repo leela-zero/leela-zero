@@ -30,6 +30,7 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "FastBoard.h"
@@ -577,21 +578,22 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> symmetry;
 
         Network::Netresult vec;
+        bool cache_hit;
         if (cmdstream.fail()) {
             // Default = DIRECT with no rotation
-            vec = Network::get_scored_moves(
+            std::tie(vec, cache_hit) = Network::get_scored_moves(
                 &game, Network::Ensemble::DIRECT, 0, true);
         } else if (symmetry == "all") {
-            for (auto r = 0; r < 8; r++) {
-                vec = Network::get_scored_moves(
-                    &game, Network::Ensemble::DIRECT, r, true);
+            for (auto sym = 0; sym < 8; sym++) {
+                std::tie(vec, cache_hit) = Network::get_scored_moves(
+                    &game, Network::Ensemble::DIRECT, sym, true);
                 Network::show_heatmap(&game, vec, false);
             }
         } else if (symmetry == "average" || symmetry == "avg") {
-            vec = Network::get_scored_moves(
+            std::tie(vec, cache_hit) = Network::get_scored_moves(
                 &game, Network::Ensemble::AVERAGE, 8, true);
         } else {
-            vec = Network::get_scored_moves(
+            std::tie(vec, cache_hit) = Network::get_scored_moves(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
         }
 
