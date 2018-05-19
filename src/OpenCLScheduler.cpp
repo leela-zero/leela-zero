@@ -32,17 +32,17 @@ static std::vector<float> zeropad_U(const std::vector<float>& U,
                                     const int channels_pad) {
     // Fill with zeroes
     auto Upad =
-        std::vector<float>(Network::WINOGRAD_TILE * outputs_pad * channels_pad);
+        std::vector<float>(WINOGRAD_TILE * outputs_pad * channels_pad);
 
     for (auto o = 0; o < outputs; o++) {
         for (auto c = 0; c < channels; c++) {
-            for (auto xi = 0; xi < Network::WINOGRAD_ALPHA; xi++){
-                for (auto nu = 0; nu < Network::WINOGRAD_ALPHA; nu++) {
-                    Upad[xi * (Network::WINOGRAD_ALPHA * outputs_pad * channels_pad)
+            for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++){
+                for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
+                    Upad[xi * (WINOGRAD_ALPHA * outputs_pad * channels_pad)
                          + nu * (outputs_pad * channels_pad)
                          + c * outputs_pad +
                           o] =
-                    U[xi * (Network::WINOGRAD_ALPHA * outputs * channels)
+                    U[xi * (WINOGRAD_ALPHA * outputs * channels)
                       + nu * (outputs * channels)
                       + c * outputs
                       + o];

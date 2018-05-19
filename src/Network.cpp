@@ -59,9 +59,6 @@
 #include "Timing.h"
 #include "Utils.h"
 
-// Square root of 2
-#define SQ2 (1.4142135623730951f)
-
 namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
@@ -104,12 +101,13 @@ std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
     // transpose(G.dot(f).dot(G.transpose()))
     // U matrix is transposed for better memory layout in SGEMM
     auto U = std::vector<float>(WINOGRAD_TILE * outputs * channels);
-    const auto G = std::array<float, 3 * WINOGRAD_ALPHA>{ 1.0,     0.0,     0.0,
-                                                          -2./3., -SQ2/3., -1./3.,
-                                                          -2./3.,  SQ2/3., -1./3.,
-                                                          1./6.,   SQ2/6.,  1./3.,
-                                                          1./6.,  -SQ2/6.,  1./3.,
-                                                          0.0,     0.0,     1.0};
+    const auto G = std::array<float, 3 * WINOGRAD_ALPHA>
+                    { 1.0f,        0.0f,      0.0f,
+                      -2.0f/3.0f, -SQ2/3.0f, -1.0f/3.0f,
+                      -2.0f/3.0f,  SQ2/3.0f, -1.0f/3.0f,
+                      1.0f/6.0f,   SQ2/6.0f,  1.0f/3.0f,
+                      1.0f/6.0f,  -SQ2/6.0f,  1.0f/3.0f,
+                      0.0f,        0.0f,      1.0f};
 
     auto temp = std::array<float, 3 * WINOGRAD_ALPHA>{};
 

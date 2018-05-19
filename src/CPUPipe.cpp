@@ -35,9 +35,6 @@
 #include "Network.h"
 #include "Im2Col.h"
 
-// Square root of 2
-#define SQ2 (1.4142135623730951f)
-
 void CPUPipe::initialize(int channels) {
     m_input_channels = channels;
 }
@@ -47,8 +44,8 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                                     const int C) {
     constexpr auto W = BOARD_SIZE;
     constexpr auto H = BOARD_SIZE;
-    constexpr auto WTILES = W / WINOGRAD_M + (W % WINOGRAD_M != 0);
-    constexpr auto P = WTILES * WTILES;
+    constexpr auto WTILES = WINOGRAD_WTILES;
+    constexpr auto P = WINOGRAD_P;
 
     constexpr auto Wpad = 2 + WINOGRAD_M * WTILES;
 
@@ -75,13 +72,13 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                     std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
                 WinogradTile T1, T2;
 
-                const auto Bt = std::array<float, WINOGRAD_TILE>\
-                                { 1.,  0.,      -5./2.,  0.,     1., 0.,
-                                  0., -SQ2,     -2.,     SQ2/2,  1., 0.,
-                                  0.,  SQ2,     -2.,    -SQ2/2., 1., 0.,
-                                  0., -SQ2/2.,  -1./2.,  SQ2,    1., 0.,
-                                  0.,  SQ2/2.,  -1./2., -SQ2,    1., 0.,
-                                  0.,  1.,       0.,    -5./2.,  0., 1.};
+                const auto Bt = std::array<float, WINOGRAD_TILE>
+                           {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
+                            0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
+                            0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
+                            0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
+                            0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
+                            0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
 
                 // Calculates transpose(B).x.B
                 for (auto i = 0; i < WINOGRAD_ALPHA; i++){
@@ -120,9 +117,7 @@ void CPUPipe::winograd_sgemm(const std::vector<float>& U,
                              const std::vector<float>& V,
                              std::vector<float>& M,
                              const int C, const int K) {
-    constexpr auto W = BOARD_SIZE;
-    constexpr auto WTILES = W / WINOGRAD_M + (W % WINOGRAD_M != 0);
-    constexpr auto P = WTILES * WTILES;
+    constexpr auto P = WINOGRAD_P;
 
     for (auto b = 0; b < WINOGRAD_TILE; b++) {
         const auto offset_u = b * K * C;
@@ -144,8 +139,8 @@ void CPUPipe::winograd_transform_out(const std::vector<float>& M,
                                      const int K) {
     constexpr auto W = BOARD_SIZE;
     constexpr auto H = BOARD_SIZE;
-    constexpr auto WTILES = W / WINOGRAD_M + (W % WINOGRAD_M != 0);
-    constexpr auto P = WTILES * WTILES;
+    constexpr auto WTILES = WINOGRAD_WTILES;
+    constexpr auto P = WINOGRAD_P;
 
     for (auto k = 0; k < K; k++) {
         for (auto block_x = 0; block_x < WTILES; block_x++) {
@@ -165,10 +160,10 @@ void CPUPipe::winograd_transform_out(const std::vector<float>& M,
                 }
 
                 const auto At = std::array<float, WINOGRAD_ALPHA * WINOGRAD_M>
-                                { 1., 1.,      1.,     1.,      1.,     0.,
-                                  0., SQ2/2., -SQ2/2., SQ2,    -SQ2,    0.,
-                                  0., 1./2.,   1./2.,  2.,      2.,     0.,
-                                  0., SQ2/4., -SQ2/4., 2.*SQ2, -2.*SQ2, 1.};
+                      {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
+                       0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
+                       0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
+                       0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
 
                 std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_M> temp;
                 std::array<std::array<float, WINOGRAD_M>, WINOGRAD_M> o;
@@ -298,8 +293,7 @@ void CPUPipe::forward(const std::vector<float>& input,
                       std::vector<float>& output_pol,
                       std::vector<float>& output_val) {
     // Input convolution
-    constexpr auto WTILES = BOARD_SIZE / WINOGRAD_M + (BOARD_SIZE % WINOGRAD_M != 0);
-    constexpr auto P = WTILES * WTILES;
+    constexpr auto P = WINOGRAD_P;
     // Calculate output channels
     const auto output_channels = m_input_channels;
     // input_channels is the maximum number of input channels of any
