@@ -36,24 +36,33 @@
 class SearchResult {
 public:
     SearchResult() = default;
-    bool valid() const { return m_valid;  }
-    float eval() const { return m_eval;  }
+    bool valid() const { return m_valid == VALID;  }
+    float eval() const { return m_eval; }
+    bool fail_cache_miss() const { return m_valid == FAIL; }
+    
     static SearchResult from_eval(float eval) {
-        return SearchResult(eval);
+            return SearchResult(VALID, eval);
     }
     static SearchResult from_score(float board_score) {
         if (board_score > 0.0f) {
-            return SearchResult(1.0f);
+            return SearchResult(VALID, 1.0f);
         } else if (board_score < 0.0f) {
-            return SearchResult(0.0f);
+            return SearchResult(VALID, 0.0f);
         } else {
-            return SearchResult(0.5f);
+            return SearchResult(VALID, 0.5f);
         }
     }
+    static SearchResult from_cache_miss() {
+        return SearchResult(FAIL);
+    }
 private:
-    explicit SearchResult(float eval)
-        : m_valid(true), m_eval(eval) {}
-    bool m_valid{false};
+    enum Validity {
+        INVALID, VALID, FAIL
+    };
+
+    explicit SearchResult(Validity valid, float eval = 0.0f)
+        : m_valid(valid), m_eval(eval) {}
+    Validity m_valid{INVALID};
     float m_eval{0.0f};
 };
 
@@ -98,7 +107,9 @@ public:
     void ponder();
     bool is_running() const;
     void increment_playouts();
-    SearchResult play_simulation(GameState& currstate, UCTNode* const node);
+    SearchResult play_simulation(GameState& currstate,
+                                 UCTNode* const node,
+                                 const bool stop_on_cache_miss = false);
 
 private:
     float get_min_psa_ratio() const;

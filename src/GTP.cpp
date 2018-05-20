@@ -30,7 +30,6 @@
 #include <memory>
 #include <random>
 #include <string>
-#include <tuple>
 #include <vector>
 
 #include "FastBoard.h"
@@ -577,28 +576,27 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> tmp;   // eat heatmap
         cmdstream >> symmetry;
 
-        Network::Netresult vec;
-        bool cache_hit;
+        Network::Netresult net_res;
         if (cmdstream.fail()) {
             // Default = DIRECT with no rotation
-            std::tie(vec, cache_hit) = Network::get_scored_moves(
+            net_res = Network::get_scored_moves(
                 &game, Network::Ensemble::DIRECT, 0, true);
         } else if (symmetry == "all") {
             for (auto sym = 0; sym < 8; sym++) {
-                std::tie(vec, cache_hit) = Network::get_scored_moves(
+                net_res = Network::get_scored_moves(
                     &game, Network::Ensemble::DIRECT, sym, true);
-                Network::show_heatmap(&game, vec, false);
+                Network::show_heatmap(&game, net_res, false);
             }
         } else if (symmetry == "average" || symmetry == "avg") {
-            std::tie(vec, cache_hit) = Network::get_scored_moves(
+            net_res = Network::get_scored_moves(
                 &game, Network::Ensemble::AVERAGE, 8, true);
         } else {
-            std::tie(vec, cache_hit) = Network::get_scored_moves(
+            net_res = Network::get_scored_moves(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
         }
 
         if (symmetry != "all") {
-            Network::show_heatmap(&game, vec, false);
+            Network::show_heatmap(&game, net_res, false);
         }
 
         gtp_printf(id, "");

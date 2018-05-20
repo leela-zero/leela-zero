@@ -27,7 +27,6 @@
 #include <memory>
 #include <sstream>
 #include <stdexcept>
-#include <tuple>
 #include <utility>
 
 #include "FastBoard.h"
@@ -161,7 +160,7 @@ void Training::record(GameState& state, UCTNode& root) {
 
     auto result =
         Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
-    step.net_winrate = result.first.winrate;
+    step.net_winrate = result.winrate;
 
     const auto& best_node = root.get_best_root_child(step.to_move);
     step.root_uct_winrate = root.get_eval(step.to_move);

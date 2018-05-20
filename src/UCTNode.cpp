@@ -27,7 +27,6 @@
 #include <iterator>
 #include <limits>
 #include <numeric>
-#include <tuple>    
 #include <utility>
 #include <vector>
 
@@ -52,37 +51,40 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-std::pair<bool, bool> UCTNode::create_children(
+UCTNode::CreateChildrenResult UCTNode::create_children(
     std::atomic<int>& nodecount, GameState& state,
-    float& eval, float min_psa_ratio) {
+    float& eval, float min_psa_ratio, const bool stop_on_cache_miss) {
     // check whether somebody beat us to it (atomic)
     if (!expandable(min_psa_ratio)) {
-        return std::make_pair(false, false);
+        return FAIL_NOT_EXPANDABLE;
     }
     // acquire the lock
     LOCK(get_mutex(), lock);
     // no successors in final state
     if (state.get_passes() >= 2) {
-        return std::make_pair(false, false);
+        return FAIL_FINAL_STATE;
     }
     // check whether somebody beat us to it (after taking the lock)
     if (!expandable(min_psa_ratio)) {
-        return std::make_pair(false, false);
+        return FAIL_NOT_EXPANDABLE;
     }
     // Someone else is running the expansion
     if (m_is_expanding) {
-        return std::make_pair(false, false);
+        return FAIL_EXPANDING;
     }
     // We'll be the one queueing this node for expansion, stop others
     m_is_expanding = true;
     lock.unlock();
 
     const auto result = Network::get_scored_moves(
-        &state, Network::Ensemble::RANDOM_SYMMETRY);
-    const auto raw_netlist = result.first;
+        &state, Network::Ensemble::RANDOM_SYMMETRY, -1, false, stop_on_cache_miss);
+    if (stop_on_cache_miss && !result.cache_hit) {
+        m_is_expanding = false;
+        return FAIL_CACHE_MISS;
+    }
 
     // DCNN returns winrate as side to move
-    m_net_eval = raw_netlist.winrate;
+    m_net_eval = result.winrate;
     const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
     if (state.board.white_to_move()) {
@@ -98,12 +100,12 @@ std::pair<bool, bool> UCTNode::create_children(
         const auto y = i / BOARD_SIZE;
         const auto vertex = state.board.get_vertex(x, y);
         if (state.is_move_legal(to_move, vertex)) {
-            nodelist.emplace_back(raw_netlist.policy[i], vertex);
-            legal_sum += raw_netlist.policy[i];
+            nodelist.emplace_back(result.policy[i], vertex);
+            legal_sum += result.policy[i];
         }
     }
-    nodelist.emplace_back(raw_netlist.policy_pass, FastBoard::PASS);
-    legal_sum += raw_netlist.policy_pass;
+    nodelist.emplace_back(result.policy_pass, FastBoard::PASS);
+    legal_sum += result.policy_pass;
 
     if (legal_sum > std::numeric_limits<float>::min()) {
         // re-normalize after removing illegal moves.
@@ -119,7 +121,10 @@ std::pair<bool, bool> UCTNode::create_children(
     }
 
     link_nodelist(nodecount, nodelist, min_psa_ratio);
-    return std::make_pair(true, result.second);
+    if (result.cache_hit) {
+        return SUCCESS_CACHE_HIT;
+    }
+    return SUCCESS_EXPANDED;
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
