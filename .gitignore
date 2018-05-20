@@ -8,3 +8,6 @@ training/tf/venv
 leelaz-model*
 *.orig
 leelaz_opencl_tuning
+/validation/validation.pro.user
+/build-validation-Desktop_Qt_5_10_0_MSVC2017_64bit-Debug
+/build-validation-Desktop_Qt_5_10_0_MSVC2017_64bit-Release

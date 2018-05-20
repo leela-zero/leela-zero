@@ -28,12 +28,12 @@ const VersionTuple min_leelaz_version{0, 10, 0};
 
 void ValidationWorker::run() {
     do {
-        Game first(m_firstNet,  m_firstOpts, m_firstBin);
+        Game first(m_firstNet,  m_firstOpts, m_firstBin, m_firstTimes);
         if (!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
-        Game second(m_secondNet, m_secondOpts, m_secondBin);
+        Game second(m_secondNet, m_secondOpts, m_secondBin, m_secondTimes);
         if (!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
@@ -96,6 +96,7 @@ void ValidationWorker::run() {
             m_firstNet.swap(m_secondNet);
             m_firstBin.swap(m_secondBin);
             m_firstOpts.swap(m_secondOpts);
+            m_firstTimes.swap(m_secondTimes);
             if (m_expected == Game::BLACK) {
                 m_expected = Game::WHITE;
             } else {
@@ -115,6 +116,8 @@ void ValidationWorker::init(const QString& gpuIndex,
                             const QString& secondBin,
                             const QString& firstOpts,
                             const QString& secondOpts,
+                            const QString& firstTimes,
+                            const QString& secondTimes,
                             const QString& keep,
                             int expected) {
     m_firstOpts = firstOpts;
@@ -127,6 +130,8 @@ void ValidationWorker::init(const QString& gpuIndex,
     m_secondNet = secondNet;
     m_firstBin = firstBin;
     m_secondBin = secondBin;
+    m_firstTimes = firstTimes;
+    m_secondTimes = secondTimes;
     m_expected = expected;
     m_keepPath = keep;
     m_state.store(RUNNING);
@@ -143,6 +148,8 @@ Validation::Validation(const int gpus,
                        const QString& secondBin,
                        const QString& firstOpts,
                        const QString& secondOpts,
+                       const QString& firstTimes,
+                       const QString& secondTimes,
                        const float& h0,
                        const float& h1) :
 
@@ -158,13 +165,15 @@ Validation::Validation(const int gpus,
     m_secondBin(secondBin),
     m_firstOpts(firstOpts),
     m_secondOpts(secondOpts),
+    m_firstTimes(firstTimes),
+    m_secondTimes(secondTimes),
     m_keepPath(keep) {
     m_statistic.initialize(h0, h1, 0.05, 0.05);
     m_statistic.addGameResult(Sprt::Draw);
 }
 
 void Validation::startGames() {
-    QString n1, n2, b1 ,b2 ,o1, o2;
+    QString n1, n2, b1, b2, o1, o2, t1, t2;
     int expected;
     QString myGpu;
     for (int gpu = 0; gpu < m_gpus; ++gpu) {
@@ -182,6 +191,8 @@ void Validation::startGames() {
                 b2 = m_secondBin;
                 o1 = m_firstOpts;
                 o2 = m_secondOpts;
+                t1 = m_firstTimes;
+                t2 = m_secondTimes;
                 expected = Game::BLACK;
             } else {
                 n1 = m_secondNet;
@@ -190,6 +201,8 @@ void Validation::startGames() {
                 b2 = m_firstBin;
                 o1 = m_secondOpts;
                 o2 = m_firstOpts;
+                t1 = m_secondTimes;
+                t2 = m_firstTimes;
                 expected = Game::WHITE;
             }
             if (m_gpusList.isEmpty()) {
@@ -198,7 +211,8 @@ void Validation::startGames() {
                 myGpu = m_gpusList.at(gpu);
             }
 
-            m_gamesThreads[thread_index].init(myGpu, n1, n2, b1, b2, o1, o2, m_keepPath, expected);
+            m_gamesThreads[thread_index].init(
+                myGpu, n1, n2, b1, b2, o1, o2, t1, t2, m_keepPath, expected);
             m_gamesThreads[thread_index].start();
         }
     }

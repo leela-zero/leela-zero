@@ -23,11 +23,12 @@
 #include <QFileInfo>
 #include "Game.h"
 
-Game::Game(const QString& weights, const QString& opt, const QString& binary) :
+Game::Game(const QString& weights, const QString& opt, const QString& binary,
+           const QString& time_settings) :
     QProcess(),
     m_cmdLine(""),
     m_binary(binary),
-    m_timeSettings("time_settings 0 1 0"),
+    m_timeSettings("time_settings " + time_settings),
     m_resignation(false),
     m_blackToMove(true),
     m_blackResigned(false),

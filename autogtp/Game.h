@@ -28,7 +28,8 @@ class Game : QProcess {
 public:
     Game(const QString& weights,
          const QString& opt,
-         const QString& binary = QString("./leelaz"));
+         const QString& binary = QString("./leelaz"),
+         const QString& time_settings = QString("0 1 0"));
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version);
     void move();
