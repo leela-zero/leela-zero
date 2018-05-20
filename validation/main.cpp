@@ -52,7 +52,11 @@ int main(int argc, char *argv[]) {
             "filename");
     QCommandLineOption optionsOption(
         {"o", "options"},
-            "Options for the binary given by -b (default '-g -p 1600 --noponder -t 1 -q -d -r 0 -w').",
+            "Options for the binary given by -b (default \"-g -p 1600 --noponder -t 1 -q -d -r 0 -w\").",
+            "opt_string");
+    QCommandLineOption timesettingsOption(
+        {"ts", "time_settings"},
+            "time_settings command for the binary given by -b (default \"0 1 0\").",
             "opt_string");
     QCommandLineOption sprtOption(
         {"s", "sprt"},
@@ -76,6 +80,7 @@ int main(int argc, char *argv[]) {
     parser.addOption(networkOption);
     parser.addOption(binaryOption);
     parser.addOption(optionsOption);
+    parser.addOption(timesettingsOption);
     parser.addOption(sprtOption);
     parser.addOption(keepSgfOption);
 
@@ -94,6 +99,11 @@ int main(int argc, char *argv[]) {
     QStringList optsList = parser.values(optionsOption);
     while (optsList.count() != 2) {
         optsList << " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ";
+    }
+
+    QStringList timesList = parser.values(timesettingsOption);
+    while (timesList.count() != 2) {
+        timesList << "0 1 0";
     }
 
     QString sprtOpt = parser.value(sprtOption);
@@ -121,11 +131,12 @@ int main(int argc, char *argv[]) {
 
     Console *cons = nullptr;
     Validation *validate = new Validation(gpusNum, gamesNum, gpusList,
-                        netList.at(0), netList.at(1),
-                        parser.value(keepSgfOption), &mutex,
-                        binList.at(0), binList.at(1),
-                        optsList.at(0), optsList.at(1),
-                        h0, h1);
+                                          netList.at(0), netList.at(1),
+                                          parser.value(keepSgfOption), &mutex,
+                                          binList.at(0), binList.at(1),
+                                          optsList.at(0), optsList.at(1),
+                                          timesList.at(0), timesList.at(1),
+                                          h0, h1);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, validate, &Validation::storeSprt);
     validate->loadSprt();
     validate->startGames();

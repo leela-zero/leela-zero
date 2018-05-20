@@ -45,6 +45,8 @@ public:
               const QString& secondBin,
               const QString& firstOpts,
               const QString& secondOpts,
+              const QString& firstTimes,
+              const QString& secondTimes,
               const QString& keep,
               int expected);
     void run() override;
@@ -61,6 +63,8 @@ private:
     QString m_secondBin;
     QString m_firstOpts;
     QString m_secondOpts;
+    QString m_firstTimes;
+    QString m_secondTimes;
     QAtomicInt m_state;
 };
 
@@ -78,6 +82,8 @@ public:
                const QString& secondBin,
                const QString& firstOpts,
                const QString& secondOpts,
+               const QString& firstTimes,
+               const QString& secondTimes,
                const float& h0,
                const float& h1);
     ~Validation() = default;
@@ -104,6 +110,8 @@ private:
     QString m_secondBin;
     QString m_firstOpts;
     QString m_secondOpts;
+    QString m_firstTimes;
+    QString m_secondTimes;
     QString m_keepPath;
     void quitThreads();
     void saveSprt();
