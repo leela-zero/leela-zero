@@ -75,7 +75,6 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     }
     // We'll be the one queueing this node for expansion, stop others
     m_is_expanding = true;
-    lock.unlock();
 
     const auto raw_netlist = Network::get_scored_moves(
         &state, Network::Ensemble::RANDOM_SYMMETRY);
@@ -87,6 +86,8 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     if (state.board.white_to_move()) {
         m_net_eval = 1.0f - m_net_eval;
     }
+    update(m_net_eval);
+    lock.unlock();
     eval = m_net_eval;
 
     std::vector<Network::ScoreVertexPair> nodelist;
