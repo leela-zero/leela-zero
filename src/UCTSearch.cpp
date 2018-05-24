@@ -25,6 +25,7 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+#include <algorithm>
 
 #include "FastBoard.h"
 #include "FastState.h"
