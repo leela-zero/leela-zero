@@ -59,7 +59,7 @@ private:
 
 namespace TimeManagement {
     enum enabled_t {
-        AUTO = -1, OFF = 0, ON = 1, FAST = 2
+        AUTO = -1, OFF = 0, ON = 1, FAST = 2, NO_PRUNING = 3
     };
 };
 
@@ -109,7 +109,7 @@ private:
     bool should_resign(passflag_t passflag, float bestscore);
     bool have_alternate_moves(int elapsed_centis, int time_for_move);
     int est_playouts_left(int elapsed_centis, int time_for_move) const;
-    size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0);
+    size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0, bool prune=true);
     bool stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
     int get_best_move(passflag_t passflag);
     void update_root();
