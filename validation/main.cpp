@@ -130,12 +130,14 @@ int main(int argc, char *argv[]) {
     QTextStream(stdout) << "SPRT : " << sprtOpt << " h0 " << h0 << " h1 " << h1 << endl;
 
     Console *cons = nullptr;
+    auto engines = QVector<engine_t>({{
+        binList.at(0), optsList.at(0), netList.at(0),
+        {QString("time_settings " + timesList.at(0))}}, {
+        binList.at(1), optsList.at(1), netList.at(1),
+        {QString("time_settings " + timesList.at(1))}}});
     Validation *validate = new Validation(gpusNum, gamesNum, gpusList,
-                                          netList.at(0), netList.at(1),
+                                          engines,
                                           parser.value(keepSgfOption), &mutex,
-                                          binList.at(0), binList.at(1),
-                                          optsList.at(0), optsList.at(1),
-                                          timesList.at(0), timesList.at(1),
                                           h0, h1);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, validate, &Validation::storeSprt);
     validate->loadSprt();

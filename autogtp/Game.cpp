@@ -24,11 +24,11 @@
 #include "Game.h"
 
 Game::Game(const QString& weights, const QString& opt, const QString& binary,
-           const QString& time_settings) :
+           const QStringList& commands) :
     QProcess(),
     m_cmdLine(""),
     m_binary(binary),
-    m_timeSettings("time_settings " + time_settings),
+    m_commands(commands),
     m_resignation(false),
     m_blackToMove(true),
     m_blackResigned(false),
@@ -180,8 +180,10 @@ bool Game::gameStart(const VersionTuple &min_version) {
     // check any return values.
     checkVersion(min_version);
     QTextStream(stdout) << "Engine has started." << endl;
-    sendGtpCommand(m_timeSettings);
-    QTextStream(stdout) << "Infinite thinking time set." << endl;
+    for (auto command : m_commands) {
+        sendGtpCommand(command);
+    }
+    QTextStream(stdout) << "Thinking time set." << endl;
     return true;
 }
 

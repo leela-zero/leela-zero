@@ -29,7 +29,7 @@ public:
     Game(const QString& weights,
          const QString& opt,
          const QString& binary = QString("./leelaz"),
-         const QString& time_settings = QString("0 1 0"));
+         const QStringList& commands = QStringList("time_settings 0 1 0"));
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version);
     void move();
@@ -70,7 +70,7 @@ private:
     };
     QString m_cmdLine;
     QString m_binary;
-    QString m_timeSettings;
+    QStringList m_commands;
     QString m_winner;
     QString m_fileName;
     QString m_moveDone;
