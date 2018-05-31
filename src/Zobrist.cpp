@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,31 +17,32 @@
 */
 
 #include "config.h"
-
-#include "Random.h"
 #include "Zobrist.h"
+#include "Random.h"
 
-std::array<std::array<uint64, FastBoard::MAXSQ>,     4> Zobrist::zobrist;
-std::array<std::array<uint64, FastBoard::MAXSQ * 2>, 2> Zobrist::zobrist_pris;
-std::array<uint64, 5>                                   Zobrist::zobrist_pass;
+std::array<std::array<std::uint64_t, FastBoard::MAXSQ>,     4> Zobrist::zobrist;
+std::array<std::uint64_t, FastBoard::MAXSQ>                    Zobrist::zobrist_ko;
+std::array<std::array<std::uint64_t, FastBoard::MAXSQ * 2>, 2> Zobrist::zobrist_pris;
+std::array<std::uint64_t, 5>                                   Zobrist::zobrist_pass;
 
-void Zobrist::init_zobrist(Random & rng) {
+void Zobrist::init_zobrist(Random& rng) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < FastBoard::MAXSQ; j++) {
-            Zobrist::zobrist[i][j]  = ((uint64)rng.randuint32()) << 32;
-            Zobrist::zobrist[i][j] ^= (uint64)rng.randuint32();
+            Zobrist::zobrist[i][j] = rng.randuint64();
         }
+    }
+
+    for (int j = 0; j < FastBoard::MAXSQ; j++) {
+        Zobrist::zobrist_ko[j] = rng.randuint64();
     }
 
     for (int i = 0; i < 2; i++) {
         for (int j = 0; j < FastBoard::MAXSQ * 2; j++) {
-            Zobrist::zobrist_pris[i][j]  = ((uint64)rng.randuint32()) << 32;
-            Zobrist::zobrist_pris[i][j] ^= (uint64)rng.randuint32();
+            Zobrist::zobrist_pris[i][j] = rng.randuint64();
         }
     }
 
     for (int i = 0; i < 5; i++) {
-        Zobrist::zobrist_pass[i]  = ((uint64)rng.randuint32()) << 32;
-        Zobrist::zobrist_pass[i] ^= (uint64)rng.randuint32();
+        Zobrist::zobrist_pass[i]  = rng.randuint64();
     }
 }

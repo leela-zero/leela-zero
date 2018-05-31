@@ -1,0 +1,10 @@
+/Makefile
+/.qmake.stash
+/autogtp
+/*.sgf
+/*.gz
+/moc_*.cpp
+/moc_*.h
+
+# Weight files
+/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]

@@ -1,0 +1,151 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D6006CAE-9236-4025-A4BD-A3466499C7B1}</ProjectGuid>
+    <RootNamespace>leelazero</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetName>leelaz</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetName>leelaz</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);NDEBUG</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\FastBoard.cpp" />
+    <ClCompile Include="..\..\src\FastState.cpp" />
+    <ClCompile Include="..\..\src\FullBoard.cpp" />
+    <ClCompile Include="..\..\src\GameState.cpp" />
+    <ClCompile Include="..\..\src\GTP.cpp" />
+    <ClCompile Include="..\..\src\KoState.cpp" />
+    <ClCompile Include="..\..\src\Leela.cpp" />
+    <ClCompile Include="..\..\src\Network.cpp" />
+    <ClCompile Include="..\..\src\NNCache.cpp" />
+    <ClCompile Include="..\..\src\OpenCL.cpp" />
+    <ClCompile Include="..\..\src\OpenCLScheduler.cpp" />
+    <ClCompile Include="..\..\src\Random.cpp" />
+    <ClCompile Include="..\..\src\SGFParser.cpp" />
+    <ClCompile Include="..\..\src\SGFTree.cpp" />
+    <ClCompile Include="..\..\src\SMP.cpp" />
+    <ClCompile Include="..\..\src\TimeControl.cpp" />
+    <ClCompile Include="..\..\src\Timing.cpp" />
+    <ClCompile Include="..\..\src\Training.cpp" />
+    <ClCompile Include="..\..\src\Tuner.cpp" />
+    <ClCompile Include="..\..\src\UCTNode.cpp" />
+    <ClCompile Include="..\..\src\UCTNodeRoot.cpp" />
+    <ClCompile Include="..\..\src\UCTSearch.cpp" />
+    <ClCompile Include="..\..\src\Utils.cpp" />
+    <ClCompile Include="..\..\src\Zobrist.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\config.h" />
+    <ClInclude Include="..\..\src\FastBoard.h" />
+    <ClInclude Include="..\..\src\FastState.h" />
+    <ClInclude Include="..\..\src\FullBoard.h" />
+    <ClInclude Include="..\..\src\GameState.h" />
+    <ClInclude Include="..\..\src\GTP.h" />
+    <ClInclude Include="..\..\src\Im2Col.h" />
+    <ClInclude Include="..\..\src\KoState.h" />
+    <ClInclude Include="..\..\src\Network.h" />
+    <ClInclude Include="..\..\src\NNCache.h" />
+    <ClInclude Include="..\..\src\OpenCL.h" />
+    <ClInclude Include="..\..\src\OpenCLScheduler.h" />
+    <ClInclude Include="..\..\src\Random.h" />
+    <ClInclude Include="..\..\src\SGFParser.h" />
+    <ClInclude Include="..\..\src\SGFTree.h" />
+    <ClInclude Include="..\..\src\SMP.h" />
+    <ClInclude Include="..\..\src\ThreadPool.h" />
+    <ClInclude Include="..\..\src\TimeControl.h" />
+    <ClInclude Include="..\..\src\Timing.h" />
+    <ClInclude Include="..\..\src\Training.h" />
+    <ClInclude Include="..\..\src\Tuner.h" />
+    <ClInclude Include="..\..\src\UCTNode.h" />
+    <ClInclude Include="..\..\src\UCTSearch.h" />
+    <ClInclude Include="..\..\src\Utils.h" />
+    <ClInclude Include="..\..\src\Zobrist.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\boost.1.65.1.0\build\native\boost.targets" Condition="Exists('..\packages\boost.1.65.1.0\build\native\boost.targets')" />
+    <Import Project="..\packages\boost_system-vc140.1.65.1.0\build\native\boost_system-vc140.targets" Condition="Exists('..\packages\boost_system-vc140.1.65.1.0\build\native\boost_system-vc140.targets')" />
+    <Import Project="..\packages\OpenBLAS.0.2.14.1\build\native\openblas.targets" Condition="Exists('..\packages\OpenBLAS.0.2.14.1\build\native\openblas.targets')" />
+    <Import Project="..\packages\opencl-nug.0.777.12\build\native\opencl-nug.targets" Condition="Exists('..\packages\opencl-nug.0.777.12\build\native\opencl-nug.targets')" />
+    <Import Project="..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets" Condition="Exists('..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets')" />
+    <Import Project="..\packages\boost_program_options-vc140.1.65.1.0\build\native\boost_program_options-vc140.targets" Condition="Exists('..\packages\boost_program_options-vc140.1.65.1.0\build\native\boost_program_options-vc140.targets')" />
+  </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\boost.1.65.1.0\build\native\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\boost.1.65.1.0\build\native\boost.targets'))" />
+    <Error Condition="!Exists('..\packages\boost_system-vc140.1.65.1.0\build\native\boost_system-vc140.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\boost_system-vc140.1.65.1.0\build\native\boost_system-vc140.targets'))" />
+    <Error Condition="!Exists('..\packages\OpenBLAS.0.2.14.1\build\native\openblas.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\OpenBLAS.0.2.14.1\build\native\openblas.targets'))" />
+    <Error Condition="!Exists('..\packages\opencl-nug.0.777.12\build\native\opencl-nug.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\opencl-nug.0.777.12\build\native\opencl-nug.targets'))" />
+    <Error Condition="!Exists('..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets'))" />
+    <Error Condition="!Exists('..\packages\boost_program_options-vc140.1.65.1.0\build\native\boost_program_options-vc140.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\boost_program_options-vc140.1.65.1.0\build\native\boost_program_options-vc140.targets'))" />
+  </Target>
+</Project>

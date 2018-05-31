@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,24 +16,27 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <time.h>
-#include <limits.h>
-#include <thread>
 #include "config.h"
-
 #include "Random.h"
+
+#include <climits>
+#include <cstdint>
+#include <thread>
+#include <random>
+
+#include "GTP.h"
 #include "Utils.h"
 
-Random* Random::get_Rng(void) {
-    static thread_local Random s_rng;
-    return &s_rng;
+Random& Random::get_Rng(void) {
+    static thread_local Random s_rng{0};
+    return s_rng;
 }
 
-Random::Random(int seed) {
-    if (seed == -1) {
+Random::Random(std::uint64_t seed) {
+    if (seed == 0) {
         size_t thread_id =
             std::hash<std::thread::id>()(std::this_thread::get_id());
-        seedrandom((uint32)time(0) ^ (uint32)thread_id);
+        seedrandom(cfg_rng_seed ^ std::uint64_t(thread_id));
     } else {
         seedrandom(seed);
     }
@@ -42,10 +45,10 @@ Random::Random(int seed) {
 // This is xoroshiro128+.
 // Note that the last bit isn't entirely random, so don't use it,
 // if possible.
-uint64 Random::random(void) {
-    const uint64 s0 = m_s[0];
-    uint64 s1 = m_s[1];
-    const uint64 result = s0 + s1;
+std::uint64_t Random::gen(void) {
+    const std::uint64_t s0 = m_s[0];
+    std::uint64_t s1 = m_s[1];
+    const std::uint64_t result = s0 + s1;
 
     s1 ^= s0;
     m_s[0] = Utils::rotl(s0, 55) ^ s1 ^ (s1 << 14);
@@ -54,30 +57,27 @@ uint64 Random::random(void) {
     return result;
 }
 
-uint16 Random::randuint16(const uint16 max) {
-    return ((random() >> 48) * max) >> 16;
+std::uint64_t Random::randuint64(const uint64_t max) {
+    const uint64_t inclusive_max = max - 1;
+    return std::uniform_int_distribution<uint64_t>{0, inclusive_max}(*this);
 }
 
-uint32 Random::randuint32(const uint32 max) {
-    return ((random() >> 32) * (uint64)max) >> 32;
+std::uint64_t Random::randuint64() {
+    return gen();
 }
 
-uint32 Random::randuint32() {
-    return random() >> 32;
+static std::uint64_t splitmix64(std::uint64_t z) {
+    z += 0x9e3779b97f4a7c15;
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+    return z ^ (z >> 31);
 }
 
-void Random::seedrandom(uint32 seed) {
-    // Magic values from Pierre L'Ecuyer,
-    // "Tables of Linear Congruental Generators of different sizes and
-    // good lattice structure"
-    m_s[0] = (741103597 * seed);
-    m_s[1] = (741103597 * m_s[0]);
+void Random::seedrandom(std::uint64_t seed) {
+    // Initialize state of xoroshiro128+ by transforming the seed
+    // with the splitmix64 algorithm.
+    // As suggested by http://xoroshiro.di.unimi.it/xoroshiro128plus.c
+    m_s[0] = splitmix64(seed);
+    m_s[1] = splitmix64(m_s[0]);
 }
 
-float Random::randflt(void) {
-    // We need a 23 bit mantissa + implicit 1 bit = 24 bit number
-    // starting from a 64 bit random.
-    constexpr float umax = 1.0f / (UINT32_C(1) << 24);
-    uint32 rnd = random() >> 40;
-    return ((float)rnd) * umax;
-}

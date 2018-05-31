@@ -1,5 +1,6 @@
 /*
     This file is part of Leela Zero.
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,69 +19,96 @@
 #ifndef CONFIG_INCLUDED
 #define CONFIG_INCLUDED
 
-/*  Timing code. Define one or none of:
- *
- *  GETTICKCOUNT, GETTIMEOFDAY
+/*
+ * We need to check for input while we are thinking.
+ * That code isn't portable, so select something appropriate for the system.
  */
 #ifdef _WIN32
-#define GETTICKCOUNT
 #undef HAVE_SELECT
 #define NOMINMAX
 #else
 #define HAVE_SELECT
-#define GETTIMEOFDAY
 #endif
 
-/* Features */
+/*
+ * BOARD_SIZE: Define size of the board to compile Leela with, must be an odd
+   number due to winograd tiles
+ */
+#define BOARD_SIZE 19
+#define BOARD_SQUARES (BOARD_SIZE*BOARD_SIZE)
+
+#if (BOARD_SIZE % 2 == 0)
+#error Code assumes odd board size, remove at your own risk!
+#endif
+
+/*
+ * Features
+ *
+ * USE_BLAS: Use a basic linear algebra library.
+ * We currently require this, as not all operations are performed on
+ * the GPU - some operations won't get any speedup from it.
+ * Also used for OpenCL self-checks.
+ */
 #define USE_BLAS
+
+/*
+ * We use OpenBLAS by default, except on macOS, which has a fast BLAS
+ * built-in. (Accelerate)
+ */
+#if !defined(__APPLE__) && !defined(__MACOSX)
 #define USE_OPENBLAS
+#endif
+
+/*
+ * USE_MKL: Optionally allows using Intel Math Kernel library as
+ * BLAS implementation. Note that MKL's license is not compatible with the GPL,
+ * so do not redistribute the resulting binaries. It is fine to use it on your
+ * own system.
+ */
 //#define USE_MKL
+/*
+ * USE_OPENCL: Use OpenCL acceleration for GPUs. This makes the program a lot
+ * faster if you have a recent GPU. Don't use it on CPUs even if they have
+ * OpenCL drivers - the BLAS version is much faster for those.
+ */
+#ifndef USE_CPU_ONLY
 #define USE_OPENCL
+#endif
+/*
+ * USE_TUNER: Expose some extra command line parameters that allow tuning the
+ * search algorithm.
+ */
 //#define USE_TUNER
 
 #define PROGRAM_NAME "Leela Zero"
-#define PROGRAM_VERSION "0.1"
+#define PROGRAM_VERSION "0.15"
 
-// OpenBLAS limitation
+/*
+ * OpenBLAS limitation: the default configuration on some Linuxes
+ * is limited to 64 cores.
+ */
 #if defined(USE_BLAS) && defined(USE_OPENBLAS)
 #define MAX_CPUS 64
 #else
 #define MAX_CPUS 128
 #endif
 
-/* Integer types */
-
-typedef int int32;
-typedef short int16;
-typedef signed char int8;
-typedef unsigned int uint32;
-typedef unsigned short uint16;
-typedef unsigned char uint8;
-
-/* Data type definitions */
-
-#ifdef _WIN32
-typedef __int64 int64 ;
-typedef unsigned __int64 uint64;
+#ifdef USE_HALF
+#include "half/half.hpp"
+using net_t = half_float::half;
 #else
-typedef long long int int64 ;
-typedef  unsigned long long int uint64;
+using net_t = float;
+#endif
+
+#if defined(USE_BLAS) && defined(USE_OPENCL) && !defined(USE_HALF)
+// If both BLAS and OpenCL are fully usable, then check the OpenCL
+// results against BLAS with some probability.
+#define USE_OPENCL_SELFCHECK
+#define SELFCHECK_PROBABILITY 2000
 #endif
 
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */
     #pragma warning(disable : 4996)
 #endif /* VC8+ */
-
-#ifdef GETTICKCOUNT
-    typedef int rtime_t;
-#else
-    #if defined(GETTIMEOFDAY)
-        #include <sys/time.h>
-        #include <time.h>
-        typedef struct timeval rtime_t;
-    #else
-        typedef time_t rtime_t;
-    #endif
-#endif
 
 #endif

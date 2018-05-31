@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,18 +18,25 @@
 #ifndef ZOBRIST_H_INCLUDED
 #define ZOBRIST_H_INCLUDED
 
+#include "config.h"
+
 #include <array>
+#include <cstdint>
 
 #include "FastBoard.h"
 #include "Random.h"
 
 class Zobrist {
 public:
-    static std::array<std::array<uint64, FastBoard::MAXSQ>,     4> zobrist;
-    static std::array<std::array<uint64, FastBoard::MAXSQ * 2>, 2> zobrist_pris;
-    static std::array<uint64, 5>                                   zobrist_pass;
+    static constexpr auto zobrist_empty = 0x1234567887654321;
+    static constexpr auto zobrist_blacktomove = 0xABCDABCDABCDABCD;
 
-    static void init_zobrist(Random & rng);
+    static std::array<std::array<std::uint64_t, FastBoard::MAXSQ>,     4> zobrist;
+    static std::array<std::uint64_t, FastBoard::MAXSQ>                    zobrist_ko;
+    static std::array<std::array<std::uint64_t, FastBoard::MAXSQ * 2>, 2> zobrist_pris;
+    static std::array<std::uint64_t, 5>                                   zobrist_pass;
+
+    static void init_zobrist(Random& rng);
 };
 
 #endif

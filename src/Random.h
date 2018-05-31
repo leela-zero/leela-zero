@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #define RANDOM_H_INCLUDED
 
 #include "config.h"
+#include <cstdint>
 #include <limits>
 
 /*
@@ -27,39 +28,51 @@
 */
 class Random {
 public:
-    Random(int seed = -1);
-    void seedrandom(uint32 s);
+    Random() = delete;
+    Random(std::uint64_t seed = 0);
+    void seedrandom(std::uint64_t s);
 
-    // random numbers from 0 to max
+    // Random numbers from [0, max - 1]
     template<int MAX>
-    uint32 randfix() {
-        static_assert(0 < MAX && MAX < std::numeric_limits<uint32>::max(),
+    std::uint32_t randfix() {
+        static_assert(0 < MAX &&
+                     MAX < std::numeric_limits<std::uint32_t>::max(),
                      "randfix out of range");
         // Last bit isn't random, so don't use it in isolation. We specialize
         // this case.
         static_assert(MAX != 2, "don't isolate the LSB with xoroshiro128+");
-        return random() % MAX;
+        return gen() % MAX;
     }
 
-    uint16 randuint16(const uint16 max);
-    uint32 randuint32(const uint32 max);
-    uint32 randuint32();
+    std::uint64_t randuint64();
 
-    // random float from 0 to 1
-    float randflt(void);
+    // Random number from [0, max - 1]
+    std::uint64_t randuint64(const std::uint64_t max);
 
     // return the thread local RNG
-    static Random* get_Rng(void);
+    static Random& get_Rng(void);
+
+    // UniformRandomBitGenerator interface
+    using result_type = std::uint64_t;
+    constexpr static result_type min() {
+        return std::numeric_limits<result_type>::min();
+    }
+    constexpr static result_type max() {
+        return std::numeric_limits<result_type>::max();
+    }
+    result_type operator()() {
+        return gen();
+    }
 
 private:
-    uint64 random(void);
-    uint64 m_s[2];
+    std::uint64_t gen(void);
+    std::uint64_t m_s[2];
 };
 
 // Specialization for last bit: use sign test
 template<>
-inline uint32 Random::randfix<2>() {
-    return (random() > (std::numeric_limits<uint64>::max() / 2));
+inline std::uint32_t Random::randfix<2>() {
+    return (gen() > (std::numeric_limits<std::uint64_t>::max() / 2));
 }
 
 #endif

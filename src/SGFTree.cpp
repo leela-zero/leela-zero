@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,17 +16,21 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
-#include <fstream>
-#include <cctype>
-#include <sstream>
-#include <stdexcept>
-#include <memory>
-#include <ctime>
+#include "config.h"
+#include "SGFTree.h"
+
+#include <cassert>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <ctime>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
 
-#include "SGFTree.h"
+#include "FullBoard.h"
+#include "GTP.h"
 #include "KoState.h"
 #include "SGFParser.h"
 #include "Utils.h"
@@ -83,35 +87,6 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) {
     return result;
 }
 
-KoState * SGFTree::get_state_from_mainline(unsigned int movenum) {
-    SGFTree * link = this;
-    SGFTree * last = this;
-
-    for (unsigned int i = 0; i <= movenum && link != nullptr; i++) {
-        link = link->get_child(0);
-        if (link == nullptr) {
-            return last->get_state();
-        } else {
-            last = link;
-        }
-    }
-
-    return link->get_state();
-}
-
-// the number of states is one more than the number of moves
-int SGFTree::count_mainline_moves(void) {
-    SGFTree * link = this;
-    int count = -1;
-
-    while (link != nullptr) {
-        link = link->get_child(0);
-        count++;
-    }
-
-    return count;
-}
-
 void SGFTree::load_from_string(std::string gamebuff) {
     std::istringstream pstream(gamebuff);
 
@@ -161,7 +136,7 @@ void SGFTree::populate_states(void) {
         std::istringstream strm(size);
         int bsize;
         strm >> bsize;
-        if (bsize <= FastBoard::MAXBOARDSIZE) {
+        if (bsize == BOARD_SIZE) {
             // Assume 7.5 komi if not specified
             m_state.init_game(bsize, 7.5f);
             valid_size = true;
@@ -183,8 +158,12 @@ void SGFTree::populate_states(void) {
         if (valid_size) {
             bsize = m_state.board.get_boardsize();
         }
-        m_state.init_game(bsize, komi);
-        m_state.set_handicap(handicap);
+        if (bsize == BOARD_SIZE) {
+            m_state.init_game(bsize, komi);
+            m_state.set_handicap(handicap);
+        } else {
+            throw std::runtime_error("Board size not supported.");
+        }
     }
 
     // handicap
@@ -195,7 +174,7 @@ void SGFTree::populate_states(void) {
         float handicap;
         strm >> handicap;
         has_handicap = (handicap > 0.0f);
-        m_state.set_handicap((int)handicap);
+        m_state.set_handicap(int(handicap));
     }
 
     // result
@@ -231,16 +210,16 @@ void SGFTree::populate_states(void) {
         }
     }
     // Loop through the stone list and apply
-    for (auto it = prop_pair_ab.first; it != prop_pair_ab.second; ++it) {
-        auto move = it->second;
+    for (auto pit = prop_pair_ab.first; pit != prop_pair_ab.second; ++pit) {
+        auto move = pit->second;
         int vtx = string_to_vertex(move);
         apply_move(FastBoard::BLACK, vtx);
     }
 
     // XXX: count handicap stones
     const auto& prop_pair_aw = m_properties.equal_range("AW");
-    for (auto it = prop_pair_aw.first; it != prop_pair_aw.second; ++it) {
-        auto move = it->second;
+    for (auto pit = prop_pair_aw.first; pit != prop_pair_aw.second; ++pit) {
+        auto move = pit->second;
         int vtx = string_to_vertex(move);
         apply_move(FastBoard::WHITE, vtx);
     }
@@ -355,16 +334,16 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
 }
 
 int SGFTree::get_move(int tomove) {
-    std::string movestring;
+    std::string colorstring;
 
     if (tomove == FastBoard::BLACK) {
-        movestring = "B";
+        colorstring = "B";
     } else {
-        movestring = "W";
+        colorstring = "W";
     }
 
     PropertyMap::iterator it;
-    it = m_properties.find(movestring);
+    it = m_properties.find(colorstring);
 
     if (it != m_properties.end()) {
         std::string movestring = it->second;
@@ -374,7 +353,7 @@ int SGFTree::get_move(int tomove) {
     return SGFTree::EOT;
 }
 
-FastBoard::square_t SGFTree::get_winner() {
+FastBoard::square_t SGFTree::get_winner() const {
     return m_winner;
 }
 
@@ -417,13 +396,25 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     header.append("DT[" + std::string(timestr) + "]");
     header.append("SZ[" + std::to_string(size) + "]");
     header.append("KM[" + str(boost::format("%.1f") % komi) + "]");
+    header.append(state->get_timecontrol().to_text_sgf());
+
+    auto leela_name = std::string{PROGRAM_NAME};
+    leela_name.append(" " + std::string(PROGRAM_VERSION));
+    if (!cfg_weightsfile.empty()) {
+        auto pos = cfg_weightsfile.find_last_of("\\/");
+        if (std::string::npos == pos) {
+            pos = 0;
+        } else {
+            ++pos;
+        }
+        leela_name.append(" " + cfg_weightsfile.substr(pos, 8));
+    }
+
     if (compcolor == FastBoard::WHITE) {
-        header.append("PW[" + std::string(PROGRAM_NAME) + " "
-                            + std::string(PROGRAM_VERSION) + "]");
+        header.append("PW[" + leela_name + "]");
         header.append("PB[Human]");
     } else {
-        header.append("PB[" + std::string(PROGRAM_NAME) + " "
-                            + std::string(PROGRAM_VERSION) + "]");
+        header.append("PB[" + leela_name + "]");
         header.append("PW[Human]");
     }
 
@@ -456,11 +447,9 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
 
     while (state->forward_move()) {
         int move = state->get_last_move();
-        if (move == FastBoard::RESIGN) {
-            break;
-        }
+        assert(move != FastBoard::RESIGN);
         std::string movestr = state->board.move_to_text_sgf(move);
-        if (state->get_to_move() == FastBoard::BLACK) {
+        if (state->board.black_to_move()) {
             moves.append(";W[" + movestr + "]");
         } else {
             moves.append(";B[" + movestr + "]");
@@ -470,7 +459,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
         }
     }
 
-    if (state->get_last_move() != FastBoard::RESIGN) {
+    if (!state->has_resigned()) {
         float score = state->final_score();
 
         if (score > 0.0f) {
@@ -479,13 +468,14 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
             header.append("RE[W+" + str(boost::format("%.1f") % -score) + "]");
         }
     } else {
-        // Last move was resign, so side to move won
-        if (state->get_to_move() == FastBoard::BLACK) {
+        if (state->who_resigned() == FastBoard::WHITE) {
             header.append("RE[B+Resign]");
         } else {
             header.append("RE[W+Resign]");
         }
     }
+
+    header.append("\nC[" + std::string{PROGRAM_NAME} + " options:" + cfg_options_str + "]");
 
     std::string result(header);
     result.append("\n");

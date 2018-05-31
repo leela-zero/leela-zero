@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,9 +22,10 @@
 #include "config.h"
 
 #include <array>
-#include <string>
-#include <vector>
 #include <queue>
+#include <string>
+#include <utility>
+#include <vector>
 
 class FastBoard {
     friend class FastState;
@@ -34,16 +35,12 @@ public:
         but a power of 2 makes things a bit faster
     */
     static constexpr int NBR_SHIFT = 4;
-
-    /*
-        largest board supported
-    */
-    static constexpr int MAXBOARDSIZE = 19;
+    static constexpr int NBR_MASK = (1 << NBR_SHIFT) - 1;
 
     /*
         highest existing square
     */
-    static constexpr int MAXSQ = ((MAXBOARDSIZE + 2) * (MAXBOARDSIZE + 2));
+    static constexpr int MAXSQ = ((BOARD_SIZE + 2) * (BOARD_SIZE + 2));
 
     /*
         infinite score
@@ -78,42 +75,26 @@ public:
     int get_vertex(int i, int j) const;
     void set_square(int x, int y, square_t content);
     void set_square(int vertex, square_t content);
-    int rotate_vertex(int vertex, int symmetry);
     std::pair<int, int> get_xy(int vertex) const;
-    int get_groupid(int vertex);
 
-    bool is_suicide(int i, int color);
-    int fast_ss_suicide(const int color, const int i);
-    int update_board_fast(const int color, const int i, bool & capture);
-    int count_pliberties(const int i);
-    int count_rliberties(const int i);
-    int merged_string_size(int color, int vertex);
-    void augment_chain(std::vector<int> & chains, int vertex);
-    bool is_eye(const int color, const int vtx);
-    int get_dir(int i);
-    int get_extra_dir(int i);
+    bool is_suicide(int i, int color) const;
+    int count_pliberties(const int i) const;
+    bool is_eye(const int color, const int vtx) const;
 
-    int estimate_mc_score(float komi);
-    float final_mc_score(float komi);
-    int get_stone_count();
-    float area_score(float komi);
-    std::vector<bool> calc_reach_color(int col);
+    float area_score(float komi) const;
 
-    int get_prisoners(int side);
-    bool black_to_move();
-    int get_to_move();
+    int get_prisoners(int side) const;
+    bool black_to_move() const;
+    bool white_to_move() const;
+    int get_to_move() const;
     void set_to_move(int color);
 
-    std::string move_to_text(int move);
-    std::string move_to_text_sgf(int move);
-    int text_to_move(std::string move);
-    std::string get_stone_list();
-    int string_size(int vertex);
-    std::vector<int> get_string_stones(int vertex);
-    std::string get_string(int vertex);
+    std::string move_to_text(int move) const;
+    std::string move_to_text_sgf(int move) const;
+    std::string get_stone_list() const;
+    std::string get_string(int vertex) const;
 
     void reset_board(int size);
-    void display_liberties(int lastmove = -1);
     void display_board(int lastmove = -1);
 
     static bool starpoint(int size, int point);
@@ -133,10 +114,7 @@ protected:
     std::array<unsigned short, MAXSQ+1>    m_stones;      /* stones per string parent */
     std::array<unsigned short, MAXSQ>      m_neighbours;  /* counts of neighboring stones */
     std::array<int, 4>                     m_dirs;        /* movement directions 4 way */
-    std::array<int, 8>                     m_extradirs;   /* movement directions 8 way */
     std::array<int, 2>                     m_prisoners;   /* prisoners per color */
-    std::array<int, 2>                     m_totalstones; /* stones per color */
-    std::vector<int>                       m_critical;    /* queue of critical points */
     std::array<unsigned short, MAXSQ>      m_empty;       /* empty squares */
     std::array<unsigned short, MAXSQ>      m_empty_idx;   /* indexes of square */
     int m_empty_cnt;                                      /* count of empties */
@@ -145,15 +123,15 @@ protected:
     int m_maxsq;
 
     int m_boardsize;
+    int m_squaresize;
 
-    int count_neighbours(const int color, const int i);
+    int calc_reach_color(int color) const;
+
+    int count_neighbours(const int color, const int i) const;
     void merge_strings(const int ip, const int aip);
-    int remove_string_fast(int i);
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
-    int update_board_eye(const int color, const int i);
-    int in_atari(int vertex);
-    bool fast_in_atari(int vertex);
+    void print_columns();
 };
 
 #endif

@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,21 +16,22 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #include "config.h"
+#include "Network.h"
+
 #include <algorithm>
-#include <cassert>
-#include <iostream>
-#include <fstream>
-#include <iterator>
-#include <string>
-#include <memory>
-#include <cmath>
 #include <array>
-#include <thread>
+#include <cassert>
+#include <cmath>
+#include <iterator>
+#include <memory>
+#include <sstream>
+#include <string>
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
+#include <boost/spirit/home/x3.hpp>
 
-#include "Im2Col.h"
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
 #endif
@@ -38,184 +39,415 @@
 #include <mkl.h>
 #endif
 #ifdef USE_OPENBLAS
-#include <openblas/cblas.h>
+#include <cblas.h>
 #endif
+#include "zlib.h"
 #ifdef USE_OPENCL
-#include "OpenCL.h"
+#include "OpenCLScheduler.h"
 #include "UCTNode.h"
 #endif
 
-#include "SGFTree.h"
-#include "SGFParser.h"
-#include "Utils.h"
 #include "FastBoard.h"
-#include "Random.h"
-#include "Network.h"
+#include "FastState.h"
+#include "FullBoard.h"
+#include "GameState.h"
 #include "GTP.h"
+#include "Im2Col.h"
+#include "NNCache.h"
+#include "Random.h"
+#include "ThreadPool.h"
+#include "Timing.h"
 #include "Utils.h"
 
+namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
 // Input + residual block tower
-std::vector<std::vector<float>> conv_weights;
-std::vector<std::vector<float>> conv_biases;
-std::vector<std::vector<float>> batchnorm_means;
-std::vector<std::vector<float>> batchnorm_variances;
+static std::vector<std::vector<float>> conv_weights;
+static std::vector<std::vector<float>> conv_biases;
+static std::vector<std::vector<float>> batchnorm_means;
+static std::vector<std::vector<float>> batchnorm_stddivs;
 
 // Policy head
-std::array<float, 512> conv_pol_w;
-std::array<float, 2> conv_pol_b;
-std::array<float, 2> bn_pol_w1;
-std::array<float, 2> bn_pol_w2;
+static std::vector<float> conv_pol_w;
+static std::vector<float> conv_pol_b;
+static std::array<float, 2> bn_pol_w1;
+static std::array<float, 2> bn_pol_w2;
 
-std::array<float, 261364> ip_pol_w;
-std::array<float, 362> ip_pol_b;
+static std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> ip_pol_w;
+static std::array<float, BOARD_SQUARES + 1> ip_pol_b;
 
 // Value head
-std::array<float, 256> conv_val_w;
-std::array<float, 1> conv_val_b;
-std::array<float, 1> bn_val_w1;
-std::array<float, 1> bn_val_w2;
+static std::vector<float> conv_val_w;
+static std::vector<float> conv_val_b;
+static std::array<float, 1> bn_val_w1;
+static std::array<float, 1> bn_val_w2;
 
-std::array<float, 92416> ip1_val_w;
-std::array<float, 256> ip1_val_b;
+static std::array<float, BOARD_SQUARES * 256> ip1_val_w;
+static std::array<float, 256> ip1_val_b;
 
-std::array<float, 256> ip2_val_w;
-std::array<float, 1> ip2_val_b;
+static std::array<float, 256> ip2_val_w;
+static std::array<float, 1> ip2_val_b;
+static bool value_head_not_stm;
 
-void Network::benchmark(GameState * state) {
-    {
-        int BENCH_AMOUNT = 1600;
-        int cpus = cfg_num_threads;
-        int iters_per_thread = (BENCH_AMOUNT + (cpus - 1)) / cpus;
+// Symmetry helper
+static std::array<std::array<int, BOARD_SQUARES>, 8> symmetry_nn_idx_table;
 
-        Time start;
+void Network::benchmark(const GameState* const state, const int iterations) {
+    const auto cpus = cfg_num_threads;
+    const Time start;
 
-        ThreadGroup tg(thread_pool);
-        for (int i = 0; i < cpus; i++) {
-            tg.add_task([iters_per_thread, state]() {
-                GameState mystate = *state;
-                for (int loop = 0; loop < iters_per_thread; loop++) {
-                    auto vec = get_scored_moves(&mystate, Ensemble::RANDOM_ROTATION);
-                }
-            });
-        };
-        tg.wait_all();
+    ThreadGroup tg(thread_pool);
+    std::atomic<int> runcount{0};
 
-        Time end;
+    for (auto i = 0; i < cpus; i++) {
+        tg.add_task([&runcount, iterations, state]() {
+            while (runcount < iterations) {
+                runcount++;
+                get_scored_moves(state, Ensemble::RANDOM_SYMMETRY, -1, true);
+            }
+        });
+    }
+    tg.wait_all();
 
-        myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
-                 BENCH_AMOUNT,
-                 (float)Time::timediff(start,end)/100.0,
-                 (int)((float)BENCH_AMOUNT/((float)Time::timediff(start,end)/100.0)));
+    const Time end;
+    const auto elapsed = Time::timediff_seconds(start, end);
+    myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
+             runcount.load(), elapsed, int(runcount.load() / elapsed));
+}
+
+void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
+    for (auto&& w : weights) {
+        w = 1.0f / std::sqrt(w + epsilon);
     }
 }
 
-void Network::initialize(void) {
-#ifdef USE_OPENCL
-    myprintf("Initializing OpenCL\n");
-    opencl.initialize();
+std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
+                                                 const int outputs,
+                                                 const int channels) {
+    // F(2x2, 3x3) Winograd filter transformation
+    // transpose(G.dot(f).dot(G.transpose()))
+    // U matrix is transposed for better memory layout in SGEMM
+    auto U = std::vector<float>(WINOGRAD_TILE * outputs * channels);
+    const auto G = std::array<float, WINOGRAD_TILE>{ 1.0,  0.0,  0.0,
+                                                     0.5,  0.5,  0.5,
+                                                     0.5, -0.5,  0.5,
+                                                     0.0,  0.0,  1.0};
+    auto temp = std::array<float, 12>{};
 
+    for (auto o = 0; o < outputs; o++) {
+        for (auto c = 0; c < channels; c++) {
+            for (auto i = 0; i < 4; i++){
+                for (auto j = 0; j < 3; j++) {
+                    auto acc = 0.0f;
+                    for (auto k = 0; k < 3; k++) {
+                        acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j];
+                    }
+                    temp[i*3 + j] = acc;
+                }
+            }
+
+            for (auto xi = 0; xi < 4; xi++) {
+                for (auto nu = 0; nu < 4; nu++) {
+                    auto acc = 0.0f;
+                    for (auto k = 0; k < 3; k++) {
+                        acc += temp[xi*3 + k] * G[nu*3 + k];
+                    }
+                    U[xi * (4 * outputs * channels)
+                      + nu * (outputs * channels)
+                      + c * outputs
+                      + o] = acc;
+                }
+            }
+        }
+    }
+
+    return U;
+}
+
+std::vector<float> Network::zeropad_U(const std::vector<float>& U,
+                                      const int outputs, const int channels,
+                                      const int outputs_pad,
+                                      const int channels_pad) {
+    // Fill with zeroes
+    auto Upad = std::vector<float>(WINOGRAD_TILE * outputs_pad * channels_pad);
+
+    for (auto o = 0; o < outputs; o++) {
+        for (auto c = 0; c < channels; c++) {
+            for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++){
+                for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
+                    Upad[xi * (WINOGRAD_ALPHA * outputs_pad * channels_pad)
+                         + nu * (outputs_pad * channels_pad)
+                         + c * outputs_pad +
+                          o] =
+                    U[xi * (WINOGRAD_ALPHA * outputs * channels)
+                      + nu * (outputs * channels)
+                      + c * outputs
+                      + o];
+                }
+            }
+        }
+    }
+
+    return Upad;
+}
+
+std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     // Count size of the network
     myprintf("Detecting residual layers...");
-    std::ifstream wtfile(cfg_weightsfile);
-    if (wtfile.fail()) {
-        myprintf("Could not open weights file: %s\n", cfg_weightsfile.c_str());
-        exit(EXIT_FAILURE);
+    // We are version 1 or 2
+    if (value_head_not_stm) {
+        myprintf("v%d...", 2);
+    } else {
+        myprintf("v%d...", 1);
     }
-    std::string line;
-    auto linecount = size_t{0};
+    // First line was the version number
+    auto linecount = size_t{1};
+    auto channels = 0;
+    auto line = std::string{};
     while (std::getline(wtfile, line)) {
+        auto iss = std::stringstream{line};
+        // Third line of parameters are the convolution layer biases,
+        // so this tells us the amount of channels in the residual layers.
+        // We are assuming all layers have the same amount of filters.
+        if (linecount == 2) {
+            auto count = std::distance(std::istream_iterator<std::string>(iss),
+                                       std::istream_iterator<std::string>());
+            myprintf("%d channels...", count);
+            channels = count;
+        }
         linecount++;
     }
-    // 1 input layer (4 x weights), 14 ending weights, the rest are residuals
-    // every residual has 8 x weight lines
-    auto residual_layers = linecount - (4 + 14);
-    if (residual_layers % 8 != 0) {
+    // 1 format id, 1 input layer (4 x weights), 14 ending weights,
+    // the rest are residuals, every residual has 8 x weight lines
+    auto residual_blocks = linecount - (1 + 4 + 14);
+    if (residual_blocks % 8 != 0) {
         myprintf("\nInconsistent number of weights in the file.\n");
-        exit(EXIT_FAILURE);
+        return {0, 0};
     }
-    residual_layers /= 8;
-    myprintf("%d\nTransferring weights to GPU...", residual_layers);
+    residual_blocks /= 8;
+    myprintf("%d blocks.\n", residual_blocks);
 
     // Re-read file and process
     wtfile.clear();
     wtfile.seekg(0, std::ios::beg);
 
-    auto plain_conv_layers = 1 + (residual_layers * 2);
-    auto plain_conv_wts = plain_conv_layers * 4;
+    // Get the file format id out of the way
+    std::getline(wtfile, line);
+
+    const auto plain_conv_layers = 1 + (residual_blocks * 2);
+    const auto plain_conv_wts = plain_conv_layers * 4;
     linecount = 0;
     while (std::getline(wtfile, line)) {
         std::vector<float> weights;
-        float weight;
-        std::istringstream iss(line);
-        while (iss >> weight) {
-            weights.emplace_back(weight);
+        auto it_line = line.cbegin();
+        const auto ok = phrase_parse(it_line, line.cend(),
+                                     *x3::float_, x3::space, weights);
+        if (!ok || it_line != line.cend()) {
+            myprintf("\nFailed to parse weight file. Error on line %d.\n",
+                    linecount + 2); //+1 from version line, +1 from 0-indexing
+            return {0,0};
         }
         if (linecount < plain_conv_wts) {
             if (linecount % 4 == 0) {
                 conv_weights.emplace_back(weights);
             } else if (linecount % 4 == 1) {
+                // Redundant in our model, but they encode the
+                // number of outputs so we have to read them in.
                 conv_biases.emplace_back(weights);
             } else if (linecount % 4 == 2) {
                 batchnorm_means.emplace_back(weights);
             } else if (linecount % 4 == 3) {
-                batchnorm_variances.emplace_back(weights);
+                process_bn_var(weights);
+                batchnorm_stddivs.emplace_back(weights);
             }
         } else if (linecount == plain_conv_wts) {
-            std::copy(begin(weights), end(weights), begin(conv_pol_w));
+            conv_pol_w = std::move(weights);
         } else if (linecount == plain_conv_wts + 1) {
-            std::copy(begin(weights), end(weights), begin(conv_pol_b));
+            conv_pol_b = std::move(weights);
         } else if (linecount == plain_conv_wts + 2) {
-            std::copy(begin(weights), end(weights), begin(bn_pol_w1));
+            std::copy(cbegin(weights), cend(weights), begin(bn_pol_w1));
         } else if (linecount == plain_conv_wts + 3) {
-            std::copy(begin(weights), end(weights), begin(bn_pol_w2));
+            process_bn_var(weights);
+            std::copy(cbegin(weights), cend(weights), begin(bn_pol_w2));
         } else if (linecount == plain_conv_wts + 4) {
-            std::copy(begin(weights), end(weights), begin(ip_pol_w));
+            std::copy(cbegin(weights), cend(weights), begin(ip_pol_w));
         } else if (linecount == plain_conv_wts + 5) {
-            std::copy(begin(weights), end(weights), begin(ip_pol_b));
+            std::copy(cbegin(weights), cend(weights), begin(ip_pol_b));
         } else if (linecount == plain_conv_wts + 6) {
-            std::copy(begin(weights), end(weights), begin(conv_val_w));
+            conv_val_w = std::move(weights);
         } else if (linecount == plain_conv_wts + 7) {
-            std::copy(begin(weights), end(weights), begin(conv_val_b));
+            conv_val_b = std::move(weights);
         } else if (linecount == plain_conv_wts + 8) {
-            std::copy(begin(weights), end(weights), begin(bn_val_w1));
+            std::copy(cbegin(weights), cend(weights), begin(bn_val_w1));
         } else if (linecount == plain_conv_wts + 9) {
-            std::copy(begin(weights), end(weights), begin(bn_val_w2));
+            process_bn_var(weights);
+            std::copy(cbegin(weights), cend(weights), begin(bn_val_w2));
         } else if (linecount == plain_conv_wts + 10) {
-            std::copy(begin(weights), end(weights), begin(ip1_val_w));
+            std::copy(cbegin(weights), cend(weights), begin(ip1_val_w));
         } else if (linecount == plain_conv_wts + 11) {
-            std::copy(begin(weights), end(weights), begin(ip1_val_b));
+            std::copy(cbegin(weights), cend(weights), begin(ip1_val_b));
         } else if (linecount == plain_conv_wts + 12) {
-            std::copy(begin(weights), end(weights), begin(ip2_val_w));
+            std::copy(cbegin(weights), cend(weights), begin(ip2_val_w));
         } else if (linecount == plain_conv_wts + 13) {
-            std::copy(begin(weights), end(weights), begin(ip2_val_b));
+            std::copy(cbegin(weights), cend(weights), begin(ip2_val_b));
         }
         linecount++;
     }
-    wtfile.close();
 
-    // input
-    size_t weight_index = 0;
-    opencl_net.push_convolve(3, conv_weights[weight_index],
-                                conv_biases[weight_index]);
-    opencl_net.push_batchnorm(361, batchnorm_means[weight_index],
-                                   batchnorm_variances[weight_index]);
+    return {channels, static_cast<int>(residual_blocks)};
+}
+
+std::pair<int, int> Network::load_network_file(const std::string& filename) {
+    // gzopen supports both gz and non-gz files, will decompress
+    // or just read directly as needed.
+    auto gzhandle = gzopen(filename.c_str(), "rb");
+    if (gzhandle == nullptr) {
+        myprintf("Could not open weights file: %s\n", filename.c_str());
+        return {0, 0};
+    }
+    // Stream the gz file in to a memory buffer stream.
+    auto buffer = std::stringstream{};
+    constexpr auto chunkBufferSize = 64 * 1024;
+    std::vector<char> chunkBuffer(chunkBufferSize);
+    while (true) {
+        auto bytesRead = gzread(gzhandle, chunkBuffer.data(), chunkBufferSize);
+        if (bytesRead == 0) break;
+        if (bytesRead < 0) {
+            myprintf("Failed to decompress or read: %s\n", filename.c_str());
+            gzclose(gzhandle);
+            return {0, 0};
+        }
+        assert(bytesRead <= chunkBufferSize);
+        buffer.write(chunkBuffer.data(), bytesRead);
+    }
+    gzclose(gzhandle);
+
+    // Read format version
+    auto line = std::string{};
+    auto format_version = -1;
+    if (std::getline(buffer, line)) {
+        auto iss = std::stringstream{line};
+        // First line is the file format version id
+        iss >> format_version;
+        if (iss.fail() || (format_version != 1 && format_version != 2)) {
+            myprintf("Weights file is the wrong version.\n");
+            return {0, 0};
+        } else {
+            // Version 2 networks are identical to v1, except
+            // that they return the score for black instead of
+            // the player to move. This is used by ELF Open Go.
+            if (format_version == 2) {
+                value_head_not_stm = true;
+            } else {
+                value_head_not_stm = false;
+            }
+            return load_v1_network(buffer);
+        }
+    }
+    return {0, 0};
+}
+
+void Network::initialize() {
+    // Prepare symmetry table
+    for (auto s = 0; s < 8; s++) {
+        for (auto v = 0; v < BOARD_SQUARES; v++) {
+            symmetry_nn_idx_table[s][v] = get_nn_idx_symmetry(v, s);
+        }
+    }
+
+    // Load network from file
+    size_t channels, residual_blocks;
+    std::tie(channels, residual_blocks) = load_network_file(cfg_weightsfile);
+    if (channels == 0) {
+        exit(EXIT_FAILURE);
+    }
+
+    auto weight_index = size_t{0};
+    // Input convolution
+    // Winograd transform convolution weights
+    conv_weights[weight_index] =
+        winograd_transform_f(conv_weights[weight_index],
+                             channels, INPUT_CHANNELS);
     weight_index++;
 
-    // residual blocks
-    for (auto i = size_t{0}; i < residual_layers; i++) {
-        opencl_net.push_residual(3, conv_weights[weight_index],
-                                    conv_biases[weight_index],
-                                    batchnorm_means[weight_index],
-                                    batchnorm_variances[weight_index],
-                                    conv_weights[weight_index + 1],
-                                    conv_biases[weight_index + 1],
-                                    batchnorm_means[weight_index + 1],
-                                    batchnorm_variances[weight_index + 1]);
-        weight_index += 2;
+    // Residual block convolutions
+    for (auto i = size_t{0}; i < residual_blocks * 2; i++) {
+        conv_weights[weight_index] =
+            winograd_transform_f(conv_weights[weight_index],
+                                 channels, channels);
+        weight_index++;
     }
-    myprintf("done\n");
+
+    // Biases are not calculated and are typically zero but some networks might
+    // still have non-zero biases.
+    // Move biases to batchnorm means to make the output match without having
+    // to separately add the biases.
+    for (auto i = size_t{0}; i < conv_biases.size(); i++) {
+        for (auto j = size_t{0}; j < batchnorm_means[i].size(); j++) {
+            batchnorm_means[i][j] -= conv_biases[i][j];
+            conv_biases[i][j] = 0.0f;
+        }
+    }
+
+    for (auto i = size_t{0}; i < bn_val_w1.size(); i++) {
+        bn_val_w1[i] -= conv_val_b[i];
+        conv_val_b[i] = 0.0f;
+    }
+
+    for (auto i = size_t{0}; i < bn_pol_w1.size(); i++) {
+        bn_pol_w1[i] -= conv_pol_b[i];
+        conv_pol_b[i] = 0.0f;
+    }
+
+#ifdef USE_OPENCL
+    myprintf("Initializing OpenCL.\n");
+    opencl.initialize(channels);
+
+    for (const auto & opencl_net : opencl.get_networks()) {
+        const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
+
+        const auto mwg = tuners[0];
+        const auto kwg = tuners[2];
+        const auto vwm = tuners[3];
+
+        weight_index = 0;
+
+        const auto m_ceil = ceilMultiple(ceilMultiple(channels, mwg), vwm);
+        const auto k_ceil = ceilMultiple(ceilMultiple(INPUT_CHANNELS, kwg), vwm);
+
+        const auto Upad = zeropad_U(conv_weights[weight_index],
+                                    channels, INPUT_CHANNELS,
+                                    m_ceil, k_ceil);
+
+        // Winograd filter transformation changes filter size to 4x4
+        opencl_net->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
+            channels, Upad,
+            batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
+        weight_index++;
+
+        // residual blocks
+        for (auto i = size_t{0}; i < residual_blocks; i++) {
+            const auto Upad1 = zeropad_U(conv_weights[weight_index],
+                                         channels, channels,
+                                         m_ceil, m_ceil);
+            const auto Upad2 = zeropad_U(conv_weights[weight_index + 1],
+                                         channels, channels,
+                                         m_ceil, m_ceil);
+            opencl_net->push_residual(WINOGRAD_ALPHA, channels, channels,
+                                      Upad1,
+                                      batchnorm_means[weight_index],
+                                      batchnorm_stddivs[weight_index],
+                                      Upad2,
+                                      batchnorm_means[weight_index + 1],
+                                      batchnorm_stddivs[weight_index + 1]);
+            weight_index += 2;
+        }
+
+        // Output head convolutions
+        opencl_net->push_convolve1(channels, OUTPUTS_POLICY, conv_pol_w);
+        opencl_net->push_convolve1(channels, OUTPUTS_VALUE, conv_val_w);
+    }
 #endif
 #ifdef USE_BLAS
 #ifndef __APPLE__
@@ -235,28 +467,214 @@ void Network::initialize(void) {
 }
 
 #ifdef USE_BLAS
-template<unsigned int filter_size,
-         unsigned int channels, unsigned int outputs,
-         size_t W, size_t B>
-void convolve(const std::vector<float>& input,
-              const std::array<float, W>& weights,
-              const std::array<float, B>& biases,
-              std::vector<float>& output) {
-    // fixed for 19x19
-    constexpr unsigned int width = 19;
-    constexpr unsigned int height = 19;
-    constexpr unsigned int spatial_out = width * height;
+void Network::winograd_transform_in(const std::vector<float>& in,
+                                    std::vector<float>& V,
+                                    const int C) {
+    constexpr auto W = BOARD_SIZE;
+    constexpr auto H = BOARD_SIZE;
+    constexpr auto WTILES = (W + 1) / 2;
+    constexpr auto P = WTILES * WTILES;
 
-    constexpr unsigned int filter_len = filter_size * filter_size;
-    constexpr unsigned int filter_dim = filter_len * channels;
+    std::array<std::array<float, WTILES * 2 + 2>, WTILES * 2 + 2> in_pad;
+    for (auto xin = size_t{0}; xin < in_pad.size(); xin++) {
+        in_pad[0][xin]     = 0.0f;
+        in_pad[H + 1][xin] = 0.0f;
+        in_pad[H + 2][xin] = 0.0f;
+    }
+    for (auto yin = size_t{1}; yin < in_pad[0].size() - 2; yin++) {
+        in_pad[yin][0]     = 0.0f;
+        in_pad[yin][W + 1] = 0.0f;
+        in_pad[yin][W + 2] = 0.0f;
+    }
+
+    for (auto ch = 0; ch < C; ch++) {
+        for (auto yin = 0; yin < H; yin++) {
+            for (auto xin = 0; xin < W; xin++) {
+                in_pad[yin + 1][xin + 1] = in[ch*(W*H) + yin*W + xin];
+            }
+        }
+        for (auto block_y = 0; block_y < WTILES; block_y++) {
+            // Tiles overlap by 2
+            const auto yin = 2 * block_y;
+            for (auto block_x = 0; block_x < WTILES; block_x++) {
+                const auto xin = 2 * block_x;
+
+                // Calculates transpose(B).x.B
+                // B = [[ 1.0,  0.0,  0.0,  0.0],
+                //      [ 0.0,  1.0, -1.0,  1.0],
+                //      [-1.0,  1.0,  1.0,  0.0],
+                //      [ 0.0,  0.0,  0.0, -1.0]]
+
+                using WinogradTile =
+                    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
+                WinogradTile T1, T2;
+
+                T1[0][0] = in_pad[yin + 0][xin + 0] - in_pad[yin + 2][xin + 0];
+                T1[0][1] = in_pad[yin + 0][xin + 1] - in_pad[yin + 2][xin + 1];
+                T1[0][2] = in_pad[yin + 0][xin + 2] - in_pad[yin + 2][xin + 2];
+                T1[0][3] = in_pad[yin + 0][xin + 3] - in_pad[yin + 2][xin + 3];
+                T1[1][0] = in_pad[yin + 1][xin + 0] + in_pad[yin + 2][xin + 0];
+                T1[1][1] = in_pad[yin + 1][xin + 1] + in_pad[yin + 2][xin + 1];
+                T1[1][2] = in_pad[yin + 1][xin + 2] + in_pad[yin + 2][xin + 2];
+                T1[1][3] = in_pad[yin + 1][xin + 3] + in_pad[yin + 2][xin + 3];
+                T1[2][0] = in_pad[yin + 2][xin + 0] - in_pad[yin + 1][xin + 0];
+                T1[2][1] = in_pad[yin + 2][xin + 1] - in_pad[yin + 1][xin + 1];
+                T1[2][2] = in_pad[yin + 2][xin + 2] - in_pad[yin + 1][xin + 2];
+                T1[2][3] = in_pad[yin + 2][xin + 3] - in_pad[yin + 1][xin + 3];
+                T1[3][0] = in_pad[yin + 1][xin + 0] - in_pad[yin + 3][xin + 0];
+                T1[3][1] = in_pad[yin + 1][xin + 1] - in_pad[yin + 3][xin + 1];
+                T1[3][2] = in_pad[yin + 1][xin + 2] - in_pad[yin + 3][xin + 2];
+                T1[3][3] = in_pad[yin + 1][xin + 3] - in_pad[yin + 3][xin + 3];
+
+                T2[0][0] = T1[0][0] - T1[0][2];
+                T2[0][1] = T1[0][1] + T1[0][2];
+                T2[0][2] = T1[0][2] - T1[0][1];
+                T2[0][3] = T1[0][1] - T1[0][3];
+                T2[1][0] = T1[1][0] - T1[1][2];
+                T2[1][1] = T1[1][1] + T1[1][2];
+                T2[1][2] = T1[1][2] - T1[1][1];
+                T2[1][3] = T1[1][1] - T1[1][3];
+                T2[2][0] = T1[2][0] - T1[2][2];
+                T2[2][1] = T1[2][1] + T1[2][2];
+                T2[2][2] = T1[2][2] - T1[2][1];
+                T2[2][3] = T1[2][1] - T1[2][3];
+                T2[3][0] = T1[3][0] - T1[3][2];
+                T2[3][1] = T1[3][1] + T1[3][2];
+                T2[3][2] = T1[3][2] - T1[3][1];
+                T2[3][3] = T1[3][1] - T1[3][3];
+
+                const auto offset = ch * P + block_y * WTILES + block_x;
+                for (auto i = 0; i < WINOGRAD_ALPHA; i++) {
+                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
+                        V[(i*WINOGRAD_ALPHA + j)*C*P + offset] = T2[i][j];
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Network::winograd_sgemm(const std::vector<float>& U,
+                             const std::vector<float>& V,
+                             std::vector<float>& M,
+                             const int C, const int K) {
+    constexpr auto P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / WINOGRAD_ALPHA;
+
+    for (auto b = 0; b < WINOGRAD_TILE; b++) {
+        const auto offset_u = b * K * C;
+        const auto offset_v = b * C * P;
+        const auto offset_m = b * K * P;
+
+        cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
+                    K, P, C,
+                    1.0f,
+                    &U[offset_u], K,
+                    &V[offset_v], P,
+                    0.0f,
+                    &M[offset_m], P);
+    }
+}
+
+void Network::winograd_transform_out(const std::vector<float>& M,
+                                     std::vector<float>& Y,
+                                     const int K) {
+    constexpr auto W = BOARD_SIZE;
+    constexpr auto H = BOARD_SIZE;
+    constexpr auto WTILES = (W + 1) / 2;
+    constexpr auto P = WTILES * WTILES;
+
+    for (auto k = 0; k < K; k++) {
+        const auto kHW = k * W * H;
+        for (auto block_x = 0; block_x < WTILES; block_x++) {
+            const auto x = 2 * block_x;
+            for (auto block_y = 0; block_y < WTILES; block_y++) {
+                const auto y = 2 * block_y;
+
+                const auto b = block_y * WTILES + block_x;
+                using WinogradTile =
+                    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
+                WinogradTile temp_m;
+                for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++) {
+                    for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
+                        temp_m[xi][nu] =
+                            M[xi*(WINOGRAD_ALPHA*K*P) + nu*(K*P)+ k*P + b];
+                    }
+                }
+
+                // Calculates transpose(A).temp_m.A
+                //    A = [1.0,  0.0],
+                //        [1.0,  1.0],
+                //        [1.0, -1.0],
+                //        [0.0, -1.0]]
+
+                const std::array<std::array<float, 2>, 2> o = {
+                    temp_m[0][0] + temp_m[0][1] + temp_m[0][2] +
+                    temp_m[1][0] + temp_m[1][1] + temp_m[1][2] +
+                    temp_m[2][0] + temp_m[2][1] + temp_m[2][2],
+                    temp_m[0][1] - temp_m[0][2] - temp_m[0][3] +
+                    temp_m[1][1] - temp_m[1][2] - temp_m[1][3] +
+                    temp_m[2][1] - temp_m[2][2] - temp_m[2][3],
+                    temp_m[1][0] + temp_m[1][1] + temp_m[1][2] -
+                    temp_m[2][0] - temp_m[2][1] - temp_m[2][2] -
+                    temp_m[3][0] - temp_m[3][1] - temp_m[3][2],
+                    temp_m[1][1] - temp_m[1][2] - temp_m[1][3] -
+                    temp_m[2][1] + temp_m[2][2] + temp_m[2][3] -
+                    temp_m[3][1] + temp_m[3][2] + temp_m[3][3]
+                };
+
+                const auto y_ind = kHW + (y)*W + (x);
+                Y[y_ind] = o[0][0];
+                if (x + 1 < W) {
+                    Y[y_ind + 1] = o[0][1];
+                }
+                if (y + 1 < H) {
+                    Y[y_ind + W] = o[1][0];
+                    if (x + 1 < W) {
+                        Y[y_ind + W + 1] = o[1][1];
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Network::winograd_convolve3(const int outputs,
+                                 const std::vector<float>& input,
+                                 const std::vector<float>& U,
+                                 std::vector<float>& V,
+                                 std::vector<float>& M,
+                                 std::vector<float>& output) {
+
+    constexpr unsigned int filter_len = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
+    const auto input_channels = U.size() / (outputs * filter_len);
+
+    winograd_transform_in(input, V, input_channels);
+    winograd_sgemm(U, V, M, input_channels, outputs);
+    winograd_transform_out(M, output, outputs);
+}
+
+template<unsigned int filter_size>
+void convolve(const size_t outputs,
+              const std::vector<float>& input,
+              const std::vector<float>& weights,
+              const std::vector<float>& biases,
+              std::vector<float>& output) {
+    // The size of the board is defined at compile time
+    constexpr unsigned int width = BOARD_SIZE;
+    constexpr unsigned int height = BOARD_SIZE;
+    constexpr auto board_squares = width * height;
+    constexpr auto filter_len = filter_size * filter_size;
+    const auto input_channels = weights.size() / (biases.size() * filter_len);
+    const auto filter_dim = filter_len * input_channels;
+    assert(outputs * board_squares == output.size());
 
     std::vector<float> col(filter_dim * width * height);
-    im2col<channels, filter_size>(input, col);
+    im2col<filter_size>(input_channels, input, col);
 
     // Weight shape (output, input, filter_size, filter_size)
-    // 96 22 5 5
-    // outputs[96,19x19] = weights[96,22x9] x col[22x9,19x19]
+    // 96 18 3 3
     // C←αAB + βC
+    // outputs[96,19x19] = weights[96,18x3x3] x col[18x3x3,19x19]
     // M Number of rows in matrices A and C.
     // N Number of columns in matrices B and C.
     // K Number of columns in matrix A; number of rows in matrix B.
@@ -267,27 +685,26 @@ void convolve(const std::vector<float>& input,
 
     cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 // M        N            K
-                outputs, spatial_out, filter_dim,
+                outputs, board_squares, filter_dim,
                 1.0f, &weights[0], filter_dim,
-                &col[0], spatial_out,
-                0.0f, &output[0], spatial_out);
+                &col[0], board_squares,
+                0.0f, &output[0], board_squares);
 
     for (unsigned int o = 0; o < outputs; o++) {
-        for (unsigned int b = 0; b < spatial_out; b++) {
-            output[(o * spatial_out) + b] =
-                biases[o] + output[(o * spatial_out) + b];
+        for (unsigned int b = 0; b < board_squares; b++) {
+            output[(o * board_squares) + b] += biases[o];
         }
     }
 }
 
 template<unsigned int inputs,
          unsigned int outputs,
-         size_t W, size_t B>
-void innerproduct(const std::vector<float>& input,
-                  const std::array<float, W>& weights,
-                  const std::array<float, B>& biases,
-                  std::vector<float>& output) {
-    assert(B == outputs);
+         bool ReLU,
+         size_t W>
+std::vector<float> innerproduct(const std::vector<float>& input,
+                                const std::array<float, W>& weights,
+                                const std::array<float, outputs>& biases) {
+    std::vector<float> output(outputs);
 
     cblas_sgemv(CblasRowMajor, CblasNoTrans,
                 // M     K
@@ -296,200 +713,322 @@ void innerproduct(const std::vector<float>& input,
                 &input[0], 1,
                 0.0f, &output[0], 1);
 
-    auto lambda_ReLU = [](float val) { return (val > 0.0f) ?
-                                       val : 0.0f; };
-
+    const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
+                                                          val : 0.0f; };
     for (unsigned int o = 0; o < outputs; o++) {
-        float val = biases[o] + output[o];
-        if (outputs == 256) {
+        auto val = biases[o] + output[o];
+        if (ReLU) {
             val = lambda_ReLU(val);
         }
         output[o] = val;
     }
+
+    return output;
 }
 
-template<unsigned int channels,
-         unsigned int spatial_size>
-void batchnorm(const std::vector<float>& input,
-               const std::array<float, channels>& means,
-               const std::array<float, channels>& variances,
-               std::vector<float>& output)
+template <size_t spatial_size>
+void batchnorm(const size_t channels,
+               std::vector<float>& data,
+               const float* const means,
+               const float* const stddivs,
+               const float* const eltwise = nullptr)
 {
-    constexpr float epsilon = 1e-5f;
+    const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
+                                                          val : 0.0f; };
+    for (auto c = size_t{0}; c < channels; ++c) {
+        const auto mean = means[c];
+        const auto scale_stddiv = stddivs[c];
 
-    auto lambda_ReLU = [](float val) { return (val > 0.0f) ?
-                                       val : 0.0f; };
+        if (eltwise == nullptr) {
+            // Classical BN
+            const auto arr = &data[c * spatial_size];
+            for (auto b = size_t{0}; b < spatial_size; b++) {
+                arr[b] = lambda_ReLU(scale_stddiv * (arr[b] - mean));
+            }
+        } else {
+            // BN + residual add
+            const auto arr = &data[c * spatial_size];
+            const auto res = &eltwise[c * spatial_size];
+            for (auto b = size_t{0}; b < spatial_size; b++) {
+                arr[b] = lambda_ReLU((scale_stddiv * (arr[b] - mean)) + res[b]);
+            }
+        }
+    }
+}
 
-    for (unsigned int c = 0; c < channels; ++c) {
-        float mean = means[c];
-        float variance = variances[c] + epsilon;
-        float scale_stddiv = 1.0f / std::sqrt(variance);
+void Network::forward_cpu(const std::vector<float>& input,
+                          std::vector<float>& output_pol,
+                          std::vector<float>& output_val) {
+    // Input convolution
+    constexpr auto width = BOARD_SIZE;
+    constexpr auto height = BOARD_SIZE;
+    constexpr auto tiles = (width + 1) * (height + 1) / 4;
+    // Calculate output channels
+    const auto output_channels = conv_biases[0].size();
+    // input_channels is the maximum number of input channels of any
+    // convolution. Residual blocks are identical, but the first convolution
+    // might be bigger when the network has very few filters
+    const auto input_channels = std::max(static_cast<size_t>(output_channels),
+                                         static_cast<size_t>(INPUT_CHANNELS));
+    auto conv_out = std::vector<float>(output_channels * width * height);
 
-        float * out = &output[c * spatial_size];
-        float const * in  = &input[c * spatial_size];
-        for (unsigned int b = 0; b < spatial_size; b++) {
-            out[b] = lambda_ReLU(scale_stddiv * (in[b] - mean));
+    auto V = std::vector<float>(WINOGRAD_TILE * input_channels * tiles);
+    auto M = std::vector<float>(WINOGRAD_TILE * output_channels * tiles);
+
+    winograd_convolve3(output_channels, input, conv_weights[0], V, M, conv_out);
+    batchnorm<BOARD_SQUARES>(output_channels, conv_out,
+                             batchnorm_means[0].data(),
+                             batchnorm_stddivs[0].data());
+
+    // Residual tower
+    auto conv_in = std::vector<float>(output_channels * width * height);
+    auto res = std::vector<float>(output_channels * width * height);
+    for (auto i = size_t{1}; i < conv_weights.size(); i += 2) {
+        auto output_channels = conv_biases[i].size();
+        std::swap(conv_out, conv_in);
+        winograd_convolve3(output_channels, conv_in,
+                           conv_weights[i], V, M, conv_out);
+        batchnorm<BOARD_SQUARES>(output_channels, conv_out,
+                                 batchnorm_means[i].data(),
+                                 batchnorm_stddivs[i].data());
+
+        output_channels = conv_biases[i + 1].size();
+        std::swap(conv_in, res);
+        std::swap(conv_out, conv_in);
+        winograd_convolve3(output_channels, conv_in,
+                           conv_weights[i + 1], V, M, conv_out);
+        batchnorm<BOARD_SQUARES>(output_channels, conv_out,
+                                 batchnorm_means[i + 1].data(),
+                                 batchnorm_stddivs[i + 1].data(),
+                                 res.data());
+    }
+    convolve<1>(OUTPUTS_POLICY, conv_out, conv_pol_w, conv_pol_b, output_pol);
+    convolve<1>(OUTPUTS_VALUE, conv_out, conv_val_w, conv_val_b, output_val);
+}
+
+template<typename T>
+T relative_difference(const T a, const T b) {
+    // Handle NaN
+    if (std::isnan(a) || std::isnan(b)) {
+        return std::numeric_limits<T>::max();
+    }
+
+    constexpr auto small_number = 1e-3f;
+    auto fa = std::fabs(a);
+    auto fb = std::fabs(b);
+
+    if (fa > small_number && fb > small_number) {
+        // Handle sign difference
+        if ((a < 0) != (b < 0)) {
+            return std::numeric_limits<T>::max();
+        }
+    } else {
+        // Handle underflow
+        fa = std::max(fa, small_number);
+        fb = std::max(fb, small_number);
+    }
+
+    return fabs(fa - fb) / std::min(fa, fb);
+}
+
+void compare_net_outputs(std::vector<float>& data,
+                         std::vector<float>& ref) {
+    // We accept an error up to 5%, but output values
+    // smaller than 1/1000th are "rounded up" for the comparison.
+    constexpr auto relative_error = 5e-2f;
+    for (auto idx = size_t{0}; idx < data.size(); ++idx) {
+        const auto err = relative_difference(data[idx], ref[idx]);
+        if (err > relative_error) {
+            printf("Error in OpenCL calculation: expected %f got %f "
+                   "(error=%f%%)\n", ref[idx], data[idx], err * 100.0);
+            printf("Update your GPU drivers or reduce the amount of games "
+                   "played simultaneously.\n");
+            throw std::runtime_error("OpenCL self-check mismatch.");
         }
     }
 }
 #endif
 
-void Network::softmax(const std::vector<float>& input,
-                      std::vector<float>& output,
-                      float temperature) {
-    assert(&input != &output);
+std::vector<float> softmax(const std::vector<float>& input,
+                           const float temperature = 1.0f) {
+    auto output = std::vector<float>{};
+    output.reserve(input.size());
 
-    float alpha = *std::max_element(input.begin(),
-                                    input.begin() + output.size());
-    alpha /= temperature;
+    const auto alpha = *std::max_element(cbegin(input), cend(input));
+    auto denom = 0.0f;
 
-    float denom = 0.0f;
-    std::vector<float> helper(output.size());
-    for (size_t i = 0; i < output.size(); i++) {
-        float val  = std::exp((input[i]/temperature) - alpha);
-        helper[i]  = val;
-        denom     += val;
+    for (const auto in_val : input) {
+        auto val = std::exp((in_val - alpha) / temperature);
+        denom += val;
+        output.push_back(val);
     }
-    for (size_t i = 0; i < output.size(); i++) {
-        output[i] = helper[i] / denom;
+
+    for (auto& out : output) {
+        out /= denom;
     }
+
+    return output;
 }
 
 Network::Netresult Network::get_scored_moves(
-    GameState * state, Ensemble ensemble, int rotation) {
+    const GameState* const state, const Ensemble ensemble,
+    const int symmetry, const bool skip_cache) {
     Netresult result;
-    if (state->board.get_boardsize() != 19) {
+    if (state->board.get_boardsize() != BOARD_SIZE) {
         return result;
     }
 
-    NNPlanes planes;
-    gather_features(state, planes);
+    if (!skip_cache) {
+        // See if we already have this in the cache.
+        if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
+            return result;
+        }
+    }
 
     if (ensemble == DIRECT) {
-        assert(rotation >= 0 && rotation <= 7);
-        result = get_scored_moves_internal(state, planes, rotation);
+        assert(symmetry >= 0 && symmetry <= 7);
+        result = get_scored_moves_internal(state, symmetry);
+    } else if (ensemble == AVERAGE) {
+        for (auto sym = 0; sym < 8; ++sym) {
+            auto tmpresult = get_scored_moves_internal(state, sym);
+            result.winrate += tmpresult.winrate / 8.0f;
+            result.policy_pass += tmpresult.policy_pass / 8.0f;
+
+            for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+                result.policy[idx] += tmpresult.policy[idx] / 8.0f;
+            }
+        }
     } else {
-        assert(ensemble == RANDOM_ROTATION);
-        assert(rotation == -1);
-        int rand_rot = Random::get_Rng()->randfix<8>();
-        result = get_scored_moves_internal(state, planes, rand_rot);
+        assert(ensemble == RANDOM_SYMMETRY);
+        assert(symmetry == -1);
+        const auto rand_sym = Random::get_Rng().randfix<8>();
+        result = get_scored_moves_internal(state, rand_sym);
     }
+
+    // v2 format (ELF Open Go) returns black value, not stm
+    if (value_head_not_stm) {
+        if (state->board.get_to_move() == FastBoard::WHITE) {
+            result.winrate = 1.0f - result.winrate;
+        }
+    }
+
+    // Insert result into cache.
+    NNCache::get_NNCache().insert(state->board.get_hash(), result);
 
     return result;
 }
 
 Network::Netresult Network::get_scored_moves_internal(
-    GameState * state, NNPlanes & planes, int rotation) {
-    assert(rotation >= 0 && rotation <= 7);
-    constexpr int channels = INPUT_CHANNELS;
-    assert(channels == planes.size());
-    constexpr int width = 19;
-    constexpr int height = 19;
-    constexpr int max_channels = MAX_CHANNELS;
-    std::vector<float> input_data(max_channels * width * height);
-    std::vector<float> output_data(max_channels * width * height);
-    std::vector<float> policy_data_1(2 * width * height);
-    std::vector<float> policy_data_2(2 * width * height);
-    std::vector<float> value_data_1(1 * width * height);
-    std::vector<float> value_data_2(1 * width * height);
-    std::vector<float> policy_out((width * height) + 1);
-    std::vector<float> softmax_data((width * height) + 1);
-    std::vector<float> winrate_data(256);
-    std::vector<float> winrate_out(1);
-    for (int c = 0; c < channels; ++c) {
-        for (int h = 0; h < height; ++h) {
-            for (int w = 0; w < width; ++w) {
-                int vtx = rotate_nn_idx(h * 19 + w, rotation);
-                input_data[(c * height + h) * width + w] =
-                    (float)planes[c][vtx];
-            }
-        }
-    }
+    const GameState* const state, const int symmetry) {
+    assert(symmetry >= 0 && symmetry <= 7);
+    constexpr auto width = BOARD_SIZE;
+    constexpr auto height = BOARD_SIZE;
+
+    const auto input_data = gather_features(state, symmetry);
+    std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
+    std::vector<float> value_data(OUTPUTS_VALUE * width * height);
+#ifdef USE_HALF
+    std::vector<net_t> policy_data_n(OUTPUTS_POLICY * width * height);
+    std::vector<net_t> value_data_n(OUTPUTS_VALUE * width * height);
+#endif
 #ifdef USE_OPENCL
-    opencl_net.forward(input_data, output_data);
+#ifdef USE_HALF
+    opencl.forward(input_data, policy_data_n, value_data_n);
+    std::copy(begin(policy_data_n), end(policy_data_n), begin(policy_data));
+    std::copy(begin(value_data_n), end(value_data_n), begin(value_data));
+#else
+    opencl.forward(input_data, policy_data, value_data);
+#endif
+#elif defined(USE_BLAS) && !defined(USE_OPENCL)
+    forward_cpu(input_data, policy_data, value_data);
+#endif
+#ifdef USE_OPENCL_SELFCHECK
+    // Both implementations are available, self-check the OpenCL driver by
+    // running both with a probability of 1/2000.
+    if (Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
+        auto cpu_policy_data = std::vector<float>(policy_data.size());
+        auto cpu_value_data = std::vector<float>(value_data.size());
+        forward_cpu(input_data, cpu_policy_data, cpu_value_data);
+        compare_net_outputs(policy_data, cpu_policy_data);
+        compare_net_outputs(value_data, cpu_value_data);
+    }
+#endif
+
     // Get the moves
-    convolve<1, 256, 2>(output_data, conv_pol_w, conv_pol_b, policy_data_1);
-    batchnorm<2, 361>(policy_data_1, bn_pol_w1, bn_pol_w2, policy_data_2);
-    innerproduct<2*361, 362>(policy_data_2, ip_pol_w, ip_pol_b, policy_out);
-    softmax(policy_out, softmax_data, cfg_softmax_temp);
-    std::vector<float>& outputs = softmax_data;
+    batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data,
+        bn_pol_w1.data(), bn_pol_w2.data());
+    const auto policy_out =
+        innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1, false>(
+            policy_data, ip_pol_w, ip_pol_b);
+    const auto outputs = softmax(policy_out, cfg_softmax_temp);
 
     // Now get the score
-    convolve<1, 256, 1>(output_data, conv_val_w, conv_val_b, value_data_1);
-    batchnorm<1, 361>(value_data_1, bn_val_w1, bn_val_w2, value_data_2);
-    innerproduct<361, 256>(value_data_2, ip1_val_w, ip1_val_b, winrate_data);
-    innerproduct<256, 1>(winrate_data, ip2_val_w, ip2_val_b, winrate_out);
+    batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data,
+        bn_val_w1.data(), bn_val_w2.data());
+    const auto winrate_data =
+        innerproduct<BOARD_SQUARES, 256, true>(value_data, ip1_val_w, ip1_val_b);
+    const auto winrate_out =
+        innerproduct<256, 1, false>(winrate_data, ip2_val_w, ip2_val_b);
 
     // Sigmoid
-    float winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
-#elif defined(USE_BLAS) && !defined(USE_OPENCL)
-#error "Not implemented"
-    // Not implemented yet - not very useful unless you have some
-    // sort of Xeon Phi
-    softmax(output_data, softmax_data, cfg_softmax_temp);
-    // Move scores
-    std::vector<float>& outputs = softmax_data;
-#endif
-    std::vector<scored_node> result;
-    for (size_t idx = 0; idx < outputs.size(); idx++) {
-        if (idx < 19*19) {
-            auto rot_idx = rev_rotate_nn_idx(idx, rotation);
-            auto val = outputs[rot_idx];
-            int x = idx % 19;
-            int y = idx / 19;
-            int vtx = state->board.get_vertex(x, y);
-            if (state->board.get_square(vtx) == FastBoard::EMPTY) {
-                result.emplace_back(val, vtx);
-            }
-        } else {
-            result.emplace_back(outputs[idx], FastBoard::PASS);
-        }
+    const auto winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
+
+    Netresult result;
+
+    for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+        const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
+        result.policy[sym_idx] = outputs[idx];
     }
 
-    return std::make_pair(result, winrate_sig);
+    result.policy_pass = outputs[BOARD_SQUARES];
+    result.winrate = winrate_sig;
+
+    return result;
 }
 
-void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) {
-    auto moves = result.first;
+void Network::show_heatmap(const FastState* const state,
+                           const Netresult& result,
+                           const bool topmoves) {
     std::vector<std::string> display_map;
     std::string line;
 
-    for (unsigned int y = 0; y < 19; y++) {
-        for (unsigned int x = 0; x < 19; x++) {
-            int vtx = state->board.get_vertex(x, y);
-
-            auto item = std::find_if(moves.cbegin(), moves.cend(),
-                [&vtx](scored_node const & item) {
-                return item.second == vtx;
-            });
-
-            float score = 0.0f;
-            // Non-empty squares won't be scored
-            if (item != moves.end()) {
-                score = item->first;
-                assert(vtx == item->second);
+    for (unsigned int y = 0; y < BOARD_SIZE; y++) {
+        for (unsigned int x = 0; x < BOARD_SIZE; x++) {
+            auto score = 0;
+            const auto vertex = state->board.get_vertex(x, y);
+            if (state->board.get_square(vertex) == FastBoard::EMPTY) {
+                score = result.policy[y * BOARD_SIZE + x] * 1000;
             }
 
-            line += boost::str(boost::format("%3d ") % int(score * 1000));
-            if (x == 18) {
-                display_map.push_back(line);
-                line.clear();
-            }
+            line += boost::str(boost::format("%3d ") % score);
         }
+
+        display_map.push_back(line);
+        line.clear();
     }
 
     for (int i = display_map.size() - 1; i >= 0; --i) {
         myprintf("%s\n", display_map[i].c_str());
     }
-    assert(result.first.back().second == FastBoard::PASS);
-    int pass_score = int(result.first.back().first * 1000);
+    const auto pass_score = int(result.policy_pass * 1000);
     myprintf("pass: %d\n", pass_score);
-    myprintf("winrate: %f\n", result.second);
+    myprintf("winrate: %f\n", result.winrate);
 
     if (topmoves) {
-        std::stable_sort(moves.rbegin(), moves.rend());
+        std::vector<Network::ScoreVertexPair> moves;
+        for (auto i=0; i < BOARD_SQUARES; i++) {
+            const auto x = i % BOARD_SIZE;
+            const auto y = i / BOARD_SIZE;
+            const auto vertex = state->board.get_vertex(x, y);
+            if (state->board.get_square(vertex) == FastBoard::EMPTY) {
+                moves.emplace_back(result.policy[i], vertex);
+            }
+        }
+        moves.emplace_back(result.policy_pass, FastBoard::PASS);
 
-        float cum = 0.0f;
+        std::stable_sort(rbegin(moves), rend(moves));
+
+        auto cum = 0.0f;
         size_t tried = 0;
         while (cum < 0.85f && tried < moves.size()) {
             if (moves[tried].first < 0.01f) break;
@@ -502,65 +1041,61 @@ void Network::show_heatmap(FastState * state, Netresult& result, bool topmoves) 
     }
 }
 
-void Network::gather_features(GameState * state, NNPlanes & planes) {
-    planes.resize(18);
-    const size_t our_offset   = 0;
-    const size_t their_offset = 8;
-    BoardPlane& black_to_move  = planes[16];
-    BoardPlane& white_to_move  = planes[17];
-
-    bool whites_move = state->get_to_move() == FastBoard::WHITE;
-    if (whites_move) {
-        white_to_move.set();
-    } else {
-        black_to_move.set();
+void Network::fill_input_plane_pair(const FullBoard& board,
+                                    std::vector<net_t>::iterator black,
+                                    std::vector<net_t>::iterator white,
+                                    const int symmetry) {
+    for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
+        const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
+        const auto x = sym_idx % BOARD_SIZE;
+        const auto y = sym_idx / BOARD_SIZE;
+        const auto color = board.get_square(x, y);
+        if (color == FastBoard::BLACK) {
+            black[idx] = net_t(true);
+        } else if (color == FastBoard::WHITE) {
+            white[idx] = net_t(true);
+        }
     }
+}
 
+std::vector<net_t> Network::gather_features(const GameState* const state,
+                                            const int symmetry) {
+    assert(symmetry >= 0 && symmetry <= 7);
+    auto input_data = std::vector<net_t>(INPUT_CHANNELS * BOARD_SQUARES);
+
+    const auto to_move = state->get_to_move();
+    const auto blacks_move = to_move == FastBoard::BLACK;
+
+    const auto black_it = blacks_move ?
+                          begin(input_data) :
+                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES;
+    const auto white_it = blacks_move ?
+                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES :
+                          begin(input_data);
+    const auto to_move_it = blacks_move ?
+        begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES :
+        begin(input_data) + (2 * INPUT_MOVES + 1) * BOARD_SQUARES;
+
+    const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
     // Go back in time, fill history boards
-    size_t backtracks = 0;
-    for (int h = 0; h < 8; h++) {
-        int tomove = state->get_to_move();
+    for (auto h = size_t{0}; h < moves; h++) {
         // collect white, black occupation planes
-        for (int j = 0; j < 19; j++) {
-            for(int i = 0; i < 19; i++) {
-                int vtx = state->board.get_vertex(i, j);
-                FastBoard::square_t color =
-                    state->board.get_square(vtx);
-                int idx = j * 19 + i;
-                if (color != FastBoard::EMPTY) {
-                    if (color == tomove) {
-                        planes[our_offset + h][idx] = true;
-                    } else {
-                        planes[their_offset + h][idx] = true;
-                    }
-                }
-            }
-        }
-        if (!state->undo_move()) {
-            break;
-        } else {
-            backtracks++;
-        }
+        fill_input_plane_pair(state->get_past_board(h),
+                              black_it + h * BOARD_SQUARES,
+                              white_it + h * BOARD_SQUARES,
+                              symmetry);
     }
 
-    // Now go back to present day
-    for (size_t h = 0; h < backtracks; h++) {
-        state->forward_move();
-    }
+    std::fill(to_move_it, to_move_it + BOARD_SQUARES, net_t(true));
+
+    return input_data;
 }
 
-int Network::rev_rotate_nn_idx(const int vertex, int symmetry) {
-    static const int invert[] = {0, 1, 2, 3, 4, 6, 5, 7};
-    assert(rotate_nn_idx(rotate_nn_idx(vertex, symmetry), invert[symmetry])
-           == vertex);
-    return rotate_nn_idx(vertex, invert[symmetry]);
-}
-
-int Network::rotate_nn_idx(const int vertex, int symmetry) {
-    assert(vertex >= 0 && vertex < 19*19);
+int Network::get_nn_idx_symmetry(const int vertex, int symmetry) {
+    assert(vertex >= 0 && vertex < BOARD_SQUARES);
     assert(symmetry >= 0 && symmetry < 8);
-    int x = vertex % 19;
-    int y = vertex / 19;
+    auto x = vertex % BOARD_SIZE;
+    auto y = vertex / BOARD_SIZE;
     int newx;
     int newy;
 
@@ -574,17 +1109,17 @@ int Network::rotate_nn_idx(const int vertex, int symmetry) {
         newy = y;
     } else if (symmetry == 1) {
         newx = x;
-        newy = 19 - y - 1;
+        newy = BOARD_SIZE - y - 1;
     } else if (symmetry == 2) {
-        newx = 19 - x - 1;
+        newx = BOARD_SIZE - x - 1;
         newy = y;
     } else {
         assert(symmetry == 3);
-        newx = 19 - x - 1;
-        newy = 19 - y - 1;
+        newx = BOARD_SIZE - x - 1;
+        newy = BOARD_SIZE - y - 1;
     }
 
-    int newvtx = (newy * 19) + newx;
-    assert(newvtx >= 0 && newvtx < 19*19);
+    const auto newvtx = (newy * BOARD_SIZE) + newx;
+    assert(newvtx >= 0 && newvtx < BOARD_SQUARES);
     return newvtx;
 }

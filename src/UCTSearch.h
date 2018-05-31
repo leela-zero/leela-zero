@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,23 +19,48 @@
 #ifndef UCTSEARCH_H_INCLUDED
 #define UCTSEARCH_H_INCLUDED
 
-#include <memory>
+#include <list>
 #include <atomic>
+#include <memory>
+#include <string>
 #include <tuple>
+#include <future>
 
+#include "ThreadPool.h"
+#include "FastBoard.h"
+#include "FastState.h"
 #include "GameState.h"
 #include "UCTNode.h"
+
 
 class SearchResult {
 public:
     SearchResult() = default;
-    explicit SearchResult(float e)
-        : m_valid(true), m_eval(e) {};
-    bool valid() { return m_valid;  }
-    float eval() { return m_eval;  }
+    bool valid() const { return m_valid;  }
+    float eval() const { return m_eval;  }
+    static SearchResult from_eval(float eval) {
+        return SearchResult(eval);
+    }
+    static SearchResult from_score(float board_score) {
+        if (board_score > 0.0f) {
+            return SearchResult(1.0f);
+        } else if (board_score < 0.0f) {
+            return SearchResult(0.0f);
+        } else {
+            return SearchResult(0.5f);
+        }
+    }
 private:
+    explicit SearchResult(float eval)
+        : m_valid(true), m_eval(eval) {}
     bool m_valid{false};
     float m_eval{0.0f};
+};
+
+namespace TimeManagement {
+    enum enabled_t {
+        AUTO = -1, OFF = 0, ON = 1, FAST = 2
+    };
 };
 
 class UCTSearch {
@@ -51,44 +76,61 @@ public:
     static constexpr passflag_t NORESIGN = 1 << 1;
 
     /*
-        Maximum size of the tree in memory.
+        Maximum size of the tree in memory. Nodes are about
+        48 bytes, so limit to ~1.2G on 32-bits and about 5.5G
+        on 64-bits.
     */
-    static constexpr int MAX_TREE_SIZE = 10000000;
+    static constexpr auto MAX_TREE_SIZE =
+        (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
 
-    UCTSearch(GameState & g);
+    /*
+        Value representing unlimited visits or playouts. Due to
+        concurrent updates while multithreading, we need some
+        headroom within the native type.
+    */
+    static constexpr auto UNLIMITED_PLAYOUTS =
+        std::numeric_limits<int>::max() / 2;
+
+    UCTSearch(GameState& g);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
-    void set_runflag(std::atomic<bool> * flag);
-    void set_analyzing(bool flag);
-    void set_quiet(bool flag);
+    void set_visit_limit(int visits);
     void ponder();
-    bool is_running();
-    bool playout_limit_reached();
+    bool is_running() const;
     void increment_playouts();
-    SearchResult play_simulation(GameState & currstate, UCTNode * const node);
+    SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
-    void dump_stats(KoState & state, UCTNode & parent);
-    std::string get_pv(KoState & state, UCTNode & parent);
+    float get_min_psa_ratio() const;
+    void dump_stats(FastState& state, UCTNode& parent);
+    void tree_stats(const UCTNode& node);
+    std::string get_pv(FastState& state, UCTNode& parent);
     void dump_analysis(int playouts);
+    bool should_resign(passflag_t passflag, float bestscore);
+    bool have_alternate_moves(int elapsed_centis, int time_for_move);
+    int est_playouts_left(int elapsed_centis, int time_for_move) const;
+    size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0);
+    bool stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
     int get_best_move(passflag_t passflag);
+    void update_root();
+    bool advance_to_new_rootstate();
 
     GameState & m_rootstate;
-    UCTNode m_root;
-    std::atomic<int> m_nodes;
-    std::atomic<int> m_playouts;
-    std::atomic<bool> m_run;
+    std::unique_ptr<GameState> m_last_rootstate;
+    std::unique_ptr<UCTNode> m_root;
+    std::atomic<int> m_nodes{0};
+    std::atomic<int> m_playouts{0};
+    std::atomic<bool> m_run{false};
     int m_maxplayouts;
+    int m_maxvisits;
 
-    // For external control
-    bool m_hasrunflag;
-    std::atomic<bool> * m_runflag;
+    std::list<Utils::ThreadGroup> m_delete_futures;
 };
 
 class UCTWorker {
 public:
     UCTWorker(GameState & state, UCTSearch * search, UCTNode * root)
-      : m_rootstate(state), m_search(search), m_root(root) {};
+      : m_rootstate(state), m_search(search), m_root(root) {}
     void operator()();
 private:
     GameState & m_rootstate;
