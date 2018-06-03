@@ -24,7 +24,7 @@ with open(sys.argv[1], 'r') as f:
     print("Blocks", blocks)
 
 tfprocess = TFProcess()
-tfprocess.init(batch_size=1)
+tfprocess.init(batch_size=1, gpus_num=1)
 if tfprocess.RESIDUAL_BLOCKS != blocks:
     raise ValueError("Number of blocks in tensorflow model doesn't match "\
             "number of blocks in input network")

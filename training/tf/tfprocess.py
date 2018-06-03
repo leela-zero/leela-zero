@@ -132,13 +132,13 @@ class TFProcess:
         self.swa_recalc_bn = True
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
-        config = tf.ConfigProto(gpu_options=gpu_options)
+        config = tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)
         self.session = tf.Session(config=config)
 
         self.training = tf.placeholder(tf.bool)
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
 
-    def init(self, batch_size, macrobatch=1, logbase='leelalogs'):
+    def init(self, batch_size, macrobatch=1, gpus_num=None, logbase='leelalogs'):
         self.batch_size = batch_size
         self.macrobatch = macrobatch
         self.logbase = logbase
@@ -159,13 +159,15 @@ class TFProcess:
         probs = tf.reshape(probs, (batch_size, 19*19 + 1))
         winner = tf.reshape(winner, (batch_size, 1))
 
-        self.init_net(planes, probs, winner)
+        if gpus_num is None:
+            gpus_num = self.gpus_num
+        self.init_net(planes, probs, winner, gpus_num)
 
-    def init_net(self, planes, probs, winner):
+    def init_net(self, planes, probs, winner, gpus_num):
         self.y_ = probs   # (tf.float32, [None, 362])
-        self.sx = tf.split(planes, self.gpus_num)
-        self.sy_ = tf.split(probs, self.gpus_num)
-        self.sz_ = tf.split(winner, self.gpus_num)
+        self.sx = tf.split(planes, gpus_num)
+        self.sy_ = tf.split(probs, gpus_num)
+        self.sz_ = tf.split(winner, gpus_num)
         self.batch_norm_count = 0
         self.reuse_var = None
 
@@ -182,7 +184,7 @@ class TFProcess:
         tower_reg_term = []
         tower_y_conv = []
         with tf.variable_scope(tf.get_variable_scope()):
-            for i in range(self.gpus_num):
+            for i in range(gpus_num):
                 with tf.device("/gpu:%d" % i):
                     with tf.name_scope("tower_%d" % i):
                         loss, policy_loss, mse_loss, reg_term, y_conv = self.tower_loss(

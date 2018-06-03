@@ -970,8 +970,8 @@ Network::Netresult Network::get_scored_moves_internal(
     const auto winrate_out =
         innerproduct<256, 1, false>(winrate_data, ip2_val_w, ip2_val_b);
 
-    // Sigmoid
-    const auto winrate_sig = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
+    // Map TanH output range [-1..1] to [0..1] range
+    const auto winrate = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
 
     Netresult result;
 
@@ -981,7 +981,7 @@ Network::Netresult Network::get_scored_moves_internal(
     }
 
     result.policy_pass = outputs[BOARD_SQUARES];
-    result.winrate = winrate_sig;
+    result.winrate = winrate;
 
     return result;
 }

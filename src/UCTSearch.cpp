@@ -25,6 +25,7 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+#include <algorithm>
 
 #include "FastBoard.h"
 #include "FastState.h"
@@ -39,6 +40,36 @@
 using namespace Utils;
 
 constexpr int UCTSearch::UNLIMITED_PLAYOUTS;
+
+class OutputAnalysisData {
+public:
+    OutputAnalysisData(const std::string& move, int visits, int winrate, std::string pv) :
+        m_move(move), m_visits(visits), m_winrate(winrate), m_pv(pv) {};
+
+    std::string get_info_string(int order) const {
+        auto tmp = "info move " + m_move + " visits " + std::to_string(m_visits) +
+                          " winrate " + std::to_string(m_winrate);
+        if (order >= 0) {
+            tmp += " order " + std::to_string(order);
+        }
+        tmp += " pv " + m_pv;
+        return tmp;
+    }
+
+    friend bool operator<(const OutputAnalysisData& a, const OutputAnalysisData& b) {
+        if (a.m_visits == b.m_visits) {
+            return a.m_winrate < b.m_winrate;
+        }
+        return a.m_visits < b.m_visits;
+    }
+
+private:
+    std::string m_move;
+    int m_visits;
+    int m_winrate;
+    std::string m_pv;
+};
+
 
 UCTSearch::UCTSearch(GameState& g)
     : m_rootstate(g) {
@@ -236,6 +267,9 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
 }
 
 void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
+    // We need to make a copy of the data before sorting
+    auto sortable_data = std::vector<OutputAnalysisData>();
+
     if (!parent.has_children()) {
         return;
     }
@@ -251,13 +285,24 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         tmpstate.play_move(node->get_move());
         std::string pv = move + " " + get_pv(tmpstate, *node);
         auto move_eval = node->get_visits() ?
-            static_cast<int>(node->get_pure_eval(color) * 10000) : 0;
-        gtp_printf_raw("info %s %s %s %d %s %d %s %s\n",
-                       "move", move.c_str(),
-                       "visits", node->get_visits(),
-                       "winrate", move_eval,
-                       "pv", pv.c_str());
+                         static_cast<int>(node->get_pure_eval(color) * 10000) : 0;
+        // Store data in array
+        sortable_data.emplace_back(move, node->get_visits(), move_eval, pv);
+
     }
+    // Sort array to decide order
+    std::stable_sort(rbegin(sortable_data), rend(sortable_data));
+
+    auto i = 0;
+    // Output analysis data in gtp stream
+    for (const auto& node : sortable_data) {
+        if (i > 0) {
+            gtp_printf_raw(" ");
+        }
+        gtp_printf_raw(node.get_info_string(i).c_str());
+        i++;
+    }
+    gtp_printf_raw("\n");
 }
 
 void tree_stats_helper(const UCTNode& node, size_t depth,

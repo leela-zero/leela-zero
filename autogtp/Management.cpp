@@ -71,8 +71,16 @@ void Management::runTuningProcess(const QString &tuneCmdLine) {
     tuneProcess.waitForStarted(-1);
     while (tuneProcess.state() == QProcess::Running) {
         tuneProcess.waitForReadyRead(1000);
+        QByteArray text = tuneProcess.readAllStandardOutput();
+        int version_start = text.indexOf("Leela Zero ") + 11;
+        if (version_start > 10) {
+            int version_end = text.indexOf(" ", version_start);
+            m_leelaversion = QString(text.mid(version_start, version_end - version_start));
+        }
+        QTextStream(stdout) << text;
         QTextStream(stdout) << tuneProcess.readAllStandardError();
     }
+    QTextStream(stdout) << "Found Leela Version : " << m_leelaversion << endl;
     tuneProcess.waitForFinished(-1);
 }
 
@@ -316,6 +324,8 @@ Order Management::getWorkInternal(bool tuning) {
         prog_cmdline.append("0");
     } else {
         prog_cmdline.append(QString::number(AUTOGTP_VERSION));
+        if (!m_leelaversion.isEmpty())
+            prog_cmdline.append("/"+m_leelaversion);
     }
     QProcess curl;
     curl.start(prog_cmdline);
