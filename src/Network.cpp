@@ -870,6 +870,34 @@ std::vector<float> softmax(const std::vector<float>& input,
     return output;
 }
 
+static bool probe_cache(const GameState* const state,
+                        Network::Netresult& result) {
+    if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
+        return true;
+    }
+    // If we are not generating a self-play game, try to find
+    // symmetries if we are in the early opening.
+    if (!cfg_noise && !cfg_random_cnt
+        && state->get_movenum()
+           < (state->get_timecontrol().opening_moves(BOARD_SIZE) / 2)) {
+        for (auto sym = 1; sym < 8; ++sym) {
+            const auto hash = state->get_symmetry_hash(sym);
+            if (NNCache::get_NNCache().lookup(hash, result)) {
+                decltype(result.policy) corrected_policy;
+                corrected_policy.reserve(BOARD_SQUARES);
+                for (auto idx = size_t{0}; idx < BOARD_SQUARES; ++idx) {
+                    const auto sym_idx = symmetry_nn_idx_table[sym][idx];
+                    corrected_policy.emplace_back(result.policy[sym_idx]);
+                }
+                result.policy = std::move(corrected_policy);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 Network::Netresult Network::get_scored_moves(
     const GameState* const state, const Ensemble ensemble,
     const int symmetry, const bool skip_cache) {
@@ -880,7 +908,7 @@ Network::Netresult Network::get_scored_moves(
 
     if (!skip_cache) {
         // See if we already have this in the cache.
-        if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
+        if (probe_cache(state, result)) {
             return result;
         }
     }

@@ -58,21 +58,20 @@ int FullBoard::remove_string(int i) {
 std::uint64_t FullBoard::calc_ko_hash(void) {
     auto res = Zobrist::zobrist_empty;
 
-    for (int i = 0; i < m_maxsq; i++) {
+    for (auto i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
             res ^= Zobrist::zobrist[m_square[i]][i];
         }
     }
 
     /* Tromp-Taylor has positional superko */
-    m_ko_hash = res;
     return res;
 }
 
 std::uint64_t FullBoard::calc_hash(int komove) {
     auto res = Zobrist::zobrist_empty;
 
-    for (int i = 0; i < m_maxsq; i++) {
+    for (auto i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
             res ^= Zobrist::zobrist[m_square[i]][i];
         }
@@ -88,7 +87,57 @@ std::uint64_t FullBoard::calc_hash(int komove) {
 
     res ^= Zobrist::zobrist_ko[komove];
 
-    m_hash = res;
+    return res;
+}
+
+int FullBoard::rotate_vertex(int vertex, int symmetry) const {
+    int x, y;
+    std::tie(x, y) = get_xy(vertex);
+
+    if (symmetry >= 4) {
+        std::swap(x, y);
+        symmetry -= 4;
+    }
+
+    if (symmetry == 0) {
+        // Nothing
+    } else if (symmetry == 1) {
+        y = m_boardsize - y - 1;
+    } else if (symmetry == 2) {
+        x = m_boardsize - x - 1;
+    } else {
+        assert(symmetry == 3);
+        x = m_boardsize - x - 1;
+        y = m_boardsize - y - 1;
+    }
+
+    return get_vertex(x, y);
+}
+
+std::uint64_t FullBoard::calc_symmetry_hash(int komove, int symmetry) const {
+    auto res = Zobrist::zobrist_empty;
+
+    for (auto i = 0; i < m_maxsq; i++) {
+        if (m_square[i] != INVAL) {
+            auto v = rotate_vertex(i, symmetry);
+            res ^= Zobrist::zobrist[m_square[i]][v];
+        }
+    }
+
+    /* prisoner hashing is rule set dependent */
+    res ^= Zobrist::zobrist_pris[0][m_prisoners[0]];
+    res ^= Zobrist::zobrist_pris[1][m_prisoners[1]];
+
+    if (m_tomove == BLACK) {
+        res ^= Zobrist::zobrist_blacktomove;
+    }
+
+    if (komove == 0) {
+        res ^= Zobrist::zobrist_ko[0];
+    } else {
+        auto v = rotate_vertex(komove, symmetry);
+        res ^= Zobrist::zobrist_ko[v];
+    }
 
     return res;
 }
@@ -191,6 +240,6 @@ void FullBoard::display_board(int lastmove) {
 void FullBoard::reset_board(int size) {
     FastBoard::reset_board(size);
 
-    calc_hash();
-    calc_ko_hash();
+    m_hash = calc_hash();
+    m_ko_hash = calc_ko_hash();
 }
