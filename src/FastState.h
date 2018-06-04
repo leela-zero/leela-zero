@@ -46,7 +46,7 @@ public:
     void increment_passes();
 
     float final_score() const;
-    std::uint64_t get_rotated_hash(int symmetry) const;
+    std::uint64_t get_symmetry_hash(int symmetry) const;
 
     size_t get_movenum() const;
     int get_last_move() const;

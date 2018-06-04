@@ -114,7 +114,7 @@ int FullBoard::rotate_vertex(int vertex, int symmetry) const {
     return get_vertex(x, y);
 }
 
-std::uint64_t FullBoard::calc_rotated_hash(int komove, int symmetry) const {
+std::uint64_t FullBoard::calc_symmetry_hash(int komove, int symmetry) const {
     auto res = Zobrist::zobrist_empty;
 
     for (auto i = 0; i < m_maxsq; i++) {

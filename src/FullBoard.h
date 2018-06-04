@@ -30,7 +30,7 @@ public:
 
     std::uint64_t get_hash(void) const;
     std::uint64_t get_ko_hash(void) const;
-    std::uint64_t calc_rotated_hash(int komove = 0, int symmetry = 0) const;
+    std::uint64_t calc_symmetry_hash(int komove = 0, int symmetry = 0) const;
     void set_to_move(int tomove);
 
     void reset_board(int size);

@@ -875,12 +875,13 @@ static bool probe_cache(const GameState* const state,
     if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
         return true;
     }
+    // If we are not generating a self-play game, try to find
+    // symmetries if we are in the early opening.
     if (!cfg_noise && !cfg_random_cnt
         && state->get_movenum()
-           < state->get_timecontrol().opening_moves(BOARD_SIZE)) {
-        // Try additional symmetries
+           < (state->get_timecontrol().opening_moves(BOARD_SIZE) / 2)) {
         for (auto sym = 1; sym < 8; ++sym) {
-            const auto hash = state->get_rotated_hash(sym);
+            const auto hash = state->get_symmetry_hash(sym);
             if (NNCache::get_NNCache().lookup(hash, result)) {
                 decltype(result.policy) corrected_policy;
                 corrected_policy.reserve(BOARD_SQUARES);
