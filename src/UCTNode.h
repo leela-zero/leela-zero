@@ -43,9 +43,18 @@ public:
     UCTNode() = delete;
     ~UCTNode() = default;
 
-    bool create_children(std::atomic<int>& nodecount,
-                         GameState& state, float& eval,
-                         float min_psa_ratio = 0.0f);
+    enum CreateChildrenResult {
+        FAIL_NOT_EXPANDABLE,
+        FAIL_FINAL_STATE,
+        FAIL_EXPANDING,
+        FAIL_CACHE_MISS,
+        SUCCESS_CACHE_HIT,
+        SUCCESS_EXPANDED
+    };
+    CreateChildrenResult create_children(
+        std::atomic<int>& nodecount, GameState& state,
+        float& eval, float min_psa_ratio = 0.0f,
+        const bool stop_on_cache_miss = false);
 
     const std::vector<UCTNodePointer>& get_children() const;
     void sort_children(int color);

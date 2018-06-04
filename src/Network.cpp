@@ -872,7 +872,7 @@ std::vector<float> softmax(const std::vector<float>& input,
 
 Network::Netresult Network::get_scored_moves(
     const GameState* const state, const Ensemble ensemble,
-    const int symmetry, const bool skip_cache) {
+    const int symmetry, const bool skip_cache, const bool stop_on_cache_miss) {
     Netresult result;
     if (state->board.get_boardsize() != BOARD_SIZE) {
         return result;
@@ -881,6 +881,12 @@ Network::Netresult Network::get_scored_moves(
     if (!skip_cache) {
         // See if we already have this in the cache.
         if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
+            result.cache_hit = true;
+            return result;
+        }
+        assert(result.cache_hit == false);
+
+        if (stop_on_cache_miss) {
             return result;
         }
     }

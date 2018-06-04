@@ -189,9 +189,11 @@ float UCTSearch::get_min_psa_ratio() const {
 }
 
 SearchResult UCTSearch::play_simulation(GameState & currstate,
-                                        UCTNode* const node) {
+                                        UCTNode* const node,
+                                        const bool stop_on_cache_miss) {
     const auto color = currstate.get_to_move();
     auto result = SearchResult{};
+    auto cache_hit = false;
 
     node->virtual_loss();
 
@@ -202,24 +204,39 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         } else if (m_nodes < MAX_TREE_SIZE) {
             float eval;
             const auto had_children = node->has_children();
-            const auto success =
+            const auto res =
                 node->create_children(m_nodes, currstate, eval,
-                                      get_min_psa_ratio());
-            if (!had_children && success) {
-                result = SearchResult::from_eval(eval);
+                                      get_min_psa_ratio(),
+                                      stop_on_cache_miss);
+            cache_hit = 
+                res == UCTNode::CreateChildrenResult::SUCCESS_CACHE_HIT;
+
+            if (!had_children) {
+                if (cache_hit
+                    || res == UCTNode::CreateChildrenResult::SUCCESS_EXPANDED) {
+                    result = SearchResult::from_eval(eval);
+                } else if (stop_on_cache_miss
+                    && res == UCTNode::CreateChildrenResult::FAIL_CACHE_MISS) {
+                    result = SearchResult::from_cache_miss();
+                }
             }
         }
     }
 
-    if (node->has_children() && !result.valid()) {
+    if (node->has_children()
+        && ((!result.valid() && !result.fail_cache_miss()) || cache_hit)) {
         auto next = node->uct_select_child(color, node == m_root.get());
         auto move = next->get_move();
 
         currstate.play_move(move);
         if (move != FastBoard::PASS && currstate.superko()) {
             next->invalidate();
+            result = SearchResult{};
         } else {
-            result = play_simulation(currstate, next);
+            auto next_result = play_simulation(currstate, next, cache_hit);
+            if (!next_result.fail_cache_miss()) {
+                result = next_result;
+            }
         }
     }
 

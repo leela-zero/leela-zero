@@ -41,20 +41,18 @@ public:
     struct Netresult {
         // 19x19 board positions
         std::vector<float> policy;
-
-        // pass
         float policy_pass;
-
-        // winrate
         float winrate;
+        bool cache_hit;
 
-        Netresult() : policy(BOARD_SQUARES), policy_pass(0.0f), winrate(0.0f) {}
+        Netresult() : policy(BOARD_SQUARES), policy_pass(0.0f), 
+                      winrate(0.0f), cache_hit(false) {}
     };
 
-    static Netresult get_scored_moves(const GameState* const state,
-                                      const Ensemble ensemble,
-                                      const int symmetry = -1,
-                                      const bool skip_cache = false);
+    static Netresult get_scored_moves(
+        const GameState* const state, const Ensemble ensemble,
+        const int symmetry = -1, const bool skip_cache = false, 
+        const bool stop_on_cache_miss = false);
 
     static constexpr auto INPUT_MOVES = 8;
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
