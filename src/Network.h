@@ -33,6 +33,7 @@
 
 class Network {
 public:
+    static constexpr auto NUM_SYMMETRIES = 8;
     enum Ensemble {
         DIRECT, RANDOM_SYMMETRY, AVERAGE
     };
@@ -73,6 +74,9 @@ public:
 
     static std::vector<net_t> gather_features(const GameState* const state,
                                               const int symmetry);
+    static std::pair<int, int> get_symmetry(const std::pair<int, int>& vertex,
+                                            const int symmetry,
+                                            const int board_size = BOARD_SIZE);
 private:
     static std::pair<int, int> load_v1_network(std::istream& wtfile);
     static std::pair<int, int> load_network_file(const std::string& filename);
@@ -99,7 +103,6 @@ private:
     static void winograd_sgemm(const std::vector<float>& U,
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
-    static int get_nn_idx_symmetry(const int vertex, int symmetry);
     static void fill_input_plane_pair(const FullBoard& board,
                                       std::vector<net_t>::iterator black,
                                       std::vector<net_t>::iterator white,
