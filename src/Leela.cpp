@@ -72,8 +72,12 @@ static void parse_commandline(int argc, char *argv[]) {
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
         ("quiet,q", "Disable all diagnostic output.")
         ("timemanage", po::value<std::string>()->default_value("auto"),
-                       "[auto|on|off|fast] Enable time management features.\n"
-                       "auto = off when using -m, otherwise on")
+                       "[auto|on|off|fast|no_pruning] Enable time management features.\n"
+                       "auto = no_pruning when using -n, otherwise on.\n"
+                       "on = Cut off search when the best move can't change"
+                       ", but use full time if moving faster doesn't save time.\n"
+                       "fast = Same as on but always plays faster.\n"
+                       "no_pruning = For self play training use.\n")
         ("noponder", "Disable thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
@@ -277,6 +281,8 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_timemanage = TimeManagement::OFF;
         } else if (tm == "fast") {
             cfg_timemanage = TimeManagement::FAST;
+        } else if (tm == "no_pruning") {
+            cfg_timemanage = TimeManagement::NO_PRUNING;
         } else {
             printf("Invalid timemanage value.\n");
             exit(EXIT_FAILURE);
@@ -284,7 +290,7 @@ static void parse_commandline(int argc, char *argv[]) {
     }
     if (cfg_timemanage == TimeManagement::AUTO) {
         cfg_timemanage =
-            cfg_random_cnt ? TimeManagement::OFF : TimeManagement::ON;
+            cfg_noise ? TimeManagement::NO_PRUNING : TimeManagement::ON;
     }
 
     if (vm.count("lagbuffer")) {
