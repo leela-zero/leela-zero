@@ -72,7 +72,7 @@ public:
     int get_boardsize(void) const;
     square_t get_square(int x, int y) const;
     square_t get_square(int vertex) const ;
-    int get_vertex(int i, int j) const;
+    int get_vertex(int x, int y) const;
     void set_square(int x, int y, square_t content);
     void set_square(int vertex, square_t content);
     std::pair<int, int> get_xy(int vertex) const;

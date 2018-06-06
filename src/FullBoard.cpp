@@ -22,6 +22,7 @@
 #include <cassert>
 
 #include "FullBoard.h"
+#include "Network.h"
 #include "Utils.h"
 #include "Zobrist.h"
 
@@ -55,7 +56,7 @@ int FullBoard::remove_string(int i) {
     return removed;
 }
 
-std::uint64_t FullBoard::calc_ko_hash(void) {
+std::uint64_t FullBoard::calc_ko_hash() const {
     auto res = Zobrist::zobrist_empty;
 
     for (auto i = 0; i < m_maxsq; i++) {
@@ -68,12 +69,13 @@ std::uint64_t FullBoard::calc_ko_hash(void) {
     return res;
 }
 
-std::uint64_t FullBoard::calc_hash(int komove) {
+template<class Function>
+std::uint64_t FullBoard::calc_hash(int komove, Function transform) const {
     auto res = Zobrist::zobrist_empty;
 
     for (auto i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
-            res ^= Zobrist::zobrist[m_square[i]][i];
+            res ^= Zobrist::zobrist[m_square[i]][transform(i)];
         }
     }
 
@@ -85,68 +87,31 @@ std::uint64_t FullBoard::calc_hash(int komove) {
         res ^= Zobrist::zobrist_blacktomove;
     }
 
-    res ^= Zobrist::zobrist_ko[komove];
+    res ^= Zobrist::zobrist_ko[transform(komove)];
 
     return res;
 }
 
-int FullBoard::rotate_vertex(int vertex, int symmetry) const {
-    int x, y;
-    std::tie(x, y) = get_xy(vertex);
-
-    if (symmetry >= 4) {
-        std::swap(x, y);
-        symmetry -= 4;
-    }
-
-    if (symmetry == 0) {
-        // Nothing
-    } else if (symmetry == 1) {
-        y = m_boardsize - y - 1;
-    } else if (symmetry == 2) {
-        x = m_boardsize - x - 1;
-    } else {
-        assert(symmetry == 3);
-        x = m_boardsize - x - 1;
-        y = m_boardsize - y - 1;
-    }
-
-    return get_vertex(x, y);
+std::uint64_t FullBoard::calc_hash(int komove) const {
+    return calc_hash(komove, [](const auto vertex) { return vertex; });
 }
 
 std::uint64_t FullBoard::calc_symmetry_hash(int komove, int symmetry) const {
-    auto res = Zobrist::zobrist_empty;
-
-    for (auto i = 0; i < m_maxsq; i++) {
-        if (m_square[i] != INVAL) {
-            auto v = rotate_vertex(i, symmetry);
-            res ^= Zobrist::zobrist[m_square[i]][v];
+    return calc_hash(komove, [this, symmetry](const auto vertex) {
+        if (vertex == 0) {
+            return 0;
+        } else {
+            const auto newvtx = Network::get_symmetry(get_xy(vertex), symmetry, m_boardsize);
+            return get_vertex(newvtx.first, newvtx.second);
         }
-    }
-
-    /* prisoner hashing is rule set dependent */
-    res ^= Zobrist::zobrist_pris[0][m_prisoners[0]];
-    res ^= Zobrist::zobrist_pris[1][m_prisoners[1]];
-
-    if (m_tomove == BLACK) {
-        res ^= Zobrist::zobrist_blacktomove;
-    }
-
-    if (komove == 0) {
-        res ^= Zobrist::zobrist_ko[0];
-    } else {
-        auto v = rotate_vertex(komove, symmetry);
-        res ^= Zobrist::zobrist_ko[v];
-    }
-
-    return res;
+    });
 }
 
-std::uint64_t FullBoard::get_hash(void) const {
+std::uint64_t FullBoard::get_hash() const {
     return m_hash;
 }
 
-std::uint64_t FullBoard::get_ko_hash(void) const {
+std::uint64_t FullBoard::get_ko_hash() const {
     return m_ko_hash;
 }
 

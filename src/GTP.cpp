@@ -578,18 +578,18 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         Network::Netresult vec;
         if (cmdstream.fail()) {
-            // Default = DIRECT with no rotation
+            // Default = DIRECT with no symmetric change
             vec = Network::get_scored_moves(
                 &game, Network::Ensemble::DIRECT, 0, true);
         } else if (symmetry == "all") {
-            for (auto r = 0; r < 8; r++) {
+            for (auto s = 0; s < Network::NUM_SYMMETRIES; ++s) {
                 vec = Network::get_scored_moves(
-                    &game, Network::Ensemble::DIRECT, r, true);
+                    &game, Network::Ensemble::DIRECT, s, true);
                 Network::show_heatmap(&game, vec, false);
             }
         } else if (symmetry == "average" || symmetry == "avg") {
             vec = Network::get_scored_moves(
-                &game, Network::Ensemble::AVERAGE, 8, true);
+                &game, Network::Ensemble::AVERAGE, Network::NUM_SYMMETRIES, true);
         } else {
             vec = Network::get_scored_moves(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
