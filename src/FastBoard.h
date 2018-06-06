@@ -43,6 +43,10 @@ public:
     static constexpr int MAXSQ = ((BOARD_SIZE + 2) * (BOARD_SIZE + 2));
 
     /*
+        no applicable vertex
+    */
+    static constexpr int NO_VERTEX = 0;
+    /*
         vertex of a pass
     */
     static constexpr int PASS   = -1;
