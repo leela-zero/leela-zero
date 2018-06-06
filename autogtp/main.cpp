@@ -140,6 +140,11 @@ int main(int argc, char *argv[]) {
              << endl;
         return EXIT_FAILURE;
     }
+    if (!QDir().mkpath("sgfs")) {
+        cerr << "Couldn't create the directory for the sgf files!"
+             << endl;
+        return EXIT_FAILURE;
+    }
     Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, maxNum,
                                       parser.isSet(eraseOption), parser.value(keepSgfOption),
                                       parser.value(keepDebugOption));
