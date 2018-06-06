@@ -72,11 +72,13 @@ Result ProductionJob::execute(){
         return res;
     }
     if (!m_sgf.isEmpty()) {
-        game.loadSgf(m_sgf);
-        game.loadTraining(m_sgf);
+        game.loadSgf(m_sgf, m_moves);
+        game.loadTraining(m_sgf, m_moves);
         game.setMovesCount(m_moves);
-        QFile::remove(m_sgf + ".sgf");
-        QFile::remove(m_sgf + ".train");
+        if (! m_permanent_sgf) {
+            QFile::remove(m_sgf + ".sgf");
+            QFile::remove(m_sgf + ".train");
+        }
     }
     do {
         game.move();
@@ -121,13 +123,9 @@ void ProductionJob::init(const Order &o) {
     m_engine.m_network = "networks/" + o.parameters()["network"] + ".gz";
     m_engine.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
     m_debug = o.parameters()["debug"] == "true";
-    if (o.type() == Order::RestoreSelfPlayed) {
-        m_sgf = o.parameters()["sgf"];
-        m_moves = o.parameters()["moves"].toInt();
-    } else {
-        m_sgf = "";
-        m_moves = 0;
-    }
+    m_sgf = o.parameters()["sgf"];
+    m_moves = o.parameters()["moves"].toInt();
+    m_permanent_sgf = o.type() != Order::RestoreSelfPlayed;
 }
 
 Result ValidationJob::execute(){
@@ -232,5 +230,3 @@ void WaitJob::init(const Order &o) {
     Job::init(o);
     m_minutes = o.parameters()["minutes"].toInt();
 }
-
-

@@ -64,8 +64,10 @@ public:
     bool nextMove();
     bool getScore();
     bool loadSgf(const QString &fileName);
+    bool loadSgf(const QString &fileName, int moves);
     bool writeSgf();
     bool loadTraining(const QString &fileName);
+    bool loadTraining(const QString &fileName, int moves);
     bool saveTraining();
     bool fixSgf(const QString& weightFile, const bool resignation);
     bool dumpTraining();
