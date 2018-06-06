@@ -43,11 +43,6 @@ public:
     static constexpr int MAXSQ = ((BOARD_SIZE + 2) * (BOARD_SIZE + 2));
 
     /*
-        infinite score
-    */
-    static constexpr int BIG = 10000000;
-
-    /*
         vertex of a pass
     */
     static constexpr int PASS   = -1;

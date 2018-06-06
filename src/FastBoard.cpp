@@ -32,7 +32,6 @@ using namespace Utils;
 
 const int FastBoard::NBR_SHIFT;
 const int FastBoard::MAXSQ;
-const int FastBoard::BIG;
 const int FastBoard::PASS;
 const int FastBoard::RESIGN;
 
