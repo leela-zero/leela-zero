@@ -42,6 +42,20 @@ int main(int argc, char *argv[]) {
     parser.addHelpOption();
     parser.addVersionOption();
 
+    QCommandLineOption networkOption(
+        {"n", "network"},
+            "Networks to use as players in competition mode (two are needed).",
+            "filename");
+    QCommandLineOption optionsOption(
+        {"o", "options"},
+            "Options for the binary given by -b (default \"-g -v 3200 --noponder -t 1 -q -d -r 0 -w\").",
+            "opt_string");
+    QCommandLineOption gtpCommandOption(
+        {"c", "gtp-command" },
+            "GTP command to send to the binary on startup (default \"time_settings 0 1 0\").\n"
+            "Multiple commands are sent in the order they are specified.\n"
+            "Commands apply to the preceeding binary or both if specified before all binaries.",
+            "command");
     QCommandLineOption sprtOption(
         {"s", "sprt"},
             "Set the SPRT hypothesis (default '0.0:35.0').",
@@ -63,22 +77,26 @@ int main(int argc, char *argv[]) {
     parser.addOption(gpusOption);
     parser.addOption(sprtOption);
     parser.addOption(keepSgfOption);
-    parser.addPositionalArgument(
-                "engine_options",
-                "Engine options specified as: [name]=\"[value]\"\n"
-                "Engine options before a binary is specified are for both binaries. "
-                "Engine options after a binary are for that binary only.\n"
-                "names:\n"
-                "binary\tBinary to execute for the game\n(default ./leelaz).\n"
-                "options\tOptions for the binary\n(default \"-g -p 1600 --noponder -t 1 -q -d -r 0 -w\").\n"
-                "network\tNetwork for the binary to use.\n"
-                "gtp-command\tGTP command to send to the binary\n(default \"time_settings 0 1 0\").\n"
-                "Multiple gtp-command engine options can be specified in the order to be sent.\n");
+    parser.addOption(networkOption);
+    parser.addOption(optionsOption);
+    parser.addOption(gtpCommandOption);
+    parser.addPositionalArgument("binary",
+        "Binary to execute for the game (default ./leelaz).\n"
+        "Only --gtp-command options are parsed after a binary is specified");
 
     parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsPositionalArguments);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
+    QStringList netList = parser.values(networkOption);
+    if (netList.count() != 2) {
+        parser.showHelp();
+    }
+
+    QStringList optsList = parser.values(optionsOption);
+    while (optsList.count() < 2) {
+        optsList << " -g -v 3200 --noponder -t 1 -q -d -r 0 -w ";
+    }
 
     QString sprtOpt = parser.value(sprtOption);
     QStringList sprtList = sprtOpt.split(":");
@@ -101,51 +119,24 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    auto default_engine = engine_t(
-        {"./leelaz", " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ", "", {"time_settings 0 1 0"}});
-    auto engines = QVector<engine_t>({default_engine, default_engine});
+    QStringList commandList = {"time_settings 0 1 0"};
+    commandList << parser.values(gtpCommandOption);
 
-    auto engine_idx = -1;
-    const auto args = parser.positionalArguments();
-    for (auto arg : args) {
-        auto name = arg.section('=', 0, 0);
-        auto val = arg.section('=', 1);
-        if (name.isEmpty()) {
-            continue;
+    auto engines = QVector<engine_t>({
+        {"./leelaz", optsList[0], netList[0], commandList},
+        {"./leelaz", optsList[1], netList[1], commandList}});
+
+    auto engine_idx = 0;
+    auto pos_args = parser.positionalArguments();
+    while (!pos_args.isEmpty()) {
+        if (engine_idx >= 2) {
+            parser.showHelp();
         }
-
-        if (name == "binary") {
-            engine_idx++;
-            if (engine_idx > 1) {
-                parser.showHelp();
-            }
-            engines[engine_idx].binary = val;
-        } else if (name == "options") {
-            if (engine_idx == -1) {
-                engines[0].options = val;
-                engines[1].options = val;
-            } else {
-                engines[engine_idx].options = val;
-            }
-        } else if (name == "network") {
-            if (engine_idx == -1) {
-                engines[0].network = val;
-                engines[1].network = val;
-            } else {
-                engines[engine_idx].network = val;
-            }
-        } else if (name == "gtp-command") {
-            if (engine_idx == -1) {
-                engines[0].commands.append(val);
-                engines[1].commands.append(val);
-            } else {
-                engines[engine_idx].commands.append(val);
-            }
-        }
-    }
-
-    if (engines[0].network == "" || engines[1].network == "") {
-        parser.showHelp();
+        engines[engine_idx].binary = pos_args[0];
+        parser.process(pos_args);
+        engines[engine_idx].commands << parser.values(gtpCommandOption);
+        pos_args = parser.positionalArguments();
+        engine_idx++;
     }
 
     QMutex mutex;
