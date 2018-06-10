@@ -20,6 +20,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QRegularExpression>
+#include <QFileInfo>
 #include "Game.h"
 
 Game::Game(const QString& weights, const QString& opt, const QString& binary) :
@@ -36,6 +37,9 @@ Game::Game(const QString& weights, const QString& opt, const QString& binary) :
 #ifdef WIN32
     m_binary.append(".exe");
 #endif
+    if (!QFileInfo::exists(binary)) {
+        m_binary.remove(0, 2); // ./leelaz -> leelaz
+    }
     m_cmdLine = m_binary + " " + opt + " " + weights;
     m_fileName = QUuid::createUuid().toRfc4122().toHex();
 }
