@@ -740,16 +740,15 @@ void batchnorm(const size_t channels,
     for (auto c = size_t{0}; c < channels; ++c) {
         const auto mean = means[c];
         const auto scale_stddiv = stddivs[c];
+        const auto arr = &data[c * spatial_size];
 
         if (eltwise == nullptr) {
             // Classical BN
-            const auto arr = &data[c * spatial_size];
             for (auto b = size_t{0}; b < spatial_size; b++) {
                 arr[b] = lambda_ReLU(scale_stddiv * (arr[b] - mean));
             }
         } else {
             // BN + residual add
-            const auto arr = &data[c * spatial_size];
             const auto res = &eltwise[c * spatial_size];
             for (auto b = size_t{0}; b < spatial_size; b++) {
                 arr[b] = lambda_ReLU((scale_stddiv * (arr[b] - mean)) + res[b]);
