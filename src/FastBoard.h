@@ -43,10 +43,9 @@ public:
     static constexpr int MAXSQ = ((BOARD_SIZE + 2) * (BOARD_SIZE + 2));
 
     /*
-        infinite score
+        no applicable vertex
     */
-    static constexpr int BIG = 10000000;
-
+    static constexpr int NO_VERTEX = 0;
     /*
         vertex of a pass
     */

@@ -32,7 +32,7 @@ using namespace Utils;
 
 const int FastBoard::NBR_SHIFT;
 const int FastBoard::MAXSQ;
-const int FastBoard::BIG;
+const int FastBoard::NO_VERTEX;
 const int FastBoard::PASS;
 const int FastBoard::RESIGN;
 
@@ -146,6 +146,8 @@ void FastBoard::reset_board(int size) {
     m_parent[MAXSQ] = MAXSQ;
     m_libs[MAXSQ]   = 16384;    /* we will subtract from this */
     m_next[MAXSQ]   = MAXSQ;
+
+    assert(m_square[NO_VERTEX] == INVAL);
 }
 
 bool FastBoard::is_suicide(int i, int color) const {

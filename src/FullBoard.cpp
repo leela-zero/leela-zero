@@ -98,8 +98,8 @@ std::uint64_t FullBoard::calc_hash(int komove) const {
 
 std::uint64_t FullBoard::calc_symmetry_hash(int komove, int symmetry) const {
     return calc_hash(komove, [this, symmetry](const auto vertex) {
-        if (vertex == 0) {
-            return 0;
+        if (vertex == NO_VERTEX) {
+            return NO_VERTEX;
         } else {
             const auto newvtx = Network::get_symmetry(get_xy(vertex), symmetry, m_boardsize);
             return get_vertex(newvtx.first, newvtx.second);
@@ -193,7 +193,7 @@ int FullBoard::update_board(const int color, const int i) {
     }
 
     // No ko
-    return 0;
+    return NO_VERTEX;
 }
 
 void FullBoard::display_board(int lastmove) {
