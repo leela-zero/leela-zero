@@ -36,7 +36,7 @@ public:
     void display_board(int lastmove = -1);
 
     std::uint64_t calc_hash(int komove = NO_VERTEX) const;
-    std::uint64_t calc_symmetry_hash(int komove = NO_VERTEX, int symmetry = 0) const;
+    std::uint64_t calc_symmetry_hash(int komove, int symmetry) const;
     std::uint64_t calc_ko_hash() const;
 
     std::uint64_t m_hash;
