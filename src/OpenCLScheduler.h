@@ -20,6 +20,7 @@
 #define OPENCL_SCHEDULER_H_INCLUDED
 #include "config.h"
 
+#include <list>
 #include <vector>
 #include <future>
 
@@ -36,20 +37,17 @@ public:
                  std::vector<net_t>& output_pol,
                  std::vector<net_t>& output_val);
 private:
-    class ForwardTask {
+    class OpenCLContext {
     public:
-        const std::vector<net_t> *input;
-        std::vector<net_t> * output;
-        std::promise<void> prom;
-        ForwardTask() : input(nullptr), output(nullptr) {}
-        ForwardTask(const std::vector<net_t> * in,
-                    std::vector<net_t> * out)
-            : input(in), output(out) {}
+        size_t gpu_num;
+        std::unique_ptr<ThreadData> opencl_thread_data;
     };
 
     std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
     std::vector<std::unique_ptr<OpenCL>> m_opencl;
-    Utils::ThreadPool m_threadpool;
+    std::list<OpenCLContext> m_context;
+    std::mutex m_context_lock;
+    std::condition_variable m_context_condvar;
 };
 
 extern OpenCLScheduler opencl;

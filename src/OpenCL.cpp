@@ -412,9 +412,7 @@ const std::string sourceCode_sgemm =
 ;
 #endif
 
-thread_local ThreadData opencl_thread_data;
-
-void OpenCL::ensure_thread_initialized() {
+void OpenCL::ensure_thread_initialized(ThreadData &opencl_thread_data) {
     if (!opencl_thread_data.m_is_initialized) {
         // Make kernels
         opencl_thread_data.m_convolve1_kernel =
@@ -457,7 +455,8 @@ void OpenCL_Network::add_weights(size_t layer,
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
                              std::vector<net_t>& output_pol,
-                             std::vector<net_t>& output_val) {
+                             std::vector<net_t>& output_val,
+                             ThreadData & opencl_thread_data) {
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
     constexpr auto tiles = WINOGRAD_P;
@@ -465,7 +464,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     const auto finalSize_pol = m_layers[m_layers.size()-2].outputs * one_plane;
     const auto finalSize_val = m_layers.back().outputs * one_plane;
 
-    m_opencl.ensure_thread_initialized();
+    m_opencl.ensure_thread_initialized(opencl_thread_data);
 
     if (!opencl_thread_data.m_buffers_allocated) {
         auto max_channels = unsigned{0};
@@ -535,7 +534,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             if (niter->is_residual_block) {
                 skip_next_in_trans = true;
             }
-            convolve3(layer.channels,
+            convolve3(opencl_thread_data,
+                     layer.channels,
                      layer.outputs,
                      inBuffer,
                      inBuffer,
@@ -553,7 +553,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             auto bn1_weights   = begin(layer.weights) + 1;
             auto conv2_weights = begin(layer.weights) + 3;
             auto bn2_weights   = begin(layer.weights) + 4;
-            convolve3(layer.channels,
+            convolve3(opencl_thread_data,
+                      layer.channels,
                       layer.outputs,
                       inBuffer,
                       inBuffer2,
@@ -568,7 +569,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             if (niter->is_residual_block) {
                 skip_next_in_trans = true;
             }
-            convolve3(layer.channels,
+            convolve3(opencl_thread_data,
+                      layer.channels,
                       layer.outputs,
                       inBuffer2,
                       inBuffer,
@@ -589,7 +591,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
                 out_buffer = opencl_thread_data.m_pinnedOutBuffer_pol;
             }
 
-            convolve1(layer.channels,
+            convolve1(opencl_thread_data, layer.channels,
                     layer.outputs,
                     inBuffer,
                     out_buffer,
@@ -622,7 +624,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
 
 }
 
-void OpenCL_Network::convolve3(int channels, int outputs,
+void OpenCL_Network::convolve3(ThreadData & opencl_thread_data,
+                              int channels, int outputs,
                               cl::Buffer& bufferIn,
                               cl::Buffer& bufferOut,
                               cl::Buffer& bufferV,
@@ -764,7 +767,8 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     }
 }
 
-void OpenCL_Network::convolve1(int channels, int outputs,
+void OpenCL_Network::convolve1(ThreadData & opencl_thread_data,
+                              int channels, int outputs,
                               cl::Buffer& bufferInput,
                               cl::Buffer& bufferOutput,
                               cl::Buffer& bufferMerge,
@@ -1093,11 +1097,13 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
         throw std::runtime_error("Error building OpenCL kernels.");
     }
 
-    ensure_thread_initialized();
+    ThreadData tdata;
+    ensure_thread_initialized(tdata);
+
     process_tuners(sgemm_tuners);
 
     m_wavefront_size =
-        opencl_thread_data.m_sgemm_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
+        tdata.m_sgemm_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
             best_device);
     myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
 
