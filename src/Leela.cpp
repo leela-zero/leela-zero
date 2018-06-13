@@ -359,7 +359,7 @@ void init_global_objects() {
     NNCache::get_NNCache().set_size_from_playouts(playouts);
 
     // Initialize network
-    Network::initialize();
+    g_network.initialize();
 }
 
 void benchmark(GameState& game) {

@@ -22,7 +22,6 @@
 #include "Random.h"
 #include "OpenCLScheduler.h"
 
-OpenCLScheduler opencl;
 
 void OpenCLScheduler::initialize(const int channels) {
     // multi-gpu?

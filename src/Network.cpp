@@ -101,7 +101,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
     std::atomic<int> runcount{0};
 
     for (auto i = 0; i < cpus; i++) {
-        tg.add_task([&runcount, iterations, state]() {
+        tg.add_task([this, &runcount, iterations, state]() {
             while (runcount < iterations) {
                 runcount++;
                 get_scored_moves(state, Ensemble::RANDOM_SYMMETRY, -1, true);
@@ -404,9 +404,9 @@ void Network::initialize() {
 
 #ifdef USE_OPENCL
     myprintf("Initializing OpenCL.\n");
-    opencl.initialize(channels);
+    m_opencl.initialize(channels);
 
-    for (const auto & opencl_net : opencl.get_networks()) {
+    for (const auto & opencl_net : m_opencl.get_networks()) {
         const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
 
         const auto mwg = tuners[0];
@@ -962,11 +962,11 @@ Network::Netresult Network::get_scored_moves_internal(
 #endif
 #ifdef USE_OPENCL
 #ifdef USE_HALF
-    opencl.forward(input_data, policy_data_n, value_data_n);
+    m_opencl.forward(input_data, policy_data_n, value_data_n);
     std::copy(begin(policy_data_n), end(policy_data_n), begin(policy_data));
     std::copy(begin(value_data_n), end(value_data_n), begin(value_data));
 #else
-    opencl.forward(input_data, policy_data, value_data);
+    m_opencl.forward(input_data, policy_data, value_data);
 #endif
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
     forward_cpu(input_data, policy_data, value_data);
@@ -1144,3 +1144,5 @@ std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex, con
     assert(symmetry != 0 || vertex == std::make_pair(x, y));
     return {x, y};
 }
+
+Network g_network;

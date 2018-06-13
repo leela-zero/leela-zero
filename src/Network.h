@@ -30,6 +30,7 @@
 
 #include "FastState.h"
 #include "GameState.h"
+#include "OpenCLScheduler.h"
 
 class Network {
 public:
@@ -52,7 +53,7 @@ public:
         Netresult() : policy(BOARD_SQUARES), policy_pass(0.0f), winrate(0.0f) {}
     };
 
-    static Netresult get_scored_moves(const GameState* const state,
+    Netresult get_scored_moves(const GameState* const state,
                                       const Ensemble ensemble,
                                       const int symmetry = -1,
                                       const bool skip_cache = false);
@@ -66,8 +67,8 @@ public:
     static constexpr auto WINOGRAD_ALPHA = 4;
     static constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 
-    static void initialize();
-    static void benchmark(const GameState * const state,
+    void initialize();
+    void benchmark(const GameState * const state,
                           const int iterations = 1600);
     static void show_heatmap(const FastState * const state,
                              const Netresult & netres, const bool topmoves);
@@ -107,7 +108,7 @@ private:
                                       std::vector<net_t>::iterator black,
                                       std::vector<net_t>::iterator white,
                                       const int symmetry);
-    static Netresult get_scored_moves_internal(const GameState* const state,
+    Netresult get_scored_moves_internal(const GameState* const state,
                                                const int symmetry);
 #if defined(USE_BLAS)
     static void forward_cpu(const std::vector<float>& input,
@@ -115,6 +116,9 @@ private:
                             std::vector<float>& output_val);
 
 #endif
+
+    OpenCLScheduler m_opencl;
 };
 
+extern Network g_network;
 #endif

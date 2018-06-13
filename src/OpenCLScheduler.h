@@ -50,6 +50,4 @@ private:
     std::condition_variable m_context_condvar;
 };
 
-extern OpenCLScheduler opencl;
-
 #endif
