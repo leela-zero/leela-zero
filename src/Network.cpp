@@ -320,7 +320,7 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
     return {0, 0};
 }
 
-void Network::initialize(int playouts) {
+void Network::initialize(int playouts, const std::string & weightsfile) {
     m_nncache.set_size_from_playouts(playouts);
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
@@ -333,7 +333,7 @@ void Network::initialize(int playouts) {
 
     // Load network from file
     size_t channels, residual_blocks;
-    std::tie(channels, residual_blocks) = load_network_file(cfg_weightsfile);
+    std::tie(channels, residual_blocks) = load_network_file(weightsfile);
     if (channels == 0) {
         exit(EXIT_FAILURE);
     }

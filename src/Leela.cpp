@@ -358,7 +358,7 @@ void init_global_objects() {
     auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
 
     // Initialize network
-    g_network.initialize(playouts);
+    g_network.initialize(playouts, cfg_weightsfile);
 }
 
 void benchmark(GameState& game) {
