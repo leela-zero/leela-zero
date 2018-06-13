@@ -45,7 +45,7 @@ private:
 
     std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
     std::vector<std::unique_ptr<OpenCL>> m_opencl;
-    std::list<OpenCLContext> m_context;
+    std::vector<std::list<OpenCLContext>> m_context;
     std::mutex m_context_lock;
     std::condition_variable m_context_condvar;
 };
