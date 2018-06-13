@@ -43,7 +43,8 @@ public:
     UCTNode() = delete;
     ~UCTNode() = default;
 
-    bool create_children(std::atomic<int>& nodecount,
+    bool create_children(Network & network,
+                         std::atomic<int>& nodecount,
                          GameState& state, float& eval,
                          float min_psa_ratio = 0.0f);
 
@@ -74,7 +75,7 @@ public:
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch
     void randomize_first_proportionally();
-    void prepare_root_node(int color,
+    void prepare_root_node(Network & network, int color,
                            std::atomic<int>& nodecount,
                            GameState& state);
 

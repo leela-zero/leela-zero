@@ -140,6 +140,4 @@ private:
     std::array<float, 1> ip2_val_b;
     bool value_head_not_stm;
 };
-
-extern Network g_network;
 #endif

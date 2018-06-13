@@ -1117,5 +1117,3 @@ std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex, con
     assert(symmetry != 0 || vertex == std::make_pair(x, y));
     return {x, y};
 }
-
-Network g_network;

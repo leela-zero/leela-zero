@@ -31,6 +31,7 @@
 #include "FastState.h"
 #include "GameState.h"
 #include "UCTNode.h"
+#include "Network.h"
 
 
 class SearchResult {
@@ -91,7 +92,9 @@ public:
     static constexpr auto UNLIMITED_PLAYOUTS =
         std::numeric_limits<int>::max() / 2;
 
-    UCTSearch(GameState& g);
+    UCTSearch(GameState& g,
+              const std::string & weightsfile);
+    void reset();
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
@@ -100,6 +103,15 @@ public:
     void increment_playouts();
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
+    // bypass to Network class
+    void benchmark(const GameState * const state,
+                          const int iterations = 1600);
+
+    // bypass to Network class
+    Network::Netresult get_scored_moves(const GameState* const state,
+                                      const Network::Ensemble ensemble,
+                                      const int symmetry = -1,
+                                      const bool skip_cache = false);
 private:
     float get_min_psa_ratio() const;
     void dump_stats(FastState& state, UCTNode& parent);
@@ -127,6 +139,8 @@ private:
     int m_maxvisits;
 
     std::list<Utils::ThreadGroup> m_delete_futures;
+
+    Network m_network;
 };
 
 class UCTWorker {

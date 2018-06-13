@@ -186,7 +186,9 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
 
 bool GTP::execute(GameState & game, std::string xinput) {
     std::string input;
-    static auto search = std::make_unique<UCTSearch>(game);
+
+    // When visits are limited ensure cache size is still limited.
+    static auto search = std::make_unique<UCTSearch>(game, cfg_weightsfile);
 
     bool transform_lowercase = true;
 
@@ -300,7 +302,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("clear_board") == 0) {
         Training::clear_training();
         game.reset_game();
-        search = std::make_unique<UCTSearch>(game);
+        search->reset();
         gtp_printf(id, "");
         return true;
     } else if (command.find("komi") == 0) {
@@ -579,19 +581,19 @@ bool GTP::execute(GameState & game, std::string xinput) {
         Network::Netresult vec;
         if (cmdstream.fail()) {
             // Default = DIRECT with no symmetric change
-            vec = g_network.get_scored_moves(
+            vec = search->get_scored_moves(
                 &game, Network::Ensemble::DIRECT, 0, true);
         } else if (symmetry == "all") {
             for (auto s = 0; s < Network::NUM_SYMMETRIES; ++s) {
-                vec = g_network.get_scored_moves(
+                vec = search->get_scored_moves(
                     &game, Network::Ensemble::DIRECT, s, true);
                 Network::show_heatmap(&game, vec, false);
             }
         } else if (symmetry == "average" || symmetry == "avg") {
-            vec = g_network.get_scored_moves(
+            vec = search->get_scored_moves(
                 &game, Network::Ensemble::AVERAGE, Network::NUM_SYMMETRIES, true);
         } else {
-            vec = g_network.get_scored_moves(
+            vec = search->get_scored_moves(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
         }
 
@@ -625,7 +627,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> stones;
 
         if (!cmdstream.fail()) {
-            game.place_free_handicap(stones);
+            game.place_free_handicap(stones, search.get());
             auto stonestring = game.board.get_stone_list();
             gtp_printf(id, "%s", stonestring.c_str());
         } else {
@@ -747,9 +749,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> iterations;
 
         if (!cmdstream.fail()) {
-            g_network.benchmark(&game, iterations);
+            search->benchmark(&game, iterations);
         } else {
-            g_network.benchmark(&game);
+            search->benchmark(&game);
         }
         gtp_printf(id, "");
         return true;

@@ -353,12 +353,6 @@ void init_global_objects() {
     // Doing this here avoids mixing in the thread_id, which
     // improves reproducibility across platforms.
     Random::get_Rng().seedrandom(cfg_rng_seed);
-
-    // When visits are limited ensure cache size is still limited.
-    auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
-
-    // Initialize network
-    g_network.initialize(playouts, cfg_weightsfile);
 }
 
 void benchmark(GameState& game) {
@@ -366,7 +360,7 @@ void benchmark(GameState& game) {
     game.play_textmove("b", "r16");
     game.play_textmove("w", "d4");
     game.play_textmove("b", "c3");
-    auto search = std::make_unique<UCTSearch>(game);
+    auto search = std::make_unique<UCTSearch>(game, cfg_weightsfile);
     game.set_to_move(FastBoard::WHITE);
     search->think(FastBoard::WHITE);
 }
