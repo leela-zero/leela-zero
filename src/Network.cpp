@@ -320,7 +320,8 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
     return {0, 0};
 }
 
-void Network::initialize() {
+void Network::initialize(int playouts) {
+    m_nncache.set_size_from_playouts(playouts);
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
         for (auto v = 0; v < BOARD_SQUARES; ++v) {
@@ -843,9 +844,9 @@ std::vector<float> softmax(const std::vector<float>& input,
     return output;
 }
 
-static bool probe_cache(const GameState* const state,
-                        Network::Netresult& result) {
-    if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
+bool Network::probe_cache(const GameState* const state,
+                          Network::Netresult& result) {
+    if (m_nncache.lookup(state->board.get_hash(), result)) {
         return true;
     }
     // If we are not generating a self-play game, try to find
@@ -855,7 +856,7 @@ static bool probe_cache(const GameState* const state,
            < (state->get_timecontrol().opening_moves(BOARD_SIZE) / 2)) {
         for (auto sym = 1; sym < Network::NUM_SYMMETRIES; ++sym) {
             const auto hash = state->get_symmetry_hash(sym);
-            if (NNCache::get_NNCache().lookup(hash, result)) {
+            if (m_nncache.lookup(hash, result)) {
                 decltype(result.policy) corrected_policy;
                 corrected_policy.reserve(BOARD_SQUARES);
                 for (auto idx = size_t{0}; idx < BOARD_SQUARES; ++idx) {
@@ -914,7 +915,7 @@ Network::Netresult Network::get_scored_moves(
     }
 
     // Insert result into cache.
-    NNCache::get_NNCache().insert(state->board.get_hash(), result);
+    m_nncache.insert(state->board.get_hash(), result);
 
     return result;
 }

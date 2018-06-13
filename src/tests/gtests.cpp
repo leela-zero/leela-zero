@@ -69,10 +69,8 @@ public:
         // improves reproducibility across platforms.
         Random::get_Rng().seedrandom(cfg_rng_seed);
 
-        NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
-
         cfg_weightsfile = "../src/tests/0k.txt";
-        Network::initialize();
+        Network::initialize(cfg_max_playouts);
     }
     void TearDown() {}
 };

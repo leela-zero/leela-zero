@@ -28,6 +28,7 @@
 #include <vector>
 #include <fstream>
 
+#include "NNCache.h"
 #include "FastState.h"
 #include "GameState.h"
 #include "OpenCLScheduler.h"
@@ -39,19 +40,7 @@ public:
         DIRECT, RANDOM_SYMMETRY, AVERAGE
     };
     using ScoreVertexPair = std::pair<float,int>;
-
-    struct Netresult {
-        // 19x19 board positions
-        std::vector<float> policy;
-
-        // pass
-        float policy_pass;
-
-        // winrate
-        float winrate;
-
-        Netresult() : policy(BOARD_SQUARES), policy_pass(0.0f), winrate(0.0f) {}
-    };
+    using Netresult = NNCache::Netresult;
 
     Netresult get_scored_moves(const GameState* const state,
                                       const Ensemble ensemble,
@@ -67,7 +56,7 @@ public:
     static constexpr auto WINOGRAD_ALPHA = 4;
     static constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 
-    void initialize();
+    void initialize(int playouts);
     void benchmark(const GameState * const state,
                           const int iterations = 1600);
     static void show_heatmap(const FastState * const state,
@@ -111,6 +100,8 @@ private:
                                       std::vector<net_t>::iterator black,
                                       std::vector<net_t>::iterator white,
                                       const int symmetry);
+
+    bool probe_cache(const GameState* const state, Network::Netresult& result);
 #if defined(USE_BLAS)
     void forward_cpu(const std::vector<float>& input,
                             std::vector<float>& output_pol,
@@ -119,6 +110,8 @@ private:
 #endif
 
     OpenCLScheduler m_opencl;
+    NNCache m_nncache;
+
     // Input + residual block tower
     std::vector<std::vector<float>> conv_weights;
     std::vector<std::vector<float>> conv_biases;
@@ -146,8 +139,6 @@ private:
     std::array<float, 256> ip2_val_w;
     std::array<float, 1> ip2_val_b;
     bool value_head_not_stm;
-
-
 };
 
 extern Network g_network;

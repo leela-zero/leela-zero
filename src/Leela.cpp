@@ -356,10 +356,9 @@ void init_global_objects() {
 
     // When visits are limited ensure cache size is still limited.
     auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
-    NNCache::get_NNCache().set_size_from_playouts(playouts);
 
     // Initialize network
-    g_network.initialize();
+    g_network.initialize(playouts);
 }
 
 void benchmark(GameState& game) {
