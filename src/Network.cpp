@@ -62,34 +62,6 @@
 namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
-// Input + residual block tower
-static std::vector<std::vector<float>> conv_weights;
-static std::vector<std::vector<float>> conv_biases;
-static std::vector<std::vector<float>> batchnorm_means;
-static std::vector<std::vector<float>> batchnorm_stddivs;
-
-// Policy head
-static std::vector<float> conv_pol_w;
-static std::vector<float> conv_pol_b;
-static std::array<float, 2> bn_pol_w1;
-static std::array<float, 2> bn_pol_w2;
-
-static std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> ip_pol_w;
-static std::array<float, BOARD_SQUARES + 1> ip_pol_b;
-
-// Value head
-static std::vector<float> conv_val_w;
-static std::vector<float> conv_val_b;
-static std::array<float, 1> bn_val_w1;
-static std::array<float, 1> bn_val_w2;
-
-static std::array<float, BOARD_SQUARES * 256> ip1_val_w;
-static std::array<float, 256> ip1_val_b;
-
-static std::array<float, 256> ip2_val_w;
-static std::array<float, 1> ip2_val_b;
-static bool value_head_not_stm;
-
 // Symmetry helper
 static std::array<std::array<int, BOARD_SQUARES>, Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
 
