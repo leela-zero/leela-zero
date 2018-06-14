@@ -37,7 +37,7 @@ Game::Game(const QString& weights, const QString& opt, const QString& binary) :
 #ifdef WIN32
     m_binary.append(".exe");
 #endif
-    if (!QFileInfo::exists(binary)) {
+    if (!QFileInfo::exists(m_binary)) {
         m_binary.remove(0, 2); // ./leelaz -> leelaz
     }
     m_cmdLine = m_binary + " " + opt + " " + weights;
