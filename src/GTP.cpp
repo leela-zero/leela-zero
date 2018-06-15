@@ -76,6 +76,12 @@ std::string cfg_options_str;
 bool cfg_benchmark;
 int cfg_analyze_interval_centis;
 
+std::unique_ptr<UCTSearch> GTP::search;
+
+void GTP::initialize(GameState & gamestate) {
+    search = std::make_unique<UCTSearch>(gamestate, cfg_weightsfile);
+}
+
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
     cfg_allow_pondering = true;
@@ -186,9 +192,6 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
 
 bool GTP::execute(GameState & game, std::string xinput) {
     std::string input;
-
-    // When visits are limited ensure cache size is still limited.
-    static auto search = std::make_unique<UCTSearch>(game, cfg_weightsfile);
 
     bool transform_lowercase = true;
 

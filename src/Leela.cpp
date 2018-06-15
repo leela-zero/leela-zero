@@ -401,6 +401,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    GTP::initialize(*maingame);
     for (;;) {
         if (!cfg_gtp_mode) {
             maingame->display_state();

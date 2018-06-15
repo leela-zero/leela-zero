@@ -65,7 +65,10 @@ extern int cfg_analyze_interval_centis;
     GTP is meant to be used between programs. It's not a human interface.
 */
 class GTP {
+
+    static std::unique_ptr<UCTSearch> search;
 public:
+    static void initialize(GameState & gamestate);
     static bool execute(GameState & game, std::string xinput);
     static void setup_default_parameters();
 private:
