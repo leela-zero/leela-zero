@@ -53,10 +53,7 @@ void OpenCLScheduler::initialize(const int channels) {
         silent = true;
 
         for (auto i = 0; i < num_threads; i++) {
-            OpenCLContext ctx;
-            ctx.gpu_num = gnum;
-            ctx.opencl_thread_data = std::make_unique<ThreadData>();
-            m_context[i].push_back(std::move(ctx));
+            m_context[i].push_back(std::make_unique<OpenCLContext>(gnum));
         }
         gnum++;
     }
@@ -65,13 +62,13 @@ void OpenCLScheduler::initialize(const int channels) {
 void OpenCLScheduler::forward(const std::vector<net_t>& input,
                               std::vector<net_t>& output_pol,
                               std::vector<net_t>& output_val) {
-    OpenCLContext ctx;
+    std::unique_ptr<OpenCLContext> ctx;
     auto queue_num = size_t{0};
     {
         std::unique_lock<std::mutex> lk(m_context_lock);
         m_context_condvar.wait(lk, [this]{
-            for(auto & ctx : m_context) {
-                if (!ctx.empty()) {
+            for(auto & ctxlist : m_context) {
+                if (!ctxlist.empty()) {
                     return true;
                 }
             }
@@ -87,7 +84,7 @@ void OpenCLScheduler::forward(const std::vector<net_t>& input,
         }
     }
   
-    m_networks[ctx.gpu_num]->forward(input, output_pol, output_val, *ctx.opencl_thread_data);
+    m_networks[ctx->m_gpu_num]->forward(input, output_pol, output_val, *ctx);
  
     {
         std::unique_lock<std::mutex> lk(m_context_lock);

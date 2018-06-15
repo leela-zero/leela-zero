@@ -37,15 +37,9 @@ public:
                  std::vector<net_t>& output_pol,
                  std::vector<net_t>& output_val);
 private:
-    class OpenCLContext {
-    public:
-        size_t gpu_num;
-        std::unique_ptr<ThreadData> opencl_thread_data;
-    };
-
     std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
     std::vector<std::unique_ptr<OpenCL>> m_opencl;
-    std::vector<std::list<OpenCLContext>> m_context;
+    std::vector<std::list<std::unique_ptr<OpenCLContext>>> m_context;
     std::mutex m_context_lock;
     std::condition_variable m_context_condvar;
 };

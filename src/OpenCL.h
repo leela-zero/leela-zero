@@ -36,6 +36,7 @@
 static constexpr auto WINOGRAD_P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / 4;
 static constexpr auto WINOGRAD_TILE = 4 * 4;
 
+class OpenCLScheduler;
 class OpenCL;
 
 class Layer {
@@ -50,10 +51,12 @@ private:
     std::vector<cl::Buffer> weights;
 };
 
-class ThreadData {
+class OpenCLContext {
     friend class OpenCL;
     friend class OpenCL_Network;
+    friend class OpenCLScheduler;
 private:
+    size_t m_gpu_num = 0;
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
     cl::Kernel m_convolve1_kernel;
@@ -69,6 +72,9 @@ private:
     cl::Buffer m_pinnedOutBuffer_pol;
     cl::Buffer m_pinnedOutBuffer_val;
     bool m_buffers_allocated{false};
+public:
+    OpenCLContext(size_t gpu_num) :
+        m_gpu_num(gpu_num) {}
 };
 
 class OpenCL_Network {
@@ -133,7 +139,7 @@ public:
     void forward(const std::vector<net_t>& input,
             std::vector<net_t>& output_pol,
             std::vector<net_t>& output_val,
-            ThreadData & opencl_thread_data);
+            OpenCLContext & opencl_context);
 
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
@@ -143,7 +149,7 @@ private:
     }
     void add_weights(size_t layer, size_t size, const float* weights);
 
-    void convolve3(ThreadData & opencl_thread_data,
+    void convolve3(OpenCLContext & opencl_context,
                     int channels, int outputs,
                     cl::Buffer& bufferIn,
                     cl::Buffer& bufferOut,
@@ -154,7 +160,7 @@ private:
                     bool skip_in_transform,
                     bool fuse_in_transform, bool store_inout);
 
-    void convolve1(ThreadData & opencl_thread_data,
+    void convolve1(OpenCLContext & opencl_context,
                   int channels, int outputs,
                   cl::Buffer& bufferInput,
                   cl::Buffer& bufferOutput,
@@ -177,7 +183,7 @@ class OpenCL {
 public:
     void initialize(const int channels, const std::vector<int> & gpus,
                     bool silent = false);
-    void ensure_thread_initialized(ThreadData & opencl_thread_data);
+    void ensure_thread_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
 
     std::vector<size_t> get_sgemm_tuners(void);
