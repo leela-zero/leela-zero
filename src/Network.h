@@ -31,7 +31,9 @@
 #include "NNCache.h"
 #include "FastState.h"
 #include "GameState.h"
+#ifdef USE_OPENCL
 #include "OpenCLScheduler.h"
+#endif
 
 class Network {
 public:
@@ -110,7 +112,9 @@ private:
 
 #endif
 
+#ifdef USE_OPENCL
     OpenCLScheduler m_opencl;
+#endif
     NNCache m_nncache;
 
     // Input + residual block tower
@@ -118,25 +122,25 @@ private:
     std::vector<std::vector<float>> conv_biases;
     std::vector<std::vector<float>> batchnorm_means;
     std::vector<std::vector<float>> batchnorm_stddivs;
-    
+
     // Policy head
     std::vector<float> conv_pol_w;
     std::vector<float> conv_pol_b;
     std::array<float, 2> bn_pol_w1;
     std::array<float, 2> bn_pol_w2;
-    
+
     std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> ip_pol_w;
     std::array<float, BOARD_SQUARES + 1> ip_pol_b;
-    
+
     // Value head
     std::vector<float> conv_val_w;
     std::vector<float> conv_val_b;
     std::array<float, 1> bn_val_w1;
     std::array<float, 1> bn_val_w2;
-    
+
     std::array<float, BOARD_SQUARES * 256> ip1_val_w;
     std::array<float, 256> ip1_val_b;
-    
+
     std::array<float, 256> ip2_val_w;
     std::array<float, 1> ip2_val_b;
     bool value_head_not_stm;

@@ -51,7 +51,7 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(Network & network, 
+bool UCTNode::create_children(Network & network,
                               std::atomic<int>& nodecount,
                               GameState& state,
                               float& eval,

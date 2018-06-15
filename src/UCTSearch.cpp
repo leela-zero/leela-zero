@@ -84,7 +84,7 @@ UCTSearch::UCTSearch(GameState& g, const std::string & weightsfile)
 void UCTSearch::reset() {
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
     m_last_rootstate.reset();
-   
+
     assert(m_nodes == 0);
     assert(m_playouts == 0);
     assert(m_run == false);
