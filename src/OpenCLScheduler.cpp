@@ -53,7 +53,7 @@ void OpenCLScheduler::initialize(const int channels) {
         silent = true;
 
         for (auto i = 0; i < num_threads; i++) {
-            m_context[i].push_back(std::make_unique<OpenCLContext>(gnum));
+            m_context[i].emplace_back(new OpenCLContext(gnum));
         }
         gnum++;
     }
