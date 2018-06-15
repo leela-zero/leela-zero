@@ -291,11 +291,14 @@ If interrupted, training can be resumed with:
 
 # Todo
 
-- [ ] List of package names for more distros
-- [ ] Multi-GPU support for training
-- [ ] Optimize Winograd transformations
-- [ ] CUDA specific version using cuDNN
-- [ ] AMD specific version using MIOpen
+- [ ] Optimize Winograd transformations.
+- [ ] Implement GPU batching.
+- [ ] Parameter setting over GTP.
+- More backends:
+- [ ] Eigen based BLAS backend.
+- [ ] MKL-DNN based backend.
+- [ ] CUDA specific version using cuDNN.
+- [ ] AMD specific version using MIOpen.
 
 # Related links
 

@@ -36,6 +36,7 @@
 class Network {
 public:
     static constexpr auto NUM_SYMMETRIES = 8;
+    static constexpr auto IDENTITY_SYMMETRY = 0;
     enum Ensemble {
         DIRECT, RANDOM_SYMMETRY, AVERAGE
     };

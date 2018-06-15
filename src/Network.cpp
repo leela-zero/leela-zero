@@ -854,7 +854,10 @@ bool Network::probe_cache(const GameState* const state,
     if (!cfg_noise && !cfg_random_cnt
         && state->get_movenum()
            < (state->get_timecontrol().opening_moves(BOARD_SIZE) / 2)) {
-        for (auto sym = 1; sym < Network::NUM_SYMMETRIES; ++sym) {
+        for (auto sym = 0; sym < Network::NUM_SYMMETRIES; ++sym) {
+            if (sym == Network::IDENTITY_SYMMETRY) {
+                continue;
+            }
             const auto hash = state->get_symmetry_hash(sym);
             if (m_nncache.lookup(hash, result)) {
                 decltype(result.policy) corrected_policy;
@@ -1093,7 +1096,9 @@ std::vector<net_t> Network::gather_features(const GameState* const state,
     return input_data;
 }
 
-std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex, const int symmetry, const int board_size) {
+std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex,
+                                          const int symmetry,
+                                          const int board_size) {
     auto x = vertex.first;
     auto y = vertex.second;
     assert(x >= 0 && x < board_size);
@@ -1114,6 +1119,6 @@ std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex, con
 
     assert(x >= 0 && x < board_size);
     assert(y >= 0 && y < board_size);
-    assert(symmetry != 0 || vertex == std::make_pair(x, y));
+    assert(symmetry != IDENTITY_SYMMETRY || vertex == std::make_pair(x, y));
     return {x, y};
 }

@@ -582,7 +582,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         if (cmdstream.fail()) {
             // Default = DIRECT with no symmetric change
             vec = search->get_scored_moves(
-                &game, Network::Ensemble::DIRECT, 0, true);
+                &game, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY, true);
         } else if (symmetry == "all") {
             for (auto s = 0; s < Network::NUM_SYMMETRIES; ++s) {
                 vec = search->get_scored_moves(
