@@ -27,7 +27,12 @@
 #include "OpenCL.h"
 #include "ThreadPool.h"
 
+
 class OpenCLScheduler {
+
+private:
+   
+
 public:
     void initialize(const int channels);
     std::vector<std::unique_ptr<OpenCL_Network>> & get_networks() {
@@ -36,6 +41,28 @@ public:
     void forward(const std::vector<net_t>& input,
                  std::vector<net_t>& output_pol,
                  std::vector<net_t>& output_val);
+
+    void push_input_convolution(unsigned int filter_size,
+                       unsigned int channels,
+                       unsigned int outputs,
+                       const std::vector<float>& weights,
+                       const std::vector<float>& means,
+                       const std::vector<float>& variances);
+
+    void push_residual(unsigned int filter_size,
+                       unsigned int channels,
+                       unsigned int outputs,
+                       const std::vector<float>& weights_1,
+                       const std::vector<float>& means_1,
+                       const std::vector<float>& variances_1,
+                       const std::vector<float>& weights_2,
+                       const std::vector<float>& means_2,
+                       const std::vector<float>& variances_2);
+
+    void push_convolve1(unsigned int channels,
+                        unsigned int outputs,
+                        const std::vector<float>& weights);
+
 private:
     std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
     std::vector<std::unique_ptr<OpenCL>> m_opencl;

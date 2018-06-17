@@ -137,33 +137,6 @@ std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
     return U;
 }
 
-std::vector<float> Network::zeropad_U(const std::vector<float>& U,
-                                      const int outputs, const int channels,
-                                      const int outputs_pad,
-                                      const int channels_pad) {
-    // Fill with zeroes
-    auto Upad = std::vector<float>(WINOGRAD_TILE * outputs_pad * channels_pad);
-
-    for (auto o = 0; o < outputs; o++) {
-        for (auto c = 0; c < channels; c++) {
-            for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++){
-                for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
-                    Upad[xi * (WINOGRAD_ALPHA * outputs_pad * channels_pad)
-                         + nu * (outputs_pad * channels_pad)
-                         + c * outputs_pad +
-                          o] =
-                    U[xi * (WINOGRAD_ALPHA * outputs * channels)
-                      + nu * (outputs * channels)
-                      + c * outputs
-                      + o];
-                }
-            }
-        }
-    }
-
-    return Upad;
-}
-
 std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     // Count size of the network
     myprintf("Detecting residual layers...");
@@ -379,50 +352,29 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     myprintf("Initializing OpenCL.\n");
     m_opencl.initialize(channels);
 
-    for (const auto & opencl_net : m_opencl.get_networks()) {
-        const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
+    weight_index = 0;
 
-        const auto mwg = tuners[0];
-        const auto kwg = tuners[2];
-        const auto vwm = tuners[3];
+    // Winograd filter transformation changes filter size to 4x4
+    m_opencl.push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
+        channels, conv_weights[weight_index],
+        batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
+    weight_index++;
 
-        weight_index = 0;
-
-        const auto m_ceil = ceilMultiple(ceilMultiple(channels, mwg), vwm);
-        const auto k_ceil = ceilMultiple(ceilMultiple(INPUT_CHANNELS, kwg), vwm);
-
-        const auto Upad = zeropad_U(conv_weights[weight_index],
-                                    channels, INPUT_CHANNELS,
-                                    m_ceil, k_ceil);
-
-        // Winograd filter transformation changes filter size to 4x4
-        opencl_net->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
-            channels, Upad,
-            batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
-        weight_index++;
-
-        // residual blocks
-        for (auto i = size_t{0}; i < residual_blocks; i++) {
-            const auto Upad1 = zeropad_U(conv_weights[weight_index],
-                                         channels, channels,
-                                         m_ceil, m_ceil);
-            const auto Upad2 = zeropad_U(conv_weights[weight_index + 1],
-                                         channels, channels,
-                                         m_ceil, m_ceil);
-            opencl_net->push_residual(WINOGRAD_ALPHA, channels, channels,
-                                      Upad1,
-                                      batchnorm_means[weight_index],
-                                      batchnorm_stddivs[weight_index],
-                                      Upad2,
-                                      batchnorm_means[weight_index + 1],
-                                      batchnorm_stddivs[weight_index + 1]);
-            weight_index += 2;
-        }
-
-        // Output head convolutions
-        opencl_net->push_convolve1(channels, OUTPUTS_POLICY, conv_pol_w);
-        opencl_net->push_convolve1(channels, OUTPUTS_VALUE, conv_val_w);
+    // residual blocks
+    for (auto i = size_t{0}; i < residual_blocks; i++) {
+        m_opencl.push_residual(WINOGRAD_ALPHA, channels, channels,
+                                  conv_weights[weight_index],
+                                  batchnorm_means[weight_index],
+                                  batchnorm_stddivs[weight_index],
+                                  conv_weights[weight_index + 1],
+                                  batchnorm_means[weight_index + 1],
+                                  batchnorm_stddivs[weight_index + 1]);
+        weight_index += 2;
     }
+
+    // Output head convolutions
+    m_opencl.push_convolve1(channels, OUTPUTS_POLICY, conv_pol_w);
+    m_opencl.push_convolve1(channels, OUTPUTS_VALUE, conv_val_w);
 #endif
 #ifdef USE_BLAS
 #ifndef __APPLE__
