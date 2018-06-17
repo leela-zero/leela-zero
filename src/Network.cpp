@@ -350,19 +350,20 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 
 #ifdef USE_OPENCL
     myprintf("Initializing OpenCL.\n");
-    m_opencl.initialize(channels);
+    m_forward.reset(new OpenCLScheduler());
+    m_forward->initialize(channels);
 
     weight_index = 0;
 
     // Winograd filter transformation changes filter size to 4x4
-    m_opencl.push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
+    m_forward->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
         channels, conv_weights[weight_index],
         batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
     weight_index++;
 
     // residual blocks
     for (auto i = size_t{0}; i < residual_blocks; i++) {
-        m_opencl.push_residual(WINOGRAD_ALPHA, channels, channels,
+        m_forward->push_residual(WINOGRAD_ALPHA, channels, channels,
                                   conv_weights[weight_index],
                                   batchnorm_means[weight_index],
                                   batchnorm_stddivs[weight_index],
@@ -373,8 +374,8 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     }
 
     // Output head convolutions
-    m_opencl.push_convolve1(channels, OUTPUTS_POLICY, conv_pol_w);
-    m_opencl.push_convolve1(channels, OUTPUTS_VALUE, conv_val_w);
+    m_forward->push_convolve1(channels, OUTPUTS_POLICY, conv_pol_w);
+    m_forward->push_convolve1(channels, OUTPUTS_VALUE, conv_val_w);
 #endif
 #ifdef USE_BLAS
 #ifndef __APPLE__
@@ -884,21 +885,14 @@ Network::Netresult Network::get_scored_moves_internal(
     const auto input_data = gather_features(state, symmetry);
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
-#ifdef USE_HALF
-    std::vector<net_t> policy_data_n(OUTPUTS_POLICY * width * height);
-    std::vector<net_t> value_data_n(OUTPUTS_VALUE * width * height);
-#endif
 #ifdef USE_OPENCL
-#ifdef USE_HALF
-    m_opencl.forward(input_data, policy_data_n, value_data_n);
-    std::copy(begin(policy_data_n), end(policy_data_n), begin(policy_data));
-    std::copy(begin(value_data_n), end(value_data_n), begin(value_data));
-#else
-    m_opencl.forward(input_data, policy_data, value_data);
-#endif
+    m_forward->forward(input_data, policy_data, value_data);
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
     forward_cpu(input_data, policy_data, value_data);
+#else
+#error "No known combination for forward() call"
 #endif
+
 #ifdef USE_OPENCL_SELFCHECK
     // Both implementations are available, self-check the OpenCL driver by
     // running both with a probability of 1/2000.
@@ -999,8 +993,8 @@ void Network::show_heatmap(const FastState* const state,
 }
 
 void Network::fill_input_plane_pair(const FullBoard& board,
-                                    std::vector<net_t>::iterator black,
-                                    std::vector<net_t>::iterator white,
+                                    std::vector<float>::iterator black,
+                                    std::vector<float>::iterator white,
                                     const int symmetry) {
     for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
@@ -1008,17 +1002,17 @@ void Network::fill_input_plane_pair(const FullBoard& board,
         const auto y = sym_idx / BOARD_SIZE;
         const auto color = board.get_square(x, y);
         if (color == FastBoard::BLACK) {
-            black[idx] = net_t(true);
+            black[idx] = float(true);
         } else if (color == FastBoard::WHITE) {
-            white[idx] = net_t(true);
+            white[idx] = float(true);
         }
     }
 }
 
-std::vector<net_t> Network::gather_features(const GameState* const state,
+std::vector<float> Network::gather_features(const GameState* const state,
                                             const int symmetry) {
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
-    auto input_data = std::vector<net_t>(INPUT_CHANNELS * BOARD_SQUARES);
+    auto input_data = std::vector<float>(INPUT_CHANNELS * BOARD_SQUARES);
 
     const auto to_move = state->get_to_move();
     const auto blacks_move = to_move == FastBoard::BLACK;
@@ -1043,7 +1037,7 @@ std::vector<net_t> Network::gather_features(const GameState* const state,
                               symmetry);
     }
 
-    std::fill(to_move_it, to_move_it + BOARD_SQUARES, net_t(true));
+    std::fill(to_move_it, to_move_it + BOARD_SQUARES, float(true));
 
     return input_data;
 }

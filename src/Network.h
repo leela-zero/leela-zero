@@ -31,6 +31,7 @@
 #include "NNCache.h"
 #include "FastState.h"
 #include "GameState.h"
+#include "ForwardPipe.h"
 #ifdef USE_OPENCL
 #include "OpenCLScheduler.h"
 #endif
@@ -65,7 +66,7 @@ public:
     static void show_heatmap(const FastState * const state,
                              const Netresult & netres, const bool topmoves);
 
-    static std::vector<net_t> gather_features(const GameState* const state,
+    static std::vector<float> gather_features(const GameState* const state,
                                               const int symmetry);
     static std::pair<int, int> get_symmetry(const std::pair<int, int>& vertex,
                                             const int symmetry,
@@ -100,8 +101,8 @@ private:
                                                const int symmetry);
 
     static void fill_input_plane_pair(const FullBoard& board,
-                                      std::vector<net_t>::iterator black,
-                                      std::vector<net_t>::iterator white,
+                                      std::vector<float>::iterator black,
+                                      std::vector<float>::iterator white,
                                       const int symmetry);
 
     bool probe_cache(const GameState* const state, Network::Netresult& result);
@@ -112,9 +113,7 @@ private:
 
 #endif
 
-#ifdef USE_OPENCL
-    OpenCLScheduler m_opencl;
-#endif
+    std::unique_ptr<ForwardPipe> m_forward;
     NNCache m_nncache;
 
     // Input + residual block tower

@@ -93,7 +93,7 @@ void OpenCLScheduler::push_input_convolution(unsigned int filter_size,
                    const std::vector<float>& means,
                    const std::vector<float>& variances) {
 
-    for (const auto & opencl_net : get_networks()) {
+    for (const auto & opencl_net : m_networks) {
         const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
 
         const auto mwg = tuners[0];
@@ -122,7 +122,7 @@ void OpenCLScheduler::push_residual(unsigned int filter_size,
                    const std::vector<float>& weights_2,
                    const std::vector<float>& means_2,
                    const std::vector<float>& variances_2) {
-    for (const auto & opencl_net : get_networks()) {
+    for (const auto & opencl_net : m_networks) {
         const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
 
         const auto mwg = tuners[0];
@@ -149,14 +149,14 @@ void OpenCLScheduler::push_convolve1(unsigned int channels,
                     unsigned int outputs,
                     const std::vector<float>& weights)
 {
-    for (const auto & opencl_net : get_networks()) {
+    for (const auto & opencl_net : m_networks) {
         opencl_net->push_convolve1(channels, outputs, weights);
     }
 }
 
-void OpenCLScheduler::forward(const std::vector<net_t>& input,
-                              std::vector<net_t>& output_pol,
-                              std::vector<net_t>& output_val) {
+void OpenCLScheduler::forward(const std::vector<float>& input,
+                              std::vector<float>& output_pol,
+                              std::vector<float>& output_val) {
     std::shared_ptr<OpenCLContext> ctx;
     auto queue_num = size_t{0};
     {

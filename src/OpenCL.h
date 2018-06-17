@@ -136,9 +136,9 @@ public:
         return m_layers.size();
     }
 
-    void forward(const std::vector<net_t>& input,
-            std::vector<net_t>& output_pol,
-            std::vector<net_t>& output_val,
+    void forward(const std::vector<float>& input,
+            std::vector<float>& output_pol,
+            std::vector<float>& output_val,
             OpenCLContext & opencl_context);
 
 private:
