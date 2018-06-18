@@ -87,6 +87,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     if (state.board.white_to_move()) {
         m_net_eval = 1.0f - m_net_eval;
     }
+    update(m_net_eval);
     eval = m_net_eval;
 
     std::vector<Network::ScoreVertexPair> nodelist;
