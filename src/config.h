@@ -78,7 +78,7 @@
  * USE_TUNER: Expose some extra command line parameters that allow tuning the
  * search algorithm.
  */
-#define USE_TUNER
+//#define USE_TUNER
 
 #define PROGRAM_NAME "Leela Zero"
 #define PROGRAM_VERSION "0.15"
