@@ -196,7 +196,6 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         }
     }
 
-
     node->virtual_loss_undo();
 
     return result;
