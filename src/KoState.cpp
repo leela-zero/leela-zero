@@ -21,11 +21,8 @@
 
 #include <cassert>
 #include <algorithm>
-#include <iterator>
 
 #include "FastBoard.h"
-#include "FastState.h"
-#include "FullBoard.h"
 
 void KoState::init_game(int size, float komi) {
     assert(size <= BOARD_SIZE);

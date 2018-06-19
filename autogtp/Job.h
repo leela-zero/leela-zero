@@ -19,11 +19,12 @@
 #ifndef JOB_H
 #define JOB_H
 
-#include "Result.h"
-#include "Order.h"
-#include <QObject>
 #include <QAtomicInt>
-#include <QTextStream>
+#include <QObject>
+#include <QString>
+
+class Order;
+class Result;
 class Management;
 using VersionTuple = std::tuple<int, int, int>;
 

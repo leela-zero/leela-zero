@@ -26,15 +26,17 @@
     distribution.
 */
 
+#include "config.h"
+
 #include <cstddef>
-#include <vector>
-#include <thread>
-#include <queue>
-#include <mutex>
 #include <condition_variable>
-#include <memory>
-#include <future>
 #include <functional>
+#include <future>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <vector>
 
 namespace Utils {
 

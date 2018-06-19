@@ -19,10 +19,6 @@
 #include "config.h"
 #include "FastState.h"
 
-#include <algorithm>
-#include <iterator>
-#include <vector>
-
 #include "FastBoard.h"
 #include "Utils.h"
 #include "Zobrist.h"

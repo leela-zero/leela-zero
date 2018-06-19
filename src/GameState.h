@@ -19,14 +19,17 @@
 #ifndef GAMESTATE_H_INCLUDED
 #define GAMESTATE_H_INCLUDED
 
+#include "config.h"
+
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "FastState.h"
-#include "FullBoard.h"
+#include "FastBoard.h"
 #include "KoState.h"
 #include "TimeControl.h"
+
+class FullBoard;
 
 class GameState : public KoState {
 public:

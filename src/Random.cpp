@@ -19,8 +19,6 @@
 #include "config.h"
 #include "Random.h"
 
-#include <climits>
-#include <cstdint>
 #include <thread>
 #include <random>
 

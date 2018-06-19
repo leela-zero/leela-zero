@@ -17,9 +17,11 @@
 */
 
 #include "Validation.h"
-#include <QFile>
 #include <QDir>
+#include <QFile>
+#include <QTextStream>
 #include <QUuid>
+#include "../autogtp/Game.h"
 
 using VersionTuple = std::tuple<int, int, int>;
 // Minimal Leela Zero version we expect to see

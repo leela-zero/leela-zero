@@ -19,8 +19,8 @@
 #ifndef ORDER_H
 #define ORDER_H
 
-#include <QString>
 #include <QMap>
+#include <QString>
 
 class Order {
 public:

@@ -19,11 +19,12 @@
 #ifndef WORKER_H
 #define WORKER_H
 
+#include <QAtomicInt>
+#include <QString>
+#include <QThread>
 #include "Job.h"
 #include "Order.h"
-
-#include <QThread>
-#include <QMutex>
+#include "Result.h"
 
 class Management;
 

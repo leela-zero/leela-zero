@@ -19,9 +19,10 @@
 #ifndef TIMECONTROL_H_INCLUDED
 #define TIMECONTROL_H_INCLUDED
 
+#include "config.h"
+
 #include <array>
 
-#include "config.h"
 #include "Timing.h"
 
 class TimeControl {

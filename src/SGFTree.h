@@ -19,15 +19,17 @@
 #ifndef SGFTREE_H_INCLUDED
 #define SGFTREE_H_INCLUDED
 
+#include "config.h"
+
 #include <cstddef>
 #include <map>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #include "FastBoard.h"
-#include "GameState.h"
 #include "KoState.h"
+
+class GameState;
 
 class SGFTree {
 public:

@@ -21,10 +21,10 @@
 
 #include "config.h"
 
+#include <cstdint>
 #include <vector>
 
 #include "FastState.h"
-#include "FullBoard.h"
 
 class KoState : public FastState {
 public:

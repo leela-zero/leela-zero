@@ -21,15 +21,14 @@
 
 #include "config.h"
 
-#include <array>
-#include <memory>
+#include <iosfwd>
 #include <string>
 #include <utility>
 #include <vector>
-#include <fstream>
 
-#include "FastState.h"
-#include "GameState.h"
+class FastState;
+class FullBoard;
+class GameState;
 
 class Network {
 public:

@@ -16,31 +16,31 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "Training.h"
 
-#include <algorithm>
-#include <bitset>
 #include <cassert>
+#include <cstring>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
-#include <utility>
+
+#include <zlib.h>
 
 #include "FastBoard.h"
-#include "FullBoard.h"
-#include "GTP.h"
 #include "GameState.h"
+#include "GTP.h"
 #include "Random.h"
 #include "SGFParser.h"
 #include "SGFTree.h"
 #include "Timing.h"
 #include "UCTNode.h"
+#include "UCTNodePointer.h"
 #include "Utils.h"
-#include "string.h"
-#include "zlib.h"
 
 std::vector<TimeStep> Training::m_data{};
 

@@ -19,21 +19,11 @@
 #include "config.h"
 
 #ifdef USE_OPENCL
-#include <array>
-#include <cassert>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <map>
-#include <random>
-#include <cmath>
-#include <fstream>
-
-#include "GTP.h"
-#include "OpenCL.h"
 #include "Tuner.h"
-#include "Utils.h"
-#include "Random.h"
+
+#include <cmath>
+#include <sstream>
+#include <fstream>
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -44,6 +34,10 @@
 #ifdef USE_OPENBLAS
 #include <cblas.h>
 #endif
+
+#include "GTP.h"
+#include "Utils.h"
+#include "Random.h"
 
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
 #ifdef USE_HALF

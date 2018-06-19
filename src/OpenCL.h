@@ -26,12 +26,9 @@
 #define CL_HPP_ENABLE_EXCEPTIONS
 #include <CL/cl2.hpp>
 #include <cstddef>
-#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
-#include <mutex>
-
-#include "Tuner.h"
 
 static constexpr auto WINOGRAD_P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / 4;
 static constexpr auto WINOGRAD_TILE = 4 * 4;

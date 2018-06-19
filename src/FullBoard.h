@@ -20,7 +20,9 @@
 #define FULLBOARD_H_INCLUDED
 
 #include "config.h"
+
 #include <cstdint>
+
 #include "FastBoard.h"
 
 class FullBoard : public FastBoard {

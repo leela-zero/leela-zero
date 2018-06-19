@@ -17,11 +17,10 @@
 */
 
 #include "config.h"
+#include "FullBoard.h"
 
-#include <array>
 #include <cassert>
 
-#include "FullBoard.h"
 #include "Network.h"
 #include "Utils.h"
 #include "Zobrist.h"

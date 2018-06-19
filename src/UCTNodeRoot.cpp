@@ -17,23 +17,22 @@
 */
 
 #include "config.h"
+#include "UCTNode.h"
 
-#include <algorithm>
 #include <cassert>
-#include <iterator>
+#include <cmath>
+#include <algorithm>
 #include <numeric>
 #include <random>
-#include <utility>
-#include <vector>
 
-#include "UCTNode.h"
 #include "FastBoard.h"
 #include "FastState.h"
+#include "GameState.h"
+#include "GTP.h"
 #include "KoState.h"
 #include "Random.h"
-#include "UCTNode.h"
+#include "UCTNodePointer.h"
 #include "Utils.h"
-#include "GTP.h"
 
 /*
  * These functions belong to UCTNode but should only be called on the root node

@@ -17,11 +17,12 @@
 */
 
 #include "config.h"
-#include <functional>
-
 #include "NNCache.h"
-#include "Utils.h"
+
+#include <algorithm>
+
 #include "UCTSearch.h"
+#include "Utils.h"
 
 NNCache::NNCache(int size) : m_size(size) {}
 

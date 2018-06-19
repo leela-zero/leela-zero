@@ -17,12 +17,10 @@
 */
 
 #include "Worker.h"
-#include "Game.h"
-#include <QTextStream>
 #include <QLockFile>
+#include <QTextStream>
 #include <QUuid>
 #include <chrono>
-
 
 Worker::Worker(int index, const QString& gpuIndex, Management *parent) :
     m_index(index),

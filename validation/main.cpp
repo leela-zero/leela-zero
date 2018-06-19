@@ -17,18 +17,13 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <QtCore/QCoreApplication>
-#include <QtCore/QTimer>
-#include <QtCore/QTextStream>
-#include <QtCore/QStringList>
 #include <QCommandLineParser>
-#include <QProcess>
-#include <QFile>
+#include <QCoreApplication>
 #include <QDir>
-#include <QDebug>
-#include <chrono>
-#include <QCommandLineParser>
-#include "../autogtp/Game.h"
+#include <QMutex>
+#include <QString>
+#include <QStringList>
+#include <QTextStream>
 #include "../autogtp/Console.h"
 #include "Validation.h"
 

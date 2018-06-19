@@ -19,19 +19,22 @@
 #ifndef UCTSEARCH_H_INCLUDED
 #define UCTSEARCH_H_INCLUDED
 
-#include <list>
+#include "config.h"
+
+#include <cstddef>
 #include <atomic>
+#include <limits>
+#include <list>
 #include <memory>
 #include <string>
-#include <tuple>
-#include <future>
 
-#include "ThreadPool.h"
-#include "FastBoard.h"
-#include "FastState.h"
-#include "GameState.h"
-#include "UCTNode.h"
+class FastState;
+class GameState;
+class UCTNode;
 
+namespace Utils {
+    class ThreadGroup;
+}
 
 class SearchResult {
 public:

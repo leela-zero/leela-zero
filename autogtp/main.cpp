@@ -17,26 +17,18 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <QtCore/QCoreApplication>
-#include <QtCore/QTimer>
-#include <QtCore/QTextStream>
-#include <QtCore/QStringList>
 #include <QCommandLineParser>
-#include <QProcess>
-#include <QFile>
-#include <QFileInfo>
+#include <QCoreApplication>
 #include <QDir>
-#include <QtWidgets/QShortcut>
-#include <QDebug>
+#include <QStringList>
+#include <QTextStream>
+#include <QTimer>
 #include <chrono>
 #ifdef WIN32
 #include <direct.h>
 #endif
-#include <QCommandLineParser>
-#include <iostream>
-#include "Game.h"
-#include "Management.h"
 #include "Console.h"
+#include "Management.h"
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);

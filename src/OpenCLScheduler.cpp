@@ -15,12 +15,14 @@
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #include "config.h"
 
 #ifdef USE_OPENCL
-#include "GTP.h"
-#include "Random.h"
 #include "OpenCLScheduler.h"
+
+#include "GTP.h"
+#include "OpenCL.h"
 
 thread_local auto current_thread_gpu_num = size_t{0};
 OpenCLScheduler opencl;

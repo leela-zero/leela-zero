@@ -19,10 +19,11 @@
 #ifndef FASTSTATE_H_INCLUDED
 #define FASTSTATE_H_INCLUDED
 
+#include "config.h"
+
 #include <cstddef>
-#include <array>
+#include <cstdint>
 #include <string>
-#include <vector>
 
 #include "FullBoard.h"
 

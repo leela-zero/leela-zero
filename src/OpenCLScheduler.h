@@ -18,13 +18,16 @@
 
 #ifndef OPENCL_SCHEDULER_H_INCLUDED
 #define OPENCL_SCHEDULER_H_INCLUDED
+
 #include "config.h"
 
-#include <vector>
 #include <future>
+#include <vector>
 
-#include "OpenCL.h"
 #include "ThreadPool.h"
+
+class OpenCL;
+class OpenCL_Network;
 
 class OpenCLScheduler {
 public:

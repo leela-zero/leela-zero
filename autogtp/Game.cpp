@@ -16,12 +16,12 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <QUuid>
-#include <QFile>
-#include <QTextStream>
-#include <QRegularExpression>
-#include <QFileInfo>
 #include "Game.h"
+#include <QFile>
+#include <QFileInfo>
+#include <QRegularExpression>
+#include <QTextStream>
+#include <QUuid>
 
 Game::Game(const QString& weights, const QString& opt, const QString& binary) :
     QProcess(),

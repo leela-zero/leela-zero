@@ -19,7 +19,10 @@
 #ifndef IM2COL_H_INCLUDED
 #define IM2COL_H_INCLUDED
 
+#include "config.h"
+
 #include <cassert>
+#include <cstddef>
 #include <vector>
 #include <algorithm>
 

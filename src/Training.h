@@ -21,15 +21,14 @@
 
 #include "config.h"
 
-#include <bitset>
 #include <cstddef>
+#include <bitset>
+#include <iosfwd>
 #include <string>
-#include <utility>
 #include <vector>
 
-#include "GameState.h"
-#include "Network.h"
-#include "UCTNode.h"
+class GameState;
+class UCTNode;
 
 class TimeStep {
 public:

@@ -16,20 +16,19 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cmath>
-#include <random>
-#include <QDir>
-#include <QThread>
-#include <QList>
+#include "Management.h"
 #include <QCryptographicHash>
+#include <QDir>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLockFile>
-#include <QUuid>
+#include <QProcess>
 #include <QRegularExpression>
-#include "Management.h"
-#include "Game.h"
-
+#include <QTextStream>
+#include <QThread>
+#include <QUuid>
+#include <cmath>
+#include "Worker.h"
 
 constexpr int RETRY_DELAY_MIN_SEC = 30;
 constexpr int RETRY_DELAY_MAX_SEC = 60 * 60;  // 1 hour

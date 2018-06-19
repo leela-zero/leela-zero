@@ -19,9 +19,9 @@
 #include "config.h"
 #include "Utils.h"
 
-#include <mutex>
 #include <cstdarg>
 #include <cstdio>
+#include <mutex>
 
 #ifdef _WIN32
 #include <windows.h>

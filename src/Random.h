@@ -20,6 +20,7 @@
 #define RANDOM_H_INCLUDED
 
 #include "config.h"
+
 #include <cstdint>
 #include <limits>
 

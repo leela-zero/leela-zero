@@ -17,10 +17,10 @@
 */
 
 #include "Results.h"
-#include "../autogtp/Game.h"
-#include "SPRT.h"
-#include <QString>
 #include <iostream>
+#include <QString>
+#include <QTextStream>
+#include "../autogtp/Game.h"
 
 void Results::addGameResult(Sprt::GameResult result, int side) {
     m_gamesPlayed++;
