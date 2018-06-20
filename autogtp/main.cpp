@@ -152,7 +152,6 @@ int main(int argc, char *argv[]) {
     } else {
         if (parser.isSet(singleOption) || parser.isSet(maxOption)) {
             QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
-        } else {
             cons = new Console();
             QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
         }
