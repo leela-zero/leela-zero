@@ -82,21 +82,6 @@ private:
     std::vector<float> zeropad_U(const std::vector<float>& U,
         const int outputs, const int channels,
         const int outputs_pad, const int channels_pad);
-    void winograd_transform_in(const std::vector<float>& in,
-                                      std::vector<float>& V,
-                                      const int C);
-    void winograd_transform_out(const std::vector<float>& M,
-                                       std::vector<float>& Y,
-                                       const int K);
-    void winograd_convolve3(const int outputs,
-                                   const std::vector<float>& input,
-                                   const std::vector<float>& U,
-                                   std::vector<float>& V,
-                                   std::vector<float>& M,
-                                   std::vector<float>& output);
-    void winograd_sgemm(const std::vector<float>& U,
-                               const std::vector<float>& V,
-                               std::vector<float>& M, const int C, const int K);
     Netresult get_scored_moves_internal(const GameState* const state,
                                                const int symmetry);
 
@@ -106,14 +91,11 @@ private:
                                       const int symmetry);
 
     bool probe_cache(const GameState* const state, Network::Netresult& result);
-#if defined(USE_BLAS)
-    void forward_cpu(const std::vector<float>& input,
-                            std::vector<float>& output_pol,
-                            std::vector<float>& output_val);
-
+    std::unique_ptr<ForwardPipe> m_forward;
+#ifdef USE_OPENCL_SELFCHECK
+    std::unique_ptr<ForwardPipe> m_forward_cpu;
 #endif
 
-    std::unique_ptr<ForwardPipe> m_forward;
     NNCache m_nncache;
 
     // Input + residual block tower
