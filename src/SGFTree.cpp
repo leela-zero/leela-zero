@@ -464,8 +464,10 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
 
         if (score > 0.0f) {
             header.append("RE[B+" + str(boost::format("%.1f") % score) + "]");
-        } else {
+        } else if (score < 0.0f) {
             header.append("RE[W+" + str(boost::format("%.1f") % -score) + "]");
+        } else {
+            header.append("RE[0]");
         }
     } else {
         if (state->who_resigned() == FastBoard::WHITE) {
