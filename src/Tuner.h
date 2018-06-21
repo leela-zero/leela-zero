@@ -29,6 +29,7 @@ using Parameters = std::map<std::string, size_t>;
 
 class OpenCL;
 
+template <typename net_t>
 class Tuner {
     OpenCL & m_opencl;
     cl::Context m_context;

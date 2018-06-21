@@ -34,6 +34,9 @@
 
 #include "Tuner.h"
 
+typedef float net_t;
+
+class OpenCLScheduler;
 class OpenCL;
 
 class Layer {
@@ -178,7 +181,7 @@ private:
 
 class OpenCL {
     friend class OpenCL_Network;
-    friend class Tuner;
+    friend class Tuner<net_t>;
 public:
     void initialize(const int channels, int gpu, bool silent = false);
     void ensure_context_initialized(OpenCLContext & opencl_context);

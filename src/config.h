@@ -104,9 +104,6 @@
 
 #ifdef USE_HALF
 #include "half/half.hpp"
-using net_t = half_float::half;
-#else
-using net_t = float;
 #endif
 
 #if defined(USE_BLAS) && defined(USE_OPENCL) && !defined(USE_HALF)

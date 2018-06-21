@@ -41,11 +41,19 @@
 
 using namespace Utils;
 
-static std::string cl_args =
+template <typename net_t> static std::string getClArgs();
+
+template <> std::string getClArgs<float>() {
+    return 
+        "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
+}
 #ifdef USE_HALF
-    "-DUSE_HALF "
+template <> std::string getClArgs<half_float::half>() {
+    return 
+        "-DUSE_HALF "
+        "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
+}
 #endif
-    "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
 
 static std::string sourceCode_config = R"(
 #ifdef USE_HALF
@@ -487,23 +495,20 @@ __kernel void out_transform_fused_bn_in(
 }
 )";
 
-#ifdef USE_HALF
 const std::string sourceCode_sgemm =
+"#ifdef USE_HALF\n"
     #include "clblast_level3_half/common.opencl"
     #include "clblast_level3_half/xgemm_part1.opencl"
     #include "clblast_level3_half/xgemm_part2.opencl"
     #include "clblast_level3_half/xgemm_part3.opencl"
     #include "clblast_level3_half/xgemm_batched.opencl"
-;
-#else
-const std::string sourceCode_sgemm =
+"#else\n"
     #include "clblast_level3/common.opencl"
     #include "clblast_level3/xgemm_part1.opencl"
     #include "clblast_level3/xgemm_part2.opencl"
     #include "clblast_level3/xgemm_part3.opencl"
     #include "clblast_level3/xgemm_batched.opencl"
-;
-#endif
+"#endif\n";
 
 void OpenCL::ensure_context_initialized(OpenCLContext &opencl_context) {
     if (!opencl_context.m_is_initialized) {
@@ -1183,9 +1188,9 @@ void OpenCL::initialize(const int channels, int gpu, bool silent) {
         throw std::runtime_error("Error getting OpenCL kernels.");
     }
 
-    m_cl_args = cl_args;
+    m_cl_args = getClArgs<net_t>();
 
-    auto t = Tuner(*this, m_context, m_device);
+    auto t = Tuner<net_t>(*this, m_context, m_device);
     auto sgemm_tuners =
         t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
 
@@ -1198,7 +1203,7 @@ void OpenCL::initialize(const int channels, int gpu, bool silent) {
 
     // Build program for these specific devices
     try {
-        std::string args = cl_args;
+        std::string args = m_cl_args;
         // Intel iGPUs need vector types for math for best performance
         if (m_device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT>() > 1) {
             args += " -DWINOGRAD_SIMD";
