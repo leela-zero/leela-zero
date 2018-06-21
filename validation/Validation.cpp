@@ -28,14 +28,14 @@ const VersionTuple min_leelaz_version{0, 10, 0};
 
 void ValidationWorker::run() {
     do {
-        Game first(m_engines[0].network, m_engines[0].options,
-                   m_engines[0].binary, m_engines[0].commands);
+        Game first(m_engines[0].m_network, m_engines[0].m_options,
+                   m_engines[0].m_binary, m_engines[0].m_commands);
         if (!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
-        Game second(m_engines[1].network, m_engines[1].options,
-                    m_engines[1].binary, m_engines[1].commands);
+        Game second(m_engines[1].m_network, m_engines[1].m_options,
+                    m_engines[1].m_binary, m_engines[1].m_commands);
         if (!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
@@ -109,13 +109,13 @@ void ValidationWorker::run() {
 }
 
 void ValidationWorker::init(const QString& gpuIndex,
-                            const QVector<engine_t>& engines,
+                            const QVector<Engine>& engines,
                             const QString& keep,
                             int expected) {
     m_engines = engines;
     if (!gpuIndex.isEmpty()) {
-        m_engines[0].options.prepend(" --gpu=" + gpuIndex + " ");
-        m_engines[1].options.prepend(" --gpu=" + gpuIndex + " ");
+        m_engines[0].m_options.prepend(" --gpu=" + gpuIndex + " ");
+        m_engines[1].m_options.prepend(" --gpu=" + gpuIndex + " ");
     }
     m_expected = expected;
     m_keepPath = keep;
@@ -125,7 +125,7 @@ void ValidationWorker::init(const QString& gpuIndex,
 Validation::Validation(const int gpus,
                        const int games,
                        const QStringList& gpuslist,
-                       QVector<engine_t>& engines,
+                       QVector<Engine>& engines,
                        const QString& keep,
                        QMutex* mutex,
                        const float& h0,
@@ -181,7 +181,7 @@ void Validation::saveSprt() {
     out << m_statistic;
     out << m_results;
     f.close();
-    m_results.printResults(m_engines[0].network, m_engines[1].network);
+    m_results.printResults(m_engines[0].m_network, m_engines[1].m_network);
     printSprtStatus(m_statistic.status());
 }
 
@@ -205,7 +205,7 @@ void Validation::loadSprt() {
     f.close();
     QFile::remove(fi.fileName());
     QTextStream(stdout) << "Initial Statistics" << endl;
-    m_results.printResults(m_engines[0].network, m_engines[1].network);
+    m_results.printResults(m_engines[0].m_network, m_engines[1].m_network);
     printSprtStatus(m_statistic.status());
 }
 
@@ -238,7 +238,7 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
             << "The first net is "
             <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ")
             << "than the second" << endl;
-        m_results.printResults(m_engines[0].network, m_engines[1].network);
+        m_results.printResults(m_engines[0].m_network, m_engines[1].m_network);
         //sendQuit();
     } else {
         printSprtStatus(status);

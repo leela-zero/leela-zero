@@ -122,9 +122,9 @@ int main(int argc, char *argv[]) {
     QStringList commandList = {"time_settings 0 1 0"};
     commandList << parser.values(gtpCommandOption);
 
-    auto engines = QVector<engine_t>({
-        {"./leelaz", optsList[0], netList[0], commandList},
-        {"./leelaz", optsList[1], netList[1], commandList}});
+    auto engines =
+        QVector<Engine>({Engine(netList[0], optsList[0], commandList),
+                         Engine(netList[1], optsList[1], commandList)});
 
     auto engine_idx = 0;
     auto pos_args = parser.positionalArguments();
@@ -132,9 +132,9 @@ int main(int argc, char *argv[]) {
         if (engine_idx >= 2) {
             parser.showHelp();
         }
-        engines[engine_idx].binary = pos_args[0];
+        engines[engine_idx].m_binary = pos_args[0];
         parser.process(pos_args);
-        engines[engine_idx].commands << parser.values(gtpCommandOption);
+        engines[engine_idx].m_commands << parser.values(gtpCommandOption);
         pos_args = parser.positionalArguments();
         engine_idx++;
     }
