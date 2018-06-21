@@ -352,16 +352,25 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     std::vector<ForwardPipe*> to_init;
 
 #ifdef USE_OPENCL
-    myprintf("Initializing OpenCL.\n");
-    m_forward.reset(new OpenCLScheduler());
+    if (cfg_cpu_only) {
+        myprintf("Initializing CPU-only evaluation.\n");
+        m_forward.reset(new CPUPipe());
+    } else {
+        myprintf("Initializing OpenCL.\n");
+        m_forward.reset(new OpenCLScheduler());
+    }
 #else
+    myprintf("Initializing CPU-only evaluation.\n");
     m_forward.reset(new CPUPipe());
 #endif
+
     to_init.push_back(m_forward.get());
 
 #ifdef USE_OPENCL_SELFCHECK
-    m_forward_cpu.reset(new CPUPipe());
-    to_init.push_back(m_forward_cpu.get());
+    if (!cfg_cpu_only) {
+        m_forward_cpu.reset(new CPUPipe());
+        to_init.push_back(m_forward_cpu.get());
+    }
 #endif
 
 
@@ -625,7 +634,7 @@ Network::Netresult Network::get_scored_moves_internal(
 #ifdef USE_OPENCL_SELFCHECK
     // Both implementations are available, self-check the OpenCL driver by
     // running both with a probability of 1/2000.
-    if (Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
+    if (m_forward_cpu != nullptr && Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
         auto cpu_policy_data = std::vector<float>(policy_data.size());
         auto cpu_value_data = std::vector<float>(value_data.size());
         m_forward_cpu->forward(input_data, cpu_policy_data, cpu_value_data);
