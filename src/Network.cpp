@@ -345,26 +345,42 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 
     std::vector<ForwardPipe*> to_init;
 
+    bool use_selfcheck = true;
 #ifdef USE_OPENCL
     if (cfg_cpu_only) {
         myprintf("Initializing CPU-only evaluation.\n");
         m_forward = std::make_unique<CPUPipe>();
+        use_selfcheck = false;
     } else {
-        myprintf("Initializing OpenCL.\n");
-        m_forward = std::make_unique<OpenCLScheduler>();
-    }
+#ifdef USE_HALF
+        if (cfg_use_half) {
+            myprintf("Initializing OpenCL (half precision).\n");
+            m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
+            use_selfcheck = false;
+        } else {
+            myprintf("Initializing OpenCL (single precision).\n");
+            m_forward = std::make_unique<OpenCLScheduler<float>>();
+        }
 #else
+        myprintf("Initializing OpenCL (single precision).\n");
+        m_forward = std::make_unique<OpenCLScheduler<float>>();
+#endif
+    }
+
+#else //!USE_OPENCL
     myprintf("Initializing CPU-only evaluation.\n");
     m_forward = std::make_unique<CPUPipe>();
+    use_selfcheck = false;
 #endif
 
     to_init.emplace_back(m_forward.get());
-
 #ifdef USE_OPENCL_SELFCHECK
-    if (!cfg_cpu_only) {
+    if (use_selfcheck) {
         m_forward_cpu = std::make_unique<CPUPipe>();
         to_init.emplace_back(m_forward_cpu.get());
     }
+#else
+    (void)use_selfcheck;
 #endif
 
     for (const auto& p : to_init) {

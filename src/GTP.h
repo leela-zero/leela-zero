@@ -48,6 +48,9 @@ extern bool cfg_dumbpass;
 extern std::vector<int> cfg_gpus;
 extern bool cfg_sgemm_exhaustive;
 extern bool cfg_tune_only;
+#ifdef USE_HALF
+extern bool cfg_use_half;
+#endif
 #endif
 extern float cfg_puct;
 extern float cfg_softmax_temp;

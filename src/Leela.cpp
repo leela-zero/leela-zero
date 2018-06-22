@@ -90,6 +90,9 @@ static void parse_commandline(int argc, char *argv[]) {
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
         ("tune-only", "Tune OpenCL only and then exit.")
+#ifdef USE_HALF
+        ("use-half", "Use half-precision OpenCL code.  Traades off some accuracy for higher performance")
+#endif
         ;
 #endif
     po::options_description selfplay_desc("Self-play options");
@@ -318,6 +321,12 @@ static void parse_commandline(int argc, char *argv[]) {
     if (vm.count("tune-only")) {
         cfg_tune_only = true;
     }
+
+#ifdef USE_HALF
+    if (vm.count("use-half")) {
+        cfg_use_half = true;
+    }
+#endif
 #endif
 
     if (vm.count("benchmark")) {

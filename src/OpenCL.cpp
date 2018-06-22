@@ -510,7 +510,8 @@ const std::string sourceCode_sgemm =
     #include "clblast_level3/xgemm_batched.opencl"
 "#endif\n";
 
-void OpenCL::ensure_context_initialized(OpenCLContext &opencl_context) {
+template <typename net_t>
+void OpenCL<net_t>::ensure_context_initialized(OpenCLContext &opencl_context) {
     if (!opencl_context.m_is_initialized) {
         // Make kernels
         opencl_context.m_convolve1_kernel =
@@ -531,7 +532,8 @@ void OpenCL::ensure_context_initialized(OpenCLContext &opencl_context) {
     }
 }
 
-void OpenCL_Network::add_weights(size_t layer,
+template <typename net_t>
+void OpenCL_Network<net_t>::add_weights(size_t layer,
                                  size_t size,
                                  const float * weights) {
     if (layer >= m_layers.size()) {
@@ -543,7 +545,7 @@ void OpenCL_Network::add_weights(size_t layer,
         converted_weights.emplace_back(weights[i]);
     }
 
-    auto weightSize = size * sizeof(decltype(converted_weights)::value_type);
+    auto weightSize = size * sizeof(typename decltype(converted_weights)::value_type);
     m_layers.back().weights.emplace_back(
         m_opencl.m_context,
         CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
@@ -551,7 +553,8 @@ void OpenCL_Network::add_weights(size_t layer,
         const_cast<net_t*>(converted_weights.data()));
 }
 
-void OpenCL_Network::forward(const std::vector<float>& input,
+template <typename net_t>
+void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                              std::vector<float>& output_pol,
                              std::vector<float>& output_val,
                              OpenCLContext & opencl_context,
@@ -734,7 +737,8 @@ void OpenCL_Network::forward(const std::vector<float>& input,
 
 }
 
-void OpenCL_Network::convolve3(OpenCLContext & opencl_context,
+template <typename net_t>
+void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
                               int channels, int outputs,
                               cl::Buffer& bufferIn,
                               cl::Buffer& bufferOut,
@@ -882,7 +886,8 @@ void OpenCL_Network::convolve3(OpenCLContext & opencl_context,
     }
 }
 
-void OpenCL_Network::convolve1(OpenCLContext & opencl_context,
+template <typename net_t>
+void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
                               int channels, int outputs,
                               cl::Buffer& bufferInput,
                               cl::Buffer& bufferOutput,
@@ -971,7 +976,8 @@ static std::string trim(std::string trim_me) {
     return trim_me;
 }
 
-void OpenCL::process_tuners(std::string tuners) {
+template <typename net_t>
+void OpenCL<net_t>::process_tuners(std::string tuners) {
     std::string buf;
     std::stringstream ss(tuners);
     std::size_t found;
@@ -1048,7 +1054,8 @@ void OpenCL::process_tuners(std::string tuners) {
     }
 }
 
-std::vector<size_t> OpenCL::get_sgemm_tuners(void) {
+template <typename net_t>
+std::vector<size_t> OpenCL<net_t>::get_sgemm_tuners(void) {
     std::vector<size_t> tuners;
 
     tuners.emplace_back(m_sgemm_tuners.mwg);
@@ -1062,7 +1069,8 @@ std::vector<size_t> OpenCL::get_sgemm_tuners(void) {
     return tuners;
 }
 
-void OpenCL::initialize(const int channels, int gpu, bool silent) {
+template <typename net_t>
+void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     std::vector<cl::Platform> platforms;
     try {
         cl::Platform::get(&platforms);
@@ -1239,7 +1247,8 @@ void OpenCL::initialize(const int channels, int gpu, bool silent) {
     m_init_ok = true;
 }
 
-std::string OpenCL::get_device_name() {
+template <typename net_t>
+std::string OpenCL<net_t>::get_device_name() {
     std::stringstream ss;
 
     ss << "OpenCL: ";
@@ -1249,4 +1258,12 @@ std::string OpenCL::get_device_name() {
 
     return ss.str();
 }
+
+template class OpenCL<float>;
+template class OpenCL_Network<float>;
+#ifdef USE_HALF
+template class OpenCL<half_float::half>;
+template class OpenCL_Network<half_float::half>;
+#endif
+
 #endif
