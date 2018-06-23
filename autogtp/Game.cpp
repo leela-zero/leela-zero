@@ -330,7 +330,7 @@ bool Game::writeSgf() {
 }
 
 bool Game::loadTraining(const QString &fileName) {
-    QTextStream(stdout) << "Loading " << fileName + ".train" << endl;
+    //QTextStream(stdout) << "Loading " << fileName + ".train" << endl;
     return sendGtpCommand(qPrintable("load_training " + fileName + ".train"));
 
 }
@@ -342,8 +342,36 @@ bool Game::saveTraining() {
 
 
 bool Game::loadSgf(const QString &fileName) {
-    QTextStream(stdout) << "Loading " << fileName + ".sgf" << endl;
-    return sendGtpCommand(qPrintable("loadsgf " + fileName + ".sgf"));
+    //QTextStream(stdout) << "Loading " << fileName + ".sgf" << endl;
+        write(qPrintable("loadsgf " + fileName + ".sgf\n"));
+        waitForBytesWritten(-1);
+        if (!waitReady()) {
+            error(Game::PROCESS_DIED);
+            return false;
+        }
+        char readBuffer[12000];
+        int readCount = readLine(readBuffer, 12000);
+        if (readBuffer[0] != '=') {
+            error(Game::WRONG_GTP);
+            QTextStream(stdout) << "Error read loadSgf " << readCount << " '";
+            QTextStream(stdout) << readBuffer << "'" << endl;
+            terminate();
+            return false;
+        }
+        // Skip "= "
+        m_loadedSGF = readBuffer;
+        m_loadedSGF.remove(0, 2);
+        m_loadedSGF = m_loadedSGF.simplified();
+        if (!eatNewLine()) {
+            error(Game::PROCESS_DIED);
+            return false;
+        }
+        if (readCount == 0) {
+            error(Game::WRONG_GTP);
+        }
+        QTextStream(stdout) << m_loadedSGF + " ";
+        QTextStream(stdout).flush();
+        return true;
 }
 
 bool Game::fixSgf(QString& weightFile, bool resignation) {

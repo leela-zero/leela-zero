@@ -84,6 +84,16 @@ void GameState::rewind(void) {
     m_movenum = 0;
 }
 
+std::string GameState::reiterate_moves(void) {
+    std::string s = "";
+    for (uint i = 1; i <= m_movenum; i++) {
+        s += std::to_string(game_history[i-1]->get_movenum() + 1) + " (" +
+        (game_history[i-1]->get_to_move() == FullBoard::BLACK ? "B " : "W ") +
+        move_to_text(game_history[i]->get_last_move()) + ") ";
+    }
+    return s;
+}
+
 void GameState::play_move(int vertex) {
     play_move(get_to_move(), vertex);
 }
