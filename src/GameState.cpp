@@ -86,7 +86,7 @@ void GameState::rewind(void) {
 
 std::string GameState::reiterate_moves(void) {
     std::string s = "";
-    for (uint i = 1; i <= m_movenum; i++) {
+    for (int i = 1; i <= m_movenum; i++) {
         s += std::to_string(game_history[i-1]->get_movenum() + 1) + " (" +
         (game_history[i-1]->get_to_move() == FullBoard::BLACK ? "B " : "W ") +
         move_to_text(game_history[i]->get_last_move()) + ") ";
