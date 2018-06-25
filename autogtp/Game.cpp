@@ -343,7 +343,10 @@ bool Game::saveTraining() {
 
 bool Game::loadSgf(const QString &fileName) {
     //QTextStream(stdout) << "Loading " << fileName + ".sgf" << endl;
-        write(qPrintable("loadsgf " + fileName + ".sgf\n"));
+    if (!sendGtpCommand(qPrintable("loadsgf " + fileName + ".sgf"))){
+        return false;
+    } else {
+        write(qPrintable("reiterate_moves\n"));
         waitForBytesWritten(-1);
         if (!waitReady()) {
             error(Game::PROCESS_DIED);
@@ -372,6 +375,7 @@ bool Game::loadSgf(const QString &fileName) {
         QTextStream(stdout) << m_loadedSGF + " ";
         QTextStream(stdout).flush();
         return true;
+    }
 }
 
 bool Game::fixSgf(QString& weightFile, bool resignation) {

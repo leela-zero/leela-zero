@@ -144,6 +144,7 @@ const std::string GTP::s_commands[] = {
     "place_free_handicap",
     "set_free_handicap",
     "loadsgf",
+    "reiterate_moves",
     "printsgf",
     "kgs-genmove_cleanup",
     "kgs-time_settings",
@@ -681,10 +682,13 @@ bool GTP::execute(GameState & game, std::string xinput) {
         try {
             sgftree->load_from_file(filename);
             game = sgftree->follow_mainline_state(movenum - 1);
-            gtp_printf(id, game.reiterate_moves().c_str());
+            gtp_printf(id, "");
         } catch (const std::exception&) {
             gtp_fail_printf(id, "cannot load file");
         }
+        return true;
+    } else if (command.find("reiterate_moves") == 0) {
+        gtp_printf(id, game.reiterate_moves().c_str());
         return true;
     } else if (command.find("kgs-chat") == 0) {
         // kgs-chat (game|private) Name Message
