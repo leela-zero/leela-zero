@@ -561,7 +561,7 @@ void Management::fetchNetwork(const QString &net, const QString &hash) {
 }
 
 bool Management::sgfOrTrainExists(const QString &name) {
-    QStringRef extension = name.midRef(name.lastIndexOf(QChar('.'))+1);
+    QString extension = name.mid(name.lastIndexOf(QChar('.'))+1);
     QString realHash = name;
     realHash.remove(0,name.lastIndexOf(QChar('/'))+1);
     realHash.remove(realHash.lastIndexOf(QChar('.')), realHash.length());
