@@ -16,13 +16,13 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "SGFParser.h"
 
-#include <cassert>
 #include <cctype>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
-#include <string>
 
 #include "SGFTree.h"
 #include "Utils.h"

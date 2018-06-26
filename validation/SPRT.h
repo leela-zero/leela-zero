@@ -32,8 +32,9 @@
  */
 
 #include <QMutex>
-#include <QTextStream>
 #include <tuple>
+
+class QTextStream;
 
 class Sprt
 {

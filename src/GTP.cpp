@@ -19,18 +19,16 @@
 #include "config.h"
 #include "GTP.h"
 
-#include <algorithm>
 #include <cctype>
-#include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <algorithm>
+#include <chrono>
 #include <exception>
 #include <fstream>
-#include <limits>
 #include <memory>
 #include <random>
-#include <string>
-#include <vector>
+#include <sstream>
 
 #include "FastBoard.h"
 #include "FullBoard.h"
@@ -39,7 +37,8 @@
 #include "SGFTree.h"
 #include "SMP.h"
 #include "Training.h"
-#include "UCTSearch.h"
+#include "UCTNode.h"
+#include "UCTNodePointer.h"
 #include "Utils.h"
 
 using namespace Utils;

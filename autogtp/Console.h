@@ -20,10 +20,9 @@
 #define CONSOLE_H
 
 #include <QObject>
-#include <QSocketNotifier>
+#include <QString>
 #include <QTextStream>
-#include "stdio.h"
-
+#include <cstdio>
 
 #ifdef Q_OS_WIN
     #include <QWinEventNotifier>
@@ -33,7 +32,6 @@
     #include <QSocketNotifier>
     typedef QSocketNotifier Notifier;
 #endif
-
 
 class Console : public QObject
 {

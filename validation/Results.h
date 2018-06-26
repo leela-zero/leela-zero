@@ -20,8 +20,9 @@
 #define RESULTS_H
 
 #include "SPRT.h"
-#include <QString>
 
+class QString;
+class QTextStream;
 
 class Results {
 public:

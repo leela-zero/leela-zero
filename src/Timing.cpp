@@ -16,10 +16,8 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "Timing.h"
-
-#include <chrono>
-
 
 int Time::timediff_centis(Time start, Time end) {
     return std::chrono::duration_cast<std::chrono::milliseconds>

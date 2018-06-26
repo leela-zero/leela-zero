@@ -20,7 +20,7 @@
 
 #include "SPRT.h"
 #include <cmath>
-#include <iostream>
+#include <QTextStream>
 #include <QtGlobal>
 
 class BayesElo;

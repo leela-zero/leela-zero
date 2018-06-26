@@ -19,16 +19,19 @@
 #define MANAGEMENT_H
 
 #include <QAtomicInt>
+#include <QFileInfo>
+#include <QList>
 #include <QMutex>
 #include <QString>
-#include <QTextStream>
-#include <QThread>
-#include <QFileInfo>
-#include <QLockFile>
+#include <QStringList>
 #include <QVector>
 #include <chrono>
 #include <stdexcept>
-#include "Worker.h"
+#include "Order.h"
+#include "Result.h"
+
+class QLockFile;
+class Worker;
 
 constexpr int AUTOGTP_VERSION = 16;
 

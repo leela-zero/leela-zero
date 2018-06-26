@@ -21,20 +21,18 @@
 
 #include <cassert>
 #include <cmath>
-#include <cstddef>
-#include <limits>
-#include <memory>
-#include <type_traits>
 #include <algorithm>
+#include <type_traits>
+#include <vector>
 
 #include "FastBoard.h"
 #include "FastState.h"
-#include "FullBoard.h"
 #include "GTP.h"
 #include "GameState.h"
-#include "TimeControl.h"
 #include "Timing.h"
 #include "Training.h"
+#include "UCTNode.h"
+#include "UCTNodePointer.h"
 #include "Utils.h"
 
 using namespace Utils;

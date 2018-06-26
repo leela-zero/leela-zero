@@ -23,19 +23,13 @@
 
 #include <cassert>
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
-#include <boost/format.hpp>
-#include <iterator>
-#include <limits>
-#include <stdexcept>
-
-#include <cstdio>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <sstream>
-#include <string>
+#include <stdexcept>
+#include <boost/algorithm/string.hpp>
 
-#include "Network.h"
 #include "GTP.h"
 #include "Utils.h"
 #include "Tuner.h"

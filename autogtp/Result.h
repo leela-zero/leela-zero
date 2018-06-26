@@ -19,8 +19,8 @@
 #ifndef RESULT_H
 #define RESULT_H
 
-#include <QString>
 #include <QMap>
+#include <QString>
 
 class Result {
 public:

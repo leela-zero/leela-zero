@@ -21,12 +21,10 @@
 
 #include "config.h"
 
-#include <atomic>
-#include <memory>
 #include <cassert>
+#include <cstdint>
 #include <cstring>
-
-#include "SMP.h"
+#include <type_traits>
 
 class UCTNode;
 

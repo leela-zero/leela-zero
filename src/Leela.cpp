@@ -19,22 +19,24 @@
 #include "config.h"
 
 #include <cstdint>
-#include <algorithm>
-#include <boost/format.hpp>
-#include <boost/program_options.hpp>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
+#include <boost/program_options.hpp>
 
-#include "GTP.h"
 #include "GameState.h"
+#include "GTP.h"
 #include "Network.h"
 #include "NNCache.h"
 #include "Random.h"
 #include "ThreadPool.h"
+#include "UCTNode.h"
+#include "UCTNodePointer.h"
+#include "UCTSearch.h"
 #include "Utils.h"
 #include "Zobrist.h"
 

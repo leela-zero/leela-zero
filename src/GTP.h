@@ -21,12 +21,14 @@
 
 #include "config.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
 
-#include "GameState.h"
 #include "UCTSearch.h"
+
+class GameState;
 
 extern bool cfg_gtp_mode;
 extern bool cfg_allow_pondering;

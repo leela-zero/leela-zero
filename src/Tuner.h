@@ -20,14 +20,16 @@
 #define SGEMM_TUNER_H_INCLUDED
 
 #include "config.h"
-#include <vector>
+
+#include <cstddef>
 #include <map>
 #include <string>
+#include <vector>
+
+#include "OpenCL.h"
 
 using Configurations = std::pair<std::string, std::vector<size_t>>;
 using Parameters = std::map<std::string, size_t>;
-
-class OpenCL;
 
 class Tuner {
     OpenCL & m_opencl;

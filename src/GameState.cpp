@@ -16,21 +16,18 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "GameState.h"
 
-#include <algorithm>
-#include <array>
 #include <cassert>
 #include <cctype>
-#include <iterator>
-#include <memory>
 #include <sstream>
-#include <string>
 
-#include "FastBoard.h"
 #include "FastState.h"
 #include "FullBoard.h"
-#include "KoState.h"
+#include "ThreadPool.h"
+#include "UCTNode.h"
+#include "UCTNodePointer.h"
 #include "UCTSearch.h"
 
 void GameState::init_game(int size, float komi) {

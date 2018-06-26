@@ -18,15 +18,14 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <QTextStream>
-#include <QString>
-#include <QThread>
-#include <QVector>
 #include <QAtomicInt>
 #include <QMutex>
-#include "SPRT.h"
-#include "../autogtp/Game.h"
+#include <QString>
+#include <QStringList>
+#include <QThread>
+#include <QVector>
 #include "Results.h"
+#include "SPRT.h"
 
 class ValidationWorker : public QThread {
     Q_OBJECT

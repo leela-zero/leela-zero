@@ -19,6 +19,8 @@
 #ifndef TIMING_H_INCLUDED
 #define TIMING_H_INCLUDED
 
+#include "config.h"
+
 #include <chrono>
 
 class Time {

@@ -16,19 +16,15 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #include "config.h"
 #include "Network.h"
 
-#include <algorithm>
-#include <array>
 #include <cassert>
 #include <cmath>
+#include <algorithm>
+#include <array>
 #include <iterator>
-#include <memory>
 #include <sstream>
-#include <string>
-#include <boost/utility.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/home/x3.hpp>
 
@@ -41,10 +37,10 @@
 #ifdef USE_OPENBLAS
 #include <cblas.h>
 #endif
-#include "zlib.h"
+#include <zlib.h>
 #ifdef USE_OPENCL
+#include "OpenCL.h"
 #include "OpenCLScheduler.h"
-#include "UCTNode.h"
 #endif
 
 #include "FastBoard.h"
@@ -55,7 +51,6 @@
 #include "Im2Col.h"
 #include "NNCache.h"
 #include "Random.h"
-#include "ThreadPool.h"
 #include "Timing.h"
 #include "Utils.h"
 

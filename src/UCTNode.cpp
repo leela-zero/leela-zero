@@ -17,25 +17,20 @@
 */
 
 #include "config.h"
+#include "UCTNode.h"
 
 #include <cassert>
-#include <cstdio>
-#include <cstdint>
-#include <algorithm>
 #include <cmath>
+#include <algorithm>
 #include <functional>
-#include <iterator>
 #include <limits>
-#include <numeric>
-#include <utility>
-#include <vector>
 
-#include "UCTNode.h"
 #include "FastBoard.h"
-#include "FastState.h"
-#include "GTP.h"
 #include "GameState.h"
+#include "GTP.h"
 #include "Network.h"
+#include "SMP.h"
+#include "UCTNodePointer.h"
 #include "Utils.h"
 
 using namespace Utils;

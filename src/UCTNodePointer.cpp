@@ -17,11 +17,9 @@
 */
 
 #include "config.h"
+#include "UCTNodePointer.h"
 
-#include <atomic>
-#include <memory>
 #include <cassert>
-#include <cstring>
 
 #include "UCTNode.h"
 

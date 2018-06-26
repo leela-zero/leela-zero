@@ -21,16 +21,17 @@
 
 #include "config.h"
 
+#include <cstddef>
 #include <atomic>
 #include <memory>
 #include <vector>
-#include <cassert>
-#include <cstring>
 
-#include "GameState.h"
 #include "Network.h"
 #include "SMP.h"
-#include "UCTNodePointer.h"
+
+class GameState;
+class KoState;
+class UCTNodePointer;
 
 class UCTNode {
 public:

@@ -20,11 +20,12 @@
 
 #include "config.h"
 
-#include <array>
 #include <cstdint>
+#include <array>
 
 #include "FastBoard.h"
-#include "Random.h"
+
+class Random;
 
 class Zobrist {
 public:

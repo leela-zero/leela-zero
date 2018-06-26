@@ -17,13 +17,12 @@
 */
 
 #include "Job.h"
+#include <QFile>
+#include <QTextStream>
+#include <QThread>
 #include "Game.h"
 #include "Management.h"
-#include <QTextStream>
-#include <chrono>
-
-#include <QFile>
-#include <QThread>
+#include "Result.h"
 
 Job::Job(QString gpu, Management *parent) :
     m_state(RUNNING),
