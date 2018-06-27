@@ -23,12 +23,11 @@
 #include <string>
 #include <vector>
 
+#include "Network.h"
 #include "FastState.h"
 #include "FullBoard.h"
 #include "KoState.h"
 #include "TimeControl.h"
-
-class UCTSearch;
 
 class GameState : public KoState {
 public:
@@ -42,7 +41,7 @@ public:
     void reset_game();
     bool set_fixed_handicap(int stones);
     int set_fixed_handicap_2(int stones);
-    void place_free_handicap(int stones, UCTSearch * search);
+    void place_free_handicap(int stones, Network & network);
     void anchor_game_history(void);
 
     void rewind(void); /* undo infinite */

@@ -19,6 +19,7 @@
 
 #include "config.h"
 #include "Network.h"
+#include "GameState.h"
 
 #include <algorithm>
 #include <array>

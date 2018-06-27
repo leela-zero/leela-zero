@@ -353,6 +353,8 @@ void init_global_objects() {
     // Doing this here avoids mixing in the thread_id, which
     // improves reproducibility across platforms.
     Random::get_Rng().seedrandom(cfg_rng_seed);
+
+    GTP::initialize();
 }
 
 void benchmark(GameState& game) {
@@ -360,7 +362,12 @@ void benchmark(GameState& game) {
     game.play_textmove("b", "r16");
     game.play_textmove("w", "d4");
     game.play_textmove("b", "c3");
-    auto search = std::make_unique<UCTSearch>(game, cfg_weightsfile);
+
+    Network network;
+    auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
+    network.initialize(playouts, cfg_weightsfile);
+
+    auto search = std::make_unique<UCTSearch>(game, network);
     game.set_to_move(FastBoard::WHITE);
     search->think(FastBoard::WHITE);
 }
@@ -401,7 +408,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    GTP::initialize(*maingame);
     for (;;) {
         if (!cfg_gtp_mode) {
             maingame->display_state();

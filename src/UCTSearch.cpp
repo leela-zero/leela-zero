@@ -71,23 +71,12 @@ private:
 };
 
 
-UCTSearch::UCTSearch(GameState& g, const std::string & weightsfile)
-    : m_rootstate(g) {
+UCTSearch::UCTSearch(GameState& g, Network& network)
+    : m_rootstate(g), m_network(network) {
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
-    auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
-    m_network.initialize(playouts, weightsfile);
 
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
-}
-
-void UCTSearch::reset() {
-    m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
-    m_last_rootstate.reset();
-
-    assert(m_nodes == 0);
-    assert(m_playouts == 0);
-    assert(m_run == false);
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -813,17 +802,3 @@ void UCTSearch::set_visit_limit(int visits) {
     // Limit to type max / 2 to prevent overflow when multithreading.
     m_maxvisits = std::min(visits, UNLIMITED_PLAYOUTS);
 }
-
-void UCTSearch::benchmark(const GameState * const state,
-                          const int iterations) {
-    m_network.benchmark(state, iterations);
-}
-
-Network::Netresult UCTSearch::get_scored_moves(const GameState* const state,
-                                      const Network::Ensemble ensemble,
-                                      const int symmetry,
-                                      const bool skip_cache) {
-    return m_network.get_scored_moves(state, ensemble, symmetry, skip_cache);
-}
-
-

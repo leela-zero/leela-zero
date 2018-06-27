@@ -50,7 +50,7 @@ void OpenCLScheduler::initialize(const int channels) {
         silent = true;
 
         for (auto i = 0; i < num_threads; i++) {
-            m_context[i].emplace_back(new OpenCLContext(gnum));
+            m_context[i].emplace_back(std::make_shared<OpenCLContext>(gnum));
         }
         gnum++;
     }
@@ -79,6 +79,9 @@ void OpenCLScheduler::forward(const std::vector<net_t>& input,
             }
             queue_num++;
         }
+        // if this failed, it means the condition variable exited itself
+        // when the predicate condition return false
+        assert(ctx != nullptr);
     }
 
     m_networks[ctx->m_gpu_num]->forward(input, output_pol, output_val, *ctx);

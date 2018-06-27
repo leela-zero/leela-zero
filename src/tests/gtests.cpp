@@ -70,6 +70,8 @@ public:
         Random::get_Rng().seedrandom(cfg_rng_seed);
 
         cfg_weightsfile = "../src/tests/0k.txt";
+
+        GTP::initialize();
     }
     void TearDown() {}
 };
@@ -87,7 +89,6 @@ public:
         m_gamestate = std::make_unique<GameState>();
         m_gamestate->init_game(19, 7.5f);
 
-        GTP::initialize(get_gamestate());
     }
 
     GameState& get_gamestate() {

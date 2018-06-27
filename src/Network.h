@@ -30,10 +30,11 @@
 
 #include "NNCache.h"
 #include "FastState.h"
-#include "GameState.h"
 #ifdef USE_OPENCL
 #include "OpenCLScheduler.h"
 #endif
+
+class GameState;
 
 class Network {
 public:

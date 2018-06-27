@@ -39,9 +39,12 @@ public:
 private:
     std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
     std::vector<std::unique_ptr<OpenCL>> m_opencl;
+
     // XXX : I failed to figure out how to make this compile with unique_ptr
     // especially on visual studio
-    std::vector<std::list<std::shared_ptr<OpenCLContext>>> m_context;
+    using OpenCLContextQueue = std::list<std::shared_ptr<OpenCLContext>>;
+    std::vector<OpenCLContextQueue> m_context;
+
     std::mutex m_context_lock;
     std::condition_variable m_context_condvar;
 };
