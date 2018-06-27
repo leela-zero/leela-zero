@@ -181,7 +181,11 @@ bool Game::gameStart(const VersionTuple &min_version) {
     checkVersion(min_version);
     QTextStream(stdout) << "Engine has started." << endl;
     for (auto command : m_commands) {
-        sendGtpCommand(command);
+        if (!sendGtpCommand(command))
+        {
+            QTextStream(stdout) << "GTP failed on: " << command << endl;
+            exit(EXIT_FAILURE);
+        }
     }
     QTextStream(stdout) << "Thinking time set." << endl;
     return true;
