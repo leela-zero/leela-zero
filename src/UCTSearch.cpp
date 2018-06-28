@@ -413,7 +413,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     assert(first_child != nullptr);
 
     auto bestmove = first_child->get_move();
-    auto bestscore = first_child->get_eval(color);
+    auto bestscore = first_child->first_visit() ? 0.5f : first_child->get_pure_eval(color);
 
     // do we want to fiddle with the best move because of the rule set?
     if (passflag & UCTSearch::NOPASS) {
@@ -427,14 +427,15 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 if (nopass->first_visit()) {
                     bestscore = 1.0f;
                 } else {
-                    bestscore = nopass->get_eval(color);
+                    bestscore = nopass->get_pure_eval(color);
                 }
             } else {
                 myprintf("Pass is the only acceptable move.\n");
             }
         }
-    } else {
-        if (!cfg_dumbpass && bestmove == FastBoard::PASS) {
+    } else if (!cfg_dumbpass) {
+        const auto relative_score = (color == FastBoard::BLACK ? 1 : -1) * m_rootstate.final_score();
+        if (bestmove == FastBoard::PASS) {
             // Either by forcing or coincidence passing is
             // on top...check whether passing loses instantly
             // do full count including dead stones.
@@ -453,11 +454,9 @@ int UCTSearch::get_best_move(passflag_t passflag) {
             // heuristic so the engine can "clean up" the board. It will still
             // only clean up the bare necessity to win. For full dead stone
             // removal, kgs-genmove_cleanup and the NOPASS mode must be used.
-            float score = m_rootstate.final_score();
+
             // Do we lose by passing?
-            if ((score > 0.0f && color == FastBoard::WHITE)
-                ||
-                (score < 0.0f && color == FastBoard::BLACK)) {
+            if (relative_score < 0.0f) {
                 myprintf("Passing loses :-(\n");
                 // Find a valid non-pass move.
                 UCTNode * nopass = m_root->get_nopass_child(m_rootstate);
@@ -467,28 +466,45 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                     if (nopass->first_visit()) {
                         bestscore = 1.0f;
                     } else {
-                        bestscore = nopass->get_eval(color);
+                        bestscore = nopass->get_pure_eval(color);
                     }
                 } else {
                     myprintf("No alternative to passing.\n");
                 }
-            } else {
+            } else if (relative_score > 0.0f) {
                 myprintf("Passing wins :-)\n");
+            } else {
+                myprintf("Passing draws :-|\n");
+                // Find a valid non-pass move.
+                const auto nopass = m_root->get_nopass_child(m_rootstate);
+                if (nopass != nullptr && !nopass->first_visit()) {
+                    const auto nopass_eval = nopass->get_pure_eval(color);
+                    if (nopass_eval > 0.5f) {
+                        myprintf("Avoiding pass because there could be a winning alternative.\n");
+                        bestmove = nopass->get_move();
+                        bestscore = nopass_eval;
+                    }
+                }
+                if (bestmove == FastBoard::PASS) {
+                    myprintf("No seemingly better alternative to passing.\n");
+                }
             }
-        } else if (!cfg_dumbpass
-                   && m_rootstate.get_last_move() == FastBoard::PASS) {
+        } else if (m_rootstate.get_last_move() == FastBoard::PASS) {
             // Opponents last move was passing.
             // We didn't consider passing. Should we have and
             // end the game immediately?
-            float score = m_rootstate.final_score();
+
             // do we lose by passing?
-            if ((score > 0.0f && color == FastBoard::WHITE)
-                ||
-                (score < 0.0f && color == FastBoard::BLACK)) {
+            if (relative_score < 0.0f) {
                 myprintf("Passing loses, I'll play on.\n");
-            } else {
+            } else if (relative_score > 0.0f) {
                 myprintf("Passing wins, I'll pass out.\n");
                 bestmove = FastBoard::PASS;
+            } else {
+                myprintf("Passing draws, make it depend on evaluation.\n");
+                if (bestscore < 0.5f) {
+                    bestmove = FastBoard::PASS;
+                }
             }
         }
     }
