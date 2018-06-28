@@ -75,8 +75,6 @@ Result ProductionJob::execute(){
         game.loadSgf(m_sgf);
         game.loadTraining(m_sgf);
         game.setMovesCount(m_moves);
-        QFile::remove(m_sgf + ".sgf");
-        QFile::remove(m_sgf + ".train");
     }
     do {
         game.move();
@@ -112,6 +110,10 @@ Result ProductionJob::execute(){
     default:
         break;
     }
+    if (!m_sgf.isEmpty()) {
+        QFile::remove(m_sgf + ".sgf");
+        QFile::remove(m_sgf + ".train");
+    }
     game.gameQuit();
     return res;
 }
@@ -138,7 +140,6 @@ Result ValidationJob::execute(){
     if (!m_sgfFirst.isEmpty()) {
         first.loadSgf(m_sgfFirst);
         first.setMovesCount(m_moves);
-        QFile::remove(m_sgfFirst + ".sgf");
     }
     Game second("networks/" + m_secondNet, m_option);
     if (!second.gameStart(m_leelazMinVersion)) {
@@ -147,7 +148,6 @@ Result ValidationJob::execute(){
     if (!m_sgfSecond.isEmpty()) {
         second.loadSgf(m_sgfSecond);
         second.setMovesCount(m_moves);
-        QFile::remove(m_sgfSecond + ".sgf");
     }
 
     QString wmove = "play white ";
@@ -197,6 +197,12 @@ Result ValidationJob::execute(){
         break;
     default:
         break;
+    }
+    if (!m_sgfFirst.isEmpty()) {
+        QFile::remove(m_sgfFirst + ".sgf");
+    }
+    if (!m_sgfSecond.isEmpty()) {
+        QFile::remove(m_sgfSecond + ".sgf");
     }
     first.gameQuit();
     second.gameQuit();
