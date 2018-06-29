@@ -72,12 +72,15 @@ Result ProductionJob::execute(){
         return res;
     }
     if (!m_sgf.isEmpty()) {
-        game.loadSgf(m_sgf, m_moves);
-        game.loadTraining(m_sgf, m_moves);
-        game.setMovesCount(m_moves);
         if (! m_permanent_sgf) {
+            game.loadSgf(m_sgf);
+            game.loadTraining(m_sgf);
+            game.setMovesCount(m_moves);
             QFile::remove(m_sgf + ".sgf");
             QFile::remove(m_sgf + ".train");
+        } else {
+            game.loadSgf(m_sgf, m_moves+1);
+            game.setMovesCount(m_moves);
         }
     }
     do {
