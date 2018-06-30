@@ -89,7 +89,7 @@ the line that says "#define USE_OPENCL".
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
     cd leela-zero/src
-    sudo apt install libboost-dev libboost-program-options-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+    sudo apt-get install libboost-dev libboost-program-options-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev g++
     make
     cd ..
     wget http://zero.sjeng.org/best-network
