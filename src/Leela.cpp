@@ -81,6 +81,9 @@ static void parse_commandline(int argc, char *argv[]) {
         ("noponder", "Disable thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
+        ("max-wr", po::value<float>()->default_value(cfg_max_wr), "Maximal white winrate.")
+        ("min-wr", po::value<float>()->default_value(cfg_min_wr), "Minimal white winrate.")
+        ("mid-wr", po::value<float>()->default_value(cfg_mid_wr), "Ideal white winrate.")
         ;
 #ifdef USE_OPENCL
     po::options_description gpu_desc("GPU options");
@@ -169,6 +172,27 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("benchmark")) {
         cfg_quiet = true;  // Set this early to avoid unnecessary output.
+    }
+
+    if (vm.count("max-wr")) {
+        cfg_max_wr = vm["max-wr"].as<float>();
+        if (cfg_max_wr > 1.0) {
+            cfg_max_wr = 1.0;
+        }
+    }
+
+    if (vm.count("min-wr")) {
+        cfg_min_wr = vm["min-wr"].as<float>();
+        if (cfg_min_wr < 0.0001) {
+            cfg_min_wr = 0.0001;
+        }
+    }
+
+    if (vm.count("mid-wr")) {
+        cfg_mid_wr = vm["mid-wr"].as<float>();
+        if (cfg_mid_wr < 0.0001 || cfg_mid_wr > 1.0) {
+            cfg_mid_wr = 0.4;
+        }
     }
 
 #ifdef USE_TUNER

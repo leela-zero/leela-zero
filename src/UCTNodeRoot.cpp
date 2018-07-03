@@ -30,6 +30,7 @@
 #include "FastBoard.h"
 #include "FastState.h"
 #include "KoState.h"
+#include "NNCache.h"
 #include "Random.h"
 #include "UCTNode.h"
 #include "Utils.h"
@@ -177,6 +178,53 @@ void UCTNode::inflate_all_children() {
     }
 }
 
+void binary_search_komi(GameState& root_state, float factor, float high, float low, int steps) {
+    while (steps-- > 0) {
+        root_state.m_komi = (high + low) / 2.0;
+        auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+        if (net_eval * factor > cfg_mid_wr) {
+            high = root_state.m_komi;
+        }
+        else {
+            low = root_state.m_komi;
+        }
+    }
+    root_state.m_komi = low;
+}
+
+void adjust_up_komi(GameState& root_state, float factor) {
+	float net_eval;
+	do {
+		root_state.m_komi = 2.0f * root_state.m_komi;
+		net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+	} while (net_eval * factor < cfg_mid_wr);
+	binary_search_komi(root_state, factor, root_state.m_komi, root_state.m_komi / 2.0, 8);
+}
+
+void adjust_down_komi(GameState& root_state, float factor) {
+	auto komi = root_state.m_komi;
+	root_state.m_komi = 7.5f;
+	auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+	if (net_eval * factor < cfg_mid_wr) {
+		binary_search_komi(root_state, factor, komi, 7.5f, 8);
+	}
+}
+
+void adjust_komi(GameState& root_state, float root_eval) {
+    if (root_state.get_to_move() == FastBoard::WHITE) {
+        if (root_eval < cfg_min_wr) {
+            auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+            adjust_up_komi(root_state, root_eval / net_eval);
+        }
+        else {
+            if (root_state.m_komi != 7.5f && root_eval > cfg_max_wr) {
+                auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+                adjust_down_komi(root_state, root_eval / net_eval);
+            }
+        }
+    }
+}
+
 void UCTNode::prepare_root_node(int color,
                                 std::atomic<int>& nodes,
                                 GameState& root_state) {
@@ -191,7 +239,21 @@ void UCTNode::prepare_root_node(int color,
         update(root_eval);
         root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
     }
+    if (m_visits < 8) {
+        root_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+    }
+    auto komi = root_state.m_komi;
+    adjust_komi(root_state, root_eval);
+    if (komi != root_state.m_komi) {
+        NNCache::get_NNCache().clear_cache();
+        m_visits = 0;
+        m_blackevals = 0.0;
+        m_min_psa_ratio_children = 2.0;
+        m_children.clear();
+        create_children(nodes, root_state, root_eval);
+    }
     Utils::myprintf("NN eval=%f\n", root_eval);
+    Utils::myprintf("komi=%f\n", root_state.m_komi);
 
     // There are a lot of special cases where code assumes
     // all children of the root are inflated, so do that.

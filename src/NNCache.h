@@ -51,6 +51,9 @@ public:
     }
 
     void dump_stats();
+    void clear_cache() {
+        m_cache.clear();
+    };
 
 private:
     NNCache(int size = 150000);  // ~ 225MB

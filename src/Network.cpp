@@ -1104,9 +1104,12 @@ std::vector<net_t> Network::gather_features(const GameState* const state,
     const auto white_it = blacks_move ?
                           begin(input_data) + INPUT_MOVES * BOARD_SQUARES :
                           begin(input_data);
-    const auto to_move_it = blacks_move ?
-        begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES :
-        begin(input_data) + (2 * INPUT_MOVES + 1) * BOARD_SQUARES;
+    const auto black_to_move_it = begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES;
+    const auto white_to_move_it = black_to_move_it + BOARD_SQUARES;
+    const net_t plus_komi = 0.5f + (state->get_komi()) / 15.0f;
+    const net_t minus_komi = 0.5f - (state->get_komi()) / 15.0f;
+    const net_t black_komi = blacks_move ? plus_komi : minus_komi;
+    const net_t white_komi = blacks_move ? minus_komi : plus_komi;
 
     const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
     // Go back in time, fill history boards
@@ -1118,7 +1121,8 @@ std::vector<net_t> Network::gather_features(const GameState* const state,
                               symmetry);
     }
 
-    std::fill(to_move_it, to_move_it + BOARD_SQUARES, net_t(true));
+    std::fill(black_to_move_it, black_to_move_it + BOARD_SQUARES, black_komi);
+    std::fill(white_to_move_it, white_to_move_it + BOARD_SQUARES, white_komi);
 
     return input_data;
 }
