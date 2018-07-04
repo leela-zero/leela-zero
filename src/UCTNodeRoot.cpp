@@ -213,13 +213,13 @@ void adjust_down_komi(GameState& root_state, float factor) {
 void adjust_komi(GameState& root_state, float root_eval) {
     if (root_state.get_to_move() == FastBoard::WHITE) {
         if (root_eval < cfg_min_wr) {
-            auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
-            adjust_up_komi(root_state, root_eval / net_eval);
+            //auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+            adjust_up_komi(root_state, 1.0f); // root_eval / net_eval);
         }
         else {
             if (root_state.m_komi != 7.5f && root_eval > cfg_max_wr) {
-                auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
-                adjust_down_komi(root_state, root_eval / net_eval);
+                //auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+                adjust_down_komi(root_state, 1.0f); // root_eval / net_eval);
             }
         }
     }
@@ -239,9 +239,9 @@ void UCTNode::prepare_root_node(int color,
         update(root_eval);
         root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
     }
-    if (m_visits < 8) {
+    //if (m_visits < 8) {
         root_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
-    }
+    //}
     auto komi = root_state.m_komi;
     adjust_komi(root_state, root_eval);
     if (komi != root_state.m_komi) {

@@ -104,9 +104,9 @@ void GTP::setup_default_parameters() {
     cfg_fpu_reduction = 0.25f;
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
-    cfg_max_wr = 0.5;
-    cfg_min_wr = 0.1;
-    cfg_mid_wr = 0.4;
+    cfg_max_wr = 0.34;
+    cfg_min_wr = 0.15;
+    cfg_mid_wr = 0.28;
     cfg_noise = false;
     cfg_random_cnt = 0;
     cfg_random_min_visits = 1;
