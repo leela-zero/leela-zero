@@ -52,6 +52,7 @@ void expect_regex(std::string s, std::string re, bool positive = true) {
 
 class LeelaEnv: public ::testing::Environment {
 public:
+    Network network;
     ~LeelaEnv() {}
     void SetUp() {
         GTP::setup_default_parameters();
@@ -71,7 +72,9 @@ public:
 
         cfg_weightsfile = "../src/tests/0k.txt";
 
-        GTP::initialize();
+        auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
+        network.initialize(playouts, cfg_weightsfile);
+        GTP::initialize(&network);
     }
     void TearDown() {}
 };
