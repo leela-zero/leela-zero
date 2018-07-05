@@ -1,19 +1,19 @@
 /*
-    This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+This file is part of Leela Zero.
+Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
-    Leela Zero is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+Leela Zero is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    Leela Zero is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+Leela Zero is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef FASTSTATE_H_INCLUDED
@@ -37,6 +37,7 @@ public:
 
     void set_komi(float komi);
     float get_komi() const;
+    float get_opp_komi() const;
     void set_handicap(int hcap);
     int get_handicap() const;
     int get_passes() const;
@@ -56,6 +57,7 @@ public:
     FullBoard board;
 
     float m_komi;
+    float m_opp_komi;
     int m_handicap;
     int m_passes;
     int m_komove;
