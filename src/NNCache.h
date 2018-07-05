@@ -22,6 +22,7 @@
 #include "config.h"
 
 #include <deque>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <vector>

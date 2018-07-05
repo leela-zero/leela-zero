@@ -17,6 +17,7 @@
 */
 
 #include "GameState.h"
+#include "Network.h"
 
 #include <algorithm>
 #include <array>
@@ -32,7 +33,6 @@
 #include "FullBoard.h"
 #include "KoState.h"
 #include "UCTSearch.h"
-#include "GTP.h"
 
 void GameState::init_game(int size, float komi) {
     KoState::init_game(size, komi);

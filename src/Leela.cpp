@@ -341,6 +341,15 @@ static void parse_commandline(int argc, char *argv[]) {
     cfg_options_str = out.str();
 }
 
+static Network network;
+static void initialize_network() {
+    auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
+    network.initialize(playouts, cfg_weightsfile);
+
+    GTP::initialize(&network);
+}
+
+
 // Setup global objects after command line has been parsed
 void init_global_objects() {
     thread_pool.initialize(cfg_num_threads);
@@ -354,7 +363,7 @@ void init_global_objects() {
     // improves reproducibility across platforms.
     Random::get_Rng().seedrandom(cfg_rng_seed);
 
-    GTP::initialize();
+    initialize_network();
 }
 
 void benchmark(GameState& game) {
@@ -362,10 +371,6 @@ void benchmark(GameState& game) {
     game.play_textmove("b", "r16");
     game.play_textmove("w", "d4");
     game.play_textmove("b", "c3");
-
-    Network network;
-    auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
-    network.initialize(playouts, cfg_weightsfile);
 
     auto search = std::make_unique<UCTSearch>(game, network);
     game.set_to_move(FastBoard::WHITE);

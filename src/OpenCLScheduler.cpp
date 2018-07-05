@@ -37,7 +37,7 @@ void OpenCLScheduler::initialize(const int channels) {
     // utilize GPU, since the worker thread consists of some CPU
     // work for task preparation.
     constexpr auto num_threads = 2;
-    m_context.resize(num_threads);
+    m_context_pool.resize(num_threads);
 
     for (auto gpu : gpus) {
         auto opencl = std::make_unique<OpenCL>();
@@ -50,7 +50,7 @@ void OpenCLScheduler::initialize(const int channels) {
         silent = true;
 
         for (auto i = 0; i < num_threads; i++) {
-            m_context[i].emplace_back(std::make_shared<OpenCLContext>(gnum));
+            m_context_pool[i].emplace_back(std::make_shared<ContextPoolEntry>(gnum));
         }
         gnum++;
     }
@@ -59,22 +59,22 @@ void OpenCLScheduler::initialize(const int channels) {
 void OpenCLScheduler::forward(const std::vector<net_t>& input,
                               std::vector<net_t>& output_pol,
                               std::vector<net_t>& output_val) {
-    std::shared_ptr<OpenCLContext> ctx;
+    std::shared_ptr<ContextPoolEntry> ctx;
     auto queue_num = size_t{0};
     {
-        std::unique_lock<std::mutex> lk(m_context_lock);
-        m_context_condvar.wait(lk, [this]{
-            for (auto & ctxlist : m_context) {
+        std::unique_lock<std::mutex> lk(m_context_pool_lock);
+        m_context_pool_condvar.wait(lk, [this]{
+            for (auto & ctxlist : m_context_pool) {
                 if (!ctxlist.empty()) {
                     return true;
                 }
             }
             return false;
         });
-        while (queue_num < m_context.size()) {
-            if (!m_context[queue_num].empty()) {
-                ctx = std::move(m_context[queue_num].front());
-                m_context[queue_num].pop_front();
+        while (queue_num < m_context_pool.size()) {
+            if (!m_context_pool[queue_num].empty()) {
+                ctx = std::move(m_context_pool[queue_num].front());
+                m_context_pool[queue_num].pop_front();
                 break;
             }
             queue_num++;
@@ -84,13 +84,13 @@ void OpenCLScheduler::forward(const std::vector<net_t>& input,
         assert(ctx != nullptr);
     }
 
-    m_networks[ctx->m_gpu_num]->forward(input, output_pol, output_val, *ctx);
+    m_networks[ctx->net_index]->forward(input, output_pol, output_val, ctx->context);
 
     {
-        std::unique_lock<std::mutex> lk(m_context_lock);
-        m_context[queue_num].push_back(std::move(ctx));
+        std::unique_lock<std::mutex> lk(m_context_pool_lock);
+        m_context_pool[queue_num].push_back(std::move(ctx));
         lk.unlock();
-        m_context_condvar.notify_one();
+        m_context_pool_condvar.notify_one();
     }
 }
 #endif

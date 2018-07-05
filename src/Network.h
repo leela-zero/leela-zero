@@ -33,8 +33,7 @@
 #ifdef USE_OPENCL
 #include "OpenCLScheduler.h"
 #endif
-
-class GameState;
+#include "GameState.h"
 
 class Network {
 public:

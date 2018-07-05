@@ -23,11 +23,12 @@
 #include <string>
 #include <vector>
 
-#include "Network.h"
 #include "FastState.h"
 #include "FullBoard.h"
 #include "KoState.h"
 #include "TimeControl.h"
+
+class Network;
 
 class GameState : public KoState {
 public:

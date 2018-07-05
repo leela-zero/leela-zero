@@ -412,7 +412,7 @@ const std::string sourceCode_sgemm =
 ;
 #endif
 
-void OpenCL::ensure_thread_initialized(OpenCLContext &opencl_context) {
+void OpenCL::ensure_context_initialized(OpenCLContext &opencl_context) {
     if (!opencl_context.m_is_initialized) {
         // Make kernels
         opencl_context.m_convolve1_kernel =
@@ -464,7 +464,7 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     const auto finalSize_pol = m_layers[m_layers.size()-2].outputs * one_plane;
     const auto finalSize_val = m_layers.back().outputs * one_plane;
 
-    m_opencl.ensure_thread_initialized(opencl_context);
+    m_opencl.ensure_context_initialized(opencl_context);
 
     if (!opencl_context.m_buffers_allocated) {
         auto max_channels = unsigned{0};
@@ -1097,9 +1097,9 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
         throw std::runtime_error("Error building OpenCL kernels.");
     }
 
-    // dummy gpu number, putting bogus number so that we don't misuse it
-    OpenCLContext tdata(0xffff);
-    ensure_thread_initialized(tdata);
+    // putting bogus number so that we don't misuse it
+    OpenCLContext tdata;
+    ensure_context_initialized(tdata);
 
     process_tuners(sgemm_tuners);
 
