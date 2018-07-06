@@ -46,9 +46,9 @@ public:
     using Netresult = NNCache::Netresult;
 
     Netresult get_scored_moves(const GameState* const state,
-                                      const Ensemble ensemble,
-                                      const int symmetry = -1,
-                                      const bool skip_cache = false);
+                               const Ensemble ensemble,
+                               const int symmetry = -1,
+                               const bool skip_cache = false);
 
     static constexpr auto INPUT_MOVES = 8;
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
@@ -61,7 +61,7 @@ public:
 
     void initialize(int playouts, const std::string & weightsfile);
     void benchmark(const GameState * const state,
-                          const int iterations = 1600);
+                   const int iterations = 1600);
     static void show_heatmap(const FastState * const state,
                              const Netresult & netres, const bool topmoves);
 
@@ -97,7 +97,7 @@ private:
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
     Netresult get_scored_moves_internal(const GameState* const state,
-                                               const int symmetry);
+                                        const int symmetry);
 
     static void fill_input_plane_pair(const FullBoard& board,
                                       std::vector<net_t>::iterator black,
@@ -107,8 +107,8 @@ private:
     bool probe_cache(const GameState* const state, Network::Netresult& result);
 #if defined(USE_BLAS)
     void forward_cpu(const std::vector<float>& input,
-                            std::vector<float>& output_pol,
-                            std::vector<float>& output_val);
+                     std::vector<float>& output_pol,
+                     std::vector<float>& output_val) const;
 
 #endif
 

@@ -732,7 +732,7 @@ void batchnorm(const size_t channels,
 
 void Network::forward_cpu(const std::vector<float>& input,
                           std::vector<float>& output_pol,
-                          std::vector<float>& output_val) {
+                          std::vector<float>& output_val) const {
     // Input convolution
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
