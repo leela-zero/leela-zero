@@ -73,27 +73,27 @@ public:
 private:
     std::pair<int, int> load_v1_network(std::istream& wtfile);
     std::pair<int, int> load_network_file(const std::string& filename);
-    void process_bn_var(std::vector<float>& weights,
+    static void process_bn_var(std::vector<float>& weights,
                                const float epsilon = 1e-5f);
 
-    std::vector<float> winograd_transform_f(const std::vector<float>& f,
-        const int outputs, const int channels);
-    std::vector<float> zeropad_U(const std::vector<float>& U,
-        const int outputs, const int channels,
-        const int outputs_pad, const int channels_pad);
-    void winograd_transform_in(const std::vector<float>& in,
+    static std::vector<float> winograd_transform_f(const std::vector<float>& f,
+                                                   const int outputs, const int channels);
+    static std::vector<float> zeropad_U(const std::vector<float>& U,
+                                        const int outputs, const int channels,
+                                        const int outputs_pad, const int channels_pad);
+    static void winograd_transform_in(const std::vector<float>& in,
                                       std::vector<float>& V,
                                       const int C);
-    void winograd_transform_out(const std::vector<float>& M,
+    static void winograd_transform_out(const std::vector<float>& M,
                                        std::vector<float>& Y,
                                        const int K);
-    void winograd_convolve3(const int outputs,
+    static void winograd_convolve3(const int outputs,
                                    const std::vector<float>& input,
                                    const std::vector<float>& U,
                                    std::vector<float>& V,
                                    std::vector<float>& M,
                                    std::vector<float>& output);
-    void winograd_sgemm(const std::vector<float>& U,
+    static void winograd_sgemm(const std::vector<float>& U,
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
     Netresult get_scored_moves_internal(const GameState* const state,
