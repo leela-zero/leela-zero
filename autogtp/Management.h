@@ -42,7 +42,8 @@ public:
                const int maxGame,
                const bool delNetworks,
                const QString& keep,
-               const QString& debug);
+               const QString& debug,
+               const bool watcher);
     ~Management() = default;
     void giveAssignments();
     void incMoves() { m_movesMade++; }
@@ -81,6 +82,7 @@ private:
     int m_gamesLeft;
     int m_threadsLeft;
     bool m_delNetworks;
+    bool m_watcher;
     QLockFile *m_lockFile;
     QString m_leelaversion;
 
