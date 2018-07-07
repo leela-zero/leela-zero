@@ -269,6 +269,7 @@ void UCTNode::prepare_root_node(int color,
         m_min_psa_ratio_children = 2.0;
         m_children.clear();
         create_children(nodes, root_state, root_eval);
+        root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
     }
 
     // There are a lot of special cases where code assumes
