@@ -7,4 +7,4 @@ add_executable(leelaz-autogtp
 set_target_properties(leelaz-autogtp PROPERTIES AUTOMOC 1)
 target_link_libraries(leelaz-autogtp Qt5::Core)
 
-install(TARGETS leelaz-autogtp DESTINATION bin)
+install(TARGETS leelaz-autogtp DESTINATION ${CMAKE_INSTALL_BINDIR})
