@@ -194,7 +194,8 @@ class TFProcess:
                         self.reset_batchnorm_key()
 
                         tf.get_variable_scope().reuse_variables()
-                        grads = opt.compute_gradients(loss)
+                        with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+                            grads = opt.compute_gradients(loss)
 
                         tower_grads.append(grads)
                         tower_loss.append(loss)
@@ -238,8 +239,7 @@ class TFProcess:
         total_grad=[]
         grad_ops=[]
         clear_var=[]
-        with tf.control_dependencies(self.update_ops):
-            self.grad_op_real = self.mean_grads
+        self.grad_op_real = self.mean_grads
         for (g, v) in self.grad_op_real:
             if g is None:
                 total_grad.append((g,v))
