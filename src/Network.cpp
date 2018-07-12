@@ -62,34 +62,6 @@
 namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
-// Input + residual block tower
-static std::vector<std::vector<float>> conv_weights;
-static std::vector<std::vector<float>> conv_biases;
-static std::vector<std::vector<float>> batchnorm_means;
-static std::vector<std::vector<float>> batchnorm_stddivs;
-
-// Policy head
-static std::vector<float> conv_pol_w;
-static std::vector<float> conv_pol_b;
-static std::array<float, 2> bn_pol_w1;
-static std::array<float, 2> bn_pol_w2;
-
-static std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> ip_pol_w;
-static std::array<float, BOARD_SQUARES + 1> ip_pol_b;
-
-// Value head
-static std::vector<float> conv_val_w;
-static std::vector<float> conv_val_b;
-static std::array<float, 1> bn_val_w1;
-static std::array<float, 1> bn_val_w2;
-
-static std::array<float, BOARD_SQUARES * 256> ip1_val_w;
-static std::array<float, 256> ip1_val_b;
-
-static std::array<float, 256> ip2_val_w;
-static std::array<float, 1> ip2_val_b;
-static bool value_head_not_stm;
-
 // Symmetry helper
 static std::array<std::array<int, BOARD_SQUARES>, Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
 
@@ -101,7 +73,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
     std::atomic<int> runcount{0};
 
     for (auto i = 0; i < cpus; i++) {
-        tg.add_task([&runcount, iterations, state]() {
+        tg.add_task([this, &runcount, iterations, state]() {
             while (runcount < iterations) {
                 runcount++;
                 get_scored_moves(state, Ensemble::RANDOM_SYMMETRY, -1, true);
@@ -348,7 +320,8 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
     return {0, 0};
 }
 
-void Network::initialize() {
+void Network::initialize(int playouts, const std::string & weightsfile) {
+    m_nncache.set_size_from_playouts(playouts);
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
         for (auto v = 0; v < BOARD_SQUARES; ++v) {
@@ -360,7 +333,7 @@ void Network::initialize() {
 
     // Load network from file
     size_t channels, residual_blocks;
-    std::tie(channels, residual_blocks) = load_network_file(cfg_weightsfile);
+    std::tie(channels, residual_blocks) = load_network_file(weightsfile);
     if (channels == 0) {
         exit(EXIT_FAILURE);
     }
@@ -404,9 +377,9 @@ void Network::initialize() {
 
 #ifdef USE_OPENCL
     myprintf("Initializing OpenCL.\n");
-    opencl.initialize(channels);
+    m_opencl.initialize(channels);
 
-    for (const auto & opencl_net : opencl.get_networks()) {
+    for (const auto & opencl_net : m_opencl.get_networks()) {
         const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
 
         const auto mwg = tuners[0];
@@ -759,7 +732,7 @@ void batchnorm(const size_t channels,
 
 void Network::forward_cpu(const std::vector<float>& input,
                           std::vector<float>& output_pol,
-                          std::vector<float>& output_val) {
+                          std::vector<float>& output_val) const {
     // Input convolution
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
@@ -871,9 +844,9 @@ std::vector<float> softmax(const std::vector<float>& input,
     return output;
 }
 
-static bool probe_cache(const GameState* const state,
-                        Network::Netresult& result) {
-    if (NNCache::get_NNCache().lookup(state->board.get_hash(), result)) {
+bool Network::probe_cache(const GameState* const state,
+                          Network::Netresult& result) {
+    if (m_nncache.lookup(state->board.get_hash(), result)) {
         return true;
     }
     // If we are not generating a self-play game, try to find
@@ -886,7 +859,7 @@ static bool probe_cache(const GameState* const state,
                 continue;
             }
             const auto hash = state->get_symmetry_hash(sym);
-            if (NNCache::get_NNCache().lookup(hash, result)) {
+            if (m_nncache.lookup(hash, result)) {
                 decltype(result.policy) corrected_policy;
                 corrected_policy.reserve(BOARD_SQUARES);
                 for (auto idx = size_t{0}; idx < BOARD_SQUARES; ++idx) {
@@ -945,7 +918,7 @@ Network::Netresult Network::get_scored_moves(
     }
 
     // Insert result into cache.
-    NNCache::get_NNCache().insert(state->board.get_hash(), result);
+    m_nncache.insert(state->board.get_hash(), result);
 
     return result;
 }
@@ -965,11 +938,11 @@ Network::Netresult Network::get_scored_moves_internal(
 #endif
 #ifdef USE_OPENCL
 #ifdef USE_HALF
-    opencl.forward(input_data, policy_data_n, value_data_n);
+    m_opencl.forward(input_data, policy_data_n, value_data_n);
     std::copy(begin(policy_data_n), end(policy_data_n), begin(policy_data));
     std::copy(begin(value_data_n), end(value_data_n), begin(value_data));
 #else
-    opencl.forward(input_data, policy_data, value_data);
+    m_opencl.forward(input_data, policy_data, value_data);
 #endif
 #elif defined(USE_BLAS) && !defined(USE_OPENCL)
     forward_cpu(input_data, policy_data, value_data);

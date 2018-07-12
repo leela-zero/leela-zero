@@ -51,7 +51,8 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(std::atomic<int>& nodecount,
+bool UCTNode::create_children(Network & network,
+                              std::atomic<int>& nodecount,
                               GameState& state,
                               float& eval,
                               float min_psa_ratio) {
@@ -77,7 +78,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     m_is_expanding = true;
     lock.unlock();
 
-    const auto raw_netlist = Network::get_scored_moves(
+    const auto raw_netlist = network.get_scored_moves(
         &state, Network::Ensemble::RANDOM_SYMMETRY);
 
     // DCNN returns winrate as side to move

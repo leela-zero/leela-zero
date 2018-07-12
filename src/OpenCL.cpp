@@ -412,26 +412,24 @@ const std::string sourceCode_sgemm =
 ;
 #endif
 
-thread_local ThreadData opencl_thread_data;
-
-void OpenCL::ensure_thread_initialized() {
-    if (!opencl_thread_data.m_is_initialized) {
+void OpenCL::ensure_context_initialized(OpenCLContext &opencl_context) {
+    if (!opencl_context.m_is_initialized) {
         // Make kernels
-        opencl_thread_data.m_convolve1_kernel =
+        opencl_context.m_convolve1_kernel =
             cl::Kernel(m_program, "convolve1");
-        opencl_thread_data.m_merge_kernel =
+        opencl_context.m_merge_kernel =
             cl::Kernel(m_program, "merge");
-        opencl_thread_data.m_in_transform_kernel =
+        opencl_context.m_in_transform_kernel =
             cl::Kernel(m_program, "in_transform");
-        opencl_thread_data.m_sgemm_kernel =
+        opencl_context.m_sgemm_kernel =
             cl::Kernel(m_program, "XgemmBatched");
-        opencl_thread_data.m_out_transform_bn_kernel =
+        opencl_context.m_out_transform_bn_kernel =
             cl::Kernel(m_program, "out_transform_fused_bn");
-        opencl_thread_data.m_out_transform_bn_in_kernel =
+        opencl_context.m_out_transform_bn_in_kernel =
             cl::Kernel(m_program, "out_transform_fused_bn_in");
-        opencl_thread_data.m_commandqueue =
+        opencl_context.m_commandqueue =
             cl::CommandQueue(m_context, m_device);
-        opencl_thread_data.m_is_initialized = true;
+        opencl_context.m_is_initialized = true;
     }
 }
 
@@ -457,7 +455,8 @@ void OpenCL_Network::add_weights(size_t layer,
 
 void OpenCL_Network::forward(const std::vector<net_t>& input,
                              std::vector<net_t>& output_pol,
-                             std::vector<net_t>& output_val) {
+                             std::vector<net_t>& output_val,
+                             OpenCLContext & opencl_context) {
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
     constexpr auto tiles = WINOGRAD_P;
@@ -465,9 +464,9 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     const auto finalSize_pol = m_layers[m_layers.size()-2].outputs * one_plane;
     const auto finalSize_val = m_layers.back().outputs * one_plane;
 
-    m_opencl.ensure_thread_initialized();
+    m_opencl.ensure_context_initialized(opencl_context);
 
-    if (!opencl_thread_data.m_buffers_allocated) {
+    if (!opencl_context.m_buffers_allocated) {
         auto max_channels = unsigned{0};
         for (const auto& layer : m_layers) {
             max_channels = std::max(max_channels,
@@ -489,35 +488,35 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
 
         auto v_zeros = std::vector<net_t>(alloc_vm_size);
 
-        opencl_thread_data.m_inBuffer = cl::Buffer(
+        opencl_context.m_inBuffer = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
-        opencl_thread_data.m_inBuffer2 = cl::Buffer(
+        opencl_context.m_inBuffer2 = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
-        opencl_thread_data.m_VBuffer = cl::Buffer(
+        opencl_context.m_VBuffer = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR,
             alloc_vm_size, v_zeros.data(), nullptr);
-        opencl_thread_data.m_MBuffer = cl::Buffer(
+        opencl_context.m_MBuffer = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, alloc_vm_size);
 
-        opencl_thread_data.m_pinnedOutBuffer_pol = cl::Buffer(
+        opencl_context.m_pinnedOutBuffer_pol = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR, finalSize_pol);
-        opencl_thread_data.m_pinnedOutBuffer_val = cl::Buffer(
+        opencl_context.m_pinnedOutBuffer_val = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR, finalSize_val);
 
-        opencl_thread_data.m_buffers_allocated = true;
+        opencl_context.m_buffers_allocated = true;
     }
 
-    cl::Buffer & inBuffer = opencl_thread_data.m_inBuffer;
-    cl::Buffer & inBuffer2 = opencl_thread_data.m_inBuffer2;
-    cl::Buffer & VBuffer = opencl_thread_data.m_VBuffer;
-    cl::Buffer & MBuffer = opencl_thread_data.m_MBuffer;
-    cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
+    cl::Buffer & inBuffer = opencl_context.m_inBuffer;
+    cl::Buffer & inBuffer2 = opencl_context.m_inBuffer2;
+    cl::Buffer & VBuffer = opencl_context.m_VBuffer;
+    cl::Buffer & MBuffer = opencl_context.m_MBuffer;
+    cl::CommandQueue & queue = opencl_context.m_commandqueue;
 
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, input.data());
@@ -535,7 +534,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             if (niter->is_residual_block) {
                 skip_next_in_trans = true;
             }
-            convolve3(layer.channels,
+            convolve3(opencl_context,
+                     layer.channels,
                      layer.outputs,
                      inBuffer,
                      inBuffer,
@@ -553,7 +553,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             auto bn1_weights   = begin(layer.weights) + 1;
             auto conv2_weights = begin(layer.weights) + 3;
             auto bn2_weights   = begin(layer.weights) + 4;
-            convolve3(layer.channels,
+            convolve3(opencl_context,
+                      layer.channels,
                       layer.outputs,
                       inBuffer,
                       inBuffer2,
@@ -568,7 +569,8 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
             if (niter->is_residual_block) {
                 skip_next_in_trans = true;
             }
-            convolve3(layer.channels,
+            convolve3(opencl_context,
+                      layer.channels,
                       layer.outputs,
                       inBuffer2,
                       inBuffer,
@@ -584,12 +586,12 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
 
             cl::Buffer out_buffer;
             if (niter == cend(m_layers)) {
-                out_buffer = opencl_thread_data.m_pinnedOutBuffer_val;
+                out_buffer = opencl_context.m_pinnedOutBuffer_val;
             } else {
-                out_buffer = opencl_thread_data.m_pinnedOutBuffer_pol;
+                out_buffer = opencl_context.m_pinnedOutBuffer_pol;
             }
 
-            convolve1(layer.channels,
+            convolve1(opencl_context, layer.channels,
                     layer.outputs,
                     inBuffer,
                     out_buffer,
@@ -599,10 +601,10 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     }
 
     auto pinnedOutBufferHost_pol = queue.enqueueMapBuffer(
-        opencl_thread_data.m_pinnedOutBuffer_pol, CL_FALSE,
+        opencl_context.m_pinnedOutBuffer_pol, CL_FALSE,
         CL_MAP_READ, 0, finalSize_pol);
     auto pinnedOutBufferHost_val = queue.enqueueMapBuffer(
-        opencl_thread_data.m_pinnedOutBuffer_val, CL_FALSE,
+        opencl_context.m_pinnedOutBuffer_val, CL_FALSE,
         CL_MAP_READ, 0, finalSize_val);
 
     {
@@ -615,14 +617,15 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     std::memcpy(output_pol.data(), pinnedOutBufferHost_pol, finalSize_pol);
     std::memcpy(output_val.data(), pinnedOutBufferHost_val, finalSize_val);
 
-    queue.enqueueUnmapMemObject(opencl_thread_data.m_pinnedOutBuffer_pol,
+    queue.enqueueUnmapMemObject(opencl_context.m_pinnedOutBuffer_pol,
             pinnedOutBufferHost_pol);
-    queue.enqueueUnmapMemObject(opencl_thread_data.m_pinnedOutBuffer_val,
+    queue.enqueueUnmapMemObject(opencl_context.m_pinnedOutBuffer_val,
             pinnedOutBufferHost_val);
 
 }
 
-void OpenCL_Network::convolve3(int channels, int outputs,
+void OpenCL_Network::convolve3(OpenCLContext & opencl_context,
+                              int channels, int outputs,
                               cl::Buffer& bufferIn,
                               cl::Buffer& bufferOut,
                               cl::Buffer& bufferV,
@@ -634,12 +637,12 @@ void OpenCL_Network::convolve3(int channels, int outputs,
                               bool fuse_in_transform,
                               bool store_inout) {
 
-    cl::Kernel & in_transform_kernel = opencl_thread_data.m_in_transform_kernel;
-    cl::Kernel & sgemm_kernel = opencl_thread_data.m_sgemm_kernel;
+    cl::Kernel & in_transform_kernel = opencl_context.m_in_transform_kernel;
+    cl::Kernel & sgemm_kernel = opencl_context.m_sgemm_kernel;
     cl::Kernel & out_transform_bn_kernel =
-        opencl_thread_data.m_out_transform_bn_kernel;
+        opencl_context.m_out_transform_bn_kernel;
     cl::Kernel & out_transform_bn_in_kernel =
-        opencl_thread_data.m_out_transform_bn_in_kernel;
+        opencl_context.m_out_transform_bn_in_kernel;
 
     auto mwg = m_opencl.m_sgemm_tuners.mwg;
     auto nwg = m_opencl.m_sgemm_tuners.nwg;
@@ -668,7 +671,7 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     auto n_ceil = int(ceilMultiple(ceilMultiple(tiles, nwg), vwn));
     auto k_ceil = int(ceilMultiple(ceilMultiple(channels, kwg), vwm));
 
-    cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
+    cl::CommandQueue & queue = opencl_context.m_commandqueue;
 
     if (!skip_in_transform) {
         try {
@@ -764,7 +767,8 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     }
 }
 
-void OpenCL_Network::convolve1(int channels, int outputs,
+void OpenCL_Network::convolve1(OpenCLContext & opencl_context,
+                              int channels, int outputs,
                               cl::Buffer& bufferInput,
                               cl::Buffer& bufferOutput,
                               cl::Buffer& bufferMerge,
@@ -780,7 +784,7 @@ void OpenCL_Network::convolve1(int channels, int outputs,
     constexpr int rowGroup = 1;
     size_t outputGroup = std::min(outputs, 32);
 
-    auto m_convolve_kernel = &opencl_thread_data.m_convolve1_kernel;
+    auto m_convolve_kernel = &opencl_context.m_convolve1_kernel;
 
 #ifndef NDEBUG
     // Total output size after reducing
@@ -797,7 +801,7 @@ void OpenCL_Network::convolve1(int channels, int outputs,
     int rowBuffer = std::min<int>(channelGroup, 7);
     size_t rowSize = channelGroup * outputGroup * rowBuffer * sizeof(float);
 
-    cl::CommandQueue & queue = opencl_thread_data.m_commandqueue;
+    cl::CommandQueue & queue = opencl_context.m_commandqueue;
 
     try {
         m_convolve_kernel->setArg(0, bufferInput);
@@ -815,7 +819,7 @@ void OpenCL_Network::convolve1(int channels, int outputs,
         throw;
     }
 
-    cl::Kernel & merge_kernel = opencl_thread_data.m_merge_kernel;
+    cl::Kernel & merge_kernel = opencl_context.m_merge_kernel;
     assert(channels % (1 << channelShift) == 0);
 
     try {
@@ -1093,11 +1097,14 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
         throw std::runtime_error("Error building OpenCL kernels.");
     }
 
-    ensure_thread_initialized();
+    // putting bogus number so that we don't misuse it
+    OpenCLContext tdata;
+    ensure_context_initialized(tdata);
+
     process_tuners(sgemm_tuners);
 
     m_wavefront_size =
-        opencl_thread_data.m_sgemm_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
+        tdata.m_sgemm_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
             best_device);
     myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
 

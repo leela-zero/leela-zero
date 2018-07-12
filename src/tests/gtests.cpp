@@ -52,6 +52,7 @@ void expect_regex(std::string s, std::string re, bool positive = true) {
 
 class LeelaEnv: public ::testing::Environment {
 public:
+    Network network;
     ~LeelaEnv() {}
     void SetUp() {
         GTP::setup_default_parameters();
@@ -69,10 +70,11 @@ public:
         // improves reproducibility across platforms.
         Random::get_Rng().seedrandom(cfg_rng_seed);
 
-        NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
-
         cfg_weightsfile = "../src/tests/0k.txt";
-        Network::initialize();
+
+        auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
+        network.initialize(playouts, cfg_weightsfile);
+        GTP::initialize(&network);
     }
     void TearDown() {}
 };
@@ -89,6 +91,7 @@ public:
 
         m_gamestate = std::make_unique<GameState>();
         m_gamestate->init_game(19, 7.5f);
+
     }
 
     GameState& get_gamestate() {

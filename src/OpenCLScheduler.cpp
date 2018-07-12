@@ -22,61 +22,75 @@
 #include "Random.h"
 #include "OpenCLScheduler.h"
 
-thread_local auto current_thread_gpu_num = size_t{0};
-OpenCLScheduler opencl;
 
 void OpenCLScheduler::initialize(const int channels) {
     // multi-gpu?
-    if (!cfg_gpus.empty()) {
-        auto silent{false};
-        for (auto gpu : cfg_gpus) {
-            auto opencl = std::make_unique<OpenCL>();
-            auto net = std::make_unique<OpenCL_Network>(*opencl);
-            opencl->initialize(channels, {gpu}, silent);
-            m_opencl.push_back(std::move(opencl));
-            m_networks.push_back(std::move(net));
+    auto gpus = cfg_gpus;
+    if (gpus.empty()) {
+        gpus = {0};
+    }
 
-            // Clear thread data on every init call.  We don't know which GPU
-            // this thread will be eventually be assigned to
-            opencl_thread_data = ThreadData();
+    auto silent{false};
+    auto gnum = size_t{0};
 
-            // starting next GPU, let's not dump full list of GPUs
-            silent = true;
-        }
+    // launch the worker thread.  2 threads so that we can fully
+    // utilize GPU, since the worker thread consists of some CPU
+    // work for task preparation.
+    constexpr auto num_threads = 2;
+    m_context_pool.resize(num_threads);
 
-        for (size_t gnum = 0; gnum < m_networks.size(); gnum++) {
-            // launch the worker thread.  2 threads so that we can fully
-            // utilize GPU, since the worker thread consists of some CPU
-            // work for task preparation.
-            constexpr auto num_threads = 2;
-            for (auto i = 0; i < num_threads; i++) {
-                m_threadpool.add_thread([gnum] {
-                    current_thread_gpu_num = gnum;
-                });
-            }
-        }
-    } else {
+    for (auto gpu : gpus) {
         auto opencl = std::make_unique<OpenCL>();
         auto net = std::make_unique<OpenCL_Network>(*opencl);
-        opencl->initialize(channels, {});
-
+        opencl->initialize(channels, {gpu}, silent);
         m_opencl.push_back(std::move(opencl));
         m_networks.push_back(std::move(net));
+
+        // starting next GPU, let's not dump full list of GPUs
+        silent = true;
+
+        for (auto i = 0; i < num_threads; i++) {
+            m_context_pool[i].emplace_back(std::make_shared<ContextPoolEntry>(gnum));
+        }
+        gnum++;
     }
 }
 
 void OpenCLScheduler::forward(const std::vector<net_t>& input,
                               std::vector<net_t>& output_pol,
                               std::vector<net_t>& output_val) {
-    if (m_networks.size() == 1) {
-        m_networks[0]->forward(input, output_pol, output_val);
-        return;
+    std::shared_ptr<ContextPoolEntry> ctx;
+    auto queue_num = size_t{0};
+    {
+        std::unique_lock<std::mutex> lk(m_context_pool_lock);
+        m_context_pool_condvar.wait(lk, [this]{
+            for (auto & ctxlist : m_context_pool) {
+                if (!ctxlist.empty()) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        while (queue_num < m_context_pool.size()) {
+            if (!m_context_pool[queue_num].empty()) {
+                ctx = std::move(m_context_pool[queue_num].front());
+                m_context_pool[queue_num].pop_front();
+                break;
+            }
+            queue_num++;
+        }
+        // if this failed, it means the condition variable exited itself
+        // when the predicate condition return false
+        assert(ctx != nullptr);
     }
 
-    auto f = m_threadpool.add_task([this, &input, &output_pol, &output_val]{
-        m_networks[current_thread_gpu_num]->forward(input, output_pol, output_val);
-    });
+    m_networks[ctx->net_index]->forward(input, output_pol, output_val, ctx->context);
 
-    f.get();
+    {
+        std::unique_lock<std::mutex> lk(m_context_pool_lock);
+        m_context_pool[queue_num].push_back(std::move(ctx));
+        lk.unlock();
+        m_context_pool_condvar.notify_one();
+    }
 }
 #endif

@@ -20,6 +20,7 @@
 #define OPENCL_SCHEDULER_H_INCLUDED
 #include "config.h"
 
+#include <list>
 #include <vector>
 #include <future>
 
@@ -27,6 +28,12 @@
 #include "ThreadPool.h"
 
 class OpenCLScheduler {
+    class ContextPoolEntry {
+    public:
+        size_t net_index;
+        OpenCLContext context;
+        ContextPoolEntry(size_t index) : net_index(index) {}
+    };
 public:
     void initialize(const int channels);
     std::vector<std::unique_ptr<OpenCL_Network>> & get_networks() {
@@ -36,22 +43,14 @@ public:
                  std::vector<net_t>& output_pol,
                  std::vector<net_t>& output_val);
 private:
-    class ForwardTask {
-    public:
-        const std::vector<net_t> *input;
-        std::vector<net_t> * output;
-        std::promise<void> prom;
-        ForwardTask() : input(nullptr), output(nullptr) {}
-        ForwardTask(const std::vector<net_t> * in,
-                    std::vector<net_t> * out)
-            : input(in), output(out) {}
-    };
-
     std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
     std::vector<std::unique_ptr<OpenCL>> m_opencl;
-    Utils::ThreadPool m_threadpool;
-};
 
-extern OpenCLScheduler opencl;
+    using ContextPoolQueue = std::list<std::shared_ptr<ContextPoolEntry>>;
+    std::vector<ContextPoolQueue> m_context_pool;
+
+    std::mutex m_context_pool_lock;
+    std::condition_variable m_context_pool_condvar;
+};
 
 #endif

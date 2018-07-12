@@ -22,15 +22,27 @@
 #include "config.h"
 
 #include <deque>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
-
-#include "Network.h"
+#include <vector>
 
 class NNCache {
 public:
-    // return the global NNCache
-    static NNCache& get_NNCache(void);
+    struct Netresult {
+        // 19x19 board positions
+        std::vector<float> policy;
+
+        // pass
+        float policy_pass;
+
+        // winrate
+        float winrate;
+
+        Netresult() : policy(BOARD_SQUARES), policy_pass(0.0f), winrate(0.0f) {}
+    };
+
+    NNCache(int size = 150000);  // ~ 225MB
 
     // Set a reasonable size gives max number of playouts
     void set_size_from_playouts(int max_playouts);
@@ -39,11 +51,11 @@ public:
     void resize(int size);
 
     // Try and find an existing entry.
-    bool lookup(std::uint64_t hash, Network::Netresult & result);
+    bool lookup(std::uint64_t hash, Netresult & result);
 
     // Insert a new entry.
     void insert(std::uint64_t hash,
-                const Network::Netresult& result);
+                const Netresult& result);
 
     // Return the hit rate ratio.
     std::pair<int, int> hit_rate() const {
@@ -51,9 +63,7 @@ public:
     }
 
     void dump_stats();
-
 private:
-    NNCache(int size = 150000);  // ~ 225MB
 
     std::mutex m_mutex;
 
@@ -65,9 +75,9 @@ private:
     int m_inserts{0};
 
     struct Entry {
-        Entry(const Network::Netresult& r)
+        Entry(const Netresult& r)
             : result(r) {}
-        Network::Netresult result;  // ~ 1.5KB
+        Netresult result;  // ~ 1.5KB
     };
 
     // Map from hash to {features, result}

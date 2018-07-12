@@ -71,10 +71,11 @@ private:
 };
 
 
-UCTSearch::UCTSearch(GameState& g)
-    : m_rootstate(g) {
+UCTSearch::UCTSearch(GameState& g, Network& network)
+    : m_rootstate(g), m_network(network) {
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
+
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
 }
 
@@ -203,7 +204,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             float eval;
             const auto had_children = node->has_children();
             const auto success =
-                node->create_children(m_nodes, currstate, eval,
+                node->create_children(m_network, m_nodes, currstate, eval,
                                       get_min_psa_ratio());
             if (!had_children && success) {
                 result = SearchResult::from_eval(eval);
@@ -682,7 +683,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     // create a sorted list of legal moves (make sure we
     // play something legal and decent even in time trouble)
-    m_root->prepare_root_node(color, m_nodes, m_rootstate);
+    m_root->prepare_root_node(m_network, color, m_nodes, m_rootstate);
 
     m_run = true;
     int cpus = cfg_num_threads;
@@ -739,7 +740,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     // display search info
     myprintf("\n");
     dump_stats(m_rootstate, *m_root);
-    Training::record(m_rootstate, *m_root);
+    Training::record(m_network, m_rootstate, *m_root);
 
     Time elapsed;
     int elapsed_centis = Time::timediff_centis(start, elapsed);
@@ -760,7 +761,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 void UCTSearch::ponder() {
     update_root();
 
-    m_root->prepare_root_node(m_rootstate.board.get_to_move(),
+    m_root->prepare_root_node(m_network, m_rootstate.board.get_to_move(),
                               m_nodes, m_rootstate);
 
     m_run = true;

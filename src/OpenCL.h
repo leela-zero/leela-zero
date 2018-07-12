@@ -36,6 +36,7 @@
 static constexpr auto WINOGRAD_P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / 4;
 static constexpr auto WINOGRAD_TILE = 4 * 4;
 
+// class OpenCLScheduler;
 class OpenCL;
 
 class Layer {
@@ -50,7 +51,7 @@ private:
     std::vector<cl::Buffer> weights;
 };
 
-class ThreadData {
+class OpenCLContext {
     friend class OpenCL;
     friend class OpenCL_Network;
 private:
@@ -132,7 +133,8 @@ public:
 
     void forward(const std::vector<net_t>& input,
             std::vector<net_t>& output_pol,
-            std::vector<net_t>& output_val);
+            std::vector<net_t>& output_val,
+            OpenCLContext & opencl_context);
 
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
@@ -142,7 +144,8 @@ private:
     }
     void add_weights(size_t layer, size_t size, const float* weights);
 
-    void convolve3(int channels, int outputs,
+    void convolve3(OpenCLContext & opencl_context,
+                    int channels, int outputs,
                     cl::Buffer& bufferIn,
                     cl::Buffer& bufferOut,
                     cl::Buffer& bufferV,
@@ -152,7 +155,8 @@ private:
                     bool skip_in_transform,
                     bool fuse_in_transform, bool store_inout);
 
-    void convolve1(int channels, int outputs,
+    void convolve1(OpenCLContext & opencl_context,
+                  int channels, int outputs,
                   cl::Buffer& bufferInput,
                   cl::Buffer& bufferOutput,
                   cl::Buffer& bufferMerge,
@@ -174,7 +178,7 @@ class OpenCL {
 public:
     void initialize(const int channels, const std::vector<int> & gpus,
                     bool silent = false);
-    void ensure_thread_initialized(void);
+    void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
 
     std::vector<size_t> get_sgemm_tuners(void);
@@ -200,7 +204,6 @@ private:
     bool m_init_ok{false};
 };
 
-extern thread_local ThreadData opencl_thread_data;
 extern const std::string sourceCode_sgemm;
 
 #endif

@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 
+#include "Network.h"
 #include "GameState.h"
 #include "UCTSearch.h"
 
@@ -66,6 +67,8 @@ extern int cfg_analyze_interval_centis;
 */
 class GTP {
 public:
+    static Network * network;
+    static void initialize(Network * network);
     static bool execute(GameState & game, std::string xinput);
     static void setup_default_parameters();
 private:
