@@ -23,10 +23,18 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include <boost/filesystem.hpp>
+
 #ifdef _WIN32
 #include <windows.h>
+#include <shlwapi.h>
+#pragma comment(lib,"shlwapi.lib")
+#include "shlobj.h"
 #else
 #include <sys/select.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 #endif
 
 #include "GTP.h"
@@ -155,4 +163,44 @@ size_t Utils::ceilMultiple(size_t a, size_t b) {
 
     auto ret = a + (b - a % b);
     return ret;
+}
+
+#ifdef _WIN32
+// https://stackoverflow.com/a/3999597
+// Convert a wide Unicode string to an UTF8 string
+// Thanks Windows, saving developers time since 1995
+std::string utf8_encode(const std::wstring &wstr)
+{
+    if ( wstr.empty() ) return std::string();
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
+    return strTo;
+}
+#endif
+
+std::string Utils::leelaz_file(std::string file) {
+#ifdef _WIN32
+    // https://stackoverflow.com/a/11032792 but avoiding the UNICODE mess and just using W variants
+    wchar_t szPath[MAX_PATH];
+    if (!SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_COMMON_APPDATA, NULL, 0, szPath)))
+        return NULL;
+    PathAppendW(szPath, L"\\Leela Zero\\");
+    boost::filesystem::path dir(utf8_encode(szPath));
+#else
+    // https://stackoverflow.com/a/26696759
+    const char *homedir;
+    if ((homedir = getenv("HOME")) == NULL) {
+        struct passwd *pwd;
+        if ((pwd = getpwuid(getuid())) == NULL) { // NOLINT(runtime/threadsafe_fn)
+            return NULL;
+        }
+        homedir = pwd->pw_dir;
+    }
+    boost::filesystem::path dir(homedir);
+    dir /= ".local/share/leela-zero";
+#endif
+    boost::filesystem::create_directories(dir);
+    dir /= file;
+    return dir.string();
 }

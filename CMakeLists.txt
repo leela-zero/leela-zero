@@ -22,7 +22,7 @@ add_subdirectory(gtest EXCLUDE_FROM_ALL) # We don't want to install gtest, exclu
 # Required Packages
 set(Boost_MIN_VERSION "1.58.0")
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.58.0 REQUIRED program_options)
+find_package(Boost 1.58.0 REQUIRED program_options filesystem)
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(OpenCL REQUIRED)
