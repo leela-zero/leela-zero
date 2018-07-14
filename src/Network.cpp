@@ -142,7 +142,7 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     // Count size of the network
     myprintf("Detecting residual layers...");
     // We are version 1 or 2
-    if (value_head_not_stm) {
+    if (m_value_head_not_stm) {
         myprintf("v%d...", 2);
     } else {
         myprintf("v%d...", 1);
@@ -196,47 +196,47 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
         }
         if (linecount < plain_conv_wts) {
             if (linecount % 4 == 0) {
-                conv_weights.emplace_back(weights);
+                m_conv_weights.emplace_back(weights);
             } else if (linecount % 4 == 1) {
                 // Redundant in our model, but they encode the
                 // number of outputs so we have to read them in.
-                conv_biases.emplace_back(weights);
+                m_conv_biases.emplace_back(weights);
             } else if (linecount % 4 == 2) {
-                batchnorm_means.emplace_back(weights);
+                m_batchnorm_means.emplace_back(weights);
             } else if (linecount % 4 == 3) {
                 process_bn_var(weights);
-                batchnorm_stddivs.emplace_back(weights);
+                m_batchnorm_stddevs.emplace_back(weights);
             }
         } else if (linecount == plain_conv_wts) {
-            conv_pol_w = std::move(weights);
+            m_conv_pol_w = std::move(weights);
         } else if (linecount == plain_conv_wts + 1) {
-            conv_pol_b = std::move(weights);
+            m_conv_pol_b = std::move(weights);
         } else if (linecount == plain_conv_wts + 2) {
-            std::copy(cbegin(weights), cend(weights), begin(bn_pol_w1));
+            std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w1));
         } else if (linecount == plain_conv_wts + 3) {
             process_bn_var(weights);
-            std::copy(cbegin(weights), cend(weights), begin(bn_pol_w2));
+            std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w2));
         } else if (linecount == plain_conv_wts + 4) {
-            std::copy(cbegin(weights), cend(weights), begin(ip_pol_w));
+            std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_w));
         } else if (linecount == plain_conv_wts + 5) {
-            std::copy(cbegin(weights), cend(weights), begin(ip_pol_b));
+            std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_b));
         } else if (linecount == plain_conv_wts + 6) {
-            conv_val_w = std::move(weights);
+            m_conv_val_w = std::move(weights);
         } else if (linecount == plain_conv_wts + 7) {
-            conv_val_b = std::move(weights);
+            m_conv_val_b = std::move(weights);
         } else if (linecount == plain_conv_wts + 8) {
-            std::copy(cbegin(weights), cend(weights), begin(bn_val_w1));
+            std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w1));
         } else if (linecount == plain_conv_wts + 9) {
             process_bn_var(weights);
-            std::copy(cbegin(weights), cend(weights), begin(bn_val_w2));
+            std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w2));
         } else if (linecount == plain_conv_wts + 10) {
-            std::copy(cbegin(weights), cend(weights), begin(ip1_val_w));
+            std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_w));
         } else if (linecount == plain_conv_wts + 11) {
-            std::copy(cbegin(weights), cend(weights), begin(ip1_val_b));
+            std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_b));
         } else if (linecount == plain_conv_wts + 12) {
-            std::copy(cbegin(weights), cend(weights), begin(ip2_val_w));
+            std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_w));
         } else if (linecount == plain_conv_wts + 13) {
-            std::copy(cbegin(weights), cend(weights), begin(ip2_val_b));
+            std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_b));
         }
         linecount++;
     }
@@ -284,9 +284,9 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
             // that they return the score for black instead of
             // the player to move. This is used by ELF Open Go.
             if (format_version == 2) {
-                value_head_not_stm = true;
+                m_value_head_not_stm = true;
             } else {
-                value_head_not_stm = false;
+                m_value_head_not_stm = false;
             }
             return load_v1_network(buffer);
         }
@@ -315,15 +315,15 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     auto weight_index = size_t{0};
     // Input convolution
     // Winograd transform convolution weights
-    conv_weights[weight_index] =
-        winograd_transform_f(conv_weights[weight_index],
+    m_conv_weights[weight_index] =
+        winograd_transform_f(m_conv_weights[weight_index],
                              channels, INPUT_CHANNELS);
     weight_index++;
 
     // Residual block convolutions
     for (auto i = size_t{0}; i < residual_blocks * 2; i++) {
-        conv_weights[weight_index] =
-            winograd_transform_f(conv_weights[weight_index],
+        m_conv_weights[weight_index] =
+            winograd_transform_f(m_conv_weights[weight_index],
                                  channels, channels);
         weight_index++;
     }
@@ -332,21 +332,21 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     // still have non-zero biases.
     // Move biases to batchnorm means to make the output match without having
     // to separately add the biases.
-    for (auto i = size_t{0}; i < conv_biases.size(); i++) {
-        for (auto j = size_t{0}; j < batchnorm_means[i].size(); j++) {
-            batchnorm_means[i][j] -= conv_biases[i][j];
-            conv_biases[i][j] = 0.0f;
+    for (auto i = size_t{0}; i < m_conv_biases.size(); i++) {
+        for (auto j = size_t{0}; j < m_batchnorm_means[i].size(); j++) {
+            m_batchnorm_means[i][j] -= m_conv_biases[i][j];
+            m_conv_biases[i][j] = 0.0f;
         }
     }
 
-    for (auto i = size_t{0}; i < bn_val_w1.size(); i++) {
-        bn_val_w1[i] -= conv_val_b[i];
-        conv_val_b[i] = 0.0f;
+    for (auto i = size_t{0}; i < m_bn_val_w1.size(); i++) {
+        m_bn_val_w1[i] -= m_conv_val_b[i];
+        m_conv_val_b[i] = 0.0f;
     }
 
-    for (auto i = size_t{0}; i < bn_pol_w1.size(); i++) {
-        bn_pol_w1[i] -= conv_pol_b[i];
-        conv_pol_b[i] = 0.0f;
+    for (auto i = size_t{0}; i < m_bn_pol_w1.size(); i++) {
+        m_bn_pol_w1[i] -= m_conv_pol_b[i];
+        m_conv_pol_b[i] = 0.0f;
     }
 
     std::vector<ForwardPipe*> to_init;
@@ -374,32 +374,32 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 #endif
 
 
-    for (auto p : to_init) { 
+    for (auto p : to_init) {
         p->initialize(channels);
 
         weight_index = 0;
 
         // Winograd filter transformation changes filter size to 4x4
         p->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
-            channels, conv_weights[weight_index],
-            batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
+            channels, m_conv_weights[weight_index],
+            m_batchnorm_means[weight_index], m_batchnorm_stddevs[weight_index]);
         weight_index++;
 
         // residual blocks
         for (auto i = size_t{0}; i < residual_blocks; i++) {
             p->push_residual(WINOGRAD_ALPHA, channels, channels,
-                                      conv_weights[weight_index],
-                                      batchnorm_means[weight_index],
-                                      batchnorm_stddivs[weight_index],
-                                      conv_weights[weight_index + 1],
-                                      batchnorm_means[weight_index + 1],
-                                      batchnorm_stddivs[weight_index + 1]);
+                             m_conv_weights[weight_index],
+                             m_batchnorm_means[weight_index],
+                             m_batchnorm_stddevs[weight_index],
+                             m_conv_weights[weight_index + 1],
+                             m_batchnorm_means[weight_index + 1],
+                             m_batchnorm_stddevs[weight_index + 1]);
             weight_index += 2;
         }
 
         // Output head convolutions
-        p->push_convolve1(channels, OUTPUTS_POLICY, conv_pol_w);
-        p->push_convolve1(channels, OUTPUTS_VALUE, conv_val_w);
+        p->push_convolve1(channels, OUTPUTS_POLICY, m_conv_pol_w);
+        p->push_convolve1(channels, OUTPUTS_VALUE, m_conv_val_w);
     }
 #ifdef USE_BLAS
 #ifndef __APPLE__
@@ -609,7 +609,7 @@ Network::Netresult Network::get_scored_moves(
     }
 
     // v2 format (ELF Open Go) returns black value, not stm
-    if (value_head_not_stm) {
+    if (m_value_head_not_stm) {
         if (state->board.get_to_move() == FastBoard::WHITE) {
             result.winrate = 1.0f - result.winrate;
         }
@@ -645,19 +645,19 @@ Network::Netresult Network::get_scored_moves_internal(
 
     // Get the moves
     batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data,
-        bn_pol_w1.data(), bn_pol_w2.data());
+        m_bn_pol_w1.data(), m_bn_pol_w2.data());
     const auto policy_out =
         innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1, false>(
-            policy_data, ip_pol_w, ip_pol_b);
+            policy_data, m_ip_pol_w, m_ip_pol_b);
     const auto outputs = softmax(policy_out, cfg_softmax_temp);
 
     // Now get the score
     batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data,
-        bn_val_w1.data(), bn_val_w2.data());
+        m_bn_val_w1.data(), m_bn_val_w2.data());
     const auto winrate_data =
-        innerproduct<BOARD_SQUARES, 256, true>(value_data, ip1_val_w, ip1_val_b);
+        innerproduct<BOARD_SQUARES, 256, true>(value_data, m_ip1_val_w, m_ip1_val_b);
     const auto winrate_out =
-        innerproduct<256, 1, false>(winrate_data, ip2_val_w, ip2_val_b);
+        innerproduct<256, 1, false>(winrate_data, m_ip2_val_w, m_ip2_val_b);
 
     // Map TanH output range [-1..1] to [0..1] range
     const auto winrate = (1.0f + std::tanh(winrate_out[0])) / 2.0f;

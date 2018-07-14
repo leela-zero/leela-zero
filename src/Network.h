@@ -115,31 +115,31 @@ private:
     NNCache m_nncache;
 
     // Input + residual block tower
-    std::vector<std::vector<float>> conv_weights;
-    std::vector<std::vector<float>> conv_biases;
-    std::vector<std::vector<float>> batchnorm_means;
-    std::vector<std::vector<float>> batchnorm_stddivs;
+    std::vector<std::vector<float>> m_conv_weights;
+    std::vector<std::vector<float>> m_conv_biases;
+    std::vector<std::vector<float>> m_batchnorm_means;
+    std::vector<std::vector<float>> m_batchnorm_stddevs;
 
     // Policy head
-    std::vector<float> conv_pol_w;
-    std::vector<float> conv_pol_b;
-    std::array<float, 2> bn_pol_w1;
-    std::array<float, 2> bn_pol_w2;
+    std::vector<float> m_conv_pol_w;
+    std::vector<float> m_conv_pol_b;
+    std::array<float, 2> m_bn_pol_w1;
+    std::array<float, 2> m_bn_pol_w2;
 
-    std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> ip_pol_w;
-    std::array<float, BOARD_SQUARES + 1> ip_pol_b;
+    std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> m_ip_pol_w;
+    std::array<float, BOARD_SQUARES + 1> m_ip_pol_b;
 
     // Value head
-    std::vector<float> conv_val_w;
-    std::vector<float> conv_val_b;
-    std::array<float, 1> bn_val_w1;
-    std::array<float, 1> bn_val_w2;
+    std::vector<float> m_conv_val_w;
+    std::vector<float> m_conv_val_b;
+    std::array<float, 1> m_bn_val_w1;
+    std::array<float, 1> m_bn_val_w2;
 
-    std::array<float, BOARD_SQUARES * 256> ip1_val_w;
-    std::array<float, 256> ip1_val_b;
+    std::array<float, BOARD_SQUARES * 256> m_ip1_val_w;
+    std::array<float, 256> m_ip1_val_b;
 
-    std::array<float, 256> ip2_val_w;
-    std::array<float, 1> ip2_val_b;
-    bool value_head_not_stm;
+    std::array<float, 256> m_ip2_val_w;
+    std::array<float, 1> m_ip2_val_b;
+    bool m_value_head_not_stm;
 };
 #endif
