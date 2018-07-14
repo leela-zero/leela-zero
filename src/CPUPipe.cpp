@@ -383,15 +383,13 @@ void CPUPipe::push_convolve1(unsigned int channels,
                        unsigned int outputs,
                        const std::vector<float>& weights)
 {
-    if(outputs == Network::OUTPUTS_POLICY) {
+    if (outputs == Network::OUTPUTS_POLICY) {
         conv_pol_w = weights;
         conv_pol_b.resize(conv_pol_w.size() / channels, 0.0f);
-    }
-    else if(outputs == Network::OUTPUTS_VALUE) {
+    } else if (outputs == Network::OUTPUTS_VALUE) {
         conv_val_w = weights;
         conv_val_b.resize(conv_val_w.size() / channels, 0.0f);
-    }
-    else {
+    } else {
         assert(false);
     }
 }

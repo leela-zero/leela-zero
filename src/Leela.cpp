@@ -83,7 +83,7 @@ static void parse_commandline(int argc, char *argv[]) {
                       "-m0 -t1 -s1.")
 #ifdef USE_CPU_ONLY
         ("cpu-only", "Use CPU-only implementation.\n"
-                     "This build only has CPU implementation hence this option exists oly for compatability.")
+                     "This build only has CPU implementation hence this option exists only for compatability.")
 #else
         ("cpu-only", "Use CPU-only implementation and do not use GPU")
 #endif
@@ -240,7 +240,7 @@ static void parse_commandline(int argc, char *argv[]) {
     if (vm.count("cpu-only")) {
         cfg_cpu_only = true;
     }
-    
+
     if (vm.count("playouts")) {
         cfg_max_playouts = vm["playouts"].as<int>();
         if (!vm.count("noponder")) {

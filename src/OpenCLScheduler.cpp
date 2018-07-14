@@ -52,7 +52,7 @@ static std::vector<float> zeropad_U(const std::vector<float>& U,
 
     return Upad;
 }
- 
+
 void OpenCLScheduler::initialize(const int channels) {
     // multi-gpu?
     auto gpus = cfg_gpus;

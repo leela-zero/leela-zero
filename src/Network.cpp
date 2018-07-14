@@ -374,17 +374,17 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 #endif
 
 
-    for(auto p : to_init) { 
+    for (auto p : to_init) { 
         p->initialize(channels);
-    
+
         weight_index = 0;
-    
+
         // Winograd filter transformation changes filter size to 4x4
         p->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
             channels, conv_weights[weight_index],
             batchnorm_means[weight_index], batchnorm_stddivs[weight_index]);
         weight_index++;
-    
+
         // residual blocks
         for (auto i = size_t{0}; i < residual_blocks; i++) {
             p->push_residual(WINOGRAD_ALPHA, channels, channels,
@@ -396,7 +396,7 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
                                       batchnorm_stddivs[weight_index + 1]);
             weight_index += 2;
         }
-    
+
         // Output head convolutions
         p->push_convolve1(channels, OUTPUTS_POLICY, conv_pol_w);
         p->push_convolve1(channels, OUTPUTS_VALUE, conv_val_w);
