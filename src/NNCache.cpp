@@ -18,6 +18,7 @@
 
 #include "config.h"
 #include <functional>
+#include <memory>
 
 #include "NNCache.h"
 #include "Utils.h"

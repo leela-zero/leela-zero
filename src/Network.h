@@ -34,6 +34,10 @@
 #include "OpenCLScheduler.h"
 #endif
 #include "GameState.h"
+#include "ForwardPipe.h"
+#ifdef USE_OPENCL
+#include "OpenCLScheduler.h"
+#endif
 
 class Network {
 public:
@@ -65,7 +69,7 @@ public:
     static void show_heatmap(const FastState * const state,
                              const Netresult & netres, const bool topmoves);
 
-    static std::vector<net_t> gather_features(const GameState* const state,
+    static std::vector<float> gather_features(const GameState* const state,
                                               const int symmetry);
     static std::pair<int, int> get_symmetry(const std::pair<int, int>& vertex,
                                             const int symmetry,
@@ -98,23 +102,16 @@ private:
                                std::vector<float>& M, const int C, const int K);
     Netresult get_scored_moves_internal(const GameState* const state,
                                         const int symmetry);
-
     static void fill_input_plane_pair(const FullBoard& board,
-                                      std::vector<net_t>::iterator black,
-                                      std::vector<net_t>::iterator white,
+                                      std::vector<float>::iterator black,
+                                      std::vector<float>::iterator white,
                                       const int symmetry);
-
     bool probe_cache(const GameState* const state, Network::Netresult& result);
-#if defined(USE_BLAS)
-    void forward_cpu(const std::vector<float>& input,
-                     std::vector<float>& output_pol,
-                     std::vector<float>& output_val) const;
-
+    std::unique_ptr<ForwardPipe> m_forward;
+#ifdef USE_OPENCL_SELFCHECK
+    std::unique_ptr<ForwardPipe> m_forward_cpu;
 #endif
 
-#ifdef USE_OPENCL
-    OpenCLScheduler m_opencl;
-#endif
     NNCache m_nncache;
 
     // Input + residual block tower
