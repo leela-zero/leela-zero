@@ -230,7 +230,7 @@ void adjust_komi(GameState& root_state, bool opp) { //, float root_eval) {
         if (root_eval < cfg_mid_wr) {
             adjust_up_komi(root_state, 1.0f);
         }
-        else if (root_eval > cfg_max_wr) {
+        else if (root_eval > cfg_mid_wr) {
             adjust_down_komi(root_state, 1.0f);
         }
     }
