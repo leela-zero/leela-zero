@@ -55,9 +55,12 @@ int cfg_max_visits;
 TimeManagement::enabled_t cfg_timemanage;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
+
 float cfg_max_wr;
 float cfg_min_wr;
 float cfg_mid_wr;
+float cfg_adj_playouts;
+
 int cfg_noise;
 int cfg_random_cnt;
 int cfg_random_min_visits;
@@ -107,6 +110,7 @@ void GTP::setup_default_parameters() {
     cfg_max_wr = 0.12;
     cfg_min_wr = 0.05;
     cfg_mid_wr = 0.10;
+    cfg_adj_playouts = 100;
     cfg_noise = false;
     cfg_random_cnt = 0;
     cfg_random_min_visits = 1;

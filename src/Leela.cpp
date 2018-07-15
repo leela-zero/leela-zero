@@ -83,7 +83,8 @@ static void parse_commandline(int argc, char *argv[]) {
                       "-m0 -t1 -s1.")
         ("max-wr", po::value<float>()->default_value(cfg_max_wr), "Maximal white winrate.")
         ("min-wr", po::value<float>()->default_value(cfg_min_wr), "Minimal white winrate.")
-        ("mid-wr", po::value<float>()->default_value(cfg_mid_wr), "Ideal white winrate.")
+        ("mid-wr", po::value<float>()->default_value(cfg_mid_wr), "Target white winrate.")
+        ("adj-playouts", po::value<int>()->default_value(cfg_adj_playouts), "Number of playouts for komi adjustment.")
         ;
 #ifdef USE_OPENCL
     po::options_description gpu_desc("GPU options");
@@ -193,6 +194,10 @@ static void parse_commandline(int argc, char *argv[]) {
         if (cfg_mid_wr < 0.0001 || cfg_mid_wr > 1.0) {
             cfg_mid_wr = 0.4;
         }
+    }
+
+    if (vm.count("adj-playouts")) {
+        cfg_adj_playouts = vm["adj-playouts"].as<int>();
     }
 
 #ifdef USE_TUNER

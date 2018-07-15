@@ -37,9 +37,12 @@ extern int cfg_max_visits;
 extern TimeManagement::enabled_t cfg_timemanage;
 extern int cfg_lagbuffer_cs;
 extern int cfg_resignpct;
+
 extern float cfg_max_wr;
 extern float cfg_min_wr;
 extern float cfg_mid_wr;
+extern float cfg_adj_playouts;
+
 extern int cfg_noise;
 extern int cfg_random_cnt;
 extern int cfg_random_min_visits;

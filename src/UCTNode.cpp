@@ -54,7 +54,8 @@ SMP::Mutex& UCTNode::get_mutex() {
 bool UCTNode::create_children(std::atomic<int>& nodecount,
                               GameState& state,
                               float& eval,
-                              float min_psa_ratio) {
+                              float min_psa_ratio,
+                              int symmetry) {
     // check whether somebody beat us to it (atomic)
     if (!expandable(min_psa_ratio)) {
         return false;
@@ -77,8 +78,13 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     m_is_expanding = true;
     lock.unlock();
 
-    const auto raw_netlist = Network::get_scored_moves(
-        &state, Network::Ensemble::RANDOM_SYMMETRY);
+    Network::Netresult raw_netlist;
+    if (symmetry == -1) {
+        raw_netlist = Network::get_scored_moves(&state, Network::Ensemble::RANDOM_SYMMETRY);
+    }
+    else {
+        raw_netlist = Network::get_scored_moves(&state, Network::Ensemble::DIRECT, symmetry);
+    }
 
     // DCNN returns winrate as side to move
     m_net_eval = raw_netlist.winrate;

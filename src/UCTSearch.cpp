@@ -32,6 +32,7 @@
 #include "FullBoard.h"
 #include "GTP.h"
 #include "GameState.h"
+#include "Random.h"
 #include "TimeControl.h"
 #include "Timing.h"
 #include "Training.h"
@@ -214,7 +215,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                     sym_state.symmetry = rand_sym;
                     sym_state.state = currstate;
                     //LOCK(get_mutex(), lock);
-                    if (sym_states.size < cfg_adj_playouts) {
+                    if (sym_states.size() < cfg_adj_playouts) {
                         sym_states.emplace_back(sym_state);
                     }
                 }

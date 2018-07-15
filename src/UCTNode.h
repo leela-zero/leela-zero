@@ -32,6 +32,8 @@
 #include "SMP.h"
 #include "UCTNodePointer.h"
 
+class UCTSearch;
+
 class UCTNode {
 public:
     // When we visit a node, add this amount of virtual losses
@@ -45,7 +47,8 @@ public:
 
     bool create_children(std::atomic<int>& nodecount,
                          GameState& state, float& eval,
-                         float min_psa_ratio = 0.0f);
+                         float min_psa_ratio = 0.0f,
+                         int symmetry = -1);
 
     const std::vector<UCTNodePointer>& get_children() const;
     void sort_children(int color);
@@ -76,7 +79,7 @@ public:
     void randomize_first_proportionally();
     void prepare_root_node(int color,
                            std::atomic<int>& nodecount,
-                           GameState& state, UCTSearch* search);
+                           GameState& state, UCTSearch * search);
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
