@@ -230,7 +230,7 @@ void adjust_komi(GameState& root_state, bool opp) { //, float root_eval) {
         if (root_eval < cfg_mid_wr) {
             adjust_up_komi(root_state, 1.0f);
         }
-        else if (root_eval > cfg_max_wr) {
+        else if (root_eval > cfg_mid_wr) {
             adjust_down_komi(root_state, 1.0f);
         }
     }
@@ -248,7 +248,7 @@ void adjust_komi(GameState& root_state, bool opp) { //, float root_eval) {
 
 void UCTNode::prepare_root_node(int color,
                                 std::atomic<int>& nodes,
-                                GameState& root_state) {
+                                GameState& root_state, UCTSearch* search) {
     float root_eval;
     const auto had_children = has_children();
     if (expandable()) {
@@ -260,6 +260,26 @@ void UCTNode::prepare_root_node(int color,
         update(root_eval);
         root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
     }
+
+    // There are a lot of special cases where code assumes
+    // all children of the root are inflated, so do that.
+    inflate_all_children();
+
+    // Remove illegal moves, so the root move list is correct.
+    // This also removes a lot of special cases.
+    kill_superkos(root_state);
+
+    // if playouts not enough or if enough and winrate need to be adjusted
+    if (m_visits < cfg_adj_playouts) {
+        search->adjusting = true;
+        search->sym_states.reserve(cfg_adj_playouts - m_visits);
+        for (int i = 0; i < cfg_adj_playouts; i++) {
+            auto currstate = std::make_unique<GameState>(root_state);
+            play_simulation(*currstate, this);
+        }
+    }
+    root_eval = get_pure_eval(color);
+    //
     auto komi = root_state.m_komi;
     adjust_komi(root_state, false);
     if (komi != root_state.m_komi) {
@@ -271,14 +291,6 @@ void UCTNode::prepare_root_node(int color,
         create_children(nodes, root_state, root_eval);
         root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
     }
-
-    // There are a lot of special cases where code assumes
-    // all children of the root are inflated, so do that.
-    inflate_all_children();
-
-    // Remove illegal moves, so the root move list is correct.
-    // This also removes a lot of special cases.
-    kill_superkos(root_state);
 
     if (komi != root_state.m_komi) {
         komi = root_state.m_opp_komi;

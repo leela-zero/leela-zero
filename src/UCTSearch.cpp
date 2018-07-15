@@ -189,6 +189,7 @@ float UCTSearch::get_min_psa_ratio() const {
     return 0.0f;
 }
 
+
 SearchResult UCTSearch::play_simulation(GameState & currstate,
                                         UCTNode* const node) {
     const auto color = currstate.get_to_move();
@@ -203,9 +204,27 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         } else if (m_nodes < MAX_TREE_SIZE) {
             float eval;
             const auto had_children = node->has_children();
-            const auto success =
-                node->create_children(m_nodes, currstate, eval,
-                                      get_min_psa_ratio());
+            ///*
+            bool success;
+            if (adjusting) {
+                const auto rand_sym = Random::get_Rng().randfix<8>();
+                success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
+                if (success) {
+                    Sym_State sym_state;
+                    sym_state.symmetry = rand_sym;
+                    sym_state.state = currstate;
+                    //LOCK(get_mutex(), lock);
+                    if (sym_states.size < cfg_adj_playouts) {
+                        sym_states.emplace_back(sym_state);
+                    }
+                }
+            }
+            else {
+                success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
+            }
+            //*/
+            //const auto success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
+
             if (!had_children && success) {
                 result = SearchResult::from_eval(eval);
             }
@@ -684,7 +703,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     // create a sorted list of legal moves (make sure we
     // play something legal and decent even in time trouble)
-    m_root->prepare_root_node(color, m_nodes, m_rootstate);
+    m_root->prepare_root_node(color, m_nodes, m_rootstate, this);
 
     m_run = true;
     int cpus = cfg_num_threads;
@@ -763,7 +782,7 @@ void UCTSearch::ponder() {
     update_root();
 
     m_root->prepare_root_node(m_rootstate.board.get_to_move(),
-                              m_nodes, m_rootstate);
+                              m_nodes, m_rootstate, this);
 
     m_run = true;
     ThreadGroup tg(thread_pool);

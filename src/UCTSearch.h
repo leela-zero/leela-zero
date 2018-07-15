@@ -63,6 +63,11 @@ namespace TimeManagement {
     };
 };
 
+struct Sym_State {
+    int symmetry;
+    GameState state;
+};
+
 class UCTSearch {
 public:
     /*
@@ -99,6 +104,8 @@ public:
     bool is_running() const;
     void increment_playouts();
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
+    bool adjusting;
+    vector<Sym_State> sym_states;
 
 private:
     float get_min_psa_ratio() const;

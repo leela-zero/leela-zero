@@ -76,7 +76,7 @@ public:
     void randomize_first_proportionally();
     void prepare_root_node(int color,
                            std::atomic<int>& nodecount,
-                           GameState& state);
+                           GameState& state, UCTSearch* search);
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
