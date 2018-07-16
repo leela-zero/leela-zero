@@ -72,6 +72,7 @@ private:
     QString m_timeSettings;
     QString m_winner;
     QString m_fileName;
+    QString m_loadedSGF;
     QString m_moveDone;
     QString m_result;
     bool m_resignation;

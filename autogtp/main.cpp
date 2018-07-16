@@ -69,6 +69,9 @@ int main(int argc, char *argv[]) {
     QCommandLineOption singleOption(
         { "s", "single" }, "Exit after the first game is completed.",
                           "");
+    QCommandLineOption watcherOption(
+        { "w", "watcher" }, "Reject boring 0 resignation games.",
+                          "");
 
     QCommandLineOption maxOption(
         { "m", "maxgames" }, "Exit after the given number of games is completed.",
@@ -84,6 +87,7 @@ int main(int argc, char *argv[]) {
     parser.addOption(keepDebugOption);
     parser.addOption(timeoutOption);
     parser.addOption(singleOption);
+    parser.addOption(watcherOption);
     parser.addOption(maxOption);
     parser.addOption(eraseOption);
 
@@ -142,7 +146,7 @@ int main(int argc, char *argv[]) {
     }
     Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, maxNum,
                                       parser.isSet(eraseOption), parser.value(keepSgfOption),
-                                      parser.value(keepDebugOption));
+                                      parser.value(keepDebugOption), parser.isSet(watcherOption));
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
     QTimer *timer = new QTimer();
     boss->giveAssignments();

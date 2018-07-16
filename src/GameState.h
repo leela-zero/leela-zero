@@ -48,6 +48,7 @@ public:
     void rewind(void); /* undo infinite */
     bool undo_move(void);
     bool forward_move(void);
+    std::string reiterate_moves(void);
     const FullBoard& get_past_board(int moves_ago) const;
 
     void play_move(int color, int vertex);

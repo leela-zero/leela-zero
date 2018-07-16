@@ -43,7 +43,8 @@ Management::Management(const int gpus,
                        const int maxGames,
                        const bool delNetworks,
                        const QString& keep,
-                       const QString& debug)
+                       const QString& debug,
+                       const bool watcher)
 
     : m_syncMutex(),
     m_gamesThreads(gpus * games),
@@ -61,6 +62,7 @@ Management::Management(const int gpus,
     m_gamesLeft(maxGames),
     m_threadsLeft(gpus * games),
     m_delNetworks(delNetworks),
+    m_watcher(watcher),
     m_lockFile(nullptr) {
 }
 
@@ -387,7 +389,13 @@ Order Management::getWorkInternal(bool tuning) {
     //parsing options
     if (ob.contains("options")) {
         parameters["optHash"] = ob.value("options_hash").toString();
-        parameters["options"] = getOptionsString(ob.value("options").toObject(), rndSeed);
+        QJsonObject opt = ob.value("options").toObject();
+        if (m_watcher && opt.contains("resignation_percent"))
+            if (opt.value("resignation_percent").toString() == "0") {
+                QTextStream(stdout) << "Avoiding no-resignation job." << endl;
+                return Management::getWorkInternal(tuning);
+            }
+        parameters["options"] = getOptionsString(opt, rndSeed);
     }
 
     parameters["debug"] = !m_debugPath.isEmpty() ? "true" : "false";
