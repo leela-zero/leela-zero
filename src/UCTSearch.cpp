@@ -200,6 +200,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
+            node->update(result.eval());
         } else if (m_nodes < MAX_TREE_SIZE) {
             float eval;
             const auto had_children = node->has_children();
@@ -221,12 +222,13 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             next->invalidate();
         } else {
             result = play_simulation(currstate, next);
+            if (result.valid()) {
+                node->update(result.eval());
+            }
         }
     }
 
-    if (result.valid()) {
-        node->update(result.eval());
-    }
+
     node->virtual_loss_undo();
 
     return result;
