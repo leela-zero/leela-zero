@@ -62,12 +62,6 @@ public:
         BLACK = 0, WHITE = 1, EMPTY = 2, INVAL = 3
     };
 
-    /*
-        move generation types
-    */
-    using movescore_t = std::pair<int, float>;
-    using scoredmoves_t = std::vector<movescore_t>;
-
     int get_boardsize(void) const;
     square_t get_square(int x, int y) const;
     square_t get_square(int vertex) const ;
