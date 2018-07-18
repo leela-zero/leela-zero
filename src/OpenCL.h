@@ -176,8 +176,7 @@ class OpenCL {
     friend class OpenCL_Network;
     friend class Tuner;
 public:
-    void initialize(const int channels, const std::vector<int> & gpus,
-                    bool silent = false);
+    void initialize(const int channels, int gpu, bool silent = false);
     void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
 
