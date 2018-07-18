@@ -26,8 +26,11 @@
 void OpenCLScheduler::initialize(const int channels) {
     // multi-gpu?
     auto gpus = cfg_gpus;
+
+    // an empty GPU list from the command line represents autodetect.
+    // put a minus one GPU index here.
     if (gpus.empty()) {
-        gpus = {0};
+        gpus = {-1};
     }
 
     auto silent{false};
@@ -42,7 +45,7 @@ void OpenCLScheduler::initialize(const int channels) {
     for (auto gpu : gpus) {
         auto opencl = std::make_unique<OpenCL>();
         auto net = std::make_unique<OpenCL_Network>(*opencl);
-        opencl->initialize(channels, {gpu}, silent);
+        opencl->initialize(channels, gpu, silent);
         m_opencl.push_back(std::move(opencl));
         m_networks.push_back(std::move(net));
 

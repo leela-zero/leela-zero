@@ -946,8 +946,7 @@ std::vector<size_t> OpenCL::get_sgemm_tuners(void) {
     return tuners;
 }
 
-void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
-                        bool silent) {
+void OpenCL::initialize(const int channels, int gpu, bool silent) {
     std::vector<cl::Platform> platforms;
     try {
         cl::Platform::get(&platforms);
@@ -1022,8 +1021,7 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
                 myprintf("Device score:  %d\n", this_score);
             }
 
-            bool preferred =
-                std::find(cbegin(gpus), cend(gpus), id) != cend(gpus);
+            bool preferred = (gpu == id);
 
             if ((this_score > best_score) || preferred) {
                 best_version = opencl_version;
