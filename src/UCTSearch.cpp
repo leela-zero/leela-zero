@@ -190,7 +190,6 @@ float UCTSearch::get_min_psa_ratio() const {
     return 0.0f;
 }
 
-
 SearchResult UCTSearch::play_simulation(GameState & currstate,
                                         UCTNode* const node) {
     const auto color = currstate.get_to_move();
@@ -205,9 +204,9 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         } else if (m_nodes < MAX_TREE_SIZE) {
             float eval;
             const auto had_children = node->has_children();
-            ///*
+            
             bool success;
-            if (adjusting) {
+            if (cfg_adj_mode == 1 && adjusting) {
                 const auto rand_sym = Random::get_Rng().randfix<8>();
                 success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
                 if (success) {
@@ -223,10 +222,9 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             else {
                 success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
             }
-            //*/
-            //const auto success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
+            
 
-            if (!had_children && success) {
+            if (!had_children && success && !currstate.eval_invalid()) {
                 result = SearchResult::from_eval(eval);
             }
         }

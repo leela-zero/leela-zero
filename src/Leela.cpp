@@ -85,6 +85,8 @@ static void parse_commandline(int argc, char *argv[]) {
         ("min-wr", po::value<float>()->default_value(cfg_min_wr), "Minimal white winrate.")
         ("mid-wr", po::value<float>()->default_value(cfg_mid_wr), "Target white winrate.")
         ("adj-playouts", po::value<int>()->default_value(cfg_adj_playouts), "Number of playouts for komi adjustment.")
+        ("pos", "Use positive komi (for side-to-move) only.")
+        ("neg", "Use negative komi only.")
         ;
 #ifdef USE_OPENCL
     po::options_description gpu_desc("GPU options");
@@ -198,6 +200,14 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("adj-playouts")) {
         cfg_adj_playouts = vm["adj-playouts"].as<int>();
+    }
+
+    if (vm.count("pos")) {
+        cfg_pos = true;
+    }
+
+    if (vm.count("neg")) {
+        cfg_neg = true;
     }
 
 #ifdef USE_TUNER

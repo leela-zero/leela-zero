@@ -30,6 +30,7 @@
 #include "UCTSearch.h"
 #include "FastBoard.h"
 #include "FastState.h"
+#include "GTP.h"
 #include "KoState.h"
 #include "NNCache.h"
 #include "Random.h"
@@ -184,8 +185,13 @@ const int cfg_steps = 8;
 const float target_komi = 7.5f;
 
 float white_net_eval(GameState root_state) {
-    //auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
-    auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::DIRECT, 0, true).winrate;
+    float net_eval;
+    if (cfg_adj_mode == 0) {
+        net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+    }
+    if (cfg_adj_mode == 1) {
+        net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::DIRECT, 0, true).winrate;
+    }
     if (root_state.get_to_move() == FastBoard::WHITE) {
         return net_eval;
     }
@@ -213,12 +219,24 @@ void binary_search_komi(GameState& root_state, float shift, float high, float lo
 }
 
 void adjust_up_komi(GameState& root_state, float shift) {
-	float net_eval;
+    float net_eval;
+    float old_komi;
 	do {
-		root_state.m_komi = 2.0f * root_state.m_komi - (target_komi - 7.5f);
+        old_komi = root_state.m_komi;
+        if (root_state.m_komi < 7.5) { 
+            root_state.m_komi = 7.5; 
+        }
+        else {
+            root_state.m_komi = 2.0f * root_state.m_komi;
+        }
+		//root_state.m_komi = 2.0f * root_state.m_komi - (target_komi - 7.5f);
+        if (root_state.eval_invalid()) {
+            root_state.m_komi = 7.5;
+            return;
+        }
         net_eval = white_net_eval(root_state);
 	} while (inv_wr(net_eval) + shift < inv_wr(cfg_mid_wr));
-	binary_search_komi(root_state, shift, root_state.m_komi, (root_state.m_komi + target_komi - 7.5f) / 2.0f, cfg_steps);
+	binary_search_komi(root_state, shift, root_state.m_komi, old_komi, cfg_steps); //(root_state.m_komi + target_komi - 7.5f) / 2.0f
 }
 
 void adjust_down_komi(GameState& root_state, float shift) {
@@ -230,11 +248,18 @@ void adjust_down_komi(GameState& root_state, float shift) {
 	}
 }
 
-void adjust_komi(GameState& root_state, float root_eval, bool opp) { //, float root_eval) {
+void adjust_komi(GameState& root_state, float root_eval, bool opp) {
     auto net_eval = white_net_eval(root_state);
-    auto shift = inv_wr(root_eval) - inv_wr(net_eval); //0.0f; root_eval = net_eval;
-    Utils::myprintf("%f, %f, %f\n", root_eval, net_eval, shift);
-    if (opp) {
+    float shift;
+    if (cfg_adj_mode == 1 || cfg_adj_mode ==0) {
+        shift = inv_wr(root_eval) - inv_wr(net_eval);
+    } 
+    if (cfg_adj_mode == 2) {
+        shift = 0.0f;
+        root_eval = net_eval;
+    }
+    Utils::myprintf("Q: %f, Net: %f, Shift: %f\n", root_eval, net_eval, shift);
+    if (opp && !cfg_pos && !cfg_neg) {
         if (root_eval < cfg_mid_wr) {
             adjust_up_komi(root_state, shift);
         }
@@ -277,7 +302,8 @@ void UCTNode::prepare_root_node(int color,
     kill_superkos(root_state);
 
     // if playouts not enough or if enough and winrate need to be adjusted
-    if (m_visits < cfg_adj_playouts) {
+
+    if (cfg_adj_mode == 1 && m_visits < cfg_adj_playouts) {
         search->adjusting = true;
         search->sym_states.reserve(cfg_adj_playouts - m_visits);
         for (int i = 0; i < cfg_adj_playouts - m_visits; i++) {
@@ -285,12 +311,19 @@ void UCTNode::prepare_root_node(int color,
             search->play_simulation(*currstate, this);
         }
     }
+    search->adjusting = false;
+
     root_eval = get_pure_eval(color);
     auto white_root_eval = (color == FastBoard::BLACK ? 1.0 - root_eval : root_eval);
+
+    if (cfg_adj_mode == 0 && m_visits < 8) {
+        white_root_eval = white_net_eval(root_state);
+    }
     //
     auto komi = root_state.m_komi;
     adjust_komi(root_state, white_root_eval, false);
     search->sym_states.clear();
+    //!! no matter whether m_komi is changed, try to adjust m_opp_komi !!
     if (komi != root_state.m_komi) {
         NNCache::get_NNCache().clear_cache();
         m_visits = 0;
@@ -305,7 +338,7 @@ void UCTNode::prepare_root_node(int color,
         kill_superkos(root_state);
 
         komi = root_state.m_opp_komi;
-        if (root_state.m_komi == target_komi) {
+        if (root_state.m_komi == target_komi && !cfg_pos && !cfg_neg) {
             root_state.m_opp_komi = target_komi;
         }
         else {
@@ -318,7 +351,7 @@ void UCTNode::prepare_root_node(int color,
             NNCache::get_NNCache().clear_cache();
         }
     }
-    if (root_state.m_opp_komi == target_komi) {
+    if (root_state.m_opp_komi == target_komi && !cfg_pos && !cfg_neg) {
         root_state.m_komi = target_komi;
     }
 
