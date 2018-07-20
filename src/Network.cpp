@@ -76,7 +76,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
         tg.add_task([this, &runcount, iterations, state]() {
             while (runcount < iterations) {
                 runcount++;
-                get_scored_moves(state, Ensemble::RANDOM_SYMMETRY, -1, true);
+                get_output(state, Ensemble::RANDOM_SYMMETRY, -1, true);
             }
         });
     }
@@ -307,7 +307,7 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
             return {0, 0};
         } else {
             // Version 2 networks are identical to v1, except
-            // that they return the score for black instead of
+            // that they return the value for black instead of
             // the player to move. This is used by ELF Open Go.
             if (format_version == 2) {
                 value_head_not_stm = true;
@@ -875,7 +875,7 @@ bool Network::probe_cache(const GameState* const state,
     return false;
 }
 
-Network::Netresult Network::get_scored_moves(
+Network::Netresult Network::get_output(
     const GameState* const state, const Ensemble ensemble,
     const int symmetry, const bool skip_cache) {
     Netresult result;
@@ -892,10 +892,10 @@ Network::Netresult Network::get_scored_moves(
 
     if (ensemble == DIRECT) {
         assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
-        result = get_scored_moves_internal(state, symmetry);
+        result = get_output_internal(state, symmetry);
     } else if (ensemble == AVERAGE) {
         for (auto sym = 0; sym < NUM_SYMMETRIES; ++sym) {
-            auto tmpresult = get_scored_moves_internal(state, sym);
+            auto tmpresult = get_output_internal(state, sym);
             result.winrate += tmpresult.winrate / static_cast<float>(NUM_SYMMETRIES);
             result.policy_pass += tmpresult.policy_pass / static_cast<float>(NUM_SYMMETRIES);
 
@@ -907,7 +907,7 @@ Network::Netresult Network::get_scored_moves(
         assert(ensemble == RANDOM_SYMMETRY);
         assert(symmetry == -1);
         const auto rand_sym = Random::get_Rng().randfix<NUM_SYMMETRIES>();
-        result = get_scored_moves_internal(state, rand_sym);
+        result = get_output_internal(state, rand_sym);
     }
 
     // v2 format (ELF Open Go) returns black value, not stm
@@ -923,7 +923,7 @@ Network::Netresult Network::get_scored_moves(
     return result;
 }
 
-Network::Netresult Network::get_scored_moves_internal(
+Network::Netresult Network::get_output_internal(
     const GameState* const state, const int symmetry) {
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
     constexpr auto width = BOARD_SIZE;
@@ -967,7 +967,7 @@ Network::Netresult Network::get_scored_moves_internal(
             policy_data, ip_pol_w, ip_pol_b);
     const auto outputs = softmax(policy_out, cfg_softmax_temp);
 
-    // Now get the score
+    // Now get the value
     batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data,
         bn_val_w1.data(), bn_val_w2.data());
     const auto winrate_data =
@@ -999,13 +999,13 @@ void Network::show_heatmap(const FastState* const state,
 
     for (unsigned int y = 0; y < BOARD_SIZE; y++) {
         for (unsigned int x = 0; x < BOARD_SIZE; x++) {
-            auto score = 0;
+            auto policy = 0;
             const auto vertex = state->board.get_vertex(x, y);
             if (state->board.get_square(vertex) == FastBoard::EMPTY) {
-                score = result.policy[y * BOARD_SIZE + x] * 1000;
+                policy = result.policy[y * BOARD_SIZE + x] * 1000;
             }
 
-            line += boost::str(boost::format("%3d ") % score);
+            line += boost::str(boost::format("%3d ") % policy);
         }
 
         display_map.push_back(line);
@@ -1015,12 +1015,12 @@ void Network::show_heatmap(const FastState* const state,
     for (int i = display_map.size() - 1; i >= 0; --i) {
         myprintf("%s\n", display_map[i].c_str());
     }
-    const auto pass_score = int(result.policy_pass * 1000);
-    myprintf("pass: %d\n", pass_score);
+    const auto pass_policy = int(result.policy_pass * 1000);
+    myprintf("pass: %d\n", pass_policy);
     myprintf("winrate: %f\n", result.winrate);
 
     if (topmoves) {
-        std::vector<Network::ScoreVertexPair> moves;
+        std::vector<Network::PolicyVertexPair> moves;
         for (auto i=0; i < BOARD_SQUARES; i++) {
             const auto x = i % BOARD_SIZE;
             const auto y = i / BOARD_SIZE;

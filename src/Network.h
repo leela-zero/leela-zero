@@ -42,13 +42,13 @@ public:
     enum Ensemble {
         DIRECT, RANDOM_SYMMETRY, AVERAGE
     };
-    using ScoreVertexPair = std::pair<float,int>;
+    using PolicyVertexPair = std::pair<float,int>;
     using Netresult = NNCache::Netresult;
 
-    Netresult get_scored_moves(const GameState* const state,
-                               const Ensemble ensemble,
-                               const int symmetry = -1,
-                               const bool skip_cache = false);
+    Netresult get_output(const GameState* const state,
+                         const Ensemble ensemble,
+                         const int symmetry = -1,
+                         const bool skip_cache = false);
 
     static constexpr auto INPUT_MOVES = 8;
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
@@ -96,8 +96,8 @@ private:
     static void winograd_sgemm(const std::vector<float>& U,
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
-    Netresult get_scored_moves_internal(const GameState* const state,
-                                        const int symmetry);
+    Netresult get_output_internal(const GameState* const state,
+                                  const int symmetry);
 
     static void fill_input_plane_pair(const FullBoard& board,
                                       std::vector<net_t>::iterator black,

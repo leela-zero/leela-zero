@@ -261,7 +261,7 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
             move.c_str(),
             node->get_visits(),
             node->get_visits() ? node->get_pure_eval(color)*100.0f : 0.0f,
-            node->get_score() * 100.0f,
+            node->get_policy() * 100.0f,
             pv.c_str());
     }
     tree_stats(parent);
@@ -347,7 +347,7 @@ void UCTSearch::tree_stats(const UCTNode& node) {
     }
 }
 
-bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
+bool UCTSearch::should_resign(passflag_t passflag, float besteval) {
     if (passflag & UCTSearch::NORESIGN) {
         // resign not allowed
         return false;
@@ -372,7 +372,7 @@ bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
     const auto is_default_cfg_resign = cfg_resignpct < 0;
     const auto resign_threshold =
         0.01f * (is_default_cfg_resign ? 10 : cfg_resignpct);
-    if (bestscore > resign_threshold) {
+    if (besteval > resign_threshold) {
         // eval > cfg_resign
         return false;
     }
@@ -387,7 +387,7 @@ bool UCTSearch::should_resign(passflag_t passflag, float bestscore) {
         auto blend_ratio = std::min(1.0f, movenum / (0.6f * board_squares));
         auto blended_resign_threshold = blend_ratio * resign_threshold
             + (1 - blend_ratio) * handicap_resign_threshold;
-        if (bestscore > blended_resign_threshold) {
+        if (besteval > blended_resign_threshold) {
             // Allow lower eval for white in handicap games
             // where opp may fumble.
             return false;
@@ -414,7 +414,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     assert(first_child != nullptr);
 
     auto bestmove = first_child->get_move();
-    auto bestscore = first_child->first_visit() ? 0.5f : first_child->get_pure_eval(color);
+    auto besteval = first_child->first_visit() ? 0.5f : first_child->get_pure_eval(color);
 
     // do we want to fiddle with the best move because of the rule set?
     if (passflag & UCTSearch::NOPASS) {
@@ -426,9 +426,9 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 myprintf("Preferring not to pass.\n");
                 bestmove = nopass->get_move();
                 if (nopass->first_visit()) {
-                    bestscore = 1.0f;
+                    besteval = 1.0f;
                 } else {
-                    bestscore = nopass->get_pure_eval(color);
+                    besteval = nopass->get_pure_eval(color);
                 }
             } else {
                 myprintf("Pass is the only acceptable move.\n");
@@ -465,9 +465,9 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                     myprintf("Avoiding pass because it loses.\n");
                     bestmove = nopass->get_move();
                     if (nopass->first_visit()) {
-                        bestscore = 1.0f;
+                        besteval = 1.0f;
                     } else {
-                        bestscore = nopass->get_pure_eval(color);
+                        besteval = nopass->get_pure_eval(color);
                     }
                 } else {
                     myprintf("No alternative to passing.\n");
@@ -483,7 +483,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                     if (nopass_eval > 0.5f) {
                         myprintf("Avoiding pass because there could be a winning alternative.\n");
                         bestmove = nopass->get_move();
-                        bestscore = nopass_eval;
+                        besteval = nopass_eval;
                     }
                 }
                 if (bestmove == FastBoard::PASS) {
@@ -503,7 +503,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 bestmove = FastBoard::PASS;
             } else {
                 myprintf("Passing draws, make it depend on evaluation.\n");
-                if (bestscore < 0.5f) {
+                if (besteval < 0.5f) {
                     bestmove = FastBoard::PASS;
                 }
             }
@@ -512,9 +512,9 @@ int UCTSearch::get_best_move(passflag_t passflag) {
 
     // if we aren't passing, should we consider resigning?
     if (bestmove != FastBoard::PASS) {
-        if (should_resign(passflag, bestscore)) {
+        if (should_resign(passflag, besteval)) {
             myprintf("Eval (%.2f%%) looks bad. Resigning.\n",
-                     100.0f * bestscore);
+                     100.0f * besteval);
             bestmove = FastBoard::RESIGN;
         }
     }
