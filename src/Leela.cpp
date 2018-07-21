@@ -418,7 +418,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    initialize_network();
     for (;;) {
         if (!cfg_gtp_mode) {
             maingame->display_state();
