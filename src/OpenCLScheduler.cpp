@@ -145,12 +145,14 @@ void OpenCLScheduler::push_residual(unsigned int filter_size,
     }
 }
 
-void OpenCLScheduler::push_convolve1(unsigned int channels,
+void OpenCLScheduler::push_convolve(
+                    unsigned int filter_size,
+                    unsigned int channels,
                     unsigned int outputs,
                     const std::vector<float>& weights)
 {
     for (const auto & opencl_net : m_networks) {
-        opencl_net->push_convolve1(channels, outputs, weights);
+        opencl_net->push_convolve(filter_size, channels, outputs, weights);
     }
 }
 

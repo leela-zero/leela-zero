@@ -379,10 +379,16 @@ void CPUPipe::push_residual(unsigned int /*filter_size*/,
     batchnorm_means.push_back(means_2);
     batchnorm_stddivs.push_back(variances_2);
 }
-void CPUPipe::push_convolve1(unsigned int channels,
+void CPUPipe::push_convolve(
+                       unsigned int filter_size,
+                       unsigned int channels,
                        unsigned int outputs,
                        const std::vector<float>& weights)
 {
+    // currently we can only support the final convolve stages
+    (void)filter_size;
+    assert(filter_size == 1);
+
     if (outputs == Network::OUTPUTS_POLICY) {
         conv_pol_w = weights;
         conv_pol_b.resize(conv_pol_w.size() / channels, 0.0f);

@@ -398,8 +398,8 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         }
 
         // Output head convolutions
-        p->push_convolve1(channels, OUTPUTS_POLICY, m_conv_pol_w);
-        p->push_convolve1(channels, OUTPUTS_VALUE, m_conv_val_w);
+        p->push_convolve(1, channels, OUTPUTS_POLICY, m_conv_pol_w);
+        p->push_convolve(1, channels, OUTPUTS_VALUE, m_conv_val_w);
     }
 #ifdef USE_BLAS
 #ifndef __APPLE__

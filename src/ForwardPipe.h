@@ -27,29 +27,30 @@ class ForwardPipe {
 public:
     virtual void initialize(const int channels) = 0;
     virtual void forward(const std::vector<float>& input,
-                 std::vector<float>& output_pol,
-                 std::vector<float>& output_val) = 0;
+                         std::vector<float>& output_pol,
+                         std::vector<float>& output_val) = 0;
 
     virtual void push_input_convolution(unsigned int filter_size,
-                       unsigned int channels,
-                       unsigned int outputs,
-                       const std::vector<float>& weights,
-                       const std::vector<float>& means,
-                       const std::vector<float>& variances) = 0;
+                                        unsigned int channels,
+                                        unsigned int outputs,
+                                        const std::vector<float>& weights,
+                                        const std::vector<float>& means,
+                                        const std::vector<float>& variances) = 0;
 
     virtual void push_residual(unsigned int filter_size,
-                       unsigned int channels,
-                       unsigned int outputs,
-                       const std::vector<float>& weights_1,
-                       const std::vector<float>& means_1,
-                       const std::vector<float>& variances_1,
-                       const std::vector<float>& weights_2,
-                       const std::vector<float>& means_2,
-                       const std::vector<float>& variances_2) = 0;
+                               unsigned int channels,
+                               unsigned int outputs,
+                               const std::vector<float>& weights_1,
+                               const std::vector<float>& means_1,
+                               const std::vector<float>& variances_1,
+                               const std::vector<float>& weights_2,
+                               const std::vector<float>& means_2,
+                               const std::vector<float>& variances_2) = 0;
 
-    virtual void push_convolve1(unsigned int channels,
-                        unsigned int outputs,
-                        const std::vector<float>& weights) = 0;
+    virtual void push_convolve(unsigned int filter_size,
+                               unsigned int channels,
+                               unsigned int outputs,
+                               const std::vector<float>& weights) = 0;
 
 
 };
