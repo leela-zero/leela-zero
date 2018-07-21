@@ -59,6 +59,9 @@
 #include "Timing.h"
 #include "Utils.h"
 
+// Square root of 2
+#define SQ2 (1.4142135623730951f)
+
 namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
@@ -97,19 +100,22 @@ void Network::process_bn_var(std::vector<float>& weights, const float epsilon) {
 std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
                                                  const int outputs,
                                                  const int channels) {
-    // F(2x2, 3x3) Winograd filter transformation
+    // F(4x4, 3x3) Winograd filter transformation
     // transpose(G.dot(f).dot(G.transpose()))
     // U matrix is transposed for better memory layout in SGEMM
     auto U = std::vector<float>(WINOGRAD_TILE * outputs * channels);
-    const auto G = std::array<float, WINOGRAD_TILE>{ 1.0,  0.0,  0.0,
-                                                     0.5,  0.5,  0.5,
-                                                     0.5, -0.5,  0.5,
-                                                     0.0,  0.0,  1.0};
-    auto temp = std::array<float, 12>{};
+    const auto G = std::array<float, 3 * WINOGRAD_ALPHA>{ 1.0,     0.0,     0.0,
+                                                          -2./3., -SQ2/3., -1./3.,
+                                                          -2./3.,  SQ2/3., -1./3.,
+                                                          1./6.,   SQ2/6.,  1./3.,
+                                                          1./6.,  -SQ2/6.,  1./3.,
+                                                          0.0,     0.0,     1.0};
+
+    auto temp = std::array<float, 3 * WINOGRAD_ALPHA>{};
 
     for (auto o = 0; o < outputs; o++) {
         for (auto c = 0; c < channels; c++) {
-            for (auto i = 0; i < 4; i++){
+            for (auto i = 0; i < WINOGRAD_ALPHA; i++){
                 for (auto j = 0; j < 3; j++) {
                     auto acc = 0.0f;
                     for (auto k = 0; k < 3; k++) {
@@ -119,13 +125,13 @@ std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
                 }
             }
 
-            for (auto xi = 0; xi < 4; xi++) {
-                for (auto nu = 0; nu < 4; nu++) {
+            for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++) {
+                for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
                     auto acc = 0.0f;
                     for (auto k = 0; k < 3; k++) {
                         acc += temp[xi*3 + k] * G[nu*3 + k];
                     }
-                    U[xi * (4 * outputs * channels)
+                    U[xi * (WINOGRAD_ALPHA * outputs * channels)
                       + nu * (outputs * channels)
                       + c * outputs
                       + o] = acc;

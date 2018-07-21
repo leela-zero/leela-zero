@@ -39,6 +39,12 @@
 #include "OpenCLScheduler.h"
 #endif
 
+
+// Winograd filter transformation changes 3x3 filters to M + 3 - 1
+constexpr auto WINOGRAD_M = 4;
+constexpr auto WINOGRAD_ALPHA = WINOGRAD_M + 3 - 1;
+constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
+
 class Network {
 public:
     static constexpr auto NUM_SYMMETRIES = 8;
@@ -58,10 +64,6 @@ public:
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
     static constexpr auto OUTPUTS_POLICY = 2;
     static constexpr auto OUTPUTS_VALUE = 1;
-
-    // Winograd filter transformation changes 3x3 filters to 4x4
-    static constexpr auto WINOGRAD_ALPHA = 4;
-    static constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 
     void initialize(int playouts, const std::string & weightsfile);
     void benchmark(const GameState * const state,
