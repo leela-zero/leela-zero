@@ -519,7 +519,7 @@ void OpenCL_Network::forward(const std::vector<float>& input,
     cl::CommandQueue & queue = opencl_context.m_commandqueue;
 
     std::vector<net_t> net_t_input(input.size());
-    std::copy(input.begin(), input.end(), net_t_input.begin());
+    std::copy(input.begin(), input.end(), begin(net_t_input));
 
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, net_t_input.data());
@@ -619,8 +619,8 @@ void OpenCL_Network::forward(const std::vector<float>& input,
 
     auto polptr = static_cast<net_t*>(pinnedOutBufferHost_pol);
     auto valptr = static_cast<net_t*>(pinnedOutBufferHost_val);
-    std::copy(polptr, polptr + output_pol.size(), output_pol.begin());
-    std::copy(valptr, valptr + output_val.size(), output_val.begin());
+    std::copy(polptr, polptr + output_pol.size(), begin(output_pol));
+    std::copy(valptr, valptr + output_val.size(), begin(output_val));
 
     queue.enqueueUnmapMemObject(opencl_context.m_pinnedOutBuffer_pol,
             pinnedOutBufferHost_pol);

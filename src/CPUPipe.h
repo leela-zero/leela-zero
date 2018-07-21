@@ -77,16 +77,16 @@ private:
                             std::vector<float>& output);
 
 
-    int m_channels;
+    int m_input_channels;
 
     // Input + residual block tower
-    std::vector<std::vector<float>> conv_weights;
-    std::vector<std::vector<float>> batchnorm_means;
-    std::vector<std::vector<float>> batchnorm_stddivs;
+    std::vector<std::vector<float>> m_conv_weights;
+    std::vector<std::vector<float>> m_batchnorm_means;
+    std::vector<std::vector<float>> m_batchnorm_stddivs;
 
-    std::vector<float> conv_pol_w;
-    std::vector<float> conv_val_w;
-    std::vector<float> conv_pol_b;
-    std::vector<float> conv_val_b;
+    std::vector<float> m_conv_pol_w;
+    std::vector<float> m_conv_val_w;
+    std::vector<float> m_conv_pol_b;
+    std::vector<float> m_conv_val_b;
 };
 #endif

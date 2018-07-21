@@ -39,7 +39,7 @@
 #endif
 
 void CPUPipe::initialize(int channels) {
-    m_channels = channels;
+    m_input_channels = channels;
 }
 
 void CPUPipe::winograd_transform_in(const std::vector<float>& in,
@@ -309,7 +309,7 @@ void CPUPipe::forward(const std::vector<float>& input,
     constexpr auto height = BOARD_SIZE;
     constexpr auto tiles = (width + 1) * (height + 1) / 4;
     // Calculate output channels
-    const auto output_channels = m_channels;
+    const auto output_channels = m_input_channels;
     // input_channels is the maximum number of input channels of any
     // convolution. Residual blocks are identical, but the first convolution
     // might be bigger when the network has very few filters
@@ -320,34 +320,34 @@ void CPUPipe::forward(const std::vector<float>& input,
     auto V = std::vector<float>(Network::WINOGRAD_TILE * input_channels * tiles);
     auto M = std::vector<float>(Network::WINOGRAD_TILE * output_channels * tiles);
 
-    winograd_convolve3(output_channels, input, conv_weights[0], V, M, conv_out);
+    winograd_convolve3(output_channels, input, m_conv_weights[0], V, M, conv_out);
     batchnorm<BOARD_SQUARES>(output_channels, conv_out,
-                             batchnorm_means[0].data(),
-                             batchnorm_stddivs[0].data());
+                             m_batchnorm_means[0].data(),
+                             m_batchnorm_stddivs[0].data());
 
     // Residual tower
     auto conv_in = std::vector<float>(output_channels * width * height);
     auto res = std::vector<float>(output_channels * width * height);
-    for (auto i = size_t{1}; i < conv_weights.size(); i += 2) {
-        auto output_channels = m_channels;
+    for (auto i = size_t{1}; i < m_conv_weights.size(); i += 2) {
+        auto output_channels = m_input_channels;
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
-                           conv_weights[i], V, M, conv_out);
+                           m_conv_weights[i], V, M, conv_out);
         batchnorm<BOARD_SQUARES>(output_channels, conv_out,
-                                 batchnorm_means[i].data(),
-                                 batchnorm_stddivs[i].data());
+                                 m_batchnorm_means[i].data(),
+                                 m_batchnorm_stddivs[i].data());
 
         std::swap(conv_in, res);
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
-                           conv_weights[i + 1], V, M, conv_out);
+                           m_conv_weights[i + 1], V, M, conv_out);
         batchnorm<BOARD_SQUARES>(output_channels, conv_out,
-                                 batchnorm_means[i + 1].data(),
-                                 batchnorm_stddivs[i + 1].data(),
+                                 m_batchnorm_means[i + 1].data(),
+                                 m_batchnorm_stddivs[i + 1].data(),
                                  res.data());
     }
-    convolve<1>(Network::OUTPUTS_POLICY, conv_out, conv_pol_w, conv_pol_b, output_pol);
-    convolve<1>(Network::OUTPUTS_VALUE, conv_out, conv_val_w, conv_val_b, output_val);
+    convolve<1>(Network::OUTPUTS_POLICY, conv_out, m_conv_pol_w, m_conv_pol_b, output_pol);
+    convolve<1>(Network::OUTPUTS_VALUE, conv_out, m_conv_val_w, m_conv_val_b, output_val);
 }
 
 
@@ -357,9 +357,9 @@ void CPUPipe::push_input_convolution(unsigned int /*filter_size*/,
                        const std::vector<float>& weights,
                        const std::vector<float>& means,
                        const std::vector<float>& variances) {
-    conv_weights.push_back(weights);
-    batchnorm_means.push_back(means);
-    batchnorm_stddivs.push_back(variances);
+    m_conv_weights.push_back(weights);
+    m_batchnorm_means.push_back(means);
+    m_batchnorm_stddivs.push_back(variances);
 }
 
 void CPUPipe::push_residual(unsigned int /*filter_size*/,
@@ -371,13 +371,13 @@ void CPUPipe::push_residual(unsigned int /*filter_size*/,
                        const std::vector<float>& weights_2,
                        const std::vector<float>& means_2,
                        const std::vector<float>& variances_2) {
-    conv_weights.push_back(weights_1);
-    batchnorm_means.push_back(means_1);
-    batchnorm_stddivs.push_back(variances_1);
+    m_conv_weights.push_back(weights_1);
+    m_batchnorm_means.push_back(means_1);
+    m_batchnorm_stddivs.push_back(variances_1);
 
-    conv_weights.push_back(weights_2);
-    batchnorm_means.push_back(means_2);
-    batchnorm_stddivs.push_back(variances_2);
+    m_conv_weights.push_back(weights_2);
+    m_batchnorm_means.push_back(means_2);
+    m_batchnorm_stddivs.push_back(variances_2);
 }
 void CPUPipe::push_convolve(
                        unsigned int filter_size,
@@ -390,11 +390,11 @@ void CPUPipe::push_convolve(
     assert(filter_size == 1);
 
     if (outputs == Network::OUTPUTS_POLICY) {
-        conv_pol_w = weights;
-        conv_pol_b.resize(conv_pol_w.size() / channels, 0.0f);
+        m_conv_pol_w = weights;
+        m_conv_pol_b.resize(m_conv_pol_w.size() / channels, 0.0f);
     } else if (outputs == Network::OUTPUTS_VALUE) {
-        conv_val_w = weights;
-        conv_val_b.resize(conv_val_w.size() / channels, 0.0f);
+        m_conv_val_w = weights;
+        m_conv_val_b.resize(m_conv_val_w.size() / channels, 0.0f);
     } else {
         assert(false);
     }
