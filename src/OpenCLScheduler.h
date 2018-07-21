@@ -57,7 +57,7 @@ public:
                                const std::vector<float>& means_2,
                                const std::vector<float>& variances_2);
 
-    virtual void push_convolve(unsigned int filter_size, 
+    virtual void push_convolve(unsigned int filter_size,
                                unsigned int channels,
                                unsigned int outputs,
                                const std::vector<float>& weights);

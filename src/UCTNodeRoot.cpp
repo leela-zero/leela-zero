@@ -94,10 +94,10 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 
     child_cnt = 0;
     for (auto& child : m_children) {
-        auto score = child->get_score();
+        auto policy = child->get_policy();
         auto eta_a = dirichlet_vector[child_cnt++];
-        score = score * (1 - epsilon) + epsilon * eta_a;
-        child->set_score(score);
+        policy = policy * (1 - epsilon) + epsilon * eta_a;
+        child->set_policy(policy);
     }
 }
 

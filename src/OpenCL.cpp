@@ -519,7 +519,7 @@ void OpenCL_Network::forward(const std::vector<float>& input,
     cl::CommandQueue & queue = opencl_context.m_commandqueue;
 
     std::vector<net_t> net_t_input(input.size());
-    std::copy(input.begin(), input.end(), begin(net_t_input));
+    std::copy(begin(input), end(input), begin(net_t_input));
 
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, net_t_input.data());
@@ -951,8 +951,7 @@ std::vector<size_t> OpenCL::get_sgemm_tuners(void) {
     return tuners;
 }
 
-void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
-                        bool silent) {
+void OpenCL::initialize(const int channels, int gpu, bool silent) {
     std::vector<cl::Platform> platforms;
     try {
         cl::Platform::get(&platforms);
@@ -1027,8 +1026,7 @@ void OpenCL::initialize(const int channels, const std::vector<int> & gpus,
                 myprintf("Device score:  %d\n", this_score);
             }
 
-            bool preferred =
-                std::find(cbegin(gpus), cend(gpus), id) != cend(gpus);
+            bool preferred = (gpu == id);
 
             if ((this_score > best_score) || preferred) {
                 best_version = opencl_version;
