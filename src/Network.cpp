@@ -353,21 +353,21 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 #ifdef USE_OPENCL
     if (cfg_cpu_only) {
         myprintf("Initializing CPU-only evaluation.\n");
-        m_forward.reset(new CPUPipe());
+        m_forward = std::make_unique<CPUPipe>();
     } else {
         myprintf("Initializing OpenCL.\n");
-        m_forward.reset(new OpenCLScheduler());
+        m_forward = std::make_unique<OpenCLScheduler>();
     }
 #else
     myprintf("Initializing CPU-only evaluation.\n");
-    m_forward.reset(new CPUPipe());
+    m_forward = std::make_unique<CPUPipe>();
 #endif
 
     to_init.emplace_back(m_forward.get());
 
 #ifdef USE_OPENCL_SELFCHECK
     if (!cfg_cpu_only) {
-        m_forward_cpu.reset(new CPUPipe());
+        m_forward_cpu = std::make_unique<CPUPipe>();
         to_init.emplace_back(m_forward_cpu.get());
     }
 #endif
