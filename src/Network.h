@@ -77,8 +77,6 @@ public:
 private:
     std::pair<int, int> load_v1_network(std::istream& wtfile);
     std::pair<int, int> load_network_file(const std::string& filename);
-    static void process_bn_var(std::vector<float>& weights,
-                               const float epsilon = 1e-5f);
 
     static std::vector<float> winograd_transform_f(const std::vector<float>& f,
                                                    const int outputs, const int channels);
