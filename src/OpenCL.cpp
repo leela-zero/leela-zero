@@ -453,9 +453,9 @@ void OpenCL_Network::add_weights(size_t layer,
         const_cast<net_t*>(converted_weights.data()));
 }
 
-void OpenCL_Network::forward(const std::vector<net_t>& input,
-                             std::vector<net_t>& output_pol,
-                             std::vector<net_t>& output_val,
+void OpenCL_Network::forward(const std::vector<float>& input,
+                             std::vector<float>& output_pol,
+                             std::vector<float>& output_val,
                              OpenCLContext & opencl_context) {
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
@@ -518,8 +518,11 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
     cl::Buffer & MBuffer = opencl_context.m_MBuffer;
     cl::CommandQueue & queue = opencl_context.m_commandqueue;
 
+    std::vector<net_t> net_t_input(input.size());
+    std::copy(begin(input), end(input), begin(net_t_input));
+
     const auto inSize = sizeof(net_t) * input.size();
-    queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, input.data());
+    queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, net_t_input.data());
 
     auto skip_in_trans = false;
     for (auto iter = cbegin(m_layers); iter != cend(m_layers); iter++) {
@@ -614,8 +617,10 @@ void OpenCL_Network::forward(const std::vector<net_t>& input,
         queue.finish();
     }
 
-    std::memcpy(output_pol.data(), pinnedOutBufferHost_pol, finalSize_pol);
-    std::memcpy(output_val.data(), pinnedOutBufferHost_val, finalSize_val);
+    auto polptr = static_cast<net_t*>(pinnedOutBufferHost_pol);
+    auto valptr = static_cast<net_t*>(pinnedOutBufferHost_val);
+    std::copy(polptr, polptr + output_pol.size(), begin(output_pol));
+    std::copy(valptr, valptr + output_val.size(), begin(output_val));
 
     queue.enqueueUnmapMemObject(opencl_context.m_pinnedOutBuffer_pol,
             pinnedOutBufferHost_pol);
@@ -1095,7 +1100,6 @@ void OpenCL::initialize(const int channels, int gpu, bool silent) {
         throw std::runtime_error("Error building OpenCL kernels.");
     }
 
-    // putting bogus number so that we don't misuse it
     OpenCLContext tdata;
     ensure_context_initialized(tdata);
 

@@ -30,13 +30,13 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <cassert>
 
 #include "Tuner.h"
 
 static constexpr auto WINOGRAD_P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / 4;
 static constexpr auto WINOGRAD_TILE = 4 * 4;
 
-// class OpenCLScheduler;
 class OpenCL;
 
 class Layer {
@@ -117,9 +117,13 @@ public:
         m_layers[layer].channels = channels;
     }
 
-    void push_convolve1(unsigned int channels,
+    void push_convolve(unsigned int filter_size,
+                       unsigned int channels,
                        unsigned int outputs,
                        const std::vector<float>& weights) {
+        (void)filter_size;
+        assert(filter_size == 1);
+
         size_t layer = get_layer_count();
         push_weights(layer, weights);
         m_layers[layer].is_convolve1 = true;
@@ -131,9 +135,9 @@ public:
         return m_layers.size();
     }
 
-    void forward(const std::vector<net_t>& input,
-            std::vector<net_t>& output_pol,
-            std::vector<net_t>& output_val,
+    void forward(const std::vector<float>& input,
+            std::vector<float>& output_pol,
+            std::vector<float>& output_val,
             OpenCLContext & opencl_context);
 
 private:

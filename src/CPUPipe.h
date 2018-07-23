@@ -16,24 +16,16 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPENCL_SCHEDULER_H_INCLUDED
-#define OPENCL_SCHEDULER_H_INCLUDED
-#include "config.h"
+#ifndef CPU_PIPE_H_INCLUDED
+#define CPU_PIPE_H_INCLUDED
 
-#include <list>
 #include <vector>
+#include <cassert>
 
+#include "config.h"
 #include "ForwardPipe.h"
-#include "OpenCL.h"
-#include "ThreadPool.h"
 
-class OpenCLScheduler : public ForwardPipe {
-    class ContextPoolEntry {
-    public:
-        size_t net_index;
-        OpenCLContext context;
-        ContextPoolEntry(size_t index) : net_index(index) {}
-    };
+class CPUPipe : public ForwardPipe {
 public:
     virtual void initialize(const int channels);
     virtual void forward(const std::vector<float>& input,
@@ -62,15 +54,39 @@ public:
                                unsigned int outputs,
                                const std::vector<float>& weights);
 
+
 private:
-    std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
-    std::vector<std::unique_ptr<OpenCL>> m_opencl;
+    void winograd_transform_in(const std::vector<float>& in,
+                               std::vector<float>& V,
+                               const int C);
 
-    using ContextPoolQueue = std::list<std::shared_ptr<ContextPoolEntry>>;
-    std::vector<ContextPoolQueue> m_context_pool;
+    void winograd_sgemm(const std::vector<float>& U,
+                        const std::vector<float>& V,
+                        std::vector<float>& M,
+                        const int C, const int K);
 
-    std::mutex m_context_pool_lock;
-    std::condition_variable m_context_pool_condvar;
+    void winograd_transform_out(const std::vector<float>& M,
+                        std::vector<float>& Y,
+                        const int K);
+
+    void winograd_convolve3(const int outputs,
+                            const std::vector<float>& input,
+                            const std::vector<float>& U,
+                            std::vector<float>& V,
+                            std::vector<float>& M,
+                            std::vector<float>& output);
+
+
+    int m_input_channels;
+
+    // Input + residual block tower
+    std::vector<std::vector<float>> m_conv_weights;
+    std::vector<std::vector<float>> m_batchnorm_means;
+    std::vector<std::vector<float>> m_batchnorm_stddivs;
+
+    std::vector<float> m_conv_pol_w;
+    std::vector<float> m_conv_val_w;
+    std::vector<float> m_conv_pol_b;
+    std::vector<float> m_conv_val_b;
 };
-
 #endif

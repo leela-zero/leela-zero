@@ -74,6 +74,7 @@ FILE* cfg_logfile_handle;
 bool cfg_quiet;
 std::string cfg_options_str;
 bool cfg_benchmark;
+bool cfg_cpu_only;
 int cfg_analyze_interval_centis;
 
 Network * GTP::network = nullptr;
@@ -114,6 +115,12 @@ void GTP::setup_default_parameters() {
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
     cfg_benchmark = false;
+#ifdef USE_CPU_ONLY
+    cfg_cpu_only = true;
+#else
+    cfg_cpu_only = false;
+#endif
+
     cfg_analyze_interval_centis = 0;
 
     // C++11 doesn't guarantee *anything* about how random this is,

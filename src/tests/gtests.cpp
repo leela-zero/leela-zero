@@ -91,7 +91,6 @@ public:
 
         m_gamestate = std::make_unique<GameState>();
         m_gamestate->init_game(19, 7.5f);
-
     }
 
     GameState& get_gamestate() {
