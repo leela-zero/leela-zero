@@ -18,9 +18,6 @@
 
 
 #include "config.h"
-#include "Network.h"
-
-#include "CPUPipe.h"
 
 #include <algorithm>
 #include <array>
@@ -44,11 +41,13 @@
 #include <cblas.h>
 #endif
 #include "zlib.h"
+
+#include "Network.h"
+#include "CPUPipe.h"
 #ifdef USE_OPENCL
 #include "OpenCLScheduler.h"
 #include "UCTNode.h"
 #endif
-
 #include "FastBoard.h"
 #include "FastState.h"
 #include "FullBoard.h"
@@ -364,17 +363,16 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     m_forward.reset(new CPUPipe());
 #endif
 
-    to_init.push_back(m_forward.get());
+    to_init.emplace_back(m_forward.get());
 
 #ifdef USE_OPENCL_SELFCHECK
     if (!cfg_cpu_only) {
         m_forward_cpu.reset(new CPUPipe());
-        to_init.push_back(m_forward_cpu.get());
+        to_init.emplace_back(m_forward_cpu.get());
     }
 #endif
 
-
-    for (auto p : to_init) {
+    for (const auto& p : to_init) {
         p->initialize(channels);
 
         weight_index = 0;
@@ -454,8 +452,7 @@ void batchnorm(const size_t channels,
                std::vector<float>& data,
                const float* const means,
                const float* const stddivs,
-               const float* const eltwise = nullptr)
-{
+               const float* const eltwise = nullptr) {
     const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
                                                           val : 0.0f; };
     for (auto c = size_t{0}; c < channels; ++c) {

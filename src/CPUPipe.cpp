@@ -27,16 +27,13 @@
 #ifdef USE_OPENBLAS
 #include <cblas.h>
 #endif
-
-#include "CPUPipe.h"
-#include "Network.h"
-
-#include "Im2Col.h"
-
-
 #ifndef USE_BLAS
 #error "No non-BLAS implementation"
 #endif
+
+#include "CPUPipe.h"
+#include "Network.h"
+#include "Im2Col.h"
 
 void CPUPipe::initialize(int channels) {
     m_input_channels = channels;
@@ -121,7 +118,8 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                 const auto offset = ch * P + block_y * WTILES + block_x;
                 for (auto i = 0; i < Network::WINOGRAD_ALPHA; i++) {
                     for (auto j = 0; j < Network::WINOGRAD_ALPHA; j++) {
-                        V[(i*Network::WINOGRAD_ALPHA + j)*C*P + offset] = T2[i][j];
+                        V[(i*Network::WINOGRAD_ALPHA + j)*C*P + offset] =
+                            T2[i][j];
                     }
                 }
             }
@@ -133,7 +131,8 @@ void CPUPipe::winograd_sgemm(const std::vector<float>& U,
                              const std::vector<float>& V,
                              std::vector<float>& M,
                              const int C, const int K) {
-    constexpr auto P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / Network::WINOGRAD_ALPHA;
+    constexpr auto P =
+        (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / Network::WINOGRAD_ALPHA;
 
     for (auto b = 0; b < Network::WINOGRAD_TILE; b++) {
         const auto offset_u = b * K * C;
@@ -277,8 +276,7 @@ void batchnorm(const size_t channels,
                std::vector<float>& data,
                const float* const means,
                const float* const stddivs,
-               const float* const eltwise = nullptr)
-{
+               const float* const eltwise = nullptr) {
     const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
                                                           val : 0.0f; };
     for (auto c = size_t{0}; c < channels; ++c) {
@@ -352,25 +350,25 @@ void CPUPipe::forward(const std::vector<float>& input,
 
 
 void CPUPipe::push_input_convolution(unsigned int /*filter_size*/,
-                       unsigned int /*channels*/,
-                       unsigned int /*outputs*/,
-                       const std::vector<float>& weights,
-                       const std::vector<float>& means,
-                       const std::vector<float>& variances) {
+                                     unsigned int /*channels*/,
+                                     unsigned int /*outputs*/,
+                                     const std::vector<float>& weights,
+                                     const std::vector<float>& means,
+                                     const std::vector<float>& variances) {
     m_conv_weights.push_back(weights);
     m_batchnorm_means.push_back(means);
     m_batchnorm_stddivs.push_back(variances);
 }
 
 void CPUPipe::push_residual(unsigned int /*filter_size*/,
-                       unsigned int /*channels*/,
-                       unsigned int /*outputs*/,
-                       const std::vector<float>& weights_1,
-                       const std::vector<float>& means_1,
-                       const std::vector<float>& variances_1,
-                       const std::vector<float>& weights_2,
-                       const std::vector<float>& means_2,
-                       const std::vector<float>& variances_2) {
+                            unsigned int /*channels*/,
+                            unsigned int /*outputs*/,
+                            const std::vector<float>& weights_1,
+                            const std::vector<float>& means_1,
+                            const std::vector<float>& variances_1,
+                            const std::vector<float>& weights_2,
+                            const std::vector<float>& means_2,
+                            const std::vector<float>& variances_2) {
     m_conv_weights.push_back(weights_1);
     m_batchnorm_means.push_back(means_1);
     m_batchnorm_stddivs.push_back(variances_1);
@@ -379,12 +377,11 @@ void CPUPipe::push_residual(unsigned int /*filter_size*/,
     m_batchnorm_means.push_back(means_2);
     m_batchnorm_stddivs.push_back(variances_2);
 }
-void CPUPipe::push_convolve(
-                       unsigned int filter_size,
-                       unsigned int channels,
-                       unsigned int outputs,
-                       const std::vector<float>& weights)
-{
+
+void CPUPipe::push_convolve(unsigned int filter_size,
+                            unsigned int channels,
+                            unsigned int outputs,
+                            const std::vector<float>& weights) {
     // currently we can only support the final convolve stages
     (void)filter_size;
     assert(filter_size == 1);
@@ -399,4 +396,3 @@ void CPUPipe::push_convolve(
         assert(false);
     }
 }
-

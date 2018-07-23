@@ -19,8 +19,6 @@
 #include "config.h"
 
 #ifdef USE_OPENCL
-#include "OpenCL.h"
-
 #include <cassert>
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
@@ -35,6 +33,7 @@
 #include <sstream>
 #include <string>
 
+#include "OpenCL.h"
 #include "Network.h"
 #include "GTP.h"
 #include "Utils.h"

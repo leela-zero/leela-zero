@@ -18,11 +18,11 @@
 
 #ifndef CPU_PIPE_H_INCLUDED
 #define CPU_PIPE_H_INCLUDED
+#include "config.h"
 
 #include <vector>
 #include <cassert>
 
-#include "config.h"
 #include "ForwardPipe.h"
 
 class CPUPipe : public ForwardPipe {
@@ -66,8 +66,8 @@ private:
                         const int C, const int K);
 
     void winograd_transform_out(const std::vector<float>& M,
-                        std::vector<float>& Y,
-                        const int K);
+                                std::vector<float>& Y,
+                                const int K);
 
     void winograd_convolve3(const int outputs,
                             const std::vector<float>& input,
