@@ -25,6 +25,8 @@
 
 class ForwardPipe {
 public:
+    virtual ~ForwardPipe() = default;
+
     virtual void initialize(const int channels) = 0;
     virtual void forward(const std::vector<float>& input,
                          std::vector<float>& output_pol,
