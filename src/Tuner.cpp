@@ -48,10 +48,10 @@
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
 #ifdef USE_HALF
 const auto TUNER_KERNEL = std::string("XgemmBatchedHalf");
-constexpr auto MAX_ERROR = 1e-2f;
+constexpr auto MAX_ERROR = 5e-2f;
 #else
 const auto TUNER_KERNEL = std::string("XgemmBatched");
-constexpr auto MAX_ERROR = 1e-4f;
+constexpr auto MAX_ERROR = 1e-3f;
 #endif
 
 using namespace Utils;
