@@ -80,11 +80,10 @@ int main(int argc, char *argv[]) {
     parser.addOption(networkOption);
     parser.addOption(optionsOption);
     parser.addOption(gtpCommandOption);
-    parser.addPositionalArgument("binary",
+    parser.addPositionalArgument(
+        "[-- binary [--gtp-command...] [-- binary [--gtp-command...]]]",
         "Binary to execute for the game (default ./leelaz).\n"
         "Only --gtp-command options are parsed after a binary is specified");
-
-    parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsPositionalArguments);
 
     // Process the actual command line arguments given by the user
     parser.process(app);

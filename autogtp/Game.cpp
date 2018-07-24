@@ -181,6 +181,7 @@ bool Game::gameStart(const VersionTuple &min_version) {
     checkVersion(min_version);
     QTextStream(stdout) << "Engine has started." << endl;
     for (auto command : m_commands) {
+        QTextStream(stdout) << command << endl;
         if (!sendGtpCommand(command))
         {
             QTextStream(stdout) << "GTP failed on: " << command << endl;
