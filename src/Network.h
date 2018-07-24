@@ -21,6 +21,7 @@
 
 #include "config.h"
 
+#include <deque>
 #include <array>
 #include <memory>
 #include <string>
@@ -37,6 +38,10 @@
 #include "ForwardPipe.h"
 #ifdef USE_OPENCL
 #include "OpenCLScheduler.h"
+#endif
+
+#ifdef USE_OPENCL_SELFCHECK
+#include "SMP.h"
 #endif
 
 
@@ -104,15 +109,22 @@ private:
                                const std::vector<float>& V,
                                std::vector<float>& M, const int C, const int K);
     Netresult get_output_internal(const GameState* const state,
-                                  const int symmetry);
+                                  const int symmetry, bool selfcheck = false);
     static void fill_input_plane_pair(const FullBoard& board,
                                       std::vector<float>::iterator black,
                                       std::vector<float>::iterator white,
                                       const int symmetry);
+    void compare_net_outputs(Netresult& data, Netresult& ref);
     bool probe_cache(const GameState* const state, Network::Netresult& result);
     std::unique_ptr<ForwardPipe> m_forward;
 #ifdef USE_OPENCL_SELFCHECK
     std::unique_ptr<ForwardPipe> m_forward_cpu;
+
+    // records the result of most recent selfchecks
+    std::deque<bool> m_selfcheck_fails;
+
+    // mutex that protects m_selfcheck_fails
+    SMP::Mutex m_selfcheck_mutex;
 #endif
 
     NNCache m_nncache;
