@@ -346,14 +346,13 @@ static void parse_commandline(int argc, char *argv[]) {
     cfg_options_str = out.str();
 }
 
-static Network network;
 static void initialize_network() {
+    auto network = std::make_unique<Network>();
     auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
-    network.initialize(playouts, cfg_weightsfile);
+    network->initialize(playouts, cfg_weightsfile);
 
-    GTP::initialize(&network);
+    GTP::initialize(std::move(network));
 }
-
 
 // Setup global objects after command line has been parsed
 void init_global_objects() {
@@ -377,7 +376,7 @@ void benchmark(GameState& game) {
     game.play_textmove("w", "d4");
     game.play_textmove("b", "c3");
 
-    auto search = std::make_unique<UCTSearch>(game, network);
+    auto search = std::make_unique<UCTSearch>(game, *GTP::s_network);
     game.set_to_move(FastBoard::WHITE);
     search->think(FastBoard::WHITE);
 }

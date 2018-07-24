@@ -77,10 +77,10 @@ bool cfg_benchmark;
 bool cfg_cpu_only;
 int cfg_analyze_interval_centis;
 
-Network * GTP::network = nullptr;
+std::unique_ptr<Network> GTP::s_network;
 
-void GTP::initialize(Network * net) {
-    network = net;
+void GTP::initialize(std::unique_ptr<Network>&& net) {
+    s_network = std::move(net);
 }
 
 void GTP::setup_default_parameters() {
@@ -199,7 +199,7 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
 
 bool GTP::execute(GameState & game, std::string xinput) {
     std::string input;
-    static auto search = std::make_unique<UCTSearch>(game, *network);
+    static auto search = std::make_unique<UCTSearch>(game, *s_network);
 
     bool transform_lowercase = true;
 
@@ -313,7 +313,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("clear_board") == 0) {
         Training::clear_training();
         game.reset_game();
-        search = std::make_unique<UCTSearch>(game, *network);
+        search = std::make_unique<UCTSearch>(game, *s_network);
         gtp_printf(id, "");
         return true;
     } else if (command.find("komi") == 0) {
@@ -592,19 +592,19 @@ bool GTP::execute(GameState & game, std::string xinput) {
         Network::Netresult vec;
         if (cmdstream.fail()) {
             // Default = DIRECT with no symmetric change
-            vec = network->get_output(
+            vec = s_network->get_output(
                 &game, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY, true);
         } else if (symmetry == "all") {
             for (auto s = 0; s < Network::NUM_SYMMETRIES; ++s) {
-                vec = network->get_output(
+                vec = s_network->get_output(
                     &game, Network::Ensemble::DIRECT, s, true);
                 Network::show_heatmap(&game, vec, false);
             }
         } else if (symmetry == "average" || symmetry == "avg") {
-            vec = network->get_output(
+            vec = s_network->get_output(
                 &game, Network::Ensemble::AVERAGE, Network::NUM_SYMMETRIES, true);
         } else {
-            vec = network->get_output(
+            vec = s_network->get_output(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
         }
 
@@ -638,7 +638,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> stones;
 
         if (!cmdstream.fail()) {
-            game.place_free_handicap(stones, *network);
+            game.place_free_handicap(stones, *s_network);
             auto stonestring = game.board.get_stone_list();
             gtp_printf(id, "%s", stonestring.c_str());
         } else {
@@ -760,9 +760,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> iterations;
 
         if (!cmdstream.fail()) {
-            network->benchmark(&game, iterations);
+            s_network->benchmark(&game, iterations);
         } else {
-            network->benchmark(&game);
+            s_network->benchmark(&game);
         }
         gtp_printf(id, "");
         return true;

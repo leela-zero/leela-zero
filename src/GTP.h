@@ -68,8 +68,8 @@ extern int cfg_analyze_interval_centis;
 */
 class GTP {
 public:
-    static Network * network;
-    static void initialize(Network * network);
+    static std::unique_ptr<Network> s_network;
+    static void initialize(std::unique_ptr<Network>&& network);
     static bool execute(GameState & game, std::string xinput);
     static void setup_default_parameters();
 private:
