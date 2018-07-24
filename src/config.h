@@ -117,7 +117,7 @@
 #include "half/half.hpp"
 #endif
 
-#if defined(USE_BLAS) && defined(USE_OPENCL) 
+#if defined(USE_BLAS) && defined(USE_OPENCL)
 // If both BLAS and OpenCL are fully usable, then check the OpenCL
 // results against BLAS with some probability.
 #define USE_OPENCL_SELFCHECK

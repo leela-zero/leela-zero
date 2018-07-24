@@ -91,7 +91,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
         ("tune-only", "Tune OpenCL only and then exit.")
 #ifdef USE_HALF
-        ("use-half", "Use half-precision OpenCL code.  Traades off some accuracy for higher performance")
+        ("use-half", "Use half-precision OpenCL code.  Trades off some accuracy for higher performance")
 #endif
         ;
 #endif

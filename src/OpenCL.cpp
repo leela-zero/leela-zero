@@ -44,12 +44,12 @@ using namespace Utils;
 template <typename net_t> static std::string getClArgs();
 
 template <> std::string getClArgs<float>() {
-    return 
+    return
         "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
 }
 #ifdef USE_HALF
 template <> std::string getClArgs<half_float::half>() {
-    return 
+    return
         "-DUSE_HALF "
         "-cl-mad-enable -cl-fast-relaxed-math -cl-no-signed-zeros -cl-denorms-are-zero";
 }
