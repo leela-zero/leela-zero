@@ -34,9 +34,6 @@
 
 #include "Tuner.h"
 
-static constexpr auto WINOGRAD_P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / 4;
-static constexpr auto WINOGRAD_TILE = 4 * 4;
-
 class OpenCL;
 
 class Layer {
@@ -138,7 +135,8 @@ public:
     void forward(const std::vector<float>& input,
             std::vector<float>& output_pol,
             std::vector<float>& output_val,
-            OpenCLContext & opencl_context);
+            OpenCLContext & opencl_context,
+            const int batch_size = 1);
 
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
@@ -157,14 +155,16 @@ private:
                     cl::Buffer* bufferResidual,
                     weight_slice_t bn_weights,
                     bool skip_in_transform,
-                    bool fuse_in_transform, bool store_inout);
+                    bool fuse_in_transform, bool store_inout,
+                    int batch_size);
 
     void convolve1(OpenCLContext & opencl_context,
                   int channels, int outputs,
                   cl::Buffer& bufferInput,
                   cl::Buffer& bufferOutput,
                   cl::Buffer& bufferMerge,
-                  weight_slice_t weights);
+                  weight_slice_t weights,
+                  int batch_size);
 
     OpenCL & m_opencl;
 

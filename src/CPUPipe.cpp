@@ -44,19 +44,16 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                                     const int C) {
     constexpr auto W = BOARD_SIZE;
     constexpr auto H = BOARD_SIZE;
-    constexpr auto WTILES = (W + 1) / 2;
-    constexpr auto P = WTILES * WTILES;
+    constexpr auto WTILES = WINOGRAD_WTILES;
+    constexpr auto P = WINOGRAD_P;
 
-    std::array<std::array<float, WTILES * 2 + 2>, WTILES * 2 + 2> in_pad;
-    for (auto xin = size_t{0}; xin < in_pad.size(); xin++) {
-        in_pad[0][xin]     = 0.0f;
-        in_pad[H + 1][xin] = 0.0f;
-        in_pad[H + 2][xin] = 0.0f;
-    }
-    for (auto yin = size_t{1}; yin < in_pad[0].size() - 2; yin++) {
-        in_pad[yin][0]     = 0.0f;
-        in_pad[yin][W + 1] = 0.0f;
-        in_pad[yin][W + 2] = 0.0f;
+    constexpr auto Wpad = 2 + WINOGRAD_M * WTILES;
+
+    std::array<std::array<float, Wpad>, Wpad> in_pad;
+    for (auto xin = size_t{0}; xin < Wpad; xin++) {
+        for (auto yin = size_t{0}; yin < Wpad; yin++) {
+            in_pad[yin][xin] = 0.0f;
+        }
     }
 
     for (auto ch = 0; ch < C; ch++) {
@@ -67,59 +64,48 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
         }
         for (auto block_y = 0; block_y < WTILES; block_y++) {
             // Tiles overlap by 2
-            const auto yin = 2 * block_y;
+            const auto yin = WINOGRAD_M * block_y;
             for (auto block_x = 0; block_x < WTILES; block_x++) {
-                const auto xin = 2 * block_x;
-
-                // Calculates transpose(B).x.B
-                // B = [[ 1.0,  0.0,  0.0,  0.0],
-                //      [ 0.0,  1.0, -1.0,  1.0],
-                //      [-1.0,  1.0,  1.0,  0.0],
-                //      [ 0.0,  0.0,  0.0, -1.0]]
+                const auto xin = WINOGRAD_M * block_x;
 
                 using WinogradTile =
-                    std::array<std::array<float, Network::WINOGRAD_ALPHA>, Network::WINOGRAD_ALPHA>;
+                    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
                 WinogradTile T1, T2;
 
-                T1[0][0] = in_pad[yin + 0][xin + 0] - in_pad[yin + 2][xin + 0];
-                T1[0][1] = in_pad[yin + 0][xin + 1] - in_pad[yin + 2][xin + 1];
-                T1[0][2] = in_pad[yin + 0][xin + 2] - in_pad[yin + 2][xin + 2];
-                T1[0][3] = in_pad[yin + 0][xin + 3] - in_pad[yin + 2][xin + 3];
-                T1[1][0] = in_pad[yin + 1][xin + 0] + in_pad[yin + 2][xin + 0];
-                T1[1][1] = in_pad[yin + 1][xin + 1] + in_pad[yin + 2][xin + 1];
-                T1[1][2] = in_pad[yin + 1][xin + 2] + in_pad[yin + 2][xin + 2];
-                T1[1][3] = in_pad[yin + 1][xin + 3] + in_pad[yin + 2][xin + 3];
-                T1[2][0] = in_pad[yin + 2][xin + 0] - in_pad[yin + 1][xin + 0];
-                T1[2][1] = in_pad[yin + 2][xin + 1] - in_pad[yin + 1][xin + 1];
-                T1[2][2] = in_pad[yin + 2][xin + 2] - in_pad[yin + 1][xin + 2];
-                T1[2][3] = in_pad[yin + 2][xin + 3] - in_pad[yin + 1][xin + 3];
-                T1[3][0] = in_pad[yin + 1][xin + 0] - in_pad[yin + 3][xin + 0];
-                T1[3][1] = in_pad[yin + 1][xin + 1] - in_pad[yin + 3][xin + 1];
-                T1[3][2] = in_pad[yin + 1][xin + 2] - in_pad[yin + 3][xin + 2];
-                T1[3][3] = in_pad[yin + 1][xin + 3] - in_pad[yin + 3][xin + 3];
+                const auto Bt = std::array<float, WINOGRAD_TILE>
+                           {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
+                            0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
+                            0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
+                            0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
+                            0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
+                            0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
 
-                T2[0][0] = T1[0][0] - T1[0][2];
-                T2[0][1] = T1[0][1] + T1[0][2];
-                T2[0][2] = T1[0][2] - T1[0][1];
-                T2[0][3] = T1[0][1] - T1[0][3];
-                T2[1][0] = T1[1][0] - T1[1][2];
-                T2[1][1] = T1[1][1] + T1[1][2];
-                T2[1][2] = T1[1][2] - T1[1][1];
-                T2[1][3] = T1[1][1] - T1[1][3];
-                T2[2][0] = T1[2][0] - T1[2][2];
-                T2[2][1] = T1[2][1] + T1[2][2];
-                T2[2][2] = T1[2][2] - T1[2][1];
-                T2[2][3] = T1[2][1] - T1[2][3];
-                T2[3][0] = T1[3][0] - T1[3][2];
-                T2[3][1] = T1[3][1] + T1[3][2];
-                T2[3][2] = T1[3][2] - T1[3][1];
-                T2[3][3] = T1[3][1] - T1[3][3];
+                // Calculates transpose(B).x.B
+                for (auto i = 0; i < WINOGRAD_ALPHA; i++){
+                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
+                        auto acc = 0.0f;
+                        for (auto k = 0; k < WINOGRAD_ALPHA; k++) {
+                            acc += Bt[i * WINOGRAD_ALPHA + k] * \
+                                   in_pad[yin + k][xin + j];
+                        }
+                        T1[i][j] = acc;
+                    }
+                }
+
+                for (auto i = 0; i < WINOGRAD_ALPHA; i++){
+                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
+                        auto acc = 0.0f;
+                        for (auto k = 0; k < WINOGRAD_ALPHA; k++) {
+                            acc += T1[i][k] * Bt[j * WINOGRAD_ALPHA + k];
+                        }
+                        T2[i][j] = acc;
+                    }
+                }
 
                 const auto offset = ch * P + block_y * WTILES + block_x;
-                for (auto i = 0; i < Network::WINOGRAD_ALPHA; i++) {
-                    for (auto j = 0; j < Network::WINOGRAD_ALPHA; j++) {
-                        V[(i*Network::WINOGRAD_ALPHA + j)*C*P + offset] =
-                            T2[i][j];
+                for (auto i = 0; i < WINOGRAD_ALPHA; i++) {
+                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
+                        V[(i * WINOGRAD_ALPHA + j)*C*P + offset] = T2[i][j];
                     }
                 }
             }
@@ -131,10 +117,9 @@ void CPUPipe::winograd_sgemm(const std::vector<float>& U,
                              const std::vector<float>& V,
                              std::vector<float>& M,
                              const int C, const int K) {
-    constexpr auto P =
-        (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / Network::WINOGRAD_ALPHA;
+    constexpr auto P = WINOGRAD_P;
 
-    for (auto b = 0; b < Network::WINOGRAD_TILE; b++) {
+    for (auto b = 0; b < WINOGRAD_TILE; b++) {
         const auto offset_u = b * K * C;
         const auto offset_v = b * C * P;
         const auto offset_m = b * K * P;
@@ -154,57 +139,62 @@ void CPUPipe::winograd_transform_out(const std::vector<float>& M,
                                      const int K) {
     constexpr auto W = BOARD_SIZE;
     constexpr auto H = BOARD_SIZE;
-    constexpr auto WTILES = (W + 1) / 2;
-    constexpr auto P = WTILES * WTILES;
+    constexpr auto WTILES = WINOGRAD_WTILES;
+    constexpr auto P = WINOGRAD_P;
 
     for (auto k = 0; k < K; k++) {
-        const auto kHW = k * W * H;
         for (auto block_x = 0; block_x < WTILES; block_x++) {
-            const auto x = 2 * block_x;
+            const auto x = WINOGRAD_M * block_x;
             for (auto block_y = 0; block_y < WTILES; block_y++) {
-                const auto y = 2 * block_y;
+                const auto y = WINOGRAD_M * block_y;
 
                 const auto b = block_y * WTILES + block_x;
                 using WinogradTile =
-                    std::array<std::array<float, Network::WINOGRAD_ALPHA>, Network::WINOGRAD_ALPHA>;
+                    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
                 WinogradTile temp_m;
-                for (auto xi = 0; xi < Network::WINOGRAD_ALPHA; xi++) {
-                    for (auto nu = 0; nu < Network::WINOGRAD_ALPHA; nu++) {
+                for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++) {
+                    for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
                         temp_m[xi][nu] =
-                            M[xi*(Network::WINOGRAD_ALPHA*K*P) + nu*(K*P)+ k*P + b];
+                            M[(xi*WINOGRAD_ALPHA + nu)*K*P + k*P + b];
                     }
                 }
 
+                const auto At = std::array<float, WINOGRAD_ALPHA * WINOGRAD_M>
+                      {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
+                       0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
+                       0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
+                       0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
+
+                std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_M> temp;
+                std::array<std::array<float, WINOGRAD_M>, WINOGRAD_M> o;
+
                 // Calculates transpose(A).temp_m.A
-                //    A = [1.0,  0.0],
-                //        [1.0,  1.0],
-                //        [1.0, -1.0],
-                //        [0.0, -1.0]]
-
-                const std::array<std::array<float, 2>, 2> o = {
-                    temp_m[0][0] + temp_m[0][1] + temp_m[0][2] +
-                    temp_m[1][0] + temp_m[1][1] + temp_m[1][2] +
-                    temp_m[2][0] + temp_m[2][1] + temp_m[2][2],
-                    temp_m[0][1] - temp_m[0][2] - temp_m[0][3] +
-                    temp_m[1][1] - temp_m[1][2] - temp_m[1][3] +
-                    temp_m[2][1] - temp_m[2][2] - temp_m[2][3],
-                    temp_m[1][0] + temp_m[1][1] + temp_m[1][2] -
-                    temp_m[2][0] - temp_m[2][1] - temp_m[2][2] -
-                    temp_m[3][0] - temp_m[3][1] - temp_m[3][2],
-                    temp_m[1][1] - temp_m[1][2] - temp_m[1][3] -
-                    temp_m[2][1] + temp_m[2][2] + temp_m[2][3] -
-                    temp_m[3][1] + temp_m[3][2] + temp_m[3][3]
-                };
-
-                const auto y_ind = kHW + (y)*W + (x);
-                Y[y_ind] = o[0][0];
-                if (x + 1 < W) {
-                    Y[y_ind + 1] = o[0][1];
+                for (auto i = 0; i < WINOGRAD_M; i++){
+                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
+                        auto acc = 0.0f;
+                        for (auto q = 0; q < WINOGRAD_ALPHA; q++) {
+                            acc += At[i * WINOGRAD_ALPHA + q] * temp_m[q][j];
+                        }
+                        temp[i][j] = acc;
+                    }
                 }
-                if (y + 1 < H) {
-                    Y[y_ind + W] = o[1][0];
-                    if (x + 1 < W) {
-                        Y[y_ind + W + 1] = o[1][1];
+
+                for (auto i = 0; i < WINOGRAD_M; i++){
+                    for (auto j = 0; j < WINOGRAD_M; j++) {
+                        auto acc = 0.0f;
+                        for (auto q = 0; q < WINOGRAD_ALPHA; q++) {
+                            acc += temp[i][q] * At[j * WINOGRAD_ALPHA + q];
+                        }
+                        o[i][j] = acc;
+                    }
+                }
+
+                const auto y_ind = k * H * W + y * W + x;
+                for (auto i = 0; i < WINOGRAD_M; i++) {
+                    for (auto j = 0; j < WINOGRAD_M; j++) {
+                        if (y + i < H && x + j < W) {
+                            Y[y_ind + i * W + j] = o[i][j];
+                        }
                     }
                 }
             }
@@ -219,7 +209,7 @@ void CPUPipe::winograd_convolve3(const int outputs,
                                  std::vector<float>& M,
                                  std::vector<float>& output) {
 
-    constexpr unsigned int filter_len = Network::WINOGRAD_ALPHA * Network::WINOGRAD_ALPHA;
+    constexpr unsigned int filter_len = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
     const auto input_channels = U.size() / (outputs * filter_len);
 
     winograd_transform_in(input, V, input_channels);
@@ -303,9 +293,7 @@ void CPUPipe::forward(const std::vector<float>& input,
                       std::vector<float>& output_pol,
                       std::vector<float>& output_val) {
     // Input convolution
-    constexpr auto width = BOARD_SIZE;
-    constexpr auto height = BOARD_SIZE;
-    constexpr auto tiles = (width + 1) * (height + 1) / 4;
+    constexpr auto P = WINOGRAD_P;
     // Calculate output channels
     const auto output_channels = m_input_channels;
     // input_channels is the maximum number of input channels of any
@@ -313,10 +301,10 @@ void CPUPipe::forward(const std::vector<float>& input,
     // might be bigger when the network has very few filters
     const auto input_channels = std::max(static_cast<size_t>(output_channels),
                                          static_cast<size_t>(Network::INPUT_CHANNELS));
-    auto conv_out = std::vector<float>(output_channels * width * height);
+    auto conv_out = std::vector<float>(output_channels * BOARD_SQUARES);
 
-    auto V = std::vector<float>(Network::WINOGRAD_TILE * input_channels * tiles);
-    auto M = std::vector<float>(Network::WINOGRAD_TILE * output_channels * tiles);
+    auto V = std::vector<float>(WINOGRAD_TILE * input_channels * P);
+    auto M = std::vector<float>(WINOGRAD_TILE * output_channels * P);
 
     winograd_convolve3(output_channels, input, m_conv_weights[0], V, M, conv_out);
     batchnorm<BOARD_SQUARES>(output_channels, conv_out,
@@ -324,8 +312,8 @@ void CPUPipe::forward(const std::vector<float>& input,
                              m_batchnorm_stddivs[0].data());
 
     // Residual tower
-    auto conv_in = std::vector<float>(output_channels * width * height);
-    auto res = std::vector<float>(output_channels * width * height);
+    auto conv_in = std::vector<float>(output_channels * BOARD_SQUARES);
+    auto res = std::vector<float>(output_channels * BOARD_SQUARES);
     for (auto i = size_t{1}; i < m_conv_weights.size(); i += 2) {
         auto output_channels = m_input_channels;
         std::swap(conv_out, conv_in);
