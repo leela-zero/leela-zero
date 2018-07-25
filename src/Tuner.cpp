@@ -46,16 +46,31 @@
 #endif
 
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
+
+template <typename net_t> static std::string getTunerKernel();
+template <typename net_t> static float getTunerMaxError();
+
+template <> std::string getTunerKernel<float>() {
+    return std::string("XgemmBatched");
+}
+
+template <> float getTunerMaxError<float>() {
+    return 1e-4f;
+}
+
 #ifdef USE_HALF
-const auto TUNER_KERNEL = std::string("XgemmBatchedHalf");
-constexpr auto MAX_ERROR = 5e-2f;
-#else
-const auto TUNER_KERNEL = std::string("XgemmBatched");
-constexpr auto MAX_ERROR = 1e-3f;
+template <> std::string getTunerKernel<half_float::half>() {
+    return std::string("XgemmBatchedHalf");
+}
+
+template <> float getTunerMaxError<half_float::half>() {
+    return 5e-2f;
+}
 #endif
 
 using namespace Utils;
 
+template <typename net_t>
 static void sgemmBatched_ref(const std::vector<net_t>& a,
                              const std::vector<net_t>& b,
                              std::vector<net_t>& c,
@@ -90,7 +105,8 @@ static bool IsMultiple(const size_t a, const size_t b) {
     return (a % b == 0);
 }
 
-bool Tuner::valid_config_sgemm(Parameters p, bool exhaustive) {
+template <typename net_t>
+bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
     if (!IsMultiple(p["MWG"], p["MDIMC"]*p["VWM"])) {
         return false;
     }
@@ -124,7 +140,8 @@ bool Tuner::valid_config_sgemm(Parameters p, bool exhaustive) {
     return true;
 }
 
-Parameters Tuner::get_parameters_by_int(const std::vector<Configurations>& opts,
+template <typename net_t>
+Parameters Tuner<net_t>::get_parameters_by_int(const std::vector<Configurations>& opts,
                                         const int n) {
     Parameters param;
     std::vector<size_t> choices(opts.size());
@@ -147,7 +164,8 @@ Parameters Tuner::get_parameters_by_int(const std::vector<Configurations>& opts,
     return param;
 }
 
-std::string Tuner::parameters_to_defines(const Parameters& p) {
+template <typename net_t>
+std::string Tuner<net_t>::parameters_to_defines(const Parameters& p) {
     std::string s;
     for (auto const& x : p) {
         s += " -D" + x.first + "=" + std::to_string(x.second);
@@ -155,7 +173,8 @@ std::string Tuner::parameters_to_defines(const Parameters& p) {
     return s;
 }
 
-std::string Tuner::parameters_to_string(const Parameters& p) {
+template <typename net_t>
+std::string Tuner<net_t>::parameters_to_string(const Parameters& p) {
     std::string s;
     for (auto const& x : p) {
         s += x.first + "=" + std::to_string(x.second) + " ";
@@ -170,6 +189,7 @@ static size_t next_power_of_two(const size_t x) {
     return 2 << size_t(std::ceil(std::log2(x)) - 1);
 }
 
+template <typename net_t>
 static void sgemm_generate_data(std::vector<net_t> &x,
                                 const int m, const int n,
                                 const int batch_size,
@@ -193,6 +213,7 @@ static void sgemm_generate_data(std::vector<net_t> &x,
     }
 }
 
+template <typename net_t>
 static float compare_ref(std::vector<net_t> &x, std::vector<net_t> &ref,
                          const int m, const int n, const int batch_size,
                          const int m_ceil, const int n_ceil) {
@@ -210,7 +231,8 @@ static float compare_ref(std::vector<net_t> &x, std::vector<net_t> &ref,
     return sum / (m*n);
 }
 
-std::string Tuner::tune_sgemm(const int m, const int n, const int k,
+template <typename net_t>
+std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
                               const int batch_size, const int runs) {
     auto opts = std::vector<Configurations>();
     if (cfg_sgemm_exhaustive) {
@@ -398,11 +420,11 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
                 sum += elapsed;
             } catch (const cl::Error&) {
                 // Failed to enqueue kernel. Set error to max.
-                max_error = MAX_ERROR;
+                max_error = getTunerMaxError<net_t>();
                 break;
             }
         }
-        if (max_error < MAX_ERROR && (best_time == 0 || sum < best_time)) {
+        if (max_error < getTunerMaxError<net_t>() && (best_time == 0 || sum < best_time)) {
             auto param_str = parameters_to_string(p);
             auto kernel_ms = 1e-6f * (sum / runs);
             // Timing is in nanoseconds (10^-9), Giga = 10^9, so this works out
@@ -421,7 +443,8 @@ std::string Tuner::tune_sgemm(const int m, const int n, const int k,
     return best_params;
 }
 
-void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
+template <typename net_t>
+void Tuner<net_t>::store_sgemm_tuners(const int m, const int n, const int k,
                                const int batch_size, std::string tuners) {
     auto file_contents = std::vector<std::string>();
     {
@@ -441,7 +464,7 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
     tuning_params << m << ";" << n << ";" << k << ";" << batch_size;
 
     auto tuning_line_prefix = std::to_string(TUNER_VERSION) + ";"
-        + TUNER_KERNEL + ";" + tuning_params.str() + ";";
+        + getTunerKernel<net_t>() + ";" + tuning_params.str() + ";";
     auto tuning_line = tuning_line_prefix + tuners + ";" + device_name;
 
     // Write back previous data as long as it's not the device and
@@ -463,7 +486,8 @@ void Tuner::store_sgemm_tuners(const int m, const int n, const int k,
     }
 }
 
-std::string Tuner::sgemm_tuners_from_line(std::string line,
+template <typename net_t>
+std::string Tuner<net_t>::sgemm_tuners_from_line(std::string line,
                                           const int m, const int n, const int k,
                                           const int batch_size) {
     auto s = std::vector<std::string>{};
@@ -482,7 +506,7 @@ std::string Tuner::sgemm_tuners_from_line(std::string line,
         return "";
     }
 
-    if (s[1] != TUNER_KERNEL) {
+    if (s[1] != getTunerKernel<net_t>()) {
         return "";
     }
 
@@ -509,7 +533,8 @@ std::string Tuner::sgemm_tuners_from_line(std::string line,
     return s[6];
 }
 
-std::string Tuner::load_sgemm_tuners(const int m, const int n, const int k,
+template <typename net_t>
+std::string Tuner<net_t>::load_sgemm_tuners(const int m, const int n, const int k,
                                      const int batch_size) {
     auto file = std::ifstream{TUNER_FILE_LOCAL};
     if (!cfg_sgemm_exhaustive && file.good()) {
@@ -526,5 +551,10 @@ std::string Tuner::load_sgemm_tuners(const int m, const int n, const int k,
     store_sgemm_tuners(m, n, k, batch_size, tuners);
     return tuners;
 }
+
+template class Tuner<float>;
+#ifdef USE_HALF
+template class Tuner<half_float::half>;
+#endif
 
 #endif

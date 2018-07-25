@@ -73,6 +73,17 @@
  */
 #ifndef USE_CPU_ONLY
 #define USE_OPENCL
+
+/*
+ * USE_HALF: Include the half-precision OpenCL implementation when building.
+ * Unlike previous versions, this does not enable half-precision by default,
+ * it just compiles half-precision support.  You have to use the command line
+ * argument --use-half explicitly to enable half-precision.
+ * half-precision OpenCL gains performance on some GPUs while losing some
+ * accuracy on the calculation, so please test before enabling it.
+ */
+#define USE_HALF
+
 #endif
 
 /* Maximum supported batch size for OpenCL.
@@ -104,12 +115,9 @@
 
 #ifdef USE_HALF
 #include "half/half.hpp"
-using net_t = half_float::half;
-#else
-using net_t = float;
 #endif
 
-#if defined(USE_BLAS) && defined(USE_OPENCL) && !defined(USE_HALF)
+#if defined(USE_BLAS) && defined(USE_OPENCL)
 // If both BLAS and OpenCL are fully usable, then check the OpenCL
 // results against BLAS with some probability.
 #define USE_OPENCL_SELFCHECK

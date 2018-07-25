@@ -27,6 +27,8 @@
 #include "OpenCL.h"
 #include "ThreadPool.h"
 
+
+template <typename net_t>
 class OpenCLScheduler : public ForwardPipe {
     class ContextPoolEntry {
     public:
@@ -63,8 +65,8 @@ public:
                                const std::vector<float>& weights);
 
 private:
-    std::vector<std::unique_ptr<OpenCL_Network>> m_networks;
-    std::vector<std::unique_ptr<OpenCL>> m_opencl;
+    std::vector<std::unique_ptr<OpenCL_Network<net_t>>> m_networks;
+    std::vector<std::unique_ptr<OpenCL<net_t>>> m_opencl;
 
     using ContextPoolQueue = std::list<std::shared_ptr<ContextPoolEntry>>;
     std::vector<ContextPoolQueue> m_context_pool;

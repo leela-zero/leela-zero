@@ -345,26 +345,41 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 
     std::vector<ForwardPipe*> to_init;
 
+    bool use_selfcheck = true;
 #ifdef USE_OPENCL
     if (cfg_cpu_only) {
         myprintf("Initializing CPU-only evaluation.\n");
         m_forward = std::make_unique<CPUPipe>();
+        use_selfcheck = false;
     } else {
-        myprintf("Initializing OpenCL.\n");
-        m_forward = std::make_unique<OpenCLScheduler>();
-    }
+#ifdef USE_HALF
+        if (cfg_use_half) {
+            myprintf("Initializing OpenCL (half precision).\n");
+            m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
+        } else {
+            myprintf("Initializing OpenCL (single precision).\n");
+            m_forward = std::make_unique<OpenCLScheduler<float>>();
+        }
 #else
+        myprintf("Initializing OpenCL (single precision).\n");
+        m_forward = std::make_unique<OpenCLScheduler<float>>();
+#endif
+    }
+
+#else //!USE_OPENCL
     myprintf("Initializing CPU-only evaluation.\n");
     m_forward = std::make_unique<CPUPipe>();
+    use_selfcheck = false;
 #endif
 
     to_init.emplace_back(m_forward.get());
-
 #ifdef USE_OPENCL_SELFCHECK
-    if (!cfg_cpu_only) {
+    if (use_selfcheck) {
         m_forward_cpu = std::make_unique<CPUPipe>();
         to_init.emplace_back(m_forward_cpu.get());
     }
+#else
+    (void)use_selfcheck;
 #endif
 
     for (const auto& p : to_init) {
@@ -477,7 +492,7 @@ T relative_difference(const T a, const T b) {
         return std::numeric_limits<T>::max();
     }
 
-    constexpr auto small_number = 1e-3f;
+    constexpr auto small_number = 1.0f/361.0f;
     auto fa = std::fabs(a);
     auto fb = std::fabs(b);
 
@@ -495,20 +510,50 @@ T relative_difference(const T a, const T b) {
     return fabs(fa - fb) / std::min(fa, fb);
 }
 
-void compare_net_outputs(std::vector<float>& data,
-                         std::vector<float>& ref) {
-    // We accept an error up to 5%, but output values
-    // smaller than 1/1000th are "rounded up" for the comparison.
-    constexpr auto relative_error = 5e-2f;
-    for (auto idx = size_t{0}; idx < data.size(); ++idx) {
-        const auto err = relative_difference(data[idx], ref[idx]);
+#endif
+
+#ifdef USE_OPENCL_SELFCHECK
+void Network::compare_net_outputs(Netresult& data,
+                                  Netresult& ref) {
+    // We accept an error up to 20%, but output values
+    // smaller than 1/361th are "rounded up" for the comparison.
+    constexpr auto relative_error = 2e-1f;
+
+    // assert-fail when we hit 3 failures out of last 10 checks
+    constexpr auto max_failures = 3;
+    constexpr auto last_failure_window = 10;
+
+    auto selfcheck_fail = false;
+    for (auto idx = size_t{0}; idx < data.policy.size(); ++idx) {
+        const auto err = relative_difference(data.policy[idx], ref.policy[idx]);
         if (err > relative_error) {
-            printf("Error in OpenCL calculation: expected %f got %f "
-                   "(error=%f%%)\n", ref[idx], data[idx], err * 100.0);
-            printf("Update your GPU drivers or reduce the amount of games "
+            selfcheck_fail = true;
+            break;
+        }
+    }
+    const auto err_pass = relative_difference(data.policy_pass, ref.policy_pass);
+    const auto err_winrate = relative_difference(data.winrate, ref.winrate);
+    if (err_pass > relative_error) {
+        selfcheck_fail = true;
+    }
+    if (err_winrate > relative_error) {
+        selfcheck_fail = true;
+    }
+
+    LOCK(m_selfcheck_mutex, selfcheck_lock);
+    if (selfcheck_fail) {
+        m_selfcheck_fails.push_back(true);
+        if (std::count(begin(m_selfcheck_fails), end(m_selfcheck_fails), true) >= max_failures) {
+            printf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
                    "played simultaneously.\n");
             throw std::runtime_error("OpenCL self-check mismatch.");
         }
+    } else {
+        m_selfcheck_fails.push_back(false);
+    }
+
+    while (m_selfcheck_fails.size() >= last_failure_window) {
+        m_selfcheck_fails.pop_front();
     }
 }
 #endif
@@ -598,6 +643,16 @@ Network::Netresult Network::get_output(
         assert(symmetry == -1);
         const auto rand_sym = Random::get_Rng().randfix<NUM_SYMMETRIES>();
         result = get_output_internal(state, rand_sym);
+#ifdef USE_OPENCL_SELFCHECK
+        // Both implementations are available, self-check the OpenCL driver by
+        // running both with a probability of 1/2000.
+        // selfcheck is done here because this is the only place NN evaluation is done
+        // on actual gameplay.
+        if (m_forward_cpu != nullptr && Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
+            auto result_ref = get_output_internal(state, rand_sym, true);
+            compare_net_outputs(result, result_ref);
+        }
+#endif
     }
 
     // v2 format (ELF Open Go) returns black value, not stm
@@ -614,7 +669,7 @@ Network::Netresult Network::get_output(
 }
 
 Network::Netresult Network::get_output_internal(
-    const GameState* const state, const int symmetry) {
+    const GameState* const state, const int symmetry, bool selfcheck) {
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
@@ -622,17 +677,15 @@ Network::Netresult Network::get_output_internal(
     const auto input_data = gather_features(state, symmetry);
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
-    m_forward->forward(input_data, policy_data, value_data);
 #ifdef USE_OPENCL_SELFCHECK
-    // Both implementations are available, self-check the OpenCL driver by
-    // running both with a probability of 1/2000.
-    if (m_forward_cpu != nullptr && Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
-        auto cpu_policy_data = std::vector<float>(policy_data.size());
-        auto cpu_value_data = std::vector<float>(value_data.size());
-        m_forward_cpu->forward(input_data, cpu_policy_data, cpu_value_data);
-        compare_net_outputs(policy_data, cpu_policy_data);
-        compare_net_outputs(value_data, cpu_value_data);
+    if (selfcheck) {
+        m_forward_cpu->forward(input_data, policy_data, value_data);
+    } else {
+        m_forward->forward(input_data, policy_data, value_data);
     }
+#else
+    m_forward->forward(input_data, policy_data, value_data);
+    (void) selfcheck;
 #endif
 
     // Get the moves

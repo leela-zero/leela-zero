@@ -34,10 +34,11 @@
 
 #include "Tuner.h"
 
-class OpenCL;
+template <typename net_t> class OpenCL;
+template <typename net_t> class OpenCL_Network;
 
 class Layer {
-    friend class OpenCL_Network;
+    template <typename> friend class OpenCL_Network;
 private:
     unsigned int channels{0};
     unsigned int outputs{0};
@@ -49,8 +50,8 @@ private:
 };
 
 class OpenCLContext {
-    friend class OpenCL;
-    friend class OpenCL_Network;
+    template <typename> friend class OpenCL;
+    template <typename> friend class OpenCL_Network;
 private:
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
@@ -69,10 +70,11 @@ private:
     bool m_buffers_allocated{false};
 };
 
+template <typename net_t>
 class OpenCL_Network {
 public:
-    OpenCL_Network(OpenCL & opencl) : m_opencl(opencl) {}
-    OpenCL & getOpenCL() {
+    OpenCL_Network(OpenCL<net_t> & opencl) : m_opencl(opencl) {}
+    OpenCL<net_t> & getOpenCL() {
         return m_opencl;
     }
 
@@ -166,7 +168,7 @@ private:
                   weight_slice_t weights,
                   int batch_size);
 
-    OpenCL & m_opencl;
+    OpenCL<net_t> & m_opencl;
 
     // this mutex is not required for correctness, but this exists simply
     // because queue.finish() is a busy wait and having a lot of threads
@@ -176,9 +178,10 @@ private:
     std::vector<Layer> m_layers;
 };
 
+template <typename net_t>
 class OpenCL {
-    friend class OpenCL_Network;
-    friend class Tuner;
+    friend class OpenCL_Network<net_t>;
+    friend class Tuner<net_t>;
 public:
     void initialize(const int channels, int gpu, bool silent = false);
     void ensure_context_initialized(OpenCLContext & opencl_context);
