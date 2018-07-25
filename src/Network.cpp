@@ -510,6 +510,9 @@ T relative_difference(const T a, const T b) {
     return fabs(fa - fb) / std::min(fa, fb);
 }
 
+#endif
+
+#ifdef USE_OPENCL_SELFCHECK
 void Network::compare_net_outputs(Netresult& data,
                                   Netresult& ref) {
     // We accept an error up to 20%, but output values
@@ -540,7 +543,7 @@ void Network::compare_net_outputs(Netresult& data,
     LOCK(m_selfcheck_mutex, selfcheck_lock);
     if (selfcheck_fail) {
         m_selfcheck_fails.push_back(true);
-        if (std::count(m_selfcheck_fails.begin(), m_selfcheck_fails.end(), true) >= max_failures) {
+        if (std::count(begin(m_selfcheck_fails), end(m_selfcheck_fails), true) >= max_failures) {
             printf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
                    "played simultaneously.\n");
             throw std::runtime_error("OpenCL self-check mismatch.");
@@ -681,6 +684,7 @@ Network::Netresult Network::get_output_internal(
         m_forward->forward(input_data, policy_data, value_data);
     }
 #else
+    m_forward->forward(input_data, policy_data, value_data);
     (void) selfcheck;
 #endif
 

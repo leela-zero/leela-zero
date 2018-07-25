@@ -46,12 +46,26 @@
 #endif
 
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
+
+template <typename net_t> static std::string getTunerKernel();
+template <typename net_t> static float getTunerMaxError();
+
+template <> std::string getTunerKernel<float>() {
+    return std::string("XgemmBatched");
+}
+
+template <> float getTunerMaxError<float>() {
+    return 1e-4f;
+}
+
 #ifdef USE_HALF
-const auto TUNER_KERNEL = std::string("XgemmBatchedHalf");
-constexpr auto MAX_ERROR = 1e-2f;
-#else
-const auto TUNER_KERNEL = std::string("XgemmBatched");
-constexpr auto MAX_ERROR = 1e-4f;
+template <> std::string getTunerKernel<half_float::half>() {
+    return std::string("XgemmBatchedHalf");
+}
+
+template <> float getTunerMaxError<half_float::half>() {
+    return 5e-2f;
+}
 #endif
 
 using namespace Utils;
@@ -406,11 +420,11 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
                 sum += elapsed;
             } catch (const cl::Error&) {
                 // Failed to enqueue kernel. Set error to max.
-                max_error = MAX_ERROR;
+                max_error = getTunerMaxError<net_t>();
                 break;
             }
         }
-        if (max_error < MAX_ERROR && (best_time == 0 || sum < best_time)) {
+        if (max_error < getTunerMaxError<net_t>() && (best_time == 0 || sum < best_time)) {
             auto param_str = parameters_to_string(p);
             auto kernel_ms = 1e-6f * (sum / runs);
             // Timing is in nanoseconds (10^-9), Giga = 10^9, so this works out
@@ -450,7 +464,7 @@ void Tuner<net_t>::store_sgemm_tuners(const int m, const int n, const int k,
     tuning_params << m << ";" << n << ";" << k << ";" << batch_size;
 
     auto tuning_line_prefix = std::to_string(TUNER_VERSION) + ";"
-        + TUNER_KERNEL + ";" + tuning_params.str() + ";";
+        + getTunerKernel<net_t>() + ";" + tuning_params.str() + ";";
     auto tuning_line = tuning_line_prefix + tuners + ";" + device_name;
 
     // Write back previous data as long as it's not the device and
@@ -492,7 +506,7 @@ std::string Tuner<net_t>::sgemm_tuners_from_line(std::string line,
         return "";
     }
 
-    if (s[1] != TUNER_KERNEL) {
+    if (s[1] != getTunerKernel<net_t>()) {
         return "";
     }
 

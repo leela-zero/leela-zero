@@ -114,10 +114,10 @@ private:
                                       std::vector<float>::iterator black,
                                       std::vector<float>::iterator white,
                                       const int symmetry);
-    void compare_net_outputs(Netresult& data, Netresult& ref);
     bool probe_cache(const GameState* const state, Network::Netresult& result);
     std::unique_ptr<ForwardPipe> m_forward;
 #ifdef USE_OPENCL_SELFCHECK
+    void compare_net_outputs(Netresult& data, Netresult& ref);
     std::unique_ptr<ForwardPipe> m_forward_cpu;
 
     // records the result of most recent selfchecks
