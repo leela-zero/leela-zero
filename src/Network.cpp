@@ -65,6 +65,35 @@ using namespace Utils;
 // Symmetry helper
 static std::array<std::array<int, BOARD_SQUARES>, Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
 
+float Network::benchmark_time(int centiseconds) {
+    const auto cpus = cfg_num_threads;
+    const Time start;
+
+    ThreadGroup tg(thread_pool);
+    std::atomic<int> runcount{0};
+
+    GameState state;
+    state.init_game(BOARD_SIZE, 7.5);
+    for (auto i = 0; i < cpus; i++) {
+        tg.add_task([this, &runcount, start, centiseconds, state]() {
+            while (true) {
+                runcount++;
+                get_output(&state, Ensemble::RANDOM_SYMMETRY, -1, true);
+                const Time end;
+                const auto elapsed = Time::timediff_centis(start, end);
+                if(elapsed >= centiseconds) {
+                    break;
+                }
+            }
+        });
+    }
+    tg.wait_all();
+
+    const Time end;
+    const auto elapsed = Time::timediff_centis(start, end);
+    return 100.0f * runcount.load() / elapsed;
+}
+
 void Network::benchmark(const GameState* const state, const int iterations) {
     const auto cpus = cfg_num_threads;
     const Time start;
@@ -343,6 +372,9 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         m_conv_pol_b[i] = 0.0f;
     }
 
+#ifdef USE_HALF
+    std::unique_ptr<ForwardPipe> fp16net;
+#endif
     std::vector<ForwardPipe*> to_init;
 
     bool use_selfcheck = true;
@@ -353,12 +385,18 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         use_selfcheck = false;
     } else {
 #ifdef USE_HALF
-        if (cfg_use_half) {
-            myprintf("Initializing OpenCL (half precision).\n");
-            m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
-        } else {
+        if(cfg_precision == "auto") {
+            // create fp16 and fp32 both here.  will select one of them later.
+            myprintf("Initializing OpenCL (autodetect precision).\n");
+            fp16net = std::make_unique<OpenCLScheduler<half_float::half>>();
+            to_init.emplace_back(fp16net.get());
+            m_forward = std::make_unique<OpenCLScheduler<float>>();
+        } else if(cfg_precision == "single") {
             myprintf("Initializing OpenCL (single precision).\n");
             m_forward = std::make_unique<OpenCLScheduler<float>>();
+        } else if(cfg_precision == "half") {
+            myprintf("Initializing OpenCL (half precision).\n");
+            m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
         }
 #else
         myprintf("Initializing OpenCL (single precision).\n");
@@ -423,6 +461,20 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     myprintf("BLAS core: MKL %s\n", Version.Processor);
 #endif
 #endif
+#endif
+
+#ifdef USE_HALF
+    if (fp16net != nullptr) {
+        auto score_fp32 = benchmark_time(100);
+        std::swap(fp16net, m_forward);
+        auto score_fp16 = benchmark_time(100);
+        if (score_fp32 * 1.05f > score_fp16) {
+            std::swap(fp16net, m_forward);
+            myprintf("Using OpenCL single precision - %.2f n/s vs. %.2f n/s half).\n", score_fp32, score_fp16);
+        } else {
+            myprintf("Using OpenCL half precision - %.2f n/s vs. %.2f n/s single).\n", score_fp16, score_fp32);
+        }
+    }
 #endif
 }
 
