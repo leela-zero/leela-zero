@@ -15,9 +15,6 @@ jobs:
       - docker build -f Dockerfiles/Dockerfile.gpu -t leela-zero:gpu .
       - docker run leela-zero:gpu
     - script:
-      - docker build -f Dockerfiles/Dockerfile.gpu-half -t leela-zero:gpu-half .
-      - docker run leela-zero:gpu-half
-    - script:
       - docker build -f Dockerfiles/Dockerfile.cpu -t leela-zero:cpu .
       - docker run leela-zero:cpu
     - script:
