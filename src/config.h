@@ -76,11 +76,11 @@
 
 /*
  * USE_HALF: Include the half-precision OpenCL implementation when building.
- * Unlike previous versions, this does not enable half-precision by default,
- * it just compiles half-precision support.  You have to use the command line
+ * This does not enable half-precision by default, it just compiles
+ * half-precision support.  You have to use the command line
  * argument --use-half explicitly to enable half-precision.
- * half-precision OpenCL gains performance on some GPUs while losing some
- * accuracy on the calculation, so please test before enabling it.
+ * Half-precision OpenCL gains performance on some GPUs while losing some
+ * accuracy on the calculation, so please test strength before enabling it.
  */
 #define USE_HALF
 

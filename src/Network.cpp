@@ -521,7 +521,7 @@ void Network::compare_net_outputs(Netresult& data,
 
     // assert-fail when we hit 3 failures out of last 10 checks
     constexpr auto max_failures = 3;
-    constexpr auto last_failure_window = 10;
+    constexpr auto last_failure_window = size_t{10};
 
     auto selfcheck_fail = false;
     for (auto idx = size_t{0}; idx < data.policy.size(); ++idx) {
@@ -541,15 +541,14 @@ void Network::compare_net_outputs(Netresult& data,
     }
 
     LOCK(m_selfcheck_mutex, selfcheck_lock);
+    m_selfcheck_fails.emplace_back(selfcheck_fail);
     if (selfcheck_fail) {
-        m_selfcheck_fails.push_back(true);
-        if (std::count(begin(m_selfcheck_fails), end(m_selfcheck_fails), true) >= max_failures) {
+        if (std::count(begin(m_selfcheck_fails),
+                       end(m_selfcheck_fails), true) >= max_failures) {
             printf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
                    "played simultaneously.\n");
             throw std::runtime_error("OpenCL self-check mismatch.");
         }
-    } else {
-        m_selfcheck_fails.push_back(false);
     }
 
     while (m_selfcheck_fails.size() >= last_failure_window) {
