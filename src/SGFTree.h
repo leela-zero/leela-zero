@@ -46,6 +46,7 @@ public:
     SGFTree * add_child();
     SGFTree * get_child(size_t count);
     int get_move(int tomove);
+    std::pair<int, int> get_colored_move(void);
     bool is_initialized() const {
         return m_initialized;
     }
