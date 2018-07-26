@@ -73,14 +73,16 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) {
     for (unsigned int i = 0; i <= movenum && link != nullptr; i++) {
         // root position has no associated move
         if (i != 0) {
-            int move = link->get_move(result.get_to_move());
-            if (move != SGFTree::EOT) {
-                if (move != FastBoard::PASS && move != FastBoard::EMPTY
-                    && result.board.get_square(move) != FastBoard::EMPTY) {
+            auto colored_move = link->get_colored_move();
+            if (colored_move.first != FastBoard::INVAL) {
+                if (colored_move.second != FastBoard::PASS
+                    && colored_move.second != FastBoard::EMPTY
+                    && result.board.get_square(colored_move.second)
+                       != FastBoard::EMPTY) {
                     // Fail loading
                     return result;
                 }
-                result.play_move(move);
+                result.play_move(colored_move.first, colored_move.second);
             }
         }
         link = link->get_child(0);
@@ -243,9 +245,9 @@ void SGFTree::populate_states(void) {
 
         // XXX: maybe move this to the recursive call
         // get move for side to move
-        int move = child_state.get_move(m_state.get_to_move());
-        if (move != EOT) {
-            child_state.apply_move(move);
+        auto colored_move = child_state.get_colored_move();
+        if (colored_move.first != FastBoard::INVAL) {
+            child_state.apply_move(colored_move.first, colored_move.second);
         }
 
         child_state.populate_states();
@@ -352,6 +354,19 @@ int SGFTree::get_move(int tomove) {
     }
 
     return SGFTree::EOT;
+}
+
+std::pair<int, int> SGFTree::get_colored_move(void) const {
+    for (const auto& prop : m_properties) {
+        if (prop.first == "B") {
+            return std::make_pair(FastBoard::BLACK,
+                                  string_to_vertex(prop.second));
+        } else if (prop.first == "W") {
+            return std::make_pair(FastBoard::WHITE,
+                                  string_to_vertex(prop.second));
+        }
+    }
+    return std::make_pair(FastBoard::INVAL, SGFTree::EOT);
 }
 
 FastBoard::square_t SGFTree::get_winner() const {
