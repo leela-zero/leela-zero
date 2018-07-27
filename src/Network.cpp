@@ -81,7 +81,7 @@ float Network::benchmark_time(int centiseconds) {
                 get_output(&state, Ensemble::RANDOM_SYMMETRY, -1, true);
                 const Time end;
                 const auto elapsed = Time::timediff_centis(start, end);
-                if(elapsed >= centiseconds) {
+                if (elapsed >= centiseconds) {
                     break;
                 }
             }
@@ -385,18 +385,22 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         use_selfcheck = false;
     } else {
 #ifdef USE_HALF
-        if(cfg_precision == "auto") {
-            // create fp16 and fp32 both here.  will select one of them later.
-            myprintf("Initializing OpenCL (autodetect precision).\n");
-            fp16net = std::make_unique<OpenCLScheduler<half_float::half>>();
-            to_init.emplace_back(fp16net.get());
-            m_forward = std::make_unique<OpenCLScheduler<float>>();
-        } else if(cfg_precision == "single") {
-            myprintf("Initializing OpenCL (single precision).\n");
-            m_forward = std::make_unique<OpenCLScheduler<float>>();
-        } else if(cfg_precision == "half") {
-            myprintf("Initializing OpenCL (half precision).\n");
-            m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
+        switch (cfg_precision) {
+            case precision_t::AUTO: {
+                // create fp16 and fp32 both here.  will select one of them later.
+                myprintf("Initializing OpenCL (autodetect precision).\n");
+                fp16net = std::make_unique<OpenCLScheduler<half_float::half>>();
+                to_init.emplace_back(fp16net.get());
+                m_forward = std::make_unique<OpenCLScheduler<float>>();
+            }
+            case precision_t::SINGLE: {
+                myprintf("Initializing OpenCL (single precision).\n");
+                m_forward = std::make_unique<OpenCLScheduler<float>>();
+            }
+            case precision_t::HALF: {
+                myprintf("Initializing OpenCL (half precision).\n");
+                m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
+            }
         }
 #else
         myprintf("Initializing OpenCL (single precision).\n");
@@ -468,11 +472,12 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         auto score_fp32 = benchmark_time(100);
         std::swap(fp16net, m_forward);
         auto score_fp16 = benchmark_time(100);
+        myprintf("Measuring performance - %.2f n/s single vs. %.2f n/s half - ", score_fp32, score_fp16);
         if (score_fp32 * 1.05f > score_fp16) {
             std::swap(fp16net, m_forward);
-            myprintf("Using OpenCL single precision - %.2f n/s vs. %.2f n/s half).\n", score_fp32, score_fp16);
+            myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
         } else {
-            myprintf("Using OpenCL half precision - %.2f n/s vs. %.2f n/s single).\n", score_fp16, score_fp32);
+            myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
         }
     }
 #endif

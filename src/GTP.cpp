@@ -65,7 +65,7 @@ std::vector<int> cfg_gpus;
 bool cfg_sgemm_exhaustive;
 bool cfg_tune_only;
 #ifdef USE_HALF
-std::string cfg_precision;
+precision_t cfg_precision;
 #endif
 #endif
 float cfg_puct;
@@ -105,7 +105,7 @@ void GTP::setup_default_parameters() {
     cfg_sgemm_exhaustive = false;
     cfg_tune_only = false;
 #ifdef USE_HALF
-    cfg_precision = "auto";
+    cfg_precision = precision_t::AUTO;
 #endif
 #endif
     cfg_puct = 0.8f;

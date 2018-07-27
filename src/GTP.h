@@ -49,7 +49,10 @@ extern std::vector<int> cfg_gpus;
 extern bool cfg_sgemm_exhaustive;
 extern bool cfg_tune_only;
 #ifdef USE_HALF
-extern std::string cfg_precision;
+enum class precision_t {
+    AUTO, SINGLE, HALF
+};
+extern precision_t cfg_precision;
 #endif
 #endif
 extern float cfg_puct;

@@ -91,7 +91,8 @@ static void parse_commandline(int argc, char *argv[]) {
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
         ("tune-only", "Tune OpenCL only and then exit.")
 #ifdef USE_HALF
-        ("precision", po::value<std::string>(), "Floating-point precision (single/half/auto)")
+        ("precision", po::value<std::string>(), "Floating-point precision (single/half/auto).\n"
+                                                "Default is to auto which automatically determines which one to use.")
 #endif
         ;
 #endif
@@ -324,9 +325,14 @@ static void parse_commandline(int argc, char *argv[]) {
 
 #ifdef USE_HALF
     if (vm.count("precision")) {
-        cfg_precision = vm["precision"].as<std::string>();
-        auto opts = {"single", "half", "auto"};
-        if ( end(opts) == std::find(begin(opts), end(opts), cfg_precision) ) {
+        auto precision = vm["precision"].as<std::string>();
+        if ("single" == precision) {
+            cfg_precision = precision_t::SINGLE;
+        } else if ("half" == precision) {
+            cfg_precision = precision_t::HALF;
+        } else if ("auto" == precision) {
+            cfg_precision = precision_t::AUTO;
+        } else {
             printf("Unexpected option for --precision, expecting single/half/auto\n");
             exit(EXIT_FAILURE);
         }
