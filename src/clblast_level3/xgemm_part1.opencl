@@ -107,29 +107,77 @@ R"(
 // =================================================================================================
 
 // Data-widths in dimension M
-#if VWM == 1
-    typedef real realM;
-#elif VWM == 2
-    typedef real2 realM;
-#elif VWM == 4
-    typedef real4 realM;
-#elif VWM == 8
-    typedef real8 realM;
-#elif VWM == 16
-    typedef real16 realM;
+#ifdef USE_HALF
+  #if VWM == 1
+      typedef real realM;
+      typedef short memM;
+  #elif VWM == 2
+      typedef real2 realM;
+      typedef short2 memM;
+  #elif VWM == 4
+      typedef real4 realM;
+      typedef short4 memM;
+  #elif VWM == 8
+      typedef real8 realM;
+      typedef short8 memM;
+  #elif VWM == 16
+      typedef real16 realM;
+      typedef short16 memM;
+  #endif
+#else
+  #if VWM == 1
+      typedef real realM;
+      typedef real memM;
+  #elif VWM == 2
+      typedef real2 realM;
+      typedef real2 memM;
+  #elif VWM == 4
+      typedef real4 realM;
+      typedef real4 memM;
+  #elif VWM == 8
+      typedef real8 realM;
+      typedef real8 memM;
+  #elif VWM == 16
+      typedef real16 realM;
+      typedef real16 memM;
+  #endif
 #endif
 
 // Data-widths in dimension N
-#if VWN == 1
-    typedef real realN;
-#elif VWN == 2
-    typedef real2 realN;
-#elif VWN == 4
-    typedef real4 realN;
-#elif VWN == 8
-    typedef real8 realN;
-#elif VWN == 16
-    typedef real16 realN;
+#ifdef USE_HALF
+  #if VWN == 1
+      typedef real realN;
+      typedef short memN;
+  #elif VWN == 2
+      typedef real2 realN;
+      typedef short2 memN;
+  #elif VWN == 4
+      typedef real4 realN;
+      typedef short4 memN;
+  #elif VWN == 8
+      typedef real8 realN;
+      typedef short8 memN;
+  #elif VWN == 16
+      typedef real16 realN;
+      typedef short16 memN;
+  #endif
+#else
+  #if VWN == 1
+      typedef real realN;
+      typedef real memN;
+  #elif VWN == 2
+      typedef real2 realN;
+      typedef real2 memN;
+  #elif VWN == 4
+      typedef real4 realN;
+      typedef real4 memN;
+  #elif VWN == 8
+      typedef real8 realN;
+      typedef real8 memN;
+  #elif VWN == 16
+      typedef real16 realN;
+      typedef real16 memN;
+  #endif
 #endif
 
 // =================================================================================================
@@ -182,7 +230,7 @@ INLINE_FUNC realM InitAccRegisters() {
 // Caches global off-chip memory into local (shared) memory on-chip. This function is specific for
 // caching the A input matrix.
 #if SA == 1
-INLINE_FUNC void GlobalToLocalA(const __global realM* restrict agm, LOCAL_PTR realM* alm,
+INLINE_FUNC void GlobalToLocalA(const __global memM* restrict agm, LOCAL_PTR memM* alm,
                                 const int kSizeM, const int tid, const int kwg) {
   const int la0 = tid % MDIMA;
   const int la1 = tid / MDIMA;
@@ -212,7 +260,7 @@ INLINE_FUNC void GlobalToLocalA(const __global realM* restrict agm, LOCAL_PTR re
 
 // Same as above, but now for the B input matrix
 #if SB == 1
-INLINE_FUNC void GlobalToLocalB(const __global realN* restrict bgm, LOCAL_PTR realN* blm,
+INLINE_FUNC void GlobalToLocalB(const __global memN* restrict bgm, LOCAL_PTR memN* blm,
                                 const int kSizeN, const int tid, const int kwg) {
   const int lb0 = tid % NDIMB;
   const int lb1 = tid / NDIMB;
@@ -245,7 +293,7 @@ INLINE_FUNC void GlobalToLocalB(const __global realN* restrict bgm, LOCAL_PTR re
 // Caches global off-chip memory directly into per-thread private memory (registers). This function
 // is specific for caching the A input matrix.
 #if SA == 0
-INLINE_FUNC realM GlobalToPrivateA(const __global realM* restrict agm, const int _mi,
+INLINE_FUNC realM GlobalToPrivateA(const __global memM* restrict agm, const int _mi,
                                    const int kSizeM, const int idk, const int kwg) {
   // Computes the indices based on strided/non-strided access
   #if STRM == 0
@@ -258,13 +306,27 @@ INLINE_FUNC realM GlobalToPrivateA(const __global realM* restrict agm, const int
   int idm = mg + GetGroupID0() * (MWG/VWM);
 
   // Loads the data from global memory (not transposed) and stores into registers
+#ifdef USE_HALF
+  #if VWM == 1
+    return vloada_half(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #elif VWM == 2
+    return vloada_half2(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #elif VWM == 4
+    return vloada_half4(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #elif VWM == 8
+    return vloada_half8(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #elif VWM == 16
+    return vloada_half16(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #endif
+#else
   return agm[idk*(kSizeM/VWM) + idm];
+#endif
 }
 #endif
 
 // Same as above, but now for the B input matrix
 #if SB == 0
-INLINE_FUNC realN GlobalToPrivateB(const __global realN* restrict bgm, const int _ni,
+INLINE_FUNC realN GlobalToPrivateB(const __global memN* restrict bgm, const int _ni,
                                    const int kSizeN, const int idk) {
   // Computes the indices based on strided/non-strided access
   #if STRN == 0
@@ -277,7 +339,21 @@ INLINE_FUNC realN GlobalToPrivateB(const __global realN* restrict bgm, const int
   int idn = ng + GetGroupID1() * (NWG/VWN);
 
   // Loads the data from global memory (transposed) and stores into registers
+#ifdef USE_HALF
+  #if VWN == 1
+    return vloada_half(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #elif VWN == 2
+    return vloada_half2(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #elif VWN == 4
+    return vloada_half4(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #elif VWN == 8
+    return vloada_half8(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #elif VWN == 16
+    return vloada_half16(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #endif
+#else
   return bgm[idk*(kSizeN/VWN) + idn];
+#endif
 }
 #endif
 
@@ -286,25 +362,54 @@ INLINE_FUNC realN GlobalToPrivateB(const __global realN* restrict bgm, const int
 // Caches on-chip local memory into per-thread private memory (registers). This function is specific
 // for caching the A input matrix.
 #if SA == 1
-INLINE_FUNC realM LocalToPrivateA(LOCAL_PTR realM* alm, const int _mi, const int kg) {
+INLINE_FUNC realM LocalToPrivateA(LOCAL_PTR memM* alm, const int _mi, const int kg) {
   #if STRM == 0
     int mg = _mi + get_local_id(0)*(MWI/VWM);
   #elif STRM == 1
     int mg = get_local_id(0) + _mi*MDIMC;
   #endif
+#ifdef USE_HALF
+  #if VWM == 1
+    return vloada_half(kg*(MWG/VWM) + mg, (LOCAL_PTR half*)alm);
+  #elif VWM == 2
+    return vloada_half2(kg*(MWG/VWM) + mg, (LOCAL_PTR half*)alm);
+  #elif VWM == 4
+    return vloada_half4(kg*(MWG/VWM) + mg, (LOCAL_PTR half*)alm);
+  #elif VWM == 8
+    return vloada_half8(kg*(MWG/VWM) + mg, (LOCAL_PTR half*)alm);
+  #elif VWM == 16
+    return vloada_half16(kg*(MWG/VWM) + mg, (LOCAL_PTR half*)alm);
+  #endif
+#else
   return alm[kg*(MWG/VWM) + mg];
+#endif
 }
 #endif
 
 // Same as above, but now for the B input matrix
 #if SB == 1
-INLINE_FUNC realN LocalToPrivateB(LOCAL_PTR realN* blm, const int _ni, const int kg) {
+INLINE_FUNC realN LocalToPrivateB(LOCAL_PTR memN* blm, const int _ni, const int kg) {
   #if STRN == 0
     int ng = _ni + get_local_id(1)*(NWI/VWN);
   #elif STRN == 1
     int ng = get_local_id(1) + _ni*NDIMC;
   #endif
+
+#ifdef USE_HALF
+  #if VWN == 1
+    return vloada_half(kg*(NWG/VWN) + ng, (LOCAL_PTR half*)blm);
+  #elif VWN == 2
+    return vloada_half2(kg*(NWG/VWN) + ng, (LOCAL_PTR half*)blm);
+  #elif VWN == 4
+    return vloada_half4(kg*(NWG/VWN) + ng, (LOCAL_PTR half*)blm);
+  #elif VWN == 8
+    return vloada_half8(kg*(NWG/VWN) + ng, (LOCAL_PTR half*)blm);
+  #elif VWN == 16
+    return vloada_half16(kg*(NWG/VWN) + ng, (LOCAL_PTR half*)blm);
+  #endif
+#else
   return blm[kg*(NWG/VWN) + ng];
+#endif
 }
 #endif
 

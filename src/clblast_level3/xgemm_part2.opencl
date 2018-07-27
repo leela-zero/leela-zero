@@ -66,7 +66,7 @@ INLINE_FUNC realM MultiplyAddVector(realM cvec, const realM avec, const real bva
 // =================================================================================================
 
 // Merges the results in Cpm with the global array in Cgm.
-INLINE_FUNC void StoreResults(__global realM* cgm, realM cpm[NWI*MWI/VWM], const int kSizeM) {
+INLINE_FUNC void StoreResults(__global memM* cgm, realM cpm[NWI*MWI/VWM], const int kSizeM) {
   #pragma unroll
   for (int _ni = 0; _ni < NWI; _ni += 1) {
     #pragma unroll
@@ -85,8 +85,21 @@ INLINE_FUNC void StoreResults(__global realM* cgm, realM cpm[NWI*MWI/VWM], const
       int idn = ng + GetGroupID1() * NWG;
       int index = idn*(kSizeM/VWM) + idm;
 
+#ifdef USE_HALF
+#if VWM == 1
+      vstorea_half(cpm[_ni * (MWI/VWM) + _mi], index, (__global half*)cgm);
+#elif VWM == 2
+      vstorea_half2(cpm[_ni * (MWI/VWM) + _mi], index, (__global half*)cgm);
+#elif VWM == 4
+      vstorea_half4(cpm[_ni * (MWI/VWM) + _mi], index, (__global half*)cgm);
+#elif VWM == 8
+      vstorea_half8(cpm[_ni * (MWI/VWM) + _mi], index, (__global half*)cgm);
+#elif VWM == 16
+      vstorea_half16(cpm[_ni * (MWI/VWM) + _mi], index, (__global half*)cgm);
+#endif
+#else
       cgm[index] = cpm[_ni * (MWI/VWM) + _mi];
-
+#endif
     }
   }
 }
