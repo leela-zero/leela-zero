@@ -496,19 +496,12 @@ __kernel void out_transform_fused_bn_in(
 )";
 
 const std::string sourceCode_sgemm =
-"#ifdef USE_HALF\n"
-    #include "clblast_level3_half/common.opencl"
-    #include "clblast_level3_half/xgemm_part1.opencl"
-    #include "clblast_level3_half/xgemm_part2.opencl"
-    #include "clblast_level3_half/xgemm_part3.opencl"
-    #include "clblast_level3_half/xgemm_batched.opencl"
-"#else\n"
     #include "clblast_level3/common.opencl"
     #include "clblast_level3/xgemm_part1.opencl"
     #include "clblast_level3/xgemm_part2.opencl"
     #include "clblast_level3/xgemm_part3.opencl"
     #include "clblast_level3/xgemm_batched.opencl"
-"#endif\n";
+;
 
 template <typename net_t>
 void OpenCL<net_t>::ensure_context_initialized(OpenCLContext &opencl_context) {
