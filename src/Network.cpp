@@ -393,10 +393,12 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
                 to_init.emplace_back(fp16net.get());
                 m_forward = std::make_unique<OpenCLScheduler<float>>();
             }
+            break;
             case precision_t::SINGLE: {
                 myprintf("Initializing OpenCL (single precision).\n");
                 m_forward = std::make_unique<OpenCLScheduler<float>>();
             }
+            break;
             case precision_t::HALF: {
                 myprintf("Initializing OpenCL (half precision).\n");
                 m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
