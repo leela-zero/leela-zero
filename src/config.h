@@ -34,12 +34,10 @@
  * BOARD_SIZE: Define size of the board to compile Leela with, must be an odd
    number due to winograd tiles
  */
-#define BOARD_SIZE 19
-#define BOARD_SQUARES (BOARD_SIZE*BOARD_SIZE)
+static constexpr auto BOARD_SIZE = 19;
+static_assert(BOARD_SIZE % 2 == 1, "Code assumes odd board size, remove at your own risk!");
 
-#if (BOARD_SIZE % 2 == 0)
-#error Code assumes odd board size, remove at your own risk!
-#endif
+static constexpr auto BOARD_SQUARES = BOARD_SIZE * BOARD_SIZE;
 
 /*
  * Features
@@ -88,11 +86,8 @@
 
 /* Maximum supported batch size for OpenCL.
  */
-#define MAX_BATCH 1
-
-#if (MAX_BATCH != 1)
-#error "MAX_BATCH != 1 not implemented"
-#endif
+static constexpr auto MAX_BATCH = 1;
+static_assert(MAX_BATCH == 1, "MAX_BATCH != 1 not implemented");
 
 /*
  * USE_TUNER: Expose some extra command line parameters that allow tuning the
@@ -100,17 +95,17 @@
  */
 //#define USE_TUNER
 
-#define PROGRAM_NAME "Leela Zero"
-#define PROGRAM_VERSION "0.15"
+static constexpr auto PROGRAM_NAME = "Leela Zero";
+static constexpr auto PROGRAM_VERSION = "0.15";
 
 /*
  * OpenBLAS limitation: the default configuration on some Linuxes
  * is limited to 64 cores.
  */
 #if defined(USE_BLAS) && defined(USE_OPENBLAS)
-#define MAX_CPUS 64
+static constexpr auto MAX_CPUS = 64;
 #else
-#define MAX_CPUS 128
+static constexpr auto MAX_CPUS = 128;
 #endif
 
 #ifdef USE_HALF
@@ -121,7 +116,7 @@
 // If both BLAS and OpenCL are fully usable, then check the OpenCL
 // results against BLAS with some probability.
 #define USE_OPENCL_SELFCHECK
-#define SELFCHECK_PROBABILITY 2000
+static constexpr auto SELFCHECK_PROBABILITY = 2000;
 #endif
 
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */
