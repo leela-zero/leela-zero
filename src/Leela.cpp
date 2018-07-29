@@ -207,11 +207,7 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (!vm["threads"].defaulted()) {
         auto num_threads = vm["threads"].as<int>();
-        if (num_threads > cfg_max_threads) {
-            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
-        } else if (num_threads != cfg_num_threads) {
-            cfg_num_threads = num_threads;
-        }
+        cfg_num_threads = num_threads;
     }
     myprintf("Using %d thread(s).\n", cfg_num_threads);
 

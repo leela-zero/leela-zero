@@ -92,6 +92,8 @@ void GTP::setup_default_parameters() {
     cfg_max_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
 #ifdef USE_OPENCL
     // If we will be GPU limited, using many threads won't help much.
+    // Multi-GPU is a different story, but we will assume that those people
+    // who do those stuff will know what they are doing.
     cfg_num_threads = std::min(2, cfg_max_threads);
 #else
     cfg_num_threads = cfg_max_threads;

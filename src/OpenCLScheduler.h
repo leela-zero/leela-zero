@@ -23,6 +23,7 @@
 #include <list>
 #include <vector>
 
+#include "SMP.h"
 #include "ForwardPipe.h"
 #include "OpenCL.h"
 #include "ThreadPool.h"
@@ -71,8 +72,7 @@ private:
     using ContextPoolQueue = std::list<std::shared_ptr<ContextPoolEntry>>;
     std::vector<ContextPoolQueue> m_context_pool;
 
-    std::mutex m_context_pool_lock;
-    std::condition_variable m_context_pool_condvar;
+    SMP::Mutex m_context_pool_mutex;
 };
 
 #endif
