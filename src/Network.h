@@ -73,6 +73,8 @@ public:
     static constexpr auto OUTPUTS_VALUE = 1;
 
     void initialize(int playouts, const std::string & weightsfile);
+
+    float benchmark_time(int centiseconds);
     void benchmark(const GameState * const state,
                    const int iterations = 1600);
     static void show_heatmap(const FastState * const state,

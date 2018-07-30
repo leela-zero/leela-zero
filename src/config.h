@@ -74,11 +74,11 @@ static constexpr auto BOARD_SQUARES = BOARD_SIZE * BOARD_SIZE;
 
 /*
  * USE_HALF: Include the half-precision OpenCL implementation when building.
- * This does not enable half-precision by default, it just compiles
- * half-precision support.  You have to use the command line
- * argument --use-half explicitly to enable half-precision.
+ * The current implementation autodetects whether half-precision is better
+ * or single-precision is better (half precision is chosen if it's 5% faster)
  * Half-precision OpenCL gains performance on some GPUs while losing some
- * accuracy on the calculation, so please test strength before enabling it.
+ * accuracy on the calculation, but generally it is worth using half precision
+ * if it is at least 5% faster.
  */
 #define USE_HALF
 
