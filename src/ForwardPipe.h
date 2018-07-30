@@ -16,8 +16,8 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef FORWARD_PIPE_H_INCLUDED
-#define FORWARD_PIPE_H_INCLUDED
+#ifndef FORWARDPIPE_H_INCLUDED
+#define FORWARDPIPE_H_INCLUDED
 
 #include <vector>
 
