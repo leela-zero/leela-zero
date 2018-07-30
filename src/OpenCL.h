@@ -211,5 +211,6 @@ private:
 };
 
 extern const std::string sourceCode_sgemm;
+extern const std::string sourceCode_common;
 
 #endif
