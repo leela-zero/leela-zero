@@ -40,8 +40,9 @@ extern int cfg_resignpct;
 
 extern float cfg_max_wr;
 extern float cfg_min_wr;
-extern float cfg_mid_wr;
-extern float cfg_adj_playouts;
+extern float cfg_wr_margin;
+extern float cfg_target_komi;
+extern int cfg_adj_playouts;
 
 extern int cfg_noise;
 extern int cfg_random_cnt;

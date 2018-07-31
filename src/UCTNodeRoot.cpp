@@ -181,7 +181,6 @@ void UCTNode::inflate_all_children() {
 
 
 const int cfg_steps = 8;
-const float target_komi = 7.5f;
 
 float white_net_eval(GameState root_state) {
     //auto net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
@@ -198,35 +197,35 @@ float inv_wr(float wr) {
     return -log(1.0 / wr - 1.0) / 2.0;
 }
 
-void binary_search_komi(GameState& root_state, float shift, float high, float low, int steps) {
+void binary_search_komi(GameState& root_state, float shift, float high, float low, int steps, bool up) {
     while (steps-- > 0) {
-        root_state.m_komi = (high + low) / 2.0;
+        root_state.m_stm_komi = (high + low) / 2.0;
         auto net_eval = white_net_eval(root_state);
-        if (inv_wr(net_eval) + shift > inv_wr(cfg_mid_wr)) {
-            high = root_state.m_komi;
+        if (inv_wr(net_eval) + shift > inv_wr(up? cfg_min_wr + cfg_wr_margin : cfg_max_wr - cfg_wr_margin)) {
+            high = root_state.m_stm_komi;
         }
         else {
-            low = root_state.m_komi;
+            low = root_state.m_stm_komi;
         }
     }
-    root_state.m_komi = low;
+    root_state.m_stm_komi = low;
 }
 
 void adjust_up_komi(GameState& root_state, float shift) {
 	float net_eval;
 	do {
-		root_state.m_komi = 2.0f * root_state.m_komi - (target_komi - 7.5f);
+		root_state.m_stm_komi = 2.0f * root_state.m_stm_komi - (cfg_target_komi - 7.5f);
         net_eval = white_net_eval(root_state);
-	} while (inv_wr(net_eval) + shift < inv_wr(cfg_mid_wr));
-	binary_search_komi(root_state, shift, root_state.m_komi, (root_state.m_komi + target_komi - 7.5f) / 2.0f, cfg_steps);
+	} while (inv_wr(net_eval) + shift < inv_wr(cfg_min_wr + cfg_wr_margin));
+	binary_search_komi(root_state, shift, root_state.m_stm_komi, (root_state.m_stm_komi + cfg_target_komi - 7.5f) / 2.0f, cfg_steps, true);
 }
 
 void adjust_down_komi(GameState& root_state, float shift) {
-	auto komi = root_state.m_komi;
-	root_state.m_komi = target_komi;
+	auto komi = root_state.m_stm_komi;
+	root_state.m_stm_komi = cfg_target_komi;
 	auto net_eval = white_net_eval(root_state);
-	if (inv_wr(net_eval) + shift < inv_wr(cfg_mid_wr)) {
-		binary_search_komi(root_state, shift, komi, target_komi, cfg_steps);
+	if (inv_wr(net_eval) + shift < inv_wr(cfg_max_wr - cfg_wr_margin)) {
+		binary_search_komi(root_state, shift, komi, cfg_target_komi, cfg_steps, false);
 	}
 }
 
@@ -235,10 +234,10 @@ void adjust_komi(GameState& root_state, float root_eval, bool opp) { //, float r
     auto shift = inv_wr(root_eval) - inv_wr(net_eval); //0.0f; root_eval = net_eval;
     Utils::myprintf("%f, %f, %f\n", root_eval, net_eval, shift);
     if (opp) {
-        if (root_eval < cfg_mid_wr) {
+        if (root_eval < cfg_min_wr + cfg_wr_margin) {
             adjust_up_komi(root_state, shift);
         }
-        else if (root_eval > cfg_mid_wr) {
+        else if (root_eval > cfg_max_wr - cfg_wr_margin) {
             adjust_down_komi(root_state, shift);
         }
     }
@@ -246,7 +245,7 @@ void adjust_komi(GameState& root_state, float root_eval, bool opp) { //, float r
         if (root_eval < cfg_min_wr) {
             adjust_up_komi(root_state, shift);
         }
-        else if (root_state.m_komi != target_komi && root_eval > cfg_max_wr) {
+        else if (root_state.m_stm_komi != cfg_target_komi && root_eval > cfg_max_wr) {
             //auto net_eval = white_net_eval(root_state);
             adjust_down_komi(root_state, shift);
         }
@@ -288,10 +287,10 @@ void UCTNode::prepare_root_node(int color,
     root_eval = get_pure_eval(color);
     auto white_root_eval = (color == FastBoard::BLACK ? 1.0 - root_eval : root_eval);
     //
-    auto komi = root_state.m_komi;
+    auto komi = root_state.m_stm_komi;
     adjust_komi(root_state, white_root_eval, false);
     search->sym_states.clear();
-    if (komi != root_state.m_komi) {
+    if (komi != root_state.m_stm_komi) {
         NNCache::get_NNCache().clear_cache();
         m_visits = 0;
         m_blackevals = 0.0;
@@ -304,26 +303,29 @@ void UCTNode::prepare_root_node(int color,
         inflate_all_children();
         kill_superkos(root_state);
 
-        komi = root_state.m_opp_komi;
-        if (root_state.m_komi == target_komi) {
-            root_state.m_opp_komi = target_komi;
+        auto opp_komi = root_state.m_opp_komi;
+        if (root_state.m_stm_komi == cfg_target_komi) {
+            root_state.m_opp_komi = cfg_target_komi;
         }
         else {
             GameState tmpstate = root_state;
             tmpstate.play_move(get_first_child()->get_move());
             adjust_komi(tmpstate, white_root_eval, true);
-            root_state.m_opp_komi = tmpstate.m_komi;
+            root_state.m_opp_komi = tmpstate.m_stm_komi;
         }
-        if (komi != root_state.m_opp_komi) {
+        if (opp_komi != root_state.m_opp_komi) {
             NNCache::get_NNCache().clear_cache();
         }
+        else {
+            root_state.m_stm_komi = komi;
+        }
     }
-    if (root_state.m_opp_komi == target_komi) {
-        root_state.m_komi = target_komi;
+    if (root_state.m_opp_komi == cfg_target_komi) {
+        root_state.m_stm_komi = cfg_target_komi;
     }
 
     Utils::myprintf("NN eval=%f\n", root_eval);
-    Utils::myprintf("komi=%f\n", root_state.m_komi);
+    Utils::myprintf("komi=%f\n", root_state.m_stm_komi);
     Utils::myprintf("opp_komi=%f\n", root_state.m_opp_komi);
 
     if (cfg_noise) {

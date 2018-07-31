@@ -86,7 +86,7 @@ bool UCTSearch::advance_to_new_rootstate() {
         return false;
     }
 
-    if (m_rootstate.get_komi() != m_last_rootstate->get_opp_komi() || m_rootstate.get_opp_komi() != m_last_rootstate->get_komi()) {
+    if (m_rootstate.get_stm_komi() != m_last_rootstate->get_opp_komi() || m_rootstate.get_opp_komi() != m_last_rootstate->get_stm_komi() || m_rootstate.get_komi() != m_last_rootstate->get_komi()) {
         return false;
     }
 

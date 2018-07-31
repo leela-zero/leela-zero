@@ -58,8 +58,9 @@ int cfg_resignpct;
 
 float cfg_max_wr;
 float cfg_min_wr;
-float cfg_mid_wr;
-float cfg_adj_playouts;
+float cfg_wr_margin;
+float cfg_target_komi;
+int cfg_adj_playouts;
 
 int cfg_noise;
 int cfg_random_cnt;
@@ -108,8 +109,9 @@ void GTP::setup_default_parameters() {
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
     cfg_max_wr = 0.12;
-    cfg_min_wr = 0.05;
-    cfg_mid_wr = 0.10;
+    cfg_min_wr = 0.08;
+    cfg_wr_margin = 0.02;
+    cfg_target_komi = 7.5f;
     cfg_adj_playouts = 100;
     cfg_noise = false;
     cfg_random_cnt = 0;
@@ -317,7 +319,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("komi") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        float komi = 7.5f;
+        float komi = cfg_target_komi;
         float old_komi = game.get_komi();
 
         cmdstream >> tmp;  // eat komi

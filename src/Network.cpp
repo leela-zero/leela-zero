@@ -1106,8 +1106,8 @@ std::vector<net_t> Network::gather_features(const GameState* const state,
                           begin(input_data);
     const auto black_to_move_it = begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES;
     const auto white_to_move_it = black_to_move_it + BOARD_SQUARES;
-    const net_t plus_komi = 0.5f + (state->get_komi()) / 15.0f;
-    const net_t minus_komi = 0.5f - (state->get_komi()) / 15.0f;
+    const net_t plus_komi = 0.5f + (state->get_stm_komi()) / 15.0f;
+    const net_t minus_komi = 0.5f - (state->get_stm_komi()) / 15.0f;
     const net_t black_komi = blacks_move ? plus_komi : minus_komi;
     const net_t white_komi = blacks_move ? minus_komi : plus_komi;
 
