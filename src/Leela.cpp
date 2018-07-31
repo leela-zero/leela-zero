@@ -205,8 +205,33 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_gtp_mode = true;
     }
 
+#ifdef USE_OPENCL
+    if (vm.count("gpu")) {
+        cfg_gpus = vm["gpu"].as<std::vector<int> >();
+        // if we use OpenCL, we probably need more threads for the max so that we can saturate the GPU.
+        cfg_max_threads *= cfg_gpus.size();
+    }
+
+    if (vm.count("full-tuner")) {
+        cfg_sgemm_exhaustive = true;
+    }
+
+    if (vm.count("tune-only")) {
+        cfg_tune_only = true;
+    }
+#ifdef USE_HALF
+    if (vm.count("use-half")) {
+        cfg_use_half = true;
+    }
+#endif
+#endif
+
     if (!vm["threads"].defaulted()) {
         auto num_threads = vm["threads"].as<int>();
+        if (num_threads > cfg_max_threads) {
+            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
+            num_threads = cfg_max_threads;
+        }
         cfg_num_threads = num_threads;
     }
     myprintf("Using %d thread(s).\n", cfg_num_threads);
@@ -305,27 +330,6 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_lagbuffer_cs = lagbuffer;
         }
     }
-
-#ifdef USE_OPENCL
-    if (vm.count("gpu")) {
-        cfg_gpus = vm["gpu"].as<std::vector<int> >();
-    }
-
-    if (vm.count("full-tuner")) {
-        cfg_sgemm_exhaustive = true;
-    }
-
-    if (vm.count("tune-only")) {
-        cfg_tune_only = true;
-    }
-
-#ifdef USE_HALF
-    if (vm.count("use-half")) {
-        cfg_use_half = true;
-    }
-#endif
-#endif
-
     if (vm.count("benchmark")) {
         // These must be set later to override default arguments.
         cfg_allow_pondering = false;
@@ -341,6 +345,7 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_max_visits = 3200; // Default to self-play and match values.
         }
     }
+
 
     auto out = std::stringstream{};
     for (auto i = 1; i < argc; i++) {
