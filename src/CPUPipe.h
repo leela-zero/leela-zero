@@ -16,8 +16,8 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef CPU_PIPE_H_INCLUDED
-#define CPU_PIPE_H_INCLUDED
+#ifndef CPUPIPE_H_INCLUDED
+#define CPUPIPE_H_INCLUDED
 #include "config.h"
 
 #include <vector>

@@ -16,8 +16,8 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef CONFIG_INCLUDED
-#define CONFIG_INCLUDED
+#ifndef CONFIG_H_INCLUDED
+#define CONFIG_H_INCLUDED
 
 /*
  * We need to check for input while we are thinking.
@@ -34,12 +34,10 @@
  * BOARD_SIZE: Define size of the board to compile Leela with, must be an odd
    number due to winograd tiles
  */
-#define BOARD_SIZE 19
-#define BOARD_SQUARES (BOARD_SIZE*BOARD_SIZE)
+static constexpr auto BOARD_SIZE = 19;
+static_assert(BOARD_SIZE % 2 == 1, "Code assumes odd board size, remove at your own risk!");
 
-#if (BOARD_SIZE % 2 == 0)
-#error Code assumes odd board size, remove at your own risk!
-#endif
+static constexpr auto BOARD_SQUARES = BOARD_SIZE * BOARD_SIZE;
 
 /*
  * Features
@@ -76,11 +74,11 @@
 
 /*
  * USE_HALF: Include the half-precision OpenCL implementation when building.
- * This does not enable half-precision by default, it just compiles
- * half-precision support.  You have to use the command line
- * argument --use-half explicitly to enable half-precision.
+ * The current implementation autodetects whether half-precision is better
+ * or single-precision is better (half precision is chosen if it's 5% faster)
  * Half-precision OpenCL gains performance on some GPUs while losing some
- * accuracy on the calculation, so please test strength before enabling it.
+ * accuracy on the calculation, but generally it is worth using half precision
+ * if it is at least 5% faster.
  */
 #define USE_HALF
 
@@ -88,11 +86,8 @@
 
 /* Maximum supported batch size for OpenCL.
  */
-#define MAX_BATCH 1
-
-#if (MAX_BATCH != 1)
-#error "MAX_BATCH != 1 not implemented"
-#endif
+static constexpr auto MAX_BATCH = 1;
+static_assert(MAX_BATCH == 1, "MAX_BATCH != 1 not implemented");
 
 /*
  * USE_TUNER: Expose some extra command line parameters that allow tuning the
@@ -100,17 +95,17 @@
  */
 //#define USE_TUNER
 
-#define PROGRAM_NAME "Leela Zero"
-#define PROGRAM_VERSION "0.15"
+static constexpr auto PROGRAM_NAME = "Leela Zero";
+static constexpr auto PROGRAM_VERSION = "0.15";
 
 /*
  * OpenBLAS limitation: the default configuration on some Linuxes
  * is limited to 64 cores.
  */
 #if defined(USE_BLAS) && defined(USE_OPENBLAS)
-#define MAX_CPUS 64
+static constexpr auto MAX_CPUS = 64;
 #else
-#define MAX_CPUS 128
+static constexpr auto MAX_CPUS = 128;
 #endif
 
 #ifdef USE_HALF
@@ -121,7 +116,7 @@
 // If both BLAS and OpenCL are fully usable, then check the OpenCL
 // results against BLAS with some probability.
 #define USE_OPENCL_SELFCHECK
-#define SELFCHECK_PROBABILITY 2000
+static constexpr auto SELFCHECK_PROBABILITY = 2000;
 #endif
 
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */

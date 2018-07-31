@@ -205,23 +205,7 @@ int UCTNode::get_visits() const {
     return m_visits;
 }
 
-// Return the true evaluation, without taking into account virtual losses.
-float UCTNode::get_pure_eval(int tomove) const {
-    auto visits = get_visits();
-    assert(visits > 0);
-    auto blackeval = get_blackevals();
-    auto eval = static_cast<float>(blackeval / double(visits));
-    if (tomove == FastBoard::WHITE) {
-        eval = 1.0f - eval;
-    }
-    return eval;
-}
-
-float UCTNode::get_eval(int tomove) const {
-    // Due to the use of atomic updates and virtual losses, it is
-    // possible for the visit count to change underneath us. Make sure
-    // to return a consistent result to the caller by caching the values.
-    auto virtual_loss = int{m_virtual_loss};
+float UCTNode::get_raw_eval(int tomove, int virtual_loss) const {
     auto visits = get_visits() + virtual_loss;
     assert(visits > 0);
     auto blackeval = get_blackevals();
@@ -233,6 +217,13 @@ float UCTNode::get_eval(int tomove) const {
         eval = 1.0f - eval;
     }
     return eval;
+}
+
+float UCTNode::get_eval(int tomove) const {
+    // Due to the use of atomic updates and virtual losses, it is
+    // possible for the visit count to change underneath us. Make sure
+    // to return a consistent result to the caller by caching the values.
+    return get_raw_eval(tomove, m_virtual_loss);
 }
 
 float UCTNode::get_net_eval(int tomove) const {

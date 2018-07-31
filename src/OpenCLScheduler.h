@@ -16,8 +16,8 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPENCL_SCHEDULER_H_INCLUDED
-#define OPENCL_SCHEDULER_H_INCLUDED
+#ifndef OPENCLSCHEDULER_H_INCLUDED
+#define OPENCLSCHEDULER_H_INCLUDED
 #include "config.h"
 
 #include <list>

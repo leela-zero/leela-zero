@@ -260,7 +260,7 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: %s\n",
             move.c_str(),
             node->get_visits(),
-            node->get_visits() ? node->get_pure_eval(color)*100.0f : 0.0f,
+            node->get_visits() ? node->get_raw_eval(color)*100.0f : 0.0f,
             node->get_policy() * 100.0f,
             pv.c_str());
     }
@@ -286,7 +286,7 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         tmpstate.play_move(node->get_move());
         std::string pv = move + " " + get_pv(tmpstate, *node);
         auto move_eval = node->get_visits() ?
-                         static_cast<int>(node->get_pure_eval(color) * 10000) : 0;
+                         static_cast<int>(node->get_raw_eval(color) * 10000) : 0;
         // Store data in array
         sortable_data.emplace_back(move, node->get_visits(), move_eval, pv);
 
@@ -414,7 +414,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     assert(first_child != nullptr);
 
     auto bestmove = first_child->get_move();
-    auto besteval = first_child->first_visit() ? 0.5f : first_child->get_pure_eval(color);
+    auto besteval = first_child->first_visit() ? 0.5f : first_child->get_raw_eval(color);
 
     // do we want to fiddle with the best move because of the rule set?
     if (passflag & UCTSearch::NOPASS) {
@@ -428,7 +428,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 if (nopass->first_visit()) {
                     besteval = 1.0f;
                 } else {
-                    besteval = nopass->get_pure_eval(color);
+                    besteval = nopass->get_raw_eval(color);
                 }
             } else {
                 myprintf("Pass is the only acceptable move.\n");
@@ -467,7 +467,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                     if (nopass->first_visit()) {
                         besteval = 1.0f;
                     } else {
-                        besteval = nopass->get_pure_eval(color);
+                        besteval = nopass->get_raw_eval(color);
                     }
                 } else {
                     myprintf("No alternative to passing.\n");
@@ -479,7 +479,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 // Find a valid non-pass move.
                 const auto nopass = m_root->get_nopass_child(m_rootstate);
                 if (nopass != nullptr && !nopass->first_visit()) {
-                    const auto nopass_eval = nopass->get_pure_eval(color);
+                    const auto nopass_eval = nopass->get_raw_eval(color);
                     if (nopass_eval > 0.5f) {
                         myprintf("Avoiding pass because there could be a winning alternative.\n");
                         bestmove = nopass->get_move();
@@ -552,7 +552,7 @@ void UCTSearch::dump_analysis(int playouts) {
     int color = tempstate.board.get_to_move();
 
     std::string pvstring = get_pv(tempstate, *m_root);
-    float winrate = 100.0f * m_root->get_pure_eval(color);
+    float winrate = 100.0f * m_root->get_raw_eval(color);
     myprintf("Playouts: %d, Win: %5.2f%%, PV: %s\n",
              playouts, winrate, pvstring.c_str());
 }
