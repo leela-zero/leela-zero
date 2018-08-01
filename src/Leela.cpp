@@ -81,10 +81,15 @@ static void parse_commandline(int argc, char *argv[]) {
         ("noponder", "Disable thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
-        ("max-wr", po::value<float>()->default_value(cfg_max_wr), "Maximal white winrate.")
-        ("min-wr", po::value<float>()->default_value(cfg_min_wr), "Minimal white winrate.")
-        ("wr-margin", po::value<float>()->default_value(cfg_wr_margin), "Adjust white winrate to min+margin or max-margin.")
-        ("adj-playouts", po::value<int>()->default_value(cfg_adj_playouts), "Number of playouts for komi adjustment.")
+        ("handicap", "Handicap mode.")
+        ("nonslack", "Non-slack mode.")
+        ("max-wr", po::value<float>(), "Maximal white winrate.")
+        ("min-wr", po::value<float>(), "Minimal white winrate.")
+        ("wr-margin", po::value<float>(), "Adjust white winrate to min+margin or max-margin.")
+        ("target-komi", po::value<float>(), "Target komi.")
+        ("adj-playouts", po::value<int>(), "Number of playouts for komi adjustment.")
+        ("pos", "Use positive komi (for side-to-move) only.")
+        ("neg", "Use negative komi only.")
         ;
 #ifdef USE_OPENCL
     po::options_description gpu_desc("GPU options");
@@ -175,6 +180,21 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_quiet = true;  // Set this early to avoid unnecessary output.
     }
 
+    if (vm.count("handicap")) {
+        cfg_dyn_komi = true;
+        cfg_max_wr = 0.12;
+        cfg_min_wr = 0.08;
+        cfg_wr_margin = 0.02;
+    }
+
+    if (vm.count("nonslack")) {
+        cfg_dyn_komi = true;
+        cfg_max_wr = 0.9;
+        cfg_min_wr = 0.1;
+        cfg_wr_margin = 0.1;
+        cfg_target_komi = -500;
+    }
+
     if (vm.count("max-wr")) {
         cfg_max_wr = vm["max-wr"].as<float>();
         if (cfg_max_wr > 1.0) {
@@ -193,8 +213,20 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_wr_margin = vm["wr-margin"].as<float>();
     }
 
+    if (vm.count("target-komi")) {
+        cfg_target_komi = vm["target-komi"].as<float>();
+    }
+
     if (vm.count("adj-playouts")) {
         cfg_adj_playouts = vm["adj-playouts"].as<int>();
+    }
+
+    if (vm.count("pos")) {
+        cfg_pos = true;
+    }
+
+    if (vm.count("neg")) {
+        cfg_neg = true;
     }
 
 #ifdef USE_TUNER

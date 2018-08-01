@@ -56,11 +56,14 @@ TimeManagement::enabled_t cfg_timemanage;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
 
+bool cfg_dyn_komi;
 float cfg_max_wr;
 float cfg_min_wr;
 float cfg_wr_margin;
 float cfg_target_komi;
 int cfg_adj_playouts;
+bool cfg_pos;
+bool cfg_neg;
 
 int cfg_noise;
 int cfg_random_cnt;
@@ -108,11 +111,13 @@ void GTP::setup_default_parameters() {
     cfg_fpu_reduction = 0.25f;
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
-    cfg_max_wr = 0.12;
-    cfg_min_wr = 0.08;
-    cfg_wr_margin = 0.02;
+
+    cfg_dyn_komi = false;
     cfg_target_komi = 7.5f;
     cfg_adj_playouts = 100;
+    cfg_pos = false;
+    cfg_neg = false;
+
     cfg_noise = false;
     cfg_random_cnt = 0;
     cfg_random_min_visits = 1;

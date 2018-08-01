@@ -227,7 +227,12 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             //const auto success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
 
             if (!had_children && success) {
-                result = SearchResult::from_eval(eval);
+                if (currstate.eval_invalid()) {
+                    //result = play_simulation(currstate, node);
+                }
+                else {
+                    result = SearchResult::from_eval(eval);
+                }
             }
         }
     }

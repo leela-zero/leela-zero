@@ -38,11 +38,14 @@ extern TimeManagement::enabled_t cfg_timemanage;
 extern int cfg_lagbuffer_cs;
 extern int cfg_resignpct;
 
+extern bool cfg_dyn_komi;
 extern float cfg_max_wr;
 extern float cfg_min_wr;
 extern float cfg_wr_margin;
 extern float cfg_target_komi;
 extern int cfg_adj_playouts;
+extern bool cfg_pos;
+extern bool cfg_neg;
 
 extern int cfg_noise;
 extern int cfg_random_cnt;
