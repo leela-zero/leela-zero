@@ -46,6 +46,13 @@ extern float cfg_target_komi;
 extern int cfg_adj_playouts;
 extern bool cfg_pos;
 extern bool cfg_neg;
+extern bool cfg_nonslack;
+extern bool cfg_sure_backup;
+extern bool cfg_noshift;
+extern bool cfg_use_symmetries;
+extern bool cfg_orig_policy;
+extern bool cfg_dyn_fpu;
+extern bool cfg_backup_fpu;
 
 extern int cfg_noise;
 extern int cfg_random_cnt;

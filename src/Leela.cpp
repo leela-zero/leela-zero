@@ -83,6 +83,12 @@ static void parse_commandline(int argc, char *argv[]) {
                       "-m0 -t1 -s1.")
         ("handicap", "Handicap mode.")
         ("nonslack", "Non-slack mode.")
+        ("sure-backup", "")
+        ("use-shift", "")
+        ("use-no-symmetries", "")
+        ("adjusted-policy", "")
+        ("no-dyn-fpu", "")
+        ("no-backup-fpu", "")
         ("max-wr", po::value<float>(), "Maximal white winrate.")
         ("min-wr", po::value<float>(), "Minimal white winrate.")
         ("wr-margin", po::value<float>(), "Adjust white winrate to min+margin or max-margin.")
@@ -185,6 +191,8 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_max_wr = 0.12;
         cfg_min_wr = 0.08;
         cfg_wr_margin = 0.02;
+        //cfg_target_komi = 0.0;
+        cfg_dyn_fpu = true;
     }
 
     if (vm.count("nonslack")) {
@@ -192,7 +200,32 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_max_wr = 0.9;
         cfg_min_wr = 0.1;
         cfg_wr_margin = 0.1;
-        cfg_target_komi = -500;
+        cfg_nonslack = true;
+        cfg_dyn_fpu = true;
+    }
+
+    if (vm.count("sure-backup")) {
+        cfg_sure_backup = true;
+    }
+
+    if (vm.count("use-shift")) {
+        cfg_noshift = false;
+    }
+
+    if (vm.count("use-no-symmetries")) {
+        cfg_use_symmetries = false;
+    }
+
+    if (vm.count("adjusted-policy")) {
+        cfg_orig_policy = false;
+    }
+    
+    if (vm.count("no-dyn-fpu")) {
+        cfg_dyn_fpu = false;
+    }
+
+    if (vm.count("no-backup-fpu")) {
+        cfg_backup_fpu = false;
     }
 
     if (vm.count("max-wr")) {

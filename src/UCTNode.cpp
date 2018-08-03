@@ -86,16 +86,18 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         raw_netlist = Network::get_scored_moves(&state, Network::Ensemble::DIRECT, symmetry);
     }
 
-    // DCNN returns winrate as side to move
-    m_net_eval = raw_netlist.winrate;
-    const auto to_move = state.board.get_to_move();
-    // our search functions evaluate from black's point of view
-    if (state.board.white_to_move()) {
-        m_net_eval = 1.0f - m_net_eval;
+    if (!state.eval_invalid()) {
+        // DCNN returns winrate as side to move
+        m_net_eval = raw_netlist.winrate;
+        // our search functions evaluate from black's point of view
+        if (state.board.white_to_move()) {
+            m_net_eval = 1.0f - m_net_eval;
+        }
     }
     eval = m_net_eval;
-
+    
     std::vector<Network::ScoreVertexPair> nodelist;
+    const auto to_move = state.board.get_to_move();
 
     auto legal_sum = 0.0f;
     for (auto i = 0; i < BOARD_SQUARES; i++) {
@@ -190,6 +192,18 @@ void UCTNode::update(float eval) {
     accumulate_eval(eval);
 }
 
+////
+float UCTNode::replacement_eval(float eval) {
+    LOCK(get_mutex(), lock);
+    if (m_visits == 1) {
+        return 2.0f * eval - m_net_eval;
+    }
+    else {
+        return eval;
+    }
+}
+
+
 bool UCTNode::has_children() const {
     return m_min_psa_ratio_children <= 1.0f;
 }
@@ -279,7 +293,8 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
     }
     // Estimated eval for unknown nodes = original parent NN eval - reduction
-    auto fpu_eval = get_net_eval(color) - fpu_reduction;
+    auto parent_eval = (cfg_dyn_fpu && get_visits() > 0) ? get_pure_eval(color) : get_net_eval(color);
+    auto fpu_eval = parent_eval - fpu_reduction;
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
@@ -307,7 +322,16 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 
     assert(best != nullptr);
     best->inflate();
-    return best->get();
+    auto best_node = best->get();
+    if (best_node->get_net_eval(FastBoard::BLACK) == -100.0f) {
+        if (cfg_backup_fpu) {
+            best_node->set_net_eval(color == FastBoard::BLACK ? fpu_eval : 1.0f - fpu_eval);
+        }
+        else {
+            best_node->set_net_eval(color == FastBoard::BLACK ? parent_eval : 1.0f - parent_eval);
+        }
+    }
+    return best_node;
 }
 
 class NodeComp : public std::binary_function<UCTNodePointer&,

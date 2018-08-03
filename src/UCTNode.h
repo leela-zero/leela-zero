@@ -71,9 +71,12 @@ public:
     float get_eval(int tomove) const;
     float get_pure_eval(int tomove) const;
     float get_net_eval(int tomove) const;
+    void set_net_eval(float eval) { m_net_eval = eval; }
     void virtual_loss(void);
     void virtual_loss_undo(void);
     void update(float eval);
+    float replacement_eval(float eval);
+    void clear(std::atomic<int>& nodes, GameState& root_state, float& eval);
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch
     void randomize_first_proportionally();
@@ -112,7 +115,7 @@ private:
     // UCT eval
     float m_score;
     // Original net eval for this node (not children).
-    float m_net_eval{0.0f};
+    float m_net_eval{-100.0f};
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
     // Is someone adding scores to this node?
