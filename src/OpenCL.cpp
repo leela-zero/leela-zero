@@ -55,452 +55,30 @@ template <> std::string getClArgs<half_float::half>() {
 }
 #endif
 
-static std::string sourceCode_config = R"(
-#ifdef USE_HALF
-    typedef half net_t;
-    #define vload_net_t(offset,p) vload_half(offset,p)
-    #define vstore_net_t(data,offset,p) vstore_half(data,offset,p)
-#else
-    typedef float net_t;
-    #define vload_net_t(offset,p) ((p)[(offset)])
-    #define vstore_net_t(data,offset,p) (((p)[(offset)])=(data))
-#endif
-    #define BOARD_SIZE )" + std::to_string(BOARD_SIZE) +
-    "\n    #define BOARD_SQUARES " + std::to_string(BOARD_SQUARES);
+const std::string sourceCode_common =
+    #include "kernels/common.opencl"
+;
 
-static std::string winograd_defines = \
-R"(#define SQ2 (1.4142135623730951f)
-#define WINOGRAD_M )" + std::to_string(WINOGRAD_M) +
+static const std::string sourceCode_config = R"(
+#define BOARD_SIZE )" + std::to_string(BOARD_SIZE) +
+"\n#define BOARD_SQUARES " + std::to_string(BOARD_SQUARES) +
+"\n#define WINOGRAD_M " + std::to_string(WINOGRAD_M) +
 "\n#define WINOGRAD_ALPHA " + std::to_string(WINOGRAD_ALPHA) +
 "\n#define WTILES " + std::to_string(WINOGRAD_WTILES);
 
-static std::string sourceCode_convolve1 = R"(
-    __kernel
-    __attribute__((work_group_size_hint(8, 16, 1)))
-    void convolve1(
-                   __global const net_t * restrict in,
-                   __global net_t * restrict merge,
-                   __global const net_t * restrict weights,
-                   __local float * channel_buff,
-                   __local float * row_buff) {
+static const std::string sourceCode_convolve1 =
+    #include "kernels/convolve1.opencl"
+;
 
-        // cl::NDRange global(channels, outputs, row);
-        const int c   = get_global_id(0);  // channel
-        const int o   = get_global_id(1);  // output
-        const int row_batch = get_global_id(2);  // row * batch_size
-
-        const int row = row_batch % BOARD_SIZE;
-        const int batch = row_batch / BOARD_SIZE;
-
-        const int channels = get_global_size(0);
-        const int outputs  = get_global_size(1);
-
-        const int input_offset = batch * BOARD_SQUARES * channels;
-        const int merge_offset = batch * BOARD_SQUARES * (channels >> 3) * outputs;
-
-        // cl::NDRange local(2, (1->32), 1);
-        const int lx = get_local_id(0);
-        const int ly = get_local_id(1);
-        const int chan_buff_size = 8;
-        const int out_buff_size  = get_local_size(1);
-        const int row_buff_size  = 7;
-        const int chan_shift     = 3;
-        // input = channels * height * width
-        // output = outputs * height * width
-        // weights = output * channels * filter
-        // merge = channels * outputs * height * width
-        const int width = BOARD_SIZE;
-        const int height = BOARD_SIZE;
-        const int strip_size = width;
-        // Copy the input channels (strips) locally
-        if (out_buff_size < BOARD_SIZE && ly == 0) {
-            // strip-row
-            for (int w = 0; w < width; w++) {
-                channel_buff[lx * width + w] =
-                    vload_net_t((c * height + row) * width + w + input_offset, in);
-            }
-        } else if (out_buff_size >= BOARD_SIZE && ly < BOARD_SIZE) {
-            // Every thread copies a column
-            channel_buff[lx * width + ly] = vload_net_t((c * height + row) * width +
-                ly + input_offset, in);
-        }
-        // Copy the filter we are applying locally
-        __private float filter_buff = vload_net_t((o * channels + c), weights);
-        barrier(CLK_LOCAL_MEM_FENCE);
-        int out_lane = 0;
-        int out_cw   = 0;
-        #pragma unroll
-        for (int cw = 0; cw < width; cw++) {
-            int fid = lx * strip_size;
-            float out  = channel_buff[fid + cw] * filter_buff;
-            row_buff[(ly * chan_buff_size + lx) * row_buff_size + out_lane] = out;
-            out_lane++;
-            // Row buffer full or last lane?
-            if (out_lane == row_buff_size || (cw == width - 1)) {
-                barrier(CLK_LOCAL_MEM_FENCE);
-                if (lx < out_lane) {
-                    float val;
-                    val  = row_buff[(ly * chan_buff_size + 0) * row_buff_size + lx];
-                    val += row_buff[(ly * chan_buff_size + 1) * row_buff_size + lx];
-                    val += row_buff[(ly * chan_buff_size + 2) * row_buff_size + lx];
-                    val += row_buff[(ly * chan_buff_size + 3) * row_buff_size + lx];
-                    val += row_buff[(ly * chan_buff_size + 4) * row_buff_size + lx];
-                    val += row_buff[(ly * chan_buff_size + 5) * row_buff_size + lx];
-                    val += row_buff[(ly * chan_buff_size + 6) * row_buff_size + lx];
-                    val += row_buff[(ly * chan_buff_size + 7) * row_buff_size + lx];
-                    vstore_net_t(val, (((c >> chan_shift) * height + row) * width +
-                        out_cw + lx) * outputs + o + merge_offset, merge);
-                }
-                out_cw  += row_buff_size;
-                out_lane = 0;
-           }
-       }
-    }
-
-__kernel void merge(
-                        __global const net_t * restrict in,
-                        __global net_t * restrict out,
-                        __private const int channels) {
-        // cl::NDRange global(outputs, BOARD_SQUARES);
-        const int gx = get_global_id(0);
-        const int gy = get_global_id(1);
-        const int batch = get_global_id(2);
-        const int output = gx;
-        const int b = gy;
-        const int outputs = get_global_size(0);
-        const int width = BOARD_SIZE;
-        const int height = BOARD_SIZE;
-        const int o = output;
-        float sum = 0;
-        for (int c = 0; c < channels; c++) {
-            sum += vload_net_t(batch * channels * BOARD_SQUARES * outputs +
-                (c * BOARD_SQUARES + b) * outputs + o, in);
-        }
-        vstore_net_t(sum, batch * outputs * BOARD_SQUARES + o * BOARD_SQUARES + b, out);
-    }
-)";
-
-static std::string sourceCode_convolve3 = R"(
-void __in_transform_eq(float x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * restrict V, int offset, int CPpad) {
-
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
-    const int P = WTILES * WTILES;
-
-    float T1[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
-    float T2[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
-
-    const float Bt[WINOGRAD_ALPHA * WINOGRAD_ALPHA] = \
-                       {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
-                        0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
-                        0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
-                        0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
-                        0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
-                        0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
-
-    // Calculates transpose(B).x.B
-    for (int i = 0; i < WINOGRAD_ALPHA; i++){
-        for (int j = 0; j < WINOGRAD_ALPHA; j++) {
-#ifdef WINOGRAD_SIMD
-            float2 acc = {0.0f, 0.0f};
-            float2 *x1 = (float2 *)&Bt[i * WINOGRAD_ALPHA];
-            float2 *x2 = (float2 *)&x[j][0];
-            for (int k = 0; k < WINOGRAD_ALPHA/2; k++) {
-                acc += x1[k] * x2[k];
-            }
-            T1[i][j] = acc.x + acc.y;
-#else
-            float acc = 0.0f;
-            for (int k = 0; k < WINOGRAD_ALPHA; k++) {
-                acc += Bt[i * WINOGRAD_ALPHA + k] * x[j][k];
-            }
-            T1[i][j] = acc;
-#endif
-        }
-    }
-
-    for (int i = 0; i < WINOGRAD_ALPHA; i++){
-        for (int j = 0; j < WINOGRAD_ALPHA; j++) {
-#ifdef WINOGRAD_SIMD
-            float2 acc = {0.0f, 0.0f};
-            float2 *x1 = (float2 *)&T1[i][0];
-            float2 *x2 = (float2 *)&Bt[j * WINOGRAD_ALPHA];
-            for (int k = 0; k < WINOGRAD_ALPHA/2; k++) {
-                acc += x1[k] * x2[k];
-            }
-            T2[i][j] = acc.x + acc.y;
-#else
-            float acc = 0.0f;
-            for (int k = 0; k < WINOGRAD_ALPHA; k++) {
-                acc += T1[i][k] * Bt[j * WINOGRAD_ALPHA + k];
-            }
-            T2[i][j] = acc;
-#endif
-        }
-    }
-
-    // Scatter each sub element in tile to separate matrices
-    for (int i = 0; i < WINOGRAD_ALPHA; i++) {
-        for (int j = 0; j < WINOGRAD_ALPHA; j++) {
-            vstore_net_t(T2[i][j], (i*WINOGRAD_ALPHA + j)*CPpad + offset, V);
-        }
-    }
-}
-
-__kernel void in_transform(__global net_t * restrict in, __global net_t * restrict V,
-                           const int C, const int Cpad,
-                           const int Ppad, const int batch_size) {
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
-    const int P = WTILES * WTILES;
-    const int CPpad = Ppad * Cpad;
-
-    const int block = get_global_id(0);
-    const int ch = get_global_id(1);
-
-    const int batch = block / P;
-    const int block_x = (block - P * batch) % WTILES;
-    const int block_y = (block - P * batch) / WTILES;
-
-    // 6x6 tiles overlap by 2
-    const int yin = WINOGRAD_M * block_y - 1;
-    const int xin = WINOGRAD_M * block_x - 1;
-
-    if (block < batch_size * P && ch < C) {
-        // Cache input tile and handle zero padding
-        float x[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
-        for (int i = 0; i < WINOGRAD_ALPHA; i++) {
-            for (int j = 0; j < WINOGRAD_ALPHA; j++) {
-                int a = xin + j;
-                int b = yin + i;
-                // x is transposed here for better layout later
-                if (b >= 0 && a >= 0 && b < H && a < W) {
-                    x[j][i] = vload_net_t(batch * C * BOARD_SQUARES +
-                        ch * BOARD_SQUARES + b * W + a, in);
-                } else {
-                    x[j][i] = 0.0f;
-                }
-            }
-        }
-
-        // V dimensions are [36, input_channels, batch_size * tiles].
-        // Padded with zeros as necessary for SGEMM
-        // = [36, Cpad, Ppad]
-
-        const int offset = ch * Ppad + block;
-        __in_transform_eq(x, V, offset, CPpad);
-    }
-}
-
-void __out_transform_eq(__global const net_t * restrict M, float o[WINOGRAD_M * WINOGRAD_M],
-                        int Kpad, int Ppad, int block)
-{
-
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
-    const int P = WTILES * WTILES;
-
-    const int k = get_global_id(0);
-    float temp_m[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
-    float temp[WINOGRAD_M][WINOGRAD_ALPHA];
-
-
-    // M dimensions are [36, outputs, batch_size * tiles].
-    // Plus zero padding from SGEMM.
-
-    const int offset = block * Kpad + k;
-
-    for (int yn = 0; yn < WINOGRAD_ALPHA; yn++) {
-        for (int xn = 0; xn < WINOGRAD_ALPHA; xn++) {
-            temp_m[xn][yn] = vload_net_t((yn * WINOGRAD_ALPHA + xn) * Kpad * Ppad + offset, M);
-        }
-    }
-
-    const float At[WINOGRAD_M * WINOGRAD_ALPHA] = \
-                      {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
-                       0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
-                       0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
-                       0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
-
-    // Calculates transpose(A).temp_m.A
-    for (int i = 0; i < WINOGRAD_M; i++){
-        for (int j = 0; j < WINOGRAD_ALPHA; j++) {
-#ifdef WINOGRAD_SIMD
-            float2 acc = {0.0f, 0.0f};
-            float2 *x1 = (float2 *)&At[i * WINOGRAD_ALPHA];
-            float2 *x2 = (float2 *)&temp_m[j][0];
-            for (int q = 0; q < WINOGRAD_ALPHA/2; q++) {
-                acc += x1[q] * x2[q];
-            }
-            temp[i][j] = acc.x + acc.y;
-#else
-            float acc = 0.0f;
-            for (int q = 0; q < WINOGRAD_ALPHA; q++) {
-                acc += At[i * WINOGRAD_ALPHA + q] * temp_m[j][q];
-            }
-            temp[i][j] = acc;
-#endif
-        }
-    }
-
-    for (int i = 0; i < WINOGRAD_M; i++){
-        for (int j = 0; j < WINOGRAD_M; j++) {
-#ifdef WINOGRAD_SIMD
-            float2 acc = {0.0f, 0.0f};
-            float2 *x1 = (float2 *)&temp[i][0];
-            float2 *x2 = (float2 *)&At[j * WINOGRAD_ALPHA];
-            for (int q = 0; q < WINOGRAD_ALPHA/2; q++) {
-                acc += x1[q] * x2[q];
-            }
-            o[i * WINOGRAD_M + j] = acc.x + acc.y;
-#else
-            float acc = 0.0f;
-            for (int q = 0; q < WINOGRAD_ALPHA; q++) {
-                acc += temp[i][q] * At[j * WINOGRAD_ALPHA + q];
-            }
-            o[i * WINOGRAD_M + j] = acc;
-#endif
-        }
-    }
-}
-
-__kernel void out_transform_fused_bn(__global const net_t * restrict M,
-                                     __global net_t * restrict Y,
-                                     const int K,
-                                     const int Kpad, const int Ppad,
-                                     const int batch_size,
-                                     __global const net_t * restrict residual,
-                                     __constant const net_t * restrict means,
-                                     __constant const net_t * restrict stddivs) {
-
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
-    const int P = WTILES * WTILES;
-
-    const int k = get_global_id(0);
-    const int block = get_global_id(1);
-
-    const int batch = block / P;
-    const int block_x = (block - P * batch) % WTILES;
-    const int block_y = (block - P * batch) / WTILES;
-
-    int x = WINOGRAD_M * block_x;
-    int y = WINOGRAD_M * block_y;
-
-    if (k < K && block < batch_size * P) {
-        const int kHW = batch * K * BOARD_SQUARES + k * BOARD_SQUARES;
-
-        float o[WINOGRAD_M * WINOGRAD_M];
-        __out_transform_eq(M, o, Kpad, Ppad, block);
-
-        const float mean = vload_net_t(k, means);
-        const float scale_stddiv = vload_net_t(k, stddivs);
-
-        for (int i = 0; i < WINOGRAD_M; i++) {
-            for (int j = 0; j < WINOGRAD_M; j++) {
-                const int in_idx = i * WINOGRAD_M + j;
-                const int out_idx = (y + i) * W + (x + j);
-                if (y + i < H && x + j < W) {
-                    o[in_idx] = scale_stddiv * (o[in_idx] - mean);
-                    if (residual) {
-                        o[in_idx] += vload_net_t(kHW + out_idx, residual);
-                    }
-                    o[in_idx] = o[in_idx] > 0 ? o[in_idx] : 0.0f;
-                    vstore_net_t(o[in_idx], kHW + out_idx, Y);
-                }
-            }
-        }
-    }
-}
-
-__kernel void out_transform_fused_bn_in(
-                                     __global const net_t * restrict M,
-                                     __global net_t * restrict Y,
-                                     __global net_t * restrict V,
-                                     const int K,
-                                     const int Kpad, const int Ppad, const int Cpad,
-                                     __global const net_t * restrict residual,
-                                     __constant const net_t * restrict means,
-                                     __constant const net_t * restrict stddivs,
-                                     __local float * ybuf) {
-
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
-    const int P = WTILES * WTILES;
-
-    const int k = get_global_id(0);
-    const int kg = get_local_id(0);
-    const int block = get_global_id(1);
-    const int batch = get_global_id(2);
-
-    const int block_x = block % WTILES;
-    const int block_y = block / WTILES;
-
-    const int yin = WINOGRAD_M * block_y - 1;
-    const int xin = WINOGRAD_M * block_x - 1;
-
-    const int x = WINOGRAD_M * block_x;
-    const int y = WINOGRAD_M * block_y;
-
-    if (k < K && block < P) {
-        const int kHW = batch * K * BOARD_SQUARES + k * BOARD_SQUARES;
-
-        float o[WINOGRAD_M * WINOGRAD_M];
-        __out_transform_eq(M, o, Kpad, Ppad, block + P * batch);
-
-        const float mean = vload_net_t(k, means);
-        const float scale_stddiv = vload_net_t(k, stddivs);
-
-        for (int i = 0; i < WINOGRAD_M; i++) {
-            for (int j = 0; j < WINOGRAD_M; j++) {
-                const int in_idx = i * WINOGRAD_M + j;
-                const int out_idx = (y + i) * W + (x + j);
-                if (y + i < H && x + j < W) {
-                    o[in_idx] = scale_stddiv * (o[in_idx] - mean);
-                    if (residual) {
-                        o[in_idx] += vload_net_t(kHW + out_idx, residual);
-                    }
-                    o[in_idx] = o[in_idx] > 0 ? o[in_idx] : 0.0f;
-                    ybuf[kg * BOARD_SQUARES + out_idx] = o[in_idx];
-                    if (Y) {
-                        vstore_net_t(o[in_idx], kHW + out_idx, Y);
-                    }
-                }
-            }
-        }
-    }
-
-    barrier(CLK_LOCAL_MEM_FENCE);
-
-    if (block < P && k < K) {
-        const int CPpad = Ppad * Cpad;
-        // Cache input tile and handle zero padding
-        float xx[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
-        for (int i = 0; i < WINOGRAD_ALPHA; i++) {
-            int b = yin + i;
-            for (int j = 0; j < WINOGRAD_ALPHA; j++) {
-                int a = xin + j;
-                // x is transposed here for better layout later
-                if (b >= 0 && a >= 0 && b < H && a < W) {
-                    xx[j][i] = ybuf[kg * BOARD_SQUARES + b * W + a];
-                } else {
-                    xx[j][i] = 0.0f;
-                }
-            }
-        }
-
-        const int offset = k * Ppad + P * batch + block;
-        __in_transform_eq(xx, V, offset, CPpad);
-    }
-}
-)";
+static const std::string sourceCode_convolve3 =
+    #include "kernels/convolve3.opencl"
+;
 
 const std::string sourceCode_sgemm =
-    #include "clblast_level3/common.opencl"
-    #include "clblast_level3/xgemm_part1.opencl"
-    #include "clblast_level3/xgemm_part2.opencl"
-    #include "clblast_level3/xgemm_part3.opencl"
-    #include "clblast_level3/xgemm_batched.opencl"
+    #include "kernels/clblast/xgemm_part1.opencl"
+    #include "kernels/clblast/xgemm_part2.opencl"
+    #include "kernels/clblast/xgemm_part3.opencl"
+    #include "kernels/clblast/xgemm_batched.opencl"
 ;
 
 template <typename net_t>
@@ -1179,7 +757,7 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     // Make program of the source code in the context
     try {
         m_program = cl::Program(m_context,
-                                  winograd_defines
+                                sourceCode_common
                                 + sourceCode_config
                                 + sourceCode_convolve1
                                 + sourceCode_convolve3
@@ -1190,6 +768,14 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     }
 
     m_cl_args = getClArgs<net_t>();
+
+    myprintf("Half precision compute support: ");
+    if (m_device.getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp16") != std::string::npos) {
+        myprintf("YES\n");
+        m_cl_args += " -DFP16_SUPPORT";
+    } else {
+        myprintf("NO\n");
+    }
 
     auto t = Tuner<net_t>(*this, m_context, m_device);
     auto sgemm_tuners =
@@ -1209,6 +795,7 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
         if (m_device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT>() > 1) {
             args += " -DWINOGRAD_SIMD";
         }
+
         args += sgemm_tuners;
         m_program.build(args.c_str());
     } catch (const cl::Error&) {
