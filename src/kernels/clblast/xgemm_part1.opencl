@@ -107,7 +107,7 @@ R"(
 // =================================================================================================
 
 // Data-widths in dimension M
-#ifdef USE_HALF
+#ifdef FP16_STORAGE
   #if VWM == 1
       typedef real realM;
       typedef short memM;
@@ -144,7 +144,7 @@ R"(
 #endif
 
 // Data-widths in dimension N
-#ifdef USE_HALF
+#ifdef FP16_STORAGE
   #if VWN == 1
       typedef real realN;
       typedef short memN;
@@ -306,7 +306,7 @@ INLINE_FUNC realM GlobalToPrivateA(const __global memM* restrict agm, const int 
   int idm = mg + GetGroupID0() * (MWG/VWM);
 
   // Loads the data from global memory (not transposed) and stores into registers
-#ifdef USE_HALF
+#ifdef FP16_STORAGE
   #if VWM == 1
     return vloada_half(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
   #elif VWM == 2
@@ -339,7 +339,7 @@ INLINE_FUNC realN GlobalToPrivateB(const __global memN* restrict bgm, const int 
   int idn = ng + GetGroupID1() * (NWG/VWN);
 
   // Loads the data from global memory (transposed) and stores into registers
-#ifdef USE_HALF
+#ifdef FP16_STORAGE
   #if VWN == 1
     return vloada_half(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
   #elif VWN == 2
@@ -368,7 +368,7 @@ INLINE_FUNC realM LocalToPrivateA(LOCAL_PTR memM* alm, const int _mi, const int 
   #elif STRM == 1
     int mg = get_local_id(0) + _mi*MDIMC;
   #endif
-#ifdef USE_HALF
+#ifdef FP16_STORAGE
   #if VWM == 1
     return vloada_half(kg*(MWG/VWM) + mg, (LOCAL_PTR half*)alm);
   #elif VWM == 2
@@ -395,7 +395,7 @@ INLINE_FUNC realN LocalToPrivateB(LOCAL_PTR memN* blm, const int _ni, const int 
     int ng = get_local_id(1) + _ni*NDIMC;
   #endif
 
-#ifdef USE_HALF
+#ifdef FP16_STORAGE
   #if VWN == 1
     return vloada_half(kg*(NWG/VWN) + ng, (LOCAL_PTR half*)blm);
   #elif VWN == 2

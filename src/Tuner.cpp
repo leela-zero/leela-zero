@@ -64,7 +64,7 @@ template <> std::string getTunerKernel<half_float::half>() {
 }
 
 template <> float getTunerMaxError<half_float::half>() {
-    return 5e-2f;
+    return 2e-1f;
 }
 #endif
 
@@ -336,7 +336,7 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
                                   m_device,
                                   CL_QUEUE_PROFILING_ENABLE);
     auto event = cl::Event();
-    auto program = cl::Program(m_context, sourceCode_sgemm);
+    auto program = cl::Program(m_context, sourceCode_common + sourceCode_sgemm);
 
     auto m_ceil_prev = 0;
     auto n_ceil_prev = 0;
