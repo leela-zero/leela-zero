@@ -68,10 +68,9 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     auto silent{false};
     auto gnum = size_t{0};
 
-    // launch the worker thread.  2 threads so that we can fully
-    // utilize GPU, since the worker thread consists of some CPU
-    // work for task preparation.
-    constexpr auto num_threads = 2;
+    // launch the worker thread.  round_up(cfg_num_threads / gpus.size()) threads
+    // so that we only have enough contexts to achieve full parallelism.
+    const auto num_threads = (cfg_num_threads + gpus.size() - 1) / gpus.size();
     m_context_pool.resize(num_threads);
 
     for (auto gpu : gpus) {
@@ -84,7 +83,7 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
         // starting next GPU, let's not dump full list of GPUs
         silent = true;
 
-        for (auto i = 0; i < num_threads; i++) {
+        for (auto i = size_t{0}; i < num_threads; i++) {
             m_context_pool[i].emplace_back(std::make_shared<ContextPoolEntry>(gnum));
         }
         gnum++;
@@ -168,15 +167,7 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
     std::shared_ptr<ContextPoolEntry> ctx;
     auto queue_num = size_t{0};
     {
-        std::unique_lock<std::mutex> lk(m_context_pool_lock);
-        m_context_pool_condvar.wait(lk, [this]{
-            for (auto & ctxlist : m_context_pool) {
-                if (!ctxlist.empty()) {
-                    return true;
-                }
-            }
-            return false;
-        });
+        LOCK(m_context_pool_mutex, lock);
         while (queue_num < m_context_pool.size()) {
             if (!m_context_pool[queue_num].empty()) {
                 ctx = std::move(m_context_pool[queue_num].front());
@@ -185,18 +176,16 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
             }
             queue_num++;
         }
-        // if this failed, it means the condition variable exited itself
-        // when the predicate condition return false
+        // if this failed, it means we ran out of contexts
+        // which should be more than or equal to the number of threads
         assert(ctx != nullptr);
     }
 
     m_networks[ctx->net_index]->forward(input, output_pol, output_val, ctx->context);
 
     {
-        std::unique_lock<std::mutex> lk(m_context_pool_lock);
+        LOCK(m_context_pool_mutex, lock);
         m_context_pool[queue_num].push_back(std::move(ctx));
-        lk.unlock();
-        m_context_pool_condvar.notify_one();
     }
 }
 

@@ -205,13 +205,47 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_gtp_mode = true;
     }
 
+#ifdef USE_OPENCL
+    if (vm.count("gpu")) {
+        cfg_gpus = vm["gpu"].as<std::vector<int> >();
+        // if we use OpenCL, we probably need more threads for the max so that we can saturate the GPU.
+        cfg_max_threads *= cfg_gpus.size();
+        // we can't exceed MAX_CPUS
+        cfg_max_threads = std::min(cfg_max_threads, MAX_CPUS);
+    }
+
+    if (vm.count("full-tuner")) {
+        cfg_sgemm_exhaustive = true;
+    }
+
+    if (vm.count("tune-only")) {
+        cfg_tune_only = true;
+    }
+
+#ifdef USE_HALF
+    if (vm.count("precision")) {
+        auto precision = vm["precision"].as<std::string>();
+        if ("single" == precision) {
+            cfg_precision = precision_t::SINGLE;
+        } else if ("half" == precision) {
+            cfg_precision = precision_t::HALF;
+        } else if ("auto" == precision) {
+            cfg_precision = precision_t::AUTO;
+        } else {
+            printf("Unexpected option for --precision, expecting single/half/auto\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+#endif
+#endif
+
     if (!vm["threads"].defaulted()) {
         auto num_threads = vm["threads"].as<int>();
         if (num_threads > cfg_max_threads) {
             myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
-        } else if (num_threads != cfg_num_threads) {
-            cfg_num_threads = num_threads;
+            num_threads = cfg_max_threads;
         }
+        cfg_num_threads = num_threads;
     }
     myprintf("Using %d thread(s).\n", cfg_num_threads);
 
@@ -309,37 +343,6 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_lagbuffer_cs = lagbuffer;
         }
     }
-
-#ifdef USE_OPENCL
-    if (vm.count("gpu")) {
-        cfg_gpus = vm["gpu"].as<std::vector<int> >();
-    }
-
-    if (vm.count("full-tuner")) {
-        cfg_sgemm_exhaustive = true;
-    }
-
-    if (vm.count("tune-only")) {
-        cfg_tune_only = true;
-    }
-
-#ifdef USE_HALF
-    if (vm.count("precision")) {
-        auto precision = vm["precision"].as<std::string>();
-        if ("single" == precision) {
-            cfg_precision = precision_t::SINGLE;
-        } else if ("half" == precision) {
-            cfg_precision = precision_t::HALF;
-        } else if ("auto" == precision) {
-            cfg_precision = precision_t::AUTO;
-        } else {
-            printf("Unexpected option for --precision, expecting single/half/auto\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-#endif
-#endif
-
     if (vm.count("benchmark")) {
         // These must be set later to override default arguments.
         cfg_allow_pondering = false;
@@ -355,6 +358,7 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_max_visits = 3200; // Default to self-play and match values.
         }
     }
+
 
     auto out = std::stringstream{};
     for (auto i = 1; i < argc; i++) {
