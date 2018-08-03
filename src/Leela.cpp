@@ -210,6 +210,8 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_gpus = vm["gpu"].as<std::vector<int> >();
         // if we use OpenCL, we probably need more threads for the max so that we can saturate the GPU.
         cfg_max_threads *= cfg_gpus.size();
+        // we can't exceed MAX_CPUS
+        cfg_max_threads = std::min(cfg_max_threads, MAX_CPUS);
     }
 
     if (vm.count("full-tuner")) {
