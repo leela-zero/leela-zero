@@ -102,7 +102,7 @@ public:
     void set_visit_limit(int visits);
     void ponder();
     bool is_running() const;
-    void increment_playouts();
+    void increment_playouts(float eval);
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
     bool adjusting;
     std::vector<Sym_State> sym_states;

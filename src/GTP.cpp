@@ -125,7 +125,7 @@ void GTP::setup_default_parameters() {
     cfg_pos = false;
     cfg_neg = false;
     cfg_nonslack = false;
-    cfg_sure_backup = false;
+    cfg_sure_backup = true;
     cfg_noshift = true;
     cfg_use_symmetries = true;
     cfg_orig_policy = true;

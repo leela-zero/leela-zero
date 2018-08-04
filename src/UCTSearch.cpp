@@ -230,7 +230,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                 if (currstate.eval_invalid() && !cfg_backup_fpu) {
                     if (cfg_sure_backup) {
                         do {
-                            result = play_simulation(currstate, node);
+                            result = SearchResult::from_eval(play_simulation(currstate, node).eval() + 2.0f);
                         } while (!result.valid());
                     }
                 }
@@ -254,7 +254,14 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
     }
 
     if (result.valid()) {
-        node->update(result.eval());
+        auto eval = result.eval();
+        if (eval >= 2.0f) {
+            node->update(eval - 2.0f);
+            node->update(eval - 2.0f);
+        }
+        else {
+            node->update(eval);
+        }
     }
     node->virtual_loss_undo();
 
@@ -684,13 +691,18 @@ void UCTWorker::operator()() {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = m_search->play_simulation(*currstate, m_root);
         if (result.valid()) {
-            m_search->increment_playouts();
+            m_search->increment_playouts(result.eval());
         }
     } while (m_search->is_running());
 }
 
-void UCTSearch::increment_playouts() {
-    m_playouts++;
+void UCTSearch::increment_playouts(float eval) {
+    if (eval >= 2.0f) {
+        m_playouts += 2;
+    }
+    else {
+        m_playouts++;
+    }
 }
 
 int UCTSearch::think(int color, passflag_t passflag) {
@@ -730,7 +742,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
         auto result = play_simulation(*currstate, m_root.get());
         if (result.valid()) {
-            increment_playouts();
+            increment_playouts(result.eval());
         }
 
         Time elapsed;
@@ -806,7 +818,7 @@ void UCTSearch::ponder() {
         auto currstate = std::make_unique<GameState>(m_rootstate);
         auto result = play_simulation(*currstate, m_root.get());
         if (result.valid()) {
-            increment_playouts();
+            increment_playouts(result.eval());
         }
         if (cfg_analyze_interval_centis) {
             Time elapsed;
