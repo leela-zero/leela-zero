@@ -72,7 +72,7 @@ Result ProductionJob::execute(){
         return res;
     }
     if (!m_sgf.isEmpty()) {
-        if (! m_permanent_sgf) {
+        if (m_restore) {
             game.loadSgf(m_sgf);
             game.loadTraining(m_sgf);
             game.setMovesCount(m_moves);
@@ -81,6 +81,7 @@ Result ProductionJob::execute(){
         } else {
             game.loadSgf(m_sgf, m_moves+1);
             game.setMovesCount(m_moves);
+            QFile::remove(m_sgf + ".sgf");
         }
     }
     do {
@@ -128,7 +129,7 @@ void ProductionJob::init(const Order &o) {
     m_debug = o.parameters()["debug"] == "true";
     m_sgf = o.parameters()["sgf"];
     m_moves = o.parameters()["moves"].toInt();
-    m_permanent_sgf = o.type() != Order::RestoreSelfPlayed;
+    m_restore = o.type() == Order::RestoreSelfPlayed;
 }
 
 Result ValidationJob::execute(){

@@ -408,11 +408,9 @@ Order Management::getWorkInternal(bool tuning) {
         fetchNetwork(net, gzipHash);
         o.type(Order::Production);
         parameters["network"] = net;
-        parameters["sgf"] = ob.contains("sgfhash") ? "sgfs/" + ob.value("sgfhash").toString() : "";
-        if (ob.contains("sgfhash")) {
-            fetchSgfOrTrain(ob.value("sgfhash").toString() + ".sgf");
-            fetchSgfOrTrain(ob.value("sgfhash").toString() + ".train");
-        }
+        parameters["sgf"] = ob.contains("sgfhash") ? ob.value("sgfhash").toString() : "";
+        if (ob.contains("sgfhash"))
+            fetchGameData(ob.value("sgfhash").toString()+".sgf");
         parameters["moves"] = ob.contains("movescount") ? ob.value("movescount").toString() : "0";
         o.parameters(parameters);
         if (m_delNetworks &&
@@ -560,44 +558,7 @@ void Management::fetchNetwork(const QString &net, const QString &hash) {
     return;
 }
 
-bool Management::sgfOrTrainExists(const QString &name) {
-    QString extension = name.mid(name.lastIndexOf(QChar('.'))+1);
-    QString realHash = name;
-    realHash.remove(0,name.lastIndexOf(QChar('/'))+1);
-    realHash.remove(realHash.lastIndexOf(QChar('.')), realHash.length());
-    if (QFileInfo::exists(name)) {
-        QFile f(name);
-        if (f.open(QFile::ReadOnly)) {
-            QCryptographicHash hash(QCryptographicHash::Sha256);
-            if (!hash.addData(&f)) {
-                throw NetworkException("Reading " + extension.toUtf8().toStdString() + " file failed.");
-            }
-            QString result = hash.result().toHex();
-
-            if (extension != "sgf" || result == realHash) {
-                return true;
-            }
-        } else {
-            QTextStream(stdout)
-                << "Unable to open " << extension << " sgf file for reading." << endl;
-            if (f.remove()) {
-                return false;
-            }
-            throw NetworkException("Unable to delete " + extension.toUtf8().toStdString() + " file."
-                                   " Check permissions.");
-        }
-        QTextStream(stdout) << "Downloaded " << extension << " hash doesn't match." << endl;
-        f.remove();
-    }
-    return false;
-}
-
-void Management::fetchSgfOrTrain(const QString &sgf) {
-    QString name = "sgfs/" + sgf;
-    if (sgfOrTrainExists(name)) {
-        return;
-    }
-
+void Management::fetchGameData(const QString &name) {
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
@@ -606,8 +567,7 @@ void Management::fetchSgfOrTrain(const QString &sgf) {
     // Use the filename from the server.
     prog_cmdline.append(" -s -J -o " + name);
     prog_cmdline.append(" -w %{filename_effective}");
-    prog_cmdline.append(" "+server_url + "viewgame/" + sgf);
-        QTextStream(stdout) << prog_cmdline << endl;
+    prog_cmdline.append(" "+server_url + "viewgame/" + name);
 
     QProcess curl;
     curl.start(prog_cmdline);
@@ -617,8 +577,6 @@ void Management::fetchSgfOrTrain(const QString &sgf) {
         throw NetworkException("Curl returned non-zero exit code "
                                + std::to_string(curl.exitCode()));
     }
-    if (! sgfOrTrainExists(name))
-        throw NetworkException("Failed to fetch the network");
 
     return;
 }
