@@ -543,75 +543,31 @@ void batchnorm(const size_t channels,
         }
     }
 }
-
-template<typename T>
-T relative_difference(const T a, const T b) {
-    // Handle NaN
-    if (std::isnan(a) || std::isnan(b)) {
-        return std::numeric_limits<T>::max();
-    }
-
-    constexpr auto small_number = 1.0f/361.0f;
-    auto fa = std::fabs(a);
-    auto fb = std::fabs(b);
-
-    if (fa > small_number && fb > small_number) {
-        // Handle sign difference
-        if ((a < 0) != (b < 0)) {
-            return std::numeric_limits<T>::max();
-        }
-    } else {
-        // Handle underflow
-        fa = std::max(fa, small_number);
-        fb = std::max(fb, small_number);
-    }
-
-    return fabs(fa - fb) / std::min(fa, fb);
-}
-
 #endif
 
 #ifdef USE_OPENCL_SELFCHECK
 void Network::compare_net_outputs(Netresult& data,
                                   Netresult& ref) {
-    // We accept an error up to 20%, but output values
-    // smaller than 1/361th are "rounded up" for the comparison.
-    constexpr auto relative_error = 2e-1f;
+    // Calculates L2-norm between data and ref.
+    constexpr auto max_error = 0.2f;
 
-    // assert-fail when we hit 3 failures out of last 10 checks
-    constexpr auto max_failures = 3;
-    constexpr auto last_failure_window = size_t{10};
+    auto error = 0.0f;
 
-    auto selfcheck_fail = false;
     for (auto idx = size_t{0}; idx < data.policy.size(); ++idx) {
-        const auto err = relative_difference(data.policy[idx], ref.policy[idx]);
-        if (err > relative_error) {
-            selfcheck_fail = true;
-            break;
-        }
+        const auto diff = data.policy[idx] - ref.policy[idx];
+        error += diff * diff;
     }
-    const auto err_pass = relative_difference(data.policy_pass, ref.policy_pass);
-    const auto err_winrate = relative_difference(data.winrate, ref.winrate);
-    if (err_pass > relative_error) {
-        selfcheck_fail = true;
-    }
-    if (err_winrate > relative_error) {
-        selfcheck_fail = true;
-    }
+    const auto diff_pass = data.policy_pass - ref.policy_pass;
+    const auto diff_winrate = data.winrate - ref.winrate;
+    error += diff_pass * diff_pass;
+    error += diff_winrate * diff_winrate;
 
-    LOCK(m_selfcheck_mutex, selfcheck_lock);
-    m_selfcheck_fails.emplace_back(selfcheck_fail);
-    if (selfcheck_fail) {
-        if (std::count(begin(m_selfcheck_fails),
-                       end(m_selfcheck_fails), true) >= max_failures) {
-            printf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
-                   "played simultaneously.\n");
-            throw std::runtime_error("OpenCL self-check mismatch.");
-        }
-    }
+    error = std::sqrt(error);
 
-    while (m_selfcheck_fails.size() >= last_failure_window) {
-        m_selfcheck_fails.pop_front();
+    if (error > max_error || std::isnan(error)) {
+        printf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
+               "played simultaneously.\n");
+        throw std::runtime_error("OpenCL self-check mismatch.");
     }
 }
 #endif

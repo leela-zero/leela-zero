@@ -121,11 +121,6 @@ private:
     void compare_net_outputs(Netresult& data, Netresult& ref);
     std::unique_ptr<ForwardPipe> m_forward_cpu;
 
-    // Records the result of most recent selfchecks
-    std::deque<bool> m_selfcheck_fails;
-
-    // Mutex that protects m_selfcheck_fails
-    SMP::Mutex m_selfcheck_mutex;
 #endif
 
     NNCache m_nncache;
