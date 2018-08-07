@@ -47,6 +47,7 @@ using namespace Utils;
 // Configuration flags
 bool cfg_gtp_mode;
 bool cfg_allow_pondering;
+bool cfg_deep_ponder;
 int cfg_num_threads;
 int cfg_max_threads;
 int cfg_max_playouts;

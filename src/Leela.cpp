@@ -79,6 +79,7 @@ static void parse_commandline(int argc, char *argv[]) {
                        "fast = Same as on but always plays faster.\n"
                        "no_pruning = For self play training use.\n")
         ("noponder", "Disable thinking on opponent's time.")
+        ("deepponder", "Unlimited thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
         ("cpu-only", "Use CPU-only implementation and do not use GPU.")
@@ -260,6 +261,16 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("noponder")) {
         cfg_allow_pondering = false;
+    }
+
+    if (vm.count("deepponder")) {
+        cfg_deep_ponder = true;
+        if (vm.count("noponder")) {
+            printf("Nonsensical options: Deep pondering is requested but "
+                "thinking on the opponent's time is not allowed. "
+                "Remove --noponder to allow pondering.\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (vm.count("noise")) {
