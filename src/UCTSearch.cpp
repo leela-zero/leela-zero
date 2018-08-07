@@ -787,7 +787,7 @@ void UCTSearch::ponder() {
             }
         }
         keeprunning  = is_running();
-        keeprunning &= !stop_thinking(0, 1);
+        keeprunning &= (cfg_deep_ponder || !stop_thinking(0, 1));
     } while (!Utils::input_pending() && keeprunning);
 
     // stop the search
