@@ -59,8 +59,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("threads,t", po::value<int>()->default_value(cfg_num_threads),
                       "Number of threads to use.")
         ("playouts,p", po::value<int>(),
-                       "Weaken engine by limiting the number of playouts. "
-                       "Requires --noponder.")
+                       "Weaken engine by limiting the number of playouts. ")
         ("visits,v", po::value<int>(),
                      "Weaken engine by limiting the number of visits.")
         ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
@@ -78,8 +77,11 @@ static void parse_commandline(int argc, char *argv[]) {
                        ", but use full time if moving faster doesn't save time.\n"
                        "fast = Same as on but always plays faster.\n"
                        "no_pruning = For self play training use.\n")
-        ("noponder", "Disable thinking on opponent's time.")
-        ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
+        ("ponder", po::value<std::string>()->default_value("auto"),
+                   "[auto|on|off] Enable thinking on opponent's time.\n"
+                   "auto = Respect playout and visit limits during pondering.\n"
+                   "on = Unlimited pondering.\n")
+        ("benchmark", "Test network and exit. Default args:\n-v3200 --ponder off "
                       "-m0 -t1 -s1.")
         ("cpu-only", "Use CPU-only implementation and do not use GPU.")
         ;
@@ -258,8 +260,18 @@ static void parse_commandline(int argc, char *argv[]) {
     }
     myprintf("RNG seed: %llu\n", cfg_rng_seed);
 
-    if (vm.count("noponder")) {
-        cfg_allow_pondering = false;
+    if (vm.count("ponder")) {
+        const auto ponder = vm["ponder"].as<std::string>();
+        if (ponder == "auto") {
+            cfg_pondering = Pondering::AUTO;
+        } else if (ponder == "on") {
+            cfg_pondering = Pondering::ON;
+        } else if (ponder == "off") {
+            cfg_pondering = Pondering::OFF;
+        } else {
+            printf("Invalid ponder value.\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (vm.count("noise")) {
@@ -276,12 +288,6 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("playouts")) {
         cfg_max_playouts = vm["playouts"].as<int>();
-        if (!vm.count("noponder")) {
-            printf("Nonsensical options: Playouts are restricted but "
-                   "thinking on the opponent's time is still allowed. "
-                   "Add --noponder if you want a weakened engine.\n");
-            exit(EXIT_FAILURE);
-        }
 
         // 0 may be specified to mean "no limit"
         if (cfg_max_playouts == 0) {
@@ -345,7 +351,7 @@ static void parse_commandline(int argc, char *argv[]) {
     }
     if (vm.count("benchmark")) {
         // These must be set later to override default arguments.
-        cfg_allow_pondering = false;
+        cfg_pondering = Pondering::OFF;
         cfg_benchmark = true;
         cfg_noise = false;  // Not much of a benchmark if random was used.
         cfg_random_cnt = 0;

@@ -46,7 +46,7 @@ using namespace Utils;
 
 // Configuration flags
 bool cfg_gtp_mode;
-bool cfg_allow_pondering;
+Pondering::enabled_t cfg_pondering;
 int cfg_num_threads;
 int cfg_max_threads;
 int cfg_max_playouts;
@@ -88,7 +88,7 @@ void GTP::initialize(std::unique_ptr<Network>&& net) {
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
-    cfg_allow_pondering = true;
+    cfg_pondering = Pondering::AUTO;
     cfg_max_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
 #ifdef USE_OPENCL
     // If we will be GPU limited, using many threads won't help much.
@@ -413,7 +413,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                     gtp_printf_raw("play %s\n", vertex.c_str());
                 }
             }
-            if (cfg_allow_pondering) {
+            if (cfg_pondering != Pondering::OFF) {
                 // now start pondering
                 if (!game.has_resigned()) {
                     // Outputs winrate and pvs through gtp for lz-genmove_analyze
@@ -480,7 +480,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
             }
-            if (cfg_allow_pondering) {
+            if (cfg_pondering != Pondering::OFF) {
                 // now start pondering
                 if (!game.has_resigned()) {
                     search->ponder();
@@ -562,7 +562,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
             gtp_printf(id, "");
 
-            if (cfg_allow_pondering) {
+            if (cfg_pondering != Pondering::OFF) {
                 // KGS sends this after our move
                 // now start pondering
                 if (!game.has_resigned()) {

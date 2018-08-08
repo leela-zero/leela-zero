@@ -265,7 +265,7 @@ QString Management::getOptionsString(const QJsonObject &opt, const QString &rnd)
     options.append(getOption(opt, "threads", " -t ", "1"));
     options.append(getBoolOption(opt, "dumbpass", " -d ", true));
     options.append(getBoolOption(opt, "noise", " -n ", true));
-    options.append(" --noponder ");
+    options.append(" --ponder off ");
     if (rnd != "") {
         options.append(" -s " + rnd + " ");
     }
