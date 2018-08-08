@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
             "filename");
     QCommandLineOption optionsOption(
         {"o", "options"},
-            "Options for the binary given by -b (default '-g -p 1600 --noponder -t 1 -q -d -r 0 -w').",
+            "Options for the binary given by -b (default '-g -p 1600 --ponder off -t 1 -q -d -r 0 -w').",
             "opt_string");
     QCommandLineOption sprtOption(
         {"s", "sprt"},
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
 
     QStringList optsList = parser.values(optionsOption);
     while (optsList.count() != 2) {
-        optsList << " -g  -p 1600 --noponder -t 1 -q -d -r 0 -w ";
+        optsList << " -g  -p 1600 --ponder off -t 1 -q -d -r 0 -w ";
     }
 
     QString sprtOpt = parser.value(sprtOption);
