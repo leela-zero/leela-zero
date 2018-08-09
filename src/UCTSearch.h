@@ -64,6 +64,12 @@ namespace TimeManagement {
     };
 };
 
+namespace Pondering {
+    enum enabled_t {
+        OFF = 0, ON = 1, UNLIMITED = 2
+    };
+};
+
 class UCTSearch {
 public:
     /*

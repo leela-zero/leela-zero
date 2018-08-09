@@ -46,7 +46,7 @@ using namespace Utils;
 
 // Configuration flags
 bool cfg_gtp_mode;
-bool cfg_allow_pondering;
+int cfg_ponder;
 int cfg_num_threads;
 int cfg_max_threads;
 int cfg_max_playouts;
@@ -88,7 +88,7 @@ void GTP::initialize(std::unique_ptr<Network>&& net) {
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
-    cfg_allow_pondering = true;
+    cfg_ponder = Pondering::OFF;
     cfg_max_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
 #ifdef USE_OPENCL
     // If we will be GPU limited, using many threads won't help much.
@@ -172,6 +172,7 @@ const std::string GTP::s_commands[] = {
     "heatmap",
     "lz-analyze",
     "lz-genmove_analyze",
+    "lz-ponder",
     ""
 };
 
@@ -413,7 +414,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                     gtp_printf_raw("play %s\n", vertex.c_str());
                 }
             }
-            if (cfg_allow_pondering) {
+            if (cfg_ponder != Pondering::OFF) {
                 // now start pondering
                 if (!game.has_resigned()) {
                     // Outputs winrate and pvs through gtp for lz-genmove_analyze
@@ -480,7 +481,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 std::string vertex = game.move_to_text(move);
                 gtp_printf(id, "%s", vertex.c_str());
             }
-            if (cfg_allow_pondering) {
+            if (cfg_ponder != Pondering::OFF) {
                 // now start pondering
                 if (!game.has_resigned()) {
                     search->ponder();
@@ -489,6 +490,36 @@ bool GTP::execute(GameState & game, std::string xinput) {
         } else {
             gtp_fail_printf(id, "syntax not understood");
         }
+        return true;
+    } else if (command.find("lz-ponder") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp;
+
+        cmdstream >> tmp; // eat lz-ponder
+        cmdstream >> tmp;
+        if (!cmdstream.fail()) {
+            if (tmp == "off") {
+                cfg_ponder = Pondering::OFF;
+            } else if (tmp == "on") {
+                cfg_ponder = Pondering::ON;
+            } else if (tmp == "unlimited") {
+                cfg_ponder = Pondering::UNLIMITED;
+            } else {
+                gtp_fail_printf(id, "invalid parameter value");
+                return true;
+            }
+            if (cfg_ponder != Pondering::OFF) {
+                // now start pondering
+                if (!game.has_resigned()) {
+                    search->ponder();
+                }
+            }
+        } else {
+            gtp_fail_printf(id, "syntax not understood");
+            return true;
+        }
+
+        gtp_printf(id, "");
         return true;
     } else if (command.find("undo") == 0) {
         if (game.undo_move()) {
@@ -562,7 +593,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
             gtp_printf(id, "");
 
-            if (cfg_allow_pondering) {
+            if (cfg_ponder != Pondering::OFF) {
                 // KGS sends this after our move
                 // now start pondering
                 if (!game.has_resigned()) {
