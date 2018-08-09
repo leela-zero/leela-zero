@@ -35,16 +35,6 @@
 #include "Utils.h"
 #include "Random.h"
 
-#ifdef __APPLE__
-#include <Accelerate/Accelerate.h>
-#endif
-#ifdef USE_MKL
-#include <mkl.h>
-#endif
-#ifdef USE_OPENBLAS
-#include <cblas.h>
-#endif
-
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
 
 template <typename net_t> static std::string getTunerKernel();
@@ -64,7 +54,7 @@ template <> std::string getTunerKernel<half_float::half>() {
 }
 
 template <> float getTunerMaxError<half_float::half>() {
-    return 2e-1f;
+    return 1e-1f;
 }
 #endif
 
@@ -88,13 +78,16 @@ static void sgemmBatched_ref(const std::vector<net_t>& a,
         auto offset_v = batch * n * k;
         auto offset_m = batch * m * n;
 
-        cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
-                    m, n, k,
-                    1.0f,
-                    &ar[offset_u], m,
-                    &br[offset_v], n,
-                    0.0f,
-                    &cr[offset_m], n);
+        // Calculates transpose(tranpose(A) * B)
+        for (auto i = 0; i < m; i++) {
+            for (auto j = 0; j < n; j++) {
+                auto acc = 0.0f;
+                for (auto l = 0; l < k; l++) {
+                    acc += ar[l * m + i + offset_u] * br[l * n + j + offset_v];
+                }
+                cr[j * m + i + offset_m] = acc;
+            }
+        }
     }
 
     std::copy(begin(cr), end(cr), begin(c));
@@ -199,7 +192,7 @@ static void sgemm_generate_data(std::vector<net_t> &x,
             if (i < n) {
                 for (auto j = 0; j < m; j++) {
                     x[batch*n_ceil*m_ceil + i*m_ceil + j] =
-                        0.01f*(((i ^ j) + batch - 50) % 100);
+                        (( (i ^ j) + batch - 128) % 256) / 256.0f;
                 }
                 for (auto j = m; j < m_ceil; j++) {
                     x[batch*n_ceil*m_ceil + i*m_ceil + j] = 0.0f;
@@ -219,16 +212,16 @@ static float compare_ref(std::vector<net_t> &x, std::vector<net_t> &ref,
                          const int m_ceil, const int n_ceil) {
     auto sum = 0.0f;
     for (auto batch = 0; batch < batch_size; batch++) {
-        for (auto i = 0; i < n; i++) {
-            for (auto j = 0; j < m; j++) {
-                auto r = ref[batch*n*m + i*m + j];
+        for (auto j = 0; j < m; j++) {
+            for (auto i = 0; i < n; i++) {
+                auto r = ref[batch*n*m + j*n + i];
                 auto y = x[batch*n_ceil*m_ceil + j*n_ceil + i];
 
                 sum += (r - y) * (r - y);
             }
         }
     }
-    return sum / (m*n);
+    return sum / (m * n * batch_size);
 }
 
 template <typename net_t>
@@ -342,6 +335,10 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
     auto n_ceil_prev = 0;
     auto k_ceil_prev = 0;
     auto param_counter = size_t{0};
+    auto min_error = 100.0f;
+    auto failed_compile = 0;
+    auto failed_enqueue = 0;
+    auto failed_error = 0;
 
     for (const auto& i : valid_params) {
         param_counter++;
@@ -354,10 +351,10 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
             program.build(args.c_str());
         } catch (const cl::Error&) {
             // Failed to compile, get next parameter
+            failed_compile++;
             continue;
         }
 
-        // The kernel is (for now) named the same even in USE_HALF
         auto sgemm_kernel = cl::Kernel(program, "XgemmBatched");
 
         auto m_ceil = int(ceilMultiple(ceilMultiple(m, p["MWG"]), p["VWM"]));
@@ -396,7 +393,8 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
                                   size_t(batch_size)};
 
         auto sum = 0.0f;
-        auto max_error = 0.0f;
+        auto error = 0.0f;
+
         for (auto r = 0; r < runs; r++) {
             try {
                 queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
@@ -411,7 +409,7 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
 
                 auto this_error = compare_ref(c, c_ref, n, m, batch_size,
                                               n_ceil, m_ceil);
-                max_error = std::max(max_error, this_error);
+                error = std::max(error, this_error);
 
                 auto elapsed =
                     event.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
@@ -419,12 +417,23 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
 
                 sum += elapsed;
             } catch (const cl::Error&) {
-                // Failed to enqueue kernel. Set error to max.
-                max_error = getTunerMaxError<net_t>();
+                // Failed to enqueue kernel. Set error to some big number.
+                failed_enqueue++;
+                error = std::numeric_limits<float>::max();
+                // This failure will be counted to be failed due to error,
+                // so preemptively subtract one from that count.
+                failed_error--;
                 break;
             }
         }
-        if (max_error < getTunerMaxError<net_t>() && (best_time == 0 || sum < best_time)) {
+
+        min_error = std::min(min_error, error);
+
+        if (error >= getTunerMaxError<net_t>()) {
+            failed_error++;
+        }
+
+        if (error < getTunerMaxError<net_t>() && (best_time == 0 || sum < best_time)) {
             auto param_str = parameters_to_string(p);
             auto kernel_ms = 1e-6f * (sum / runs);
             // Timing is in nanoseconds (10^-9), Giga = 10^9, so this works out
@@ -437,7 +446,17 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
         }
     }
     if (best_time == 0) {
+        if (failed_compile > 0) {
+            printf("Failed to compile: %d kernels.\n", failed_compile);
+        }
+        if (failed_enqueue > 0) {
+            printf("Failed to enqueue: %d kernels\n", failed_enqueue);
+        }
+        if (failed_error > 0) {
+            printf("Too high error: %d kernels\n", failed_error);
+        }
         printf("Failed to find a working configuration.\nCheck your OpenCL drivers.\n");
+        printf("Minimum error: %f. Error bound: %f\n", min_error, getTunerMaxError<net_t>());
         throw std::runtime_error("Tuner failed to find working configuration.");
     }
     return best_params;
