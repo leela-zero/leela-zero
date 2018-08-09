@@ -21,17 +21,17 @@
 
 #include "config.h"
 
+#include <array>
 #include <deque>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
-#include <vector>
 
 class NNCache {
 public:
     struct Netresult {
         // 19x19 board positions
-        std::vector<float> policy;
+        std::array<float, BOARD_SQUARES> policy;
 
         // pass
         float policy_pass;
@@ -39,10 +39,12 @@ public:
         // winrate
         float winrate;
 
-        Netresult() : policy(BOARD_SQUARES), policy_pass(0.0f), winrate(0.0f) {}
+        Netresult() : policy_pass(0.0f), winrate(0.0f) {
+            policy.fill(0.0f);
+        }
     };
 
-    NNCache(int size = 150000);  // ~ 225MB
+    NNCache(int size = 150000);  // ~ 208MiB
 
     // Set a reasonable size gives max number of playouts
     void set_size_from_playouts(int max_playouts);
@@ -77,7 +79,7 @@ private:
     struct Entry {
         Entry(const Netresult& r)
             : result(r) {}
-        Netresult result;  // ~ 1.5KB
+        Netresult result;  // ~ 1.4KiB
     };
 
     // Map from hash to {features, result}
