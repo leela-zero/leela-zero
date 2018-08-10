@@ -610,10 +610,9 @@ bool Network::probe_cache(const GameState* const state,
             const auto hash = state->get_symmetry_hash(sym);
             if (m_nncache.lookup(hash, result)) {
                 decltype(result.policy) corrected_policy;
-                corrected_policy.reserve(BOARD_SQUARES);
                 for (auto idx = size_t{0}; idx < BOARD_SQUARES; ++idx) {
                     const auto sym_idx = symmetry_nn_idx_table[sym][idx];
-                    corrected_policy.emplace_back(result.policy[sym_idx]);
+                    corrected_policy[idx] = result.policy[sym_idx];
                 }
                 result.policy = std::move(corrected_policy);
                 return true;

@@ -78,8 +78,8 @@ public:
 
     /*
         Maximum size of the tree in memory. Nodes are about
-        48 bytes, so limit to ~1.2G on 32-bits and about 5.5G
-        on 64-bits.
+        56 bytes, so limit to ~1.3GiB on 32-bits and about
+        5.2GiB on 64-bits.
     */
     static constexpr auto MAX_TREE_SIZE =
         (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
