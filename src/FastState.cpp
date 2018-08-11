@@ -27,6 +27,7 @@
 #include "Utils.h"
 #include "Zobrist.h"
 
+extern bool cfg_dyn_komi;
 using namespace Utils;
 
 void FastState::init_game(int size, float komi) {
@@ -151,7 +152,7 @@ std::string FastState::move_to_text(int move) {
 }
 
 float FastState::final_score() const {
-    return board.area_score(get_komi() + get_handicap());
+    return board.area_score(get_komi() + (cfg_dyn_komi? 0.0f : get_handicap()));
 }
 
 float FastState::get_komi() const {

@@ -93,7 +93,8 @@ static void parse_commandline(int argc, char *argv[]) {
         ("min-wr", po::value<float>(), "Minimal white winrate.")
         ("wr-margin", po::value<float>(), "Adjust white winrate to min+margin or max-margin.")
         ("target-komi", po::value<float>(), "Target komi.")
-        ("adj-playouts", po::value<int>(), "Number of playouts for komi adjustment.")
+        ("adj-playouts", po::value<int>(), "Number of positions to collect for komi adjustment.")
+        ("adj-pct", po::value<float>(), "Percentage of collected positions to use for komi adjustment.")
         ("pos", "Use positive komi (for side-to-move) only.")
         ("neg", "Use negative komi only.")
         ;
@@ -193,6 +194,10 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_wr_margin = 0.02;
         //cfg_target_komi = 0.0;
         cfg_dyn_fpu = true;
+        cfg_resignpct = 0;
+        //cfg_collect_during_search = true;
+        //cfg_always_collect = true;
+        //cfg_adjust_during_search = true;
     }
 
     if (vm.count("nonslack")) {
@@ -202,6 +207,9 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_wr_margin = 0.1;
         cfg_nonslack = true;
         cfg_dyn_fpu = true;
+        //cfg_collect_during_search = true;
+        //cfg_always_collect = true;
+        //cfg_adjust_during_search = true;
     }
 
     if (vm.count("sure-backup")) {
@@ -230,14 +238,14 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("max-wr")) {
         cfg_max_wr = vm["max-wr"].as<float>();
-        if (cfg_max_wr > 1.0) {
-            cfg_max_wr = 1.0;
+        if (cfg_max_wr > 1.0 & !cfg_noshift) {
+            cfg_max_wr = 0.9999;
         }
     }
 
     if (vm.count("min-wr")) {
         cfg_min_wr = vm["min-wr"].as<float>();
-        if (cfg_min_wr < 0.0001) {
+        if (cfg_min_wr < 0.0001 && !cfg_noshift) {
             cfg_min_wr = 0.0001;
         }
     }
@@ -252,6 +260,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("adj-playouts")) {
         cfg_adj_playouts = vm["adj-playouts"].as<int>();
+    }
+
+    if (vm.count("adj-pct")) {
+        cfg_adj_playouts = vm["adj-pct"].as<float>();
     }
 
     if (vm.count("pos")) {

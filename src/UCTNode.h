@@ -115,7 +115,7 @@ private:
     // UCT eval
     float m_score;
     // Original net eval for this node (not children).
-    float m_net_eval{-100.0f};
+    float m_net_eval{2.0f};
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
     // Is someone adding scores to this node?

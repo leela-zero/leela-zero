@@ -78,6 +78,8 @@ UCTSearch::UCTSearch(GameState& g)
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
+    sym_states.reserve(cfg_adj_playouts + cfg_num_threads);
+    sym_states_index = 0;
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -192,7 +194,7 @@ float UCTSearch::get_min_psa_ratio() const {
 
 
 SearchResult UCTSearch::play_simulation(GameState & currstate,
-                                        UCTNode* const node) {
+                                        UCTNode* const node, int thread_num) {
     const auto color = currstate.get_to_move();
     auto result = SearchResult{};
 
@@ -202,41 +204,52 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
+            myprintf("double-pass %d\n", thread_num); ////
         } else if (m_nodes < MAX_TREE_SIZE) {
             float eval;
             const auto had_children = node->has_children();
             ///*
             bool success;
-            if (adjusting) {
+            if (cfg_always_collect || collecting) {
                 const auto rand_sym = Random::get_Rng().randfix<8>();
                 success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
                 if (success) {
-                    Sym_State sym_state;
-                    sym_state.symmetry = rand_sym;
-                    sym_state.state = currstate;
+                    auto sym_state = std::make_unique<Sym_State>();
+                    (*sym_state).symmetry = rand_sym;
+                    (*sym_state).state = currstate;
+                    (*sym_state).white_wr = 1.0f - eval;
                     //LOCK(get_mutex(), lock);
                     if (sym_states.size() < cfg_adj_playouts) {
-                        sym_states.emplace_back(sym_state);
+                        sym_states.push_back(std::move(sym_state));
+                    }
+                    else {
+                        if (sym_states_index >= cfg_adj_playouts) {
+                            sym_states_index = 0;
+                        }
+                        sym_states[sym_states_index++] = std::move(sym_state);
                     }
                 }
             }
             else {
                 success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
             }
-            //*/
-            //const auto success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
 
             if (!had_children && success) {
                 if (currstate.eval_invalid() && !cfg_backup_fpu) {
                     if (cfg_sure_backup) {
                         do {
-                            result = SearchResult::from_eval(play_simulation(currstate, node).eval() + 2.0f);
+                            result = play_simulation(currstate, node, thread_num);
                         } while (!result.valid());
+                        result = SearchResult::from_eval(result.eval() + 2.0f);
                     }
                 }
                 else {
                     result = SearchResult::from_eval(eval);
                 }
+                myprintf("new-leaf %d\n", thread_num); ////
+            }
+            else {
+                myprintf("fail %d\n", thread_num); ////
             }
         }
     }
@@ -245,11 +258,13 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         auto next = node->uct_select_child(color, node == m_root.get());
         auto move = next->get_move();
 
+        myprintf("%s %d ", currstate.move_to_text(move), thread_num); //// show thread number as well..
+
         currstate.play_move(move);
         if (move != FastBoard::PASS && currstate.superko()) {
             next->invalidate();
         } else {
-            result = play_simulation(currstate, next);
+            result = play_simulation(currstate, next, thread_num);
         }
     }
 
@@ -689,7 +704,7 @@ bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
 void UCTWorker::operator()() {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        auto result = m_search->play_simulation(*currstate, m_root);
+        auto result = m_search->play_simulation(*currstate, m_root, 2);
         if (result.valid()) {
             m_search->increment_playouts(result.eval());
         }
@@ -721,53 +736,77 @@ int UCTSearch::think(int color, passflag_t passflag) {
             m_rootstate.board.get_boardsize(),
             color, m_rootstate.get_movenum());
 
-    myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
+    myprintf("Thinking at most %.1f seconds...\n", time_for_move / 100.0f);
 
     // create a sorted list of legal moves (make sure we
     // play something legal and decent even in time trouble)
     m_root->prepare_root_node(color, m_nodes, m_rootstate, this);
 
-    m_run = true;
-    int cpus = cfg_num_threads;
-    ThreadGroup tg(thread_pool);
-    for (int i = 1; i < cpus; i++) {
-        tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
-    }
+    bool to_adjust;
+    do { //adjust during search
+        to_adjust = false;
 
-    auto keeprunning = true;
-    auto last_update = 0;
-    auto last_output = 0;
-    do {
-        auto currstate = std::make_unique<GameState>(m_rootstate);
-
-        auto result = play_simulation(*currstate, m_root.get());
-        if (result.valid()) {
-            increment_playouts(result.eval());
+        m_run = true;
+        int cpus = cfg_num_threads;
+        ThreadGroup tg(thread_pool);
+        for (int i = 1; i < cpus; i++) {
+            tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
         }
 
-        Time elapsed;
-        int elapsed_centis = Time::timediff_centis(start, elapsed);
+        auto keeprunning = true;
+        auto last_update = 0;
+        auto last_output = 0;
+        do {
+            auto currstate = std::make_unique<GameState>(m_rootstate);
 
-        if (cfg_analyze_interval_centis &&
-            elapsed_centis - last_output > cfg_analyze_interval_centis) {
-            last_output = elapsed_centis;
-            output_analysis(m_rootstate, *m_root);
-        }
+            auto result = play_simulation(*currstate, m_root.get(), 1);
+            if (result.valid()) {
+                increment_playouts(result.eval());
+            }
 
-        // output some stats every few seconds
-        // check if we should still search
-        if (elapsed_centis - last_update > 250) {
-            last_update = elapsed_centis;
-            dump_analysis(static_cast<int>(m_playouts));
-        }
-        keeprunning  = is_running();
-        keeprunning &= !stop_thinking(elapsed_centis, time_for_move);
-        keeprunning &= have_alternate_moves(elapsed_centis, time_for_move);
-    } while (keeprunning);
+            Time elapsed;
+            int elapsed_centis = Time::timediff_centis(start, elapsed);
 
-    // stop the search
-    m_run = false;
-    tg.wait_all();
+            // adjust during search
+            if (cfg_collect_during_search) {
+                if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr || m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr)) {
+                    if (cfg_adjust_during_search && sym_states.size() >= cfg_adj_playouts && elapsed_centis * 2.0f < time_for_move) {
+                        to_adjust = true;
+                        break;
+                    }
+                    else {
+                        collecting = true;
+                    }
+                }
+                else if (!cfg_always_collect) {
+                    sym_states.clear();
+                    collecting = false;
+                }
+            }
+            // indeed can start collecting during pondering ..
+
+            if (cfg_analyze_interval_centis &&
+                elapsed_centis - last_output > cfg_analyze_interval_centis) {
+                last_output = elapsed_centis;
+                output_analysis(m_rootstate, *m_root);
+            }
+
+            // output some stats every few seconds
+            // check if we should still search
+            if (elapsed_centis - last_update > 250) {
+                last_update = elapsed_centis;
+                dump_analysis(static_cast<int>(m_playouts));
+            }
+            keeprunning = is_running();
+            keeprunning &= !stop_thinking(elapsed_centis, time_for_move); // need change for adjust during search (byoyomi)
+            keeprunning &= have_alternate_moves(elapsed_centis, time_for_move);
+        } while (keeprunning);
+
+        // stop the search
+        m_run = false;
+        tg.wait_all();
+
+    } while (to_adjust);
 
     // reactivate all pruned root children
     for (const auto& node : m_root->get_children()) {
@@ -816,7 +855,7 @@ void UCTSearch::ponder() {
     auto last_output = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        auto result = play_simulation(*currstate, m_root.get());
+        auto result = play_simulation(*currstate, m_root.get(), 1);
         if (result.valid()) {
             increment_playouts(result.eval());
         }

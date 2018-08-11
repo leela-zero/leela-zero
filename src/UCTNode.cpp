@@ -226,6 +226,7 @@ int UCTNode::get_visits() const {
 
 // Return the true score, without taking into account virtual losses.
 float UCTNode::get_pure_eval(int tomove) const {
+    //LOCK(get_mutex(), lock);
     auto visits = get_visits();
     assert(visits > 0);
     auto blackeval = get_blackevals();
@@ -237,6 +238,7 @@ float UCTNode::get_pure_eval(int tomove) const {
 }
 
 float UCTNode::get_eval(int tomove) const {
+    //LOCK(get_mutex(), lock);
     // Due to the use of atomic updates and virtual losses, it is
     // possible for the visit count to change underneath us. Make sure
     // to return a consistent result to the caller by caching the values.
@@ -293,7 +295,8 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
     }
     // Estimated eval for unknown nodes = original parent NN eval - reduction
-    auto parent_eval = (cfg_dyn_fpu && get_visits() > 0) ? get_pure_eval(color) : get_net_eval(color);
+    auto visits = get_visits();
+    auto parent_eval = (cfg_dyn_fpu && visits > 0) ? get_pure_eval(color) : get_net_eval(color);
     auto fpu_eval = parent_eval - fpu_reduction;
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
@@ -305,7 +308,8 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
 
         auto winrate = fpu_eval;
-        if (child.get_visits() > 0) {
+        auto child_visits = child.get_visits();
+        if (child_visits > 0 && (visits > 0 || !cfg_dyn_fpu)) {
             winrate = child.get_eval(color);
         }
         auto psa = child.get_score();
@@ -323,7 +327,9 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     assert(best != nullptr);
     best->inflate();
     auto best_node = best->get();
-    if (best_node->get_net_eval(FastBoard::BLACK) == -100.0f) {
+
+    // to delete
+    if (false && best_node->get_net_eval(FastBoard::BLACK) == 2.0f) {
         if (cfg_backup_fpu) {
             best_node->set_net_eval(color == FastBoard::BLACK ? fpu_eval : 1.0f - fpu_eval);
         }

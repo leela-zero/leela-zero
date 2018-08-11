@@ -44,6 +44,7 @@ extern float cfg_min_wr;
 extern float cfg_wr_margin;
 extern float cfg_target_komi;
 extern int cfg_adj_playouts;
+extern float cfg_adj_pct;
 extern bool cfg_pos;
 extern bool cfg_neg;
 extern bool cfg_nonslack;
@@ -53,6 +54,9 @@ extern bool cfg_use_symmetries;
 extern bool cfg_orig_policy;
 extern bool cfg_dyn_fpu;
 extern bool cfg_backup_fpu;
+extern bool cfg_collect_during_search;
+extern bool cfg_always_collect;
+extern bool cfg_adjust_during_search;
 
 extern int cfg_noise;
 extern int cfg_random_cnt;

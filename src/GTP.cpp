@@ -62,6 +62,7 @@ float cfg_min_wr;
 float cfg_wr_margin;
 float cfg_target_komi;
 int cfg_adj_playouts;
+float cfg_adj_pct;
 bool cfg_pos;
 bool cfg_neg;
 bool cfg_nonslack;
@@ -71,6 +72,9 @@ bool cfg_use_symmetries;
 bool cfg_orig_policy;
 bool cfg_dyn_fpu;
 bool cfg_backup_fpu;
+bool cfg_collect_during_search;
+bool cfg_always_collect;
+bool cfg_adjust_during_search;
 
 int cfg_noise;
 int cfg_random_cnt;
@@ -121,7 +125,8 @@ void GTP::setup_default_parameters() {
 
     cfg_dyn_komi = false;
     cfg_target_komi = 7.5f;
-    cfg_adj_playouts = 100;
+    cfg_adj_playouts = 10000;
+    cfg_adj_pct = 1.0;
     cfg_pos = false;
     cfg_neg = false;
     cfg_nonslack = false;
