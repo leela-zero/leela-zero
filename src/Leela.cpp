@@ -200,7 +200,7 @@ static void parse_commandline(int argc, char *argv[]) {
         //cfg_adjust_during_search = true;
     }
 
-    if (vm.count("nonslack")) {
+    if (vm.count("nonslack")) { 
         cfg_dyn_komi = true;
         cfg_max_wr = 0.9;
         cfg_min_wr = 0.1;
