@@ -33,7 +33,7 @@
 
 class TimeStep {
 public:
-    using BoardPlane = std::bitset<BOARD_SQUARES>;
+    using BoardPlane = std::bitset<NUM_INTERSECTIONS>;
     using NNPlanes = std::vector<BoardPlane>;
     NNPlanes planes;
     std::vector<float> probabilities;

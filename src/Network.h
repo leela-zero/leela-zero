@@ -137,8 +137,8 @@ private:
     std::array<float, 2> m_bn_pol_w1;
     std::array<float, 2> m_bn_pol_w2;
 
-    std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> m_ip_pol_w;
-    std::array<float, BOARD_SQUARES + 1> m_ip_pol_b;
+    std::array<float, POTENTIAL_MOVES * NUM_INTERSECTIONS * 2> m_ip_pol_w;
+    std::array<float, POTENTIAL_MOVES> m_ip_pol_b;
 
     // Value head
     std::vector<float> m_conv_val_w;
@@ -146,7 +146,7 @@ private:
     std::array<float, 1> m_bn_val_w1;
     std::array<float, 1> m_bn_val_w2;
 
-    std::array<float, BOARD_SQUARES * 256> m_ip1_val_w;
+    std::array<float, NUM_INTERSECTIONS * 256> m_ip1_val_w;
     std::array<float, 256> m_ip1_val_b;
 
     std::array<float, 256> m_ip2_val_w;

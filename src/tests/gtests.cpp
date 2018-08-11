@@ -143,7 +143,7 @@ TEST_F(LeelaTest, Transposition) {
     EXPECT_EQ(ko_hash, maingame.board.get_ko_hash());
 }
 
-TEST_F(LeelaTest, KoSqNotSame) {
+TEST_F(LeelaTest, KoPntNotSame) {
     auto maingame = get_gamestate();
 
     testing::internal::CaptureStdout();
@@ -179,11 +179,11 @@ TEST_F(LeelaTest, KoSqNotSame) {
 
     // Board position is the same
     EXPECT_EQ(ko_hash, maingame.board.get_ko_hash());
-    // But ko (square) is not
+    // But ko (intersection) is not
     EXPECT_NE(hash, maingame.board.get_hash());
 }
 
-TEST_F(LeelaTest, MoveOnOccupiedSq) {
+TEST_F(LeelaTest, MoveOnOccupiedPnt) {
     auto maingame = get_gamestate();
     std::string output;
 

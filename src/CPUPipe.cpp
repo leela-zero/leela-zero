@@ -226,11 +226,11 @@ void convolve(const size_t outputs,
     // The size of the board is defined at compile time
     constexpr unsigned int width = BOARD_SIZE;
     constexpr unsigned int height = BOARD_SIZE;
-    constexpr auto board_squares = width * height;
+    constexpr auto num_intersections = width * height;
     constexpr auto filter_len = filter_size * filter_size;
     const auto input_channels = weights.size() / (biases.size() * filter_len);
     const auto filter_dim = filter_len * input_channels;
-    assert(outputs * board_squares == output.size());
+    assert(outputs * num_intersections == output.size());
 
     std::vector<float> col(filter_dim * width * height);
     im2col<filter_size>(input_channels, input, col);
@@ -249,14 +249,14 @@ void convolve(const size_t outputs,
 
     cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 // M        N            K
-                outputs, board_squares, filter_dim,
+                outputs, num_intersections, filter_dim,
                 1.0f, &weights[0], filter_dim,
-                &col[0], board_squares,
-                0.0f, &output[0], board_squares);
+                &col[0], num_intersections,
+                0.0f, &output[0], num_intersections);
 
     for (unsigned int o = 0; o < outputs; o++) {
-        for (unsigned int b = 0; b < board_squares; b++) {
-            output[(o * board_squares) + b] += biases[o];
+        for (unsigned int b = 0; b < num_intersections; b++) {
+            output[(o * num_intersections) + b] += biases[o];
         }
     }
 }
@@ -301,36 +301,36 @@ void CPUPipe::forward(const std::vector<float>& input,
     // might be bigger when the network has very few filters
     const auto input_channels = std::max(static_cast<size_t>(output_channels),
                                          static_cast<size_t>(Network::INPUT_CHANNELS));
-    auto conv_out = std::vector<float>(output_channels * BOARD_SQUARES);
+    auto conv_out = std::vector<float>(output_channels * NUM_INTERSECTIONS);
 
     auto V = std::vector<float>(WINOGRAD_TILE * input_channels * P);
     auto M = std::vector<float>(WINOGRAD_TILE * output_channels * P);
 
     winograd_convolve3(output_channels, input, m_conv_weights[0], V, M, conv_out);
-    batchnorm<BOARD_SQUARES>(output_channels, conv_out,
-                             m_batchnorm_means[0].data(),
-                             m_batchnorm_stddivs[0].data());
+    batchnorm<NUM_INTERSECTIONS>(output_channels, conv_out,
+                                 m_batchnorm_means[0].data(),
+                                 m_batchnorm_stddivs[0].data());
 
     // Residual tower
-    auto conv_in = std::vector<float>(output_channels * BOARD_SQUARES);
-    auto res = std::vector<float>(output_channels * BOARD_SQUARES);
+    auto conv_in = std::vector<float>(output_channels * NUM_INTERSECTIONS);
+    auto res = std::vector<float>(output_channels * NUM_INTERSECTIONS);
     for (auto i = size_t{1}; i < m_conv_weights.size(); i += 2) {
         auto output_channels = m_input_channels;
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
                            m_conv_weights[i], V, M, conv_out);
-        batchnorm<BOARD_SQUARES>(output_channels, conv_out,
-                                 m_batchnorm_means[i].data(),
-                                 m_batchnorm_stddivs[i].data());
+        batchnorm<NUM_INTERSECTIONS>(output_channels, conv_out,
+                                     m_batchnorm_means[i].data(),
+                                     m_batchnorm_stddivs[i].data());
 
         std::swap(conv_in, res);
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
                            m_conv_weights[i + 1], V, M, conv_out);
-        batchnorm<BOARD_SQUARES>(output_channels, conv_out,
-                                 m_batchnorm_means[i + 1].data(),
-                                 m_batchnorm_stddivs[i + 1].data(),
-                                 res.data());
+        batchnorm<NUM_INTERSECTIONS>(output_channels, conv_out,
+                                     m_batchnorm_means[i + 1].data(),
+                                     m_batchnorm_stddivs[i + 1].data(),
+                                     res.data());
     }
     convolve<1>(Network::OUTPUTS_POLICY, conv_out, m_conv_pol_w, m_conv_pol_b, output_pol);
     convolve<1>(Network::OUTPUTS_VALUE, conv_out, m_conv_val_w, m_conv_val_b, output_val);
