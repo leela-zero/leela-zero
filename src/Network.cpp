@@ -713,9 +713,9 @@ Network::Netresult Network::get_output_internal(
     batchnorm<NUM_INTERSECTIONS>(OUTPUTS_VALUE, value_data,
         m_bn_val_w1.data(), m_bn_val_w2.data());
     const auto winrate_data =
-        innerproduct<NUM_INTERSECTIONS, 256, true>(value_data, m_ip1_val_w, m_ip1_val_b);
+        innerproduct<OUTPUTS_VALUE * NUM_INTERSECTIONS, VALUE_LAYER, true>(value_data, m_ip1_val_w, m_ip1_val_b);
     const auto winrate_out =
-        innerproduct<256, 1, false>(winrate_data, m_ip2_val_w, m_ip2_val_b);
+        innerproduct<VALUE_LAYER, 1, false>(winrate_data, m_ip2_val_w, m_ip2_val_b);
 
     // Map TanH output range [-1..1] to [0..1] range
     const auto winrate = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
