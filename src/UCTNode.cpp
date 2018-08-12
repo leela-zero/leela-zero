@@ -47,7 +47,7 @@ bool UCTNode::first_visit() const {
     return m_visits == 0;
 }
 
-SMP::Mutex& UCTNode::get_mutex() {
+SMP::RWMutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
@@ -61,7 +61,7 @@ bool UCTNode::create_children(Network & network,
         return false;
     }
     // acquire the lock
-    LOCK(get_mutex(), lock);
+    WLOCK(get_mutex(), lock);
     // no successors in final state
     if (state.get_passes() >= 2) {
         return false;
@@ -134,7 +134,7 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
     // Use best to worst order, so highest go first
     std::stable_sort(rbegin(nodelist), rend(nodelist));
 
-    LOCK(get_mutex(), lock);
+    WLOCK(get_mutex(), lock);
 
     const auto max_psa = nodelist[0].first;
     const auto old_min_psa = max_psa * m_min_psa_ratio_children;
@@ -242,7 +242,7 @@ void UCTNode::accumulate_eval(float eval) {
 }
 
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
-    LOCK(get_mutex(), lock);
+    RLOCK(get_mutex(), lock);
 
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
@@ -270,6 +270,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
 
+
     for (auto& child : m_children) {
         if (!child.active()) {
             continue;
@@ -290,9 +291,17 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
             best = &child;
         }
     }
-
     assert(best != nullptr);
-    best->inflate();
+
+    if (!best->is_inflated()) {
+        bool success = lock.try_wlock();
+        if (!success) {
+            // failed to acquire write lock.  try again.
+            // Note that we already released the read lock at this point
+            return uct_select_child(color, is_root);
+        }
+        best->inflate();
+    }
     return best->get();
 }
 
@@ -320,12 +329,12 @@ private:
 };
 
 void UCTNode::sort_children(int color) {
-    LOCK(get_mutex(), lock);
+    WLOCK(get_mutex(), lock);
     std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color));
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
-    LOCK(get_mutex(), lock);
+    WLOCK(get_mutex(), lock);
     assert(!m_children.empty());
 
     auto ret = std::max_element(begin(m_children), end(m_children),

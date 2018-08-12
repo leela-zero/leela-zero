@@ -21,6 +21,7 @@
 #include <cassert>
 #include <thread>
 
+
 SMP::Mutex::Mutex() {
     m_lock = false;
 }
@@ -58,6 +59,95 @@ SMP::Lock::~Lock() {
     // If we don't claim to hold the lock,
     // don't bother trying to unlock in the destructor.
     if (m_owns_lock) {
+        unlock();
+    }
+}
+
+
+SMP::RWMutex::RWMutex() {
+    m_lock = 0;
+    m_write_sequence = 0;
+}
+
+SMP::RWLock::RWLock(RWMutex & m, bool is_writelock) {
+    m_mutex = &m;
+    if (is_writelock) {
+        wlock();
+    } else {
+        rlock();
+    }
+}
+
+void SMP::RWLock::wlock() {
+    assert(!m_owns_wlock);
+    assert(!m_owns_rlock);
+    int16_t expected = 0;
+    while (!m_mutex->m_lock.compare_exchange_strong(expected, -1)) {
+        expected = 0;
+    }
+    m_mutex->m_write_sequence++;
+    m_owns_rlock = false;
+    m_owns_wlock = true;
+}
+
+
+void SMP::RWLock::rlock() {
+    assert(!m_owns_rlock);
+    assert(!m_owns_wlock);
+    while (true) {
+        auto expected = m_mutex->m_lock.load();
+        auto newval = expected + 1;
+        if (expected >= 0 &&
+            m_mutex->m_lock.compare_exchange_strong(expected, newval) )
+        {
+            break;
+        }
+    }
+    m_owns_rlock = true;
+    m_owns_wlock = false;
+}
+
+void SMP::RWLock::unlock() {
+    assert(m_owns_rlock || m_owns_wlock);
+    if (m_owns_rlock) {
+        auto v = --m_mutex->m_lock;
+        assert(v >= 0);
+        m_owns_rlock = 0;
+
+#ifdef NDEBUG
+        (void) v;
+#endif
+    }
+    if (m_owns_wlock) {
+        auto v = ++m_mutex->m_lock;
+        assert(v == 0);
+        m_owns_wlock = 0;
+
+#ifdef NDEBUG
+        (void) v;
+#endif
+    }
+
+}
+
+bool SMP::RWLock::try_wlock() {
+    assert(m_owns_rlock);
+
+    auto v = m_mutex->m_write_sequence;
+    unlock();
+    wlock();
+    if (v + 1 != m_mutex->m_write_sequence) {
+        unlock();
+        return false;
+    } else {
+        return true;
+    }
+}
+
+SMP::RWLock::~RWLock() {
+    // If we don't claim to hold the lock,
+    // don't bother trying to unlock in the destructor.
+    if (m_owns_rlock || m_owns_wlock) {
         unlock();
     }
 }

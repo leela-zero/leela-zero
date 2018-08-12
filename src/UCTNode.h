@@ -54,7 +54,7 @@ public:
     UCTNode* uct_select_child(int color, bool is_root);
 
     size_t count_nodes() const;
-    SMP::Mutex& get_mutex();
+    SMP::RWMutex& get_mutex();
     bool first_visit() const;
     bool has_children() const;
     bool expandable(const float min_psa_ratio = 0.0f) const;
@@ -115,7 +115,7 @@ private:
     std::atomic<Status> m_status{ACTIVE};
     // Is someone adding policy priors to this node?
     bool m_is_expanding{false};
-    SMP::Mutex m_nodemutex;
+    SMP::RWMutex m_nodemutex;
 
     // Tree data
     std::atomic<float> m_min_psa_ratio_children{2.0f};
