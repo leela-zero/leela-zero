@@ -382,6 +382,7 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     if (cfg_cpu_only) {
         myprintf("Initializing CPU-only evaluation.\n");
         m_forward = std::make_unique<CPUPipe>();
+
         use_selfcheck = false;
     } else {
 #ifdef USE_HALF
@@ -389,8 +390,14 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
             case precision_t::AUTO: {
                 // create fp16 and fp32 both here.  will select one of them later.
                 myprintf("Initializing OpenCL (autodetect precision).\n");
-                fp16net = std::make_unique<OpenCLScheduler<half_float::half>>();
-                to_init.emplace_back(fp16net.get());
+                try {
+                    fp16net = std::make_unique<OpenCLScheduler<half_float::half>>();
+                    fp16net->initialize(channels);
+                    to_init.emplace_back(fp16net.get());
+                } catch (std::runtime_error) {
+                    myprintf("Failed to initialize half precision net.  Resorting to single precision.\n");
+                    fp16net.reset();
+                }
                 m_forward = std::make_unique<OpenCLScheduler<float>>();
             }
             break;
@@ -416,10 +423,12 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     use_selfcheck = false;
 #endif
 
+    m_forward->initialize(channels);
     to_init.emplace_back(m_forward.get());
 #ifdef USE_OPENCL_SELFCHECK
     if (use_selfcheck) {
         m_forward_cpu = std::make_unique<CPUPipe>();
+        m_forward_cpu->initialize(channels);
         to_init.emplace_back(m_forward_cpu.get());
     }
 #else
@@ -427,8 +436,6 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 #endif
 
     for (const auto& p : to_init) {
-        p->initialize(channels);
-
         weight_index = 0;
 
         // Winograd filter transformation changes filter size to 4x4
@@ -473,9 +480,17 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     if (fp16net != nullptr) {
         auto score_fp32 = benchmark_time(100);
         std::swap(fp16net, m_forward);
-        auto score_fp16 = benchmark_time(100);
-        myprintf("Measuring performance - %.2f n/s single vs. %.2f n/s half - ", score_fp32, score_fp16);
-        if (score_fp32 * 1.05f > score_fp16) {
+        auto score_fp16 = float{-1.0};
+        try {
+            score_fp16 = benchmark_time(100);
+        } catch (...) {
+            // empty - if exception thrown just throw away fp16 net
+        }
+
+        if (score_fp16 < 0.0) {
+            std::swap(fp16net, m_forward);
+            myprintf("Using OpenCL single precision (half precision failed to run)\n");
+        } else if (score_fp32 * 1.05f > score_fp16) {
             std::swap(fp16net, m_forward);
             myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
         } else {
