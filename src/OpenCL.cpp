@@ -130,10 +130,8 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                              std::vector<float>& output_val,
                              OpenCLContext & opencl_context,
                              const int batch_size) {
-    constexpr auto width = BOARD_SIZE;
-    constexpr auto height = BOARD_SIZE;
     constexpr auto tiles = WINOGRAD_P;
-    constexpr auto one_plane = width * height * sizeof(net_t);
+    constexpr auto one_plane = BOARD_SQUARES * sizeof(net_t);
     const auto finalSize_pol = m_layers[m_layers.size()-2].outputs * one_plane;
     const auto finalSize_val = m_layers.back().outputs * one_plane;
 
@@ -155,7 +153,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
         const auto n_ceil = ceilMultiple(ceilMultiple(tiles, nwg), vwn);
 
         const auto alloc_inSize =
-            MAX_BATCH * m_ceil * m_ceil * max_channels * sizeof(net_t);
+            MAX_BATCH * BOARD_SQUARES * max_channels * sizeof(net_t);
         const auto alloc_vm_size =
             MAX_BATCH * WINOGRAD_TILE * m_ceil * n_ceil * sizeof(net_t);
 
