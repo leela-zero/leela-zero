@@ -408,9 +408,7 @@ Order Management::getWorkInternal(bool tuning) {
         fetchNetwork(net, gzipHash);
         o.type(Order::Production);
         parameters["network"] = net;
-        parameters["sgf"] = ob.contains("sgfhash") ? ob.value("sgfhash").toString() : "";
-        if (ob.contains("sgfhash"))
-            fetchGameData(ob.value("sgfhash").toString()+".sgf");
+        parameters["sgf"] = ob.contains("sgfhash") ? fetchGameData(ob.value("sgfhash").toString(), "sgf") : "" ;
         parameters["moves"] = ob.contains("movescount") ? ob.value("movescount").toString() : "0";
         o.parameters(parameters);
         if (m_delNetworks &&
@@ -558,16 +556,18 @@ void Management::fetchNetwork(const QString &net, const QString &hash) {
     return;
 }
 
-void Management::fetchGameData(const QString &name) {
+QString Management::fetchGameData(const QString &name, const QString &extension) {
     QString prog_cmdline("curl");
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
+    QString fileName =  QString::fromStdString(std::tmpnam(nullptr));
+
     // Be quiet, but output the real file name we saved.
     // Use the filename from the server.
-    prog_cmdline.append(" -s -J -o " + name);
+    prog_cmdline.append(" -s -J -o " + fileName + "." + extension);
     prog_cmdline.append(" -w %{filename_effective}");
-    prog_cmdline.append(" "+server_url + "viewgame/" + name);
+    prog_cmdline.append(" "+server_url + "view/" + name + "." + extension);
 
     QProcess curl;
     curl.start(prog_cmdline);
@@ -578,7 +578,7 @@ void Management::fetchGameData(const QString &name) {
                                + std::to_string(curl.exitCode()));
     }
 
-    return;
+    return fileName;
 }
 
 void Management::archiveFiles(const QString &fileName) {

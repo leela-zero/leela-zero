@@ -95,7 +95,7 @@ private:
     QFileInfo getNextStored();
     bool networkExists(const QString &name, const QString &gzipHash);
     void fetchNetwork(const QString &net, const QString &hash);
-    void fetchGameData(const QString &name);
+    QString fetchGameData(const QString &name, const QString &extension);
     void printTimingInfo(float duration);
     void runTuningProcess(const QString &tuneCmdLine);
     void gzipFile(const QString &fileName);
