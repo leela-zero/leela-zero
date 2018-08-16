@@ -78,8 +78,10 @@ UCTSearch::UCTSearch(GameState& g)
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
-    sym_states.reserve(cfg_adj_playouts + cfg_num_threads);
-    sym_states_index = 0;
+    for (auto i = 0; i < 2; i++) {
+        sym_states[i].reserve(cfg_adj_playouts + cfg_num_threads);
+        sym_states_index[i] = 0;
+    }
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -88,7 +90,7 @@ bool UCTSearch::advance_to_new_rootstate() {
         return false;
     }
 
-    if (m_rootstate.get_stm_komi() != m_last_rootstate->get_opp_komi() || m_rootstate.get_opp_komi() != m_last_rootstate->get_stm_komi() || m_rootstate.get_komi() != m_last_rootstate->get_komi()) {
+    if (m_rootstate.get_komi() != m_last_rootstate->get_komi()) {
         return false;
     }
 
@@ -204,40 +206,51 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
-            myprintf("double-pass %d\n", thread_num); ////
+            // myprintf("double-pass %d\n", thread_num); ////
         } else if (m_nodes < MAX_TREE_SIZE) {
             float eval;
             const auto had_children = node->has_children();
-            ///*
+            
             bool success;
-            if (cfg_always_collect || collecting) {
-                const auto rand_sym = Random::get_Rng().randfix<8>();
+            if ((cfg_always_collect || collecting) && thread_num == 1) {
+                int rand_sym;
+                if (cfg_fixed_symmetry == -1) {
+                    rand_sym = Random::get_Rng().randfix<8>();
+                }
+                else {
+                    rand_sym = cfg_fixed_symmetry;
+                }
                 success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
                 if (success) {
                     auto sym_state = std::make_unique<Sym_State>();
+                    auto color = currstate.get_to_move();
                     (*sym_state).symmetry = rand_sym;
                     (*sym_state).state = currstate;
-                    (*sym_state).white_wr = 1.0f - eval;
+                    (*sym_state).winrate = (color == FastBoard::BLACK ? eval : 1.0f - eval);
                     //LOCK(get_mutex(), lock);
-                    if (sym_states.size() < cfg_adj_playouts) {
-                        sym_states.push_back(std::move(sym_state));
+                    if (sym_states[color].size() < cfg_adj_playouts) {
+                        sym_states[color].push_back(std::move(sym_state));
                     }
                     else {
-                        if (sym_states_index >= cfg_adj_playouts) {
-                            sym_states_index = 0;
+                        int index = sym_states_index[color];
+                        if (index >= cfg_adj_playouts) {
+                            index = sym_states_index[color] = 0;
                         }
-                        sym_states[sym_states_index++] = std::move(sym_state);
+                        sym_states[color][index] = std::move(sym_state);
+                        sym_states_index[color]++;
                     }
                 }
             }
             else {
-                success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio());
+                success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio(), cfg_fixed_symmetry);
             }
 
             if (!had_children && success) {
                 if (currstate.eval_invalid() && !cfg_backup_fpu) {
                     if (cfg_sure_backup) {
+                        auto state = currstate;
                         do {
+                            currstate = state;
                             result = play_simulation(currstate, node, thread_num);
                         } while (!result.valid());
                         result = SearchResult::from_eval(result.eval() + 2.0f);
@@ -246,10 +259,10 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                 else {
                     result = SearchResult::from_eval(eval);
                 }
-                myprintf("new-leaf %d\n", thread_num); ////
+                // myprintf("new-leaf %d\n", thread_num); ////
             }
             else {
-                myprintf("fail %d\n", thread_num); ////
+                // myprintf("fail %d\n", thread_num); ////
             }
         }
     }
@@ -258,7 +271,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         auto next = node->uct_select_child(color, node == m_root.get());
         auto move = next->get_move();
 
-        myprintf("%s %d ", currstate.move_to_text(move), thread_num); //// show thread number as well..
+        // myprintf("%s %d ", currstate.move_to_text(move), thread_num); //// show thread number as well..
 
         currstate.play_move(move);
         if (move != FastBoard::PASS && currstate.superko()) {
@@ -270,11 +283,12 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
 
     if (result.valid()) {
         auto eval = result.eval();
-        if (eval >= 2.0f) {
-            node->update(eval - 2.0f);
-            node->update(eval - 2.0f);
+        auto num = 1;
+        while (eval >= 2.0f) {
+            num++;
+            eval -= 2.0f;
         }
-        else {
+        while (num-- > 0) {
             node->update(eval);
         }
     }
@@ -738,13 +752,14 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     myprintf("Thinking at most %.1f seconds...\n", time_for_move / 100.0f);
 
-    // create a sorted list of legal moves (make sure we
-    // play something legal and decent even in time trouble)
-    m_root->prepare_root_node(color, m_nodes, m_rootstate, this);
-
     bool to_adjust;
+    int num_adjustments = 0;
     do { //adjust during search
         to_adjust = false;
+
+        // create a sorted list of legal moves (make sure we
+        // play something legal and decent even in time trouble)
+        m_root->prepare_root_node(color, m_nodes, m_rootstate, this);
 
         m_run = true;
         int cpus = cfg_num_threads;
@@ -770,20 +785,18 @@ int UCTSearch::think(int color, passflag_t passflag) {
             // adjust during search
             if (cfg_collect_during_search) {
                 if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr || m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr)) {
-                    if (cfg_adjust_during_search && sym_states.size() >= cfg_adj_playouts && elapsed_centis * 2.0f < time_for_move) {
+                    collecting = true;
+                    if (num_adjustments < cfg_max_num_adjustments && sym_states[0].size() >= cfg_adj_playouts && sym_states[1].size() >= cfg_adj_playouts && elapsed_centis * 2.0f < time_for_move && m_playouts * 2 < m_maxplayouts) {
                         to_adjust = true;
+                        num_adjustments++;
                         break;
-                    }
-                    else {
-                        collecting = true;
                     }
                 }
                 else if (!cfg_always_collect) {
-                    sym_states.clear();
+                    sym_states[0].clear(); sym_states[1].clear(); sym_states_index[0] = 0; sym_states_index[1] = 0;
                     collecting = false;
                 }
             }
-            // indeed can start collecting during pondering ..
 
             if (cfg_analyze_interval_centis &&
                 elapsed_centis - last_output > cfg_analyze_interval_centis) {
@@ -834,6 +847,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
     }
     int bestmove = get_best_move(passflag);
 
+    collecting = false;
+
     // Copy the root state. Use to check for tree re-use in future calls.
     m_last_rootstate = std::make_unique<GameState>(m_rootstate);
     return bestmove;
@@ -859,6 +874,17 @@ void UCTSearch::ponder() {
         if (result.valid()) {
             increment_playouts(result.eval());
         }
+
+        if (cfg_collect_during_search) {
+            if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr || m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr)) {
+                collecting = true;
+            }
+            else if (!cfg_always_collect) {
+                sym_states[0].clear(); sym_states[1].clear(); sym_states_index[0] = 0; sym_states_index[1] = 0;
+                collecting = false;
+            }
+        }
+
         if (cfg_analyze_interval_centis) {
             Time elapsed;
             int elapsed_centis = Time::timediff_centis(start, elapsed);
@@ -883,6 +909,8 @@ void UCTSearch::ponder() {
 
     // Copy the root state. Use to check for tree re-use in future calls.
     m_last_rootstate = std::make_unique<GameState>(m_rootstate);
+
+    collecting = false;
 }
 
 void UCTSearch::set_playout_limit(int playouts) {

@@ -66,7 +66,7 @@ namespace TimeManagement {
 struct Sym_State {
     int symmetry;
     GameState state;
-    float white_wr;
+    float winrate;
     float diff{ -1.0f };
 };
 
@@ -107,8 +107,8 @@ public:
     void increment_playouts(float eval);
     SearchResult play_simulation(GameState& currstate, UCTNode* const node, int thread_num);
     bool collecting;
-    std::vector<std::unique_ptr<Sym_State>> sym_states;
-    int sym_states_index;
+    std::array<std::vector<std::unique_ptr<Sym_State>>, 2> sym_states;
+    std::array<int, 2> sym_states_index;
 
 private:
     float get_min_psa_ratio() const;

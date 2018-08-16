@@ -56,7 +56,8 @@ extern bool cfg_dyn_fpu;
 extern bool cfg_backup_fpu;
 extern bool cfg_collect_during_search;
 extern bool cfg_always_collect;
-extern bool cfg_adjust_during_search;
+extern int cfg_max_num_adjustments;
+extern int cfg_fixed_symmetry;
 
 extern int cfg_noise;
 extern int cfg_random_cnt;

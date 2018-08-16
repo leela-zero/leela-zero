@@ -73,6 +73,7 @@ public:
     static void show_heatmap(const FastState * const state,
                              const Netresult & netres, const bool topmoves);
 
+    static Network::Netresult Network::get_scored_moves_from_input(std::vector<net_t>& input_data, int symmetry);
     static std::vector<net_t> gather_features(const GameState* const state,
                                               const int symmetry);
     static std::pair<int, int> get_symmetry(const std::pair<int, int>& vertex,

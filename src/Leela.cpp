@@ -195,9 +195,10 @@ static void parse_commandline(int argc, char *argv[]) {
         //cfg_target_komi = 0.0;
         cfg_dyn_fpu = true;
         cfg_resignpct = 0;
-        //cfg_collect_during_search = true;
+        cfg_collect_during_search = true;
         //cfg_always_collect = true;
-        //cfg_adjust_during_search = true;
+        cfg_max_num_adjustments = 1;
+        cfg_fixed_symmetry = 0;
     }
 
     if (vm.count("nonslack")) { 
@@ -207,9 +208,10 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_wr_margin = 0.1;
         cfg_nonslack = true;
         cfg_dyn_fpu = true;
-        //cfg_collect_during_search = true;
+        cfg_collect_during_search = true;
         //cfg_always_collect = true;
-        //cfg_adjust_during_search = true;
+        cfg_max_num_adjustments = 1;
+        cfg_fixed_symmetry = 0;
     }
 
     if (vm.count("sure-backup")) {
@@ -238,7 +240,7 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("max-wr")) {
         cfg_max_wr = vm["max-wr"].as<float>();
-        if (cfg_max_wr > 1.0 & !cfg_noshift) {
+        if (cfg_max_wr > 0.9999 && !cfg_noshift) {
             cfg_max_wr = 0.9999;
         }
     }
@@ -260,6 +262,9 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("adj-playouts")) {
         cfg_adj_playouts = vm["adj-playouts"].as<int>();
+        if (cfg_adj_playouts < 8) {
+            cfg_adj_playouts = 8;
+        }
     }
 
     if (vm.count("adj-pct")) {

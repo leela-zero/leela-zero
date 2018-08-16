@@ -75,7 +75,6 @@ public:
     void virtual_loss(void);
     void virtual_loss_undo(void);
     void update(float eval);
-    float replacement_eval(float eval);
     void clear(std::atomic<int>& nodes, GameState& root_state, float& eval);
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch

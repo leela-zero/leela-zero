@@ -74,7 +74,8 @@ bool cfg_dyn_fpu;
 bool cfg_backup_fpu;
 bool cfg_collect_during_search;
 bool cfg_always_collect;
-bool cfg_adjust_during_search;
+int cfg_max_num_adjustments;
+int cfg_fixed_symmetry;
 
 int cfg_noise;
 int cfg_random_cnt;
@@ -125,8 +126,8 @@ void GTP::setup_default_parameters() {
 
     cfg_dyn_komi = false;
     cfg_target_komi = 7.5f;
-    cfg_adj_playouts = 10000;
-    cfg_adj_pct = 1.0;
+    cfg_adj_playouts = 250;
+    cfg_adj_pct = 4.0;
     cfg_pos = false;
     cfg_neg = false;
     cfg_nonslack = false;
@@ -135,7 +136,7 @@ void GTP::setup_default_parameters() {
     cfg_use_symmetries = true;
     cfg_orig_policy = true;
     cfg_dyn_fpu = false;
-    cfg_backup_fpu = false;
+    cfg_backup_fpu = false; // to remove
 
     cfg_noise = false;
     cfg_random_cnt = 0;
@@ -641,19 +642,35 @@ bool GTP::execute(GameState & game, std::string xinput) {
         gtp_printf(id, "");
         return true;
     }
-    else if (command.find("dyn_komi_test") == 0) { 
-        // todo: configurable lower, upper limits and increment, allow black or white to move, more accurate (with raw_winrate, no bias towards pos or neg)
-        auto vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY, true);
+    else if (command.find("dyn_komi_test") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp;
+        std::string symmetry;
+
+        cmdstream >> tmp;   // eat dyn_komi_test
+        cmdstream >> symmetry;
+
+        int sym;
+
+        if (cmdstream.fail()) {
+            sym = Network::IDENTITY_SYMMETRY;
+        }
+        else {
+            sym = std::stoi(symmetry);
+        }
+
+        // todo: configurable lower/upper limits and gap, allow black or white to move, more accurate (with raw_winrate, no bias towards pos or neg)
+        auto vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
         auto current_komi = game.m_stm_komi;
         std::vector<float> loc_incr;
         game.m_stm_komi = -300.5f;
-        auto vec_old = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY, true);
+        auto vec_old = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
         auto accum_neg = 1.0f - vec_old.winrate;
         myprintf("komi | winrate\n");
         myprintf("---- | ----\n");
         for (auto s = -300.0f; s <= 0.0f; s = s + 0.5) {
             game.m_stm_komi = s;
-            vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY, true);
+            vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
             myprintf("%f | %f\n", s, vec.winrate);
             if (vec_old.winrate < vec.winrate) {
                 loc_incr.emplace_back(s);
@@ -664,7 +681,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         auto accum_pos = 0.0f;
         for (auto s = 0.5; s <= 300.0f; s = s + 0.5) {
             game.m_stm_komi = s;
-            vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY, true);
+            vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
             myprintf("%f | %f\n", s, vec.winrate);
             if (vec_old.winrate < vec.winrate) {
                 loc_incr.emplace_back(s);

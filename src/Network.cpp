@@ -950,13 +950,10 @@ Network::Netresult Network::get_scored_moves(
     return result;
 }
 
-Network::Netresult Network::get_scored_moves_internal(
-    const GameState* const state, const int symmetry) {
+Network::Netresult Network::get_scored_moves_from_input(std::vector<net_t>& input_data, int symmetry) {
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
-
-    const auto input_data = gather_features(state, symmetry);
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
 #ifdef USE_HALF
@@ -1007,7 +1004,7 @@ Network::Netresult Network::get_scored_moves_internal(
 
     Netresult result;
 
-    for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+    for (auto idx = size_t{ 0 }; idx < BOARD_SQUARES; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
         result.policy[sym_idx] = outputs[idx];
     }
@@ -1016,6 +1013,12 @@ Network::Netresult Network::get_scored_moves_internal(
     result.winrate = winrate;
 
     return result;
+}
+
+Network::Netresult Network::get_scored_moves_internal(
+    const GameState* const state, const int symmetry) {
+    assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
+    return get_scored_moves_from_input(gather_features(state, symmetry), symmetry);
 }
 
 void Network::show_heatmap(const FastState* const state,
