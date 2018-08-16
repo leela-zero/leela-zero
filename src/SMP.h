@@ -45,9 +45,40 @@ namespace SMP {
         Mutex * m_mutex;
         bool m_owns_lock{false};
     };
+
+    class RWMutex {
+    public:
+        RWMutex();
+        ~RWMutex() = default;
+        friend class RWLock;
+    private:
+        std::atomic<int16_t> m_lock;
+        int16_t m_write_sequence;
+    };
+
+    class RWLock {
+    public:
+        explicit RWLock(RWMutex & m, bool is_writelock = true);
+        ~RWLock();
+        void rlock();
+        void wlock();
+        void unlock();
+        // atomically release read lock and acquire write lock
+        // returns false if failed to acquire write lock.
+        // doesn't block - because if we block here this will cause deadlock
+        // when all threads compete to get the write lock
+        bool try_wlock();
+    private:
+        RWMutex * m_mutex;
+        bool m_owns_rlock{false};
+        bool m_owns_wlock{false};
+    };
+
 }
 
 // Avoids accidentally creating a temporary
 #define LOCK(mutex, lock) SMP::Lock lock((mutex))
+#define RLOCK(mutex, lock) SMP::RWLock lock((mutex), false)
+#define WLOCK(mutex, lock) SMP::RWLock lock((mutex), true)
 
 #endif
