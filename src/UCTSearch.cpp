@@ -26,6 +26,7 @@
 #include <memory>
 #include <type_traits>
 #include <algorithm>
+#include <numeric>
 
 #include "FastBoard.h"
 #include "FastState.h"
@@ -78,10 +79,8 @@ UCTSearch::UCTSearch(GameState& g)
     set_playout_limit(cfg_max_playouts);
     set_visit_limit(cfg_max_visits);
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
-    for (auto i = 0; i < 2; i++) {
-        sym_states[i].reserve(cfg_adj_playouts + cfg_num_threads);
-        sym_states_index[i] = 0;
-    }
+    sym_states[0].resize(cfg_num_threads);
+    sym_states[1].resize(cfg_num_threads);
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -212,7 +211,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
             const auto had_children = node->has_children();
             
             bool success;
-            if ((cfg_always_collect || collecting) && thread_num == 1) {
+            if ((cfg_always_collect || collecting)) {
                 int rand_sym;
                 if (cfg_fixed_symmetry == -1) {
                     rand_sym = Random::get_Rng().randfix<8>();
@@ -222,22 +221,15 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                 }
                 success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
                 if (success) {
-                    auto sym_state = std::make_unique<Sym_State>();
+                    auto sym_state = std::make_shared<Sym_State>();
                     auto color = currstate.get_to_move();
                     (*sym_state).symmetry = rand_sym;
                     (*sym_state).state = currstate;
                     (*sym_state).winrate = (color == FastBoard::BLACK ? eval : 1.0f - eval);
                     //LOCK(get_mutex(), lock);
-                    if (sym_states[color].size() < cfg_adj_playouts) {
-                        sym_states[color].push_back(std::move(sym_state));
-                    }
-                    else {
-                        int index = sym_states_index[color];
-                        if (index >= cfg_adj_playouts) {
-                            index = sym_states_index[color] = 0;
-                        }
-                        sym_states[color][index] = std::move(sym_state);
-                        sym_states_index[color]++;
+                    sym_states[color][thread_num].push_back(sym_state);
+                    if ((sym_states[color][thread_num].size() - 1) * cfg_num_threads >= cfg_adj_playouts) {
+                        sym_states[color][thread_num].pop_front();
                     }
                 }
             }
@@ -718,7 +710,7 @@ bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
 void UCTWorker::operator()() {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        auto result = m_search->play_simulation(*currstate, m_root, 2);
+        auto result = m_search->play_simulation(*currstate, m_root, m_thread_num);
         if (result.valid()) {
             m_search->increment_playouts(result.eval());
         }
@@ -726,11 +718,9 @@ void UCTWorker::operator()() {
 }
 
 void UCTSearch::increment_playouts(float eval) {
-    if (eval >= 2.0f) {
-        m_playouts += 2;
-    }
-    else {
+    while (eval >= 0.0f) {
         m_playouts++;
+        eval -= 2.0f;
     }
 }
 
@@ -762,10 +752,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
         m_root->prepare_root_node(color, m_nodes, m_rootstate, this);
 
         m_run = true;
-        int cpus = cfg_num_threads;
         ThreadGroup tg(thread_pool);
-        for (int i = 1; i < cpus; i++) {
-            tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
+        for (int i = 1; i < cfg_num_threads; i++) {
+            tg.add_task(UCTWorker(m_rootstate, this, m_root.get(), i));
         }
 
         auto keeprunning = true;
@@ -773,8 +762,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         auto last_output = 0;
         do {
             auto currstate = std::make_unique<GameState>(m_rootstate);
-
-            auto result = play_simulation(*currstate, m_root.get(), 1);
+            auto result = play_simulation(*currstate, m_root.get(), 0);
             if (result.valid()) {
                 increment_playouts(result.eval());
             }
@@ -786,14 +774,24 @@ int UCTSearch::think(int color, passflag_t passflag) {
             if (cfg_collect_during_search) {
                 if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr || m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr)) {
                     collecting = true;
-                    if (num_adjustments < cfg_max_num_adjustments && sym_states[0].size() >= cfg_adj_playouts && sym_states[1].size() >= cfg_adj_playouts && elapsed_centis * 2.0f < time_for_move && m_playouts * 2 < m_maxplayouts) {
+                    auto adj_playouts0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
+                        [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); }),
+                        adj_playouts1 = std::accumulate(sym_states[1].begin(), sym_states[1].end(), 0,
+                            [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); });
+                    if (num_adjustments < cfg_max_num_adjustments && adj_playouts0 >= cfg_adj_playouts && adj_playouts1 >= cfg_adj_playouts && elapsed_centis * 2.0f < time_for_move && m_playouts * 2 < m_maxplayouts) {
                         to_adjust = true;
                         num_adjustments++;
                         break;
                     }
                 }
                 else if (!cfg_always_collect) {
-                    sym_states[0].clear(); sym_states[1].clear(); sym_states_index[0] = 0; sym_states_index[1] = 0;
+                    /*
+                    for (auto j = 0; j < cfg_num_threads; j++) {
+                        sym_states[0][j].clear(); sym_states[1][j].clear();
+                    }
+                    */
+                    sym_states[0].assign(cfg_num_threads, {});
+                    sym_states[1].assign(cfg_num_threads, {});
                     collecting = false;
                 }
             }
@@ -863,14 +861,14 @@ void UCTSearch::ponder() {
     m_run = true;
     ThreadGroup tg(thread_pool);
     for (int i = 1; i < cfg_num_threads; i++) {
-        tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
+        tg.add_task(UCTWorker(m_rootstate, this, m_root.get(), i));
     }
     Time start;
     auto keeprunning = true;
     auto last_output = 0;
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
-        auto result = play_simulation(*currstate, m_root.get(), 1);
+        auto result = play_simulation(*currstate, m_root.get(), 0);
         if (result.valid()) {
             increment_playouts(result.eval());
         }
@@ -880,7 +878,13 @@ void UCTSearch::ponder() {
                 collecting = true;
             }
             else if (!cfg_always_collect) {
-                sym_states[0].clear(); sym_states[1].clear(); sym_states_index[0] = 0; sym_states_index[1] = 0;
+                /*
+                for (auto j = 0; j < cfg_num_threads; j++) {
+                    sym_states[0][j].clear(); sym_states[1][j].clear();
+                }
+                */
+                sym_states[0].assign(cfg_num_threads, {});
+                sym_states[1].assign(cfg_num_threads, {});
                 collecting = false;
             }
         }

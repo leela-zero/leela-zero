@@ -329,7 +329,7 @@ void adjust_komi(GameState& root_state, float root_eval, bool opp, std::function
     }
 }
 
-float mean_white_eval(std::vector<std::unique_ptr<Sym_State>>& ssi, float komi) {
+float mean_white_eval(std::vector<std::shared_ptr<Sym_State>>& ssi, float komi) {
     auto num_positions = ssi.size();
     std::vector<float> evals;
     evals.resize(num_positions);
@@ -352,7 +352,7 @@ float mean_white_eval(std::vector<std::unique_ptr<Sym_State>>& ssi, float komi) 
     else { return mean; }
 }
 
-bool comp(std::unique_ptr<Sym_State>& sym_state1, std::unique_ptr<Sym_State>& sym_state2) {
+bool comp(std::shared_ptr<Sym_State>& sym_state1, std::shared_ptr<Sym_State>& sym_state2) {
     return sym_state1->diff < sym_state2->diff;
 }
 
@@ -405,7 +405,15 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
         root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
     }
 
-    auto& ss = search->sym_states;
+    std::array<std::vector<std::shared_ptr<Sym_State>>, 2> ss;
+    ss[0].reserve(cfg_adj_playouts + cfg_num_threads * 2);
+    ss[1].reserve(cfg_adj_playouts + cfg_num_threads * 2);
+    for (auto i = 0; i < 2; i++) {
+        for (auto j = 0; j < cfg_num_threads; j++) {
+            ss[i].insert(ss[i].end(), search->sym_states[i][j].begin(),search->sym_states[i][j].end());
+        }
+    }
+
     Utils::myprintf("black positions: %d\n", ss[0].size());
     Utils::myprintf("white positions: %d\n", ss[1].size());
 
@@ -419,23 +427,17 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
                 auto colored_root_eval = (i == color ? root_eval : 1.0f - root_eval);
                 for (auto j = 0; j < ss[i].size(); j++) {
                     bool to_remove = false;
-                    if (ss[i][j] == nullptr ||
-                        (!search->collecting &&
-                        (ss[i][j]->state.m_ko_hash_history.size() <= index 
+                    if ((!search->collecting &&
+                        (ss[i][j]->state.m_ko_hash_history.size() <= index
                             || ss[i][j]->state.m_ko_hash_history[index] != hash))) {
-                        //Utils::myprintf("prev root\n");
                         num_removed++;
-                        to_remove = true;
                     }
-                    if (!to_remove) {
-                        if (ss[i][j]->diff < 0.0) {
-                            ss[i][j]->diff = abs(ss[i][j]->winrate - colored_root_eval);
-                        }
-                        ss[i][j - num_removed] = std::move(ss[i][j]);
+                    else {
+                        ss[i][j]->diff = abs(ss[i][j]->winrate - colored_root_eval);
+                        ss[i][j - num_removed] = ss[i][j];
                     }
                 }
                 ss[i].resize(ss[i].size() - num_removed);
-                if (num_removed > 0) { search->sym_states_index[i] = 0; }
             }
             Utils::myprintf("deleting non-descendents\n");
             Utils::myprintf("black positions: %d\n", ss[0].size());
@@ -450,7 +452,6 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
             for (auto i = 0; i < 2; i++) {
                 std::nth_element(ss[i].begin(), ss[i].begin() + num_positions, ss[i].end(), comp);
                 ss[i].resize(num_positions); // maybe don't clear those?
-                search->sym_states_index[i] = 0;
             }
             Utils::myprintf("keeping %f%% closest evals\n", cfg_adj_pct);
             Utils::myprintf("black positions: %d\n", ss[0].size());
@@ -473,7 +474,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
             tmp_komi = root_state.m_stm_komi;
             if (komi != root_state.m_stm_komi) {
                 clear(nodes, root_state, root_eval);
-                ss[color].clear(); search->sym_states_index[color] = 0;
+                search->sym_states[color].assign(cfg_num_threads, {});
             }
             if (komi != root_state.m_stm_komi || cfg_pos || cfg_neg) {
                 if (!(cfg_pos || cfg_neg) && (root_state.m_stm_komi == cfg_target_komi || root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5)) {
@@ -483,7 +484,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
                     GameState tmpstate = root_state;
                     tmpstate.play_move(get_first_child()->get_move());
                     if (cfg_collect_during_search) {
-                        get_white_eval = [&ss, color](float komi_) {return mean_white_eval(ss[1 - color], komi_); };
+                        get_white_eval = [&ss, color](float komi_) {return mean_white_eval(ss[!color], komi_); };
                     }
                     else {
                         get_white_eval = [&tmpstate](float) {return white_net_eval(tmpstate); };
@@ -494,7 +495,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
 
                 if (opp_komi != root_state.m_opp_komi) {
                     clear(nodes, root_state, root_eval);
-                    ss[1 - color].clear(); search->sym_states_index[1 - color] = 0; // replace by !color
+                    search->sym_states[!color].assign(cfg_num_threads, {});
                 }
                 else if (!(cfg_pos || cfg_neg)) {
                     root_state.m_stm_komi = komi;
@@ -505,7 +506,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
             }
             if (tmp_komi != root_state.m_stm_komi) {
                 clear(nodes, root_state, root_eval);
-                ss[color].clear(); search->sym_states_index[color] = 0;
+                search->sym_states[color].assign(cfg_num_threads, {});
             }
         }
         Utils::myprintf("NN eval=%f\n", root_eval);
