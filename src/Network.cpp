@@ -400,7 +400,7 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
             float weight = read();
             if (!std::isfinite(weight)) {
                 size_t offset = wtfile.tellg();
-                myprintf("\nFailed to parse weight file. Non-finite weight in weight file at offset %d\n.", offset - to_read);
+                myprintf("\nFailed to parse weight file. Non-finite weight in weight file at offset %d\n.", offset - float_size);
                 throw std::exception();
             }
 
