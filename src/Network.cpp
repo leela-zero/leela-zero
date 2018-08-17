@@ -361,17 +361,17 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
     myprintf("%d channels...%d blocks.\n", filters, blocks);
 
     auto conv16 = [](uint16_t bytes) -> float {
-        auto mantessa = bytes & ((1 << 10) - 1);
+        auto mantissa = bytes & ((1 << 10) - 1);
         auto exponent = (bytes >> 10) & ((1 << 5) - 1);
         auto sign = bytes >> 15;
 
         if (exponent == 0) { // Subnormal number
-            return mantessa * pow(2.0, -24.0) * (sign ? -1 : 1);
+            return mantissa * pow(2.0, -24.0) * (sign ? -1 : 1);
         } else if (exponent == 32) { // Infinite number
             // Don't bother distinguishing, this is a failure case
             return std::numeric_limits<float>::infinity();
         } else {
-            float significand = 1 + mantessa * pow(2.0, -10.0);
+            float significand = 1 + mantissa * pow(2.0, -10.0);
             return significand * pow(2.0, exponent - 15) * (sign ? -1 : 1);
         }
     };
