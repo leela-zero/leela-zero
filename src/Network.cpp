@@ -425,7 +425,7 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
       }
 
       // And the final fourteen
-      
+
       // Size 2 * filters
       m_conv_pol_w = process(2 * filters);
       // Size 2
