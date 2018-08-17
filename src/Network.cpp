@@ -381,7 +381,7 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
     auto read = [&]() -> float {
         if (float_size) { // 32-bit
             // Sanity check on float size
-            static_assert(sizeof(float) == 4);
+            static_assert(sizeof(float) == 4, "Size of float is an unexpected value");
             float out;
             wtfile.read((char*) &out, sizeof(float));
             return out;
@@ -398,7 +398,7 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
         for (size_t i=0; i < to_read; ++i) {
             if (!good()) { return {0, 0}; }
             float weight = read();
-            if (!isfinite(weight)) {
+            if (!std::isfinite(weight)) {
                 myprintf("\nFailed to parse weight file. Non-finite weight in weight file at offset %d\n.", wtfile.tellg());
                 return {};
             }
