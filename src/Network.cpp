@@ -399,8 +399,9 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
             if (!good()) { return {0, 0}; }
             float weight = read();
             if (!std::isfinite(weight)) {
-                myprintf("\nFailed to parse weight file. Non-finite weight in weight file at offset %d\n.", wtfile.tellg() - to_read);
-                throw std::exception;
+                size_t offset = wtfile.tellg();
+                myprintf("\nFailed to parse weight file. Non-finite weight in weight file at offset %d\n.", offset - to_read);
+                throw std::exception();
             }
 
             weights.push_back(weight);
@@ -424,20 +425,76 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
       }
 
       // And the final fourteen
-      m_conv_pol_w = process(2 * filters);                                           // Size 2 * filters
-      m_conv_pol_b = process(2);                                                     // Size 2
-      std::copy(cbegin(weights), cend(weights), begin(process(m_bn_pol_w1.size()))); // Size 2
-      std::copy(cbegin(weights), cend(weights), begin(process(m_bn_pol_w2.size()))); // Size 2
-      std::copy(cbegin(weights), cend(weights), begin(process(m_ip_pol_w.size())));  // Size 261364
-      std::copy(cbegin(weights), cend(weights), begin(process(m_ip_pol_b.size())));  // Size 362
-      m_conv_val_w = process(filters);                                               // Size filters
-      m_conv_val_b = process(2);                                                     // Size 2
-      std::copy(cbegin(weights), cend(weights), begin(process(m_bn_val_w1.size()))); // Size 1
-      std::copy(cbegin(weights), cend(weights), begin(process(m_bn_val_w2.size()))); // Size 1
-      std::copy(cbegin(weights), cend(weights), begin(process(m_ip1_val_w.size()))); // Size 92416
-      std::copy(cbegin(weights), cend(weights), begin(process(m_ip1_val_b.size()))); // Size 256
-      std::copy(cbegin(weights), cend(weights), begin(process(m_ip2_val_w.size()))); // Size 256
-      std::copy(cbegin(weights), cend(weights), begin(process(m_ip2_val_b.size()))); // Size 1
+      
+      // Size 2 * filters
+      m_conv_pol_w = process(2 * filters);
+      // Size 2
+      m_conv_pol_b = process(2);
+
+      // Size 2
+      {
+          auto weights = process(m_bn_pol_w1.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w1));
+      }
+
+      // Size 2
+      {
+          auto weights = process(m_bn_pol_w2.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w2));
+      }
+
+      // Size 261364
+      {
+          auto weights = process(m_ip_pol_w.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_w));
+      }
+
+      // Size 362
+      {
+          auto weights = process(m_ip_pol_b.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_b));
+      }
+
+      // Size filters
+      m_conv_val_w = process(filters);
+      // Size 2
+      m_conv_val_b = process(filters);
+
+      // Size 1
+      {
+          auto weights = process(m_bn_val_w1.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w1));
+      }
+
+      // Size 1
+      {
+          auto weights = process(m_bn_val_w2.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w2));
+      }
+
+      // Size 92416
+      {
+          auto weights = process(m_ip1_val_w.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_w));
+      }
+
+      // Size 256
+      {
+          auto weights = process(m_ip1_val_b.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_b));
+      }
+
+      // Size 256
+      {
+          auto weights = process(m_ip2_val_w.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_w));
+      }
+
+      // Size 1
+      {
+          auto weights = process(m_ip2_val_b.size());
+          std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_b));
+      }
 
       process_bn_var(m_bn_pol_w2);
       process_bn_var(m_bn_val_w2);
