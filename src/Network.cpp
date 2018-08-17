@@ -267,6 +267,334 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     return {channels, static_cast<int>(residual_blocks)};
 }
 
+std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
+    // Format for v3 is as follows 
+    //
+    // 5 bytes Magic Number '3LZW\n'
+    // 1 byte for value head type: 0 for v1 type, 1 for v2 type
+    // 1 byte float size: 1 for 16-bit, 2 for 32-bit, 3 for 64-bit
+    // 2 bytes number of residual blocks (unsigned integer)
+    // 2 bytes number of filters (unsigned integer)
+    // From here, the order of numbers is exactly the same as in the v1 file,
+    // directly in IEEE 754-2008 little endian format.
+    //
+    // Data sanity:
+    // Floating point numbers MUST NOT encode a non-finite number
+    // Size of number of residual blocks and filters must be non-zero
+
+    // For now, assume we are on a Little Endian System, because everywhere else
+    // in the code seems to.
+
+    myprintf("Detecting residual layers...v3...");
+
+    wtfile.clear();
+    wtfile.seekg(0, std::ios::beg);
+
+    // Read magic bytes
+    const int magic_len = 5;
+    char magic[magic_len] = {'3', 'L', 'Z', 'W', '\n'};
+    char read_magic[magic_len];
+    wtfile.read(&read_magic[0], magic_len);
+
+    // Make sure the magic bytes are the same
+    bool magic_check = true;
+    for (int i=0; i < magic_len; ++i) {
+        if (magic[i] != read_magic[i]) {
+            magic_check = false;
+            break;
+        }
+    }
+
+    if (!magic_check) {
+        myprintf("\nFailed to parse weight file.  Failed magic bytes check.  Is this a weights file?\n");
+        return {0, 0};
+    }
+
+    auto good = [&]() -> bool {
+        if (!wtfile.good()) {
+            myprintf("\nFailed to parse weight file.  Premature EOF or read failure at byte %d.\n", wtfile.tellg());
+        }
+        return wtfile.good();
+    };
+
+    // Value head type is a 1-byte unsigned value
+    if (!good()) { return {0,0}; }
+    uint8_t value_head_type;
+    wtfile.read((char*) &value_head_type, sizeof(uint8_t));
+    m_value_head_not_stm = (bool)value_head_type;
+
+    if (value_head_type > 1) {
+        myprintf("\nFailed to parse weight file.  Value head type is out of range.\n");
+        return {0, 0};
+    }
+
+    // Float size is a 1-byte unsigned value
+    if (!good()) { return {0,0}; }
+    uint8_t float_size;
+    wtfile.read((char*) &float_size, sizeof(uint8_t));
+
+    if (float_size > 1) {
+        myprintf("\nFailed to parse weight file.  Float size byte is out of range.\n");
+        return {0, 0};
+    }
+
+    // Blocks is a 2-byte unsigned value
+    if (!good()) { return {0,0}; }
+    uint16_t blocks;
+    wtfile.read((char*) &blocks, sizeof(uint16_t));
+
+    if (blocks == 0) {
+        myprintf("\nFailed to parse weight file.  Detected zero blocks.\n");
+        return {0, 0};
+    }
+
+    // Filters is a 2-byte unsigned value
+    if (!good()) { return {0,0}; }
+    uint16_t filters;
+    wtfile.read((char*) &filters, sizeof(uint16_t));
+
+    if (filters == 0) {
+        myprintf("\nFailed to parse weight file.  Detected zero filters.\n");
+        return {0, 0};
+    }
+
+    myprintf("%d channels...%d blocks.\n", filters, blocks);
+
+    auto conv16 = [](uint16_t bytes) -> float {
+        auto mantessa = bytes & ((1 << 10) - 1);
+        auto exponent = (bytes >> 10) & ((1 << 5) - 1);
+        auto sign = bytes >> 15;
+
+        if (exponent == 0) { // Subnormal number
+            return mantessa * pow(2.0, -24.0) * (sign ? -1 : 1);
+        } else if (exponent == 32) { // Infinite number
+            // Don't bother distinguishing, this is a failure case
+            return std::numeric_limits<float>::infinity();
+        } else {
+            float significand = 1 + mantessa * pow(2.0, -10.0);
+            return significand * pow(2.0, exponent - 15) * (sign ? -1 : 1);
+        }
+    };
+
+    // Header finished processing, read the residual blocks
+
+    auto read = [&]() -> float {
+        if (float_size) { // 32-bit
+            // Sanity check on float size
+            static_assert(sizeof(float) == 4);
+            float out;
+            wtfile.read((char*) &out, sizeof(float));
+            return out;
+        } else { // 16-bit
+            uint16_t out;
+            wtfile.read((char*) &out, sizeof(uint16_t));
+            return conv16(out);
+        }
+    };
+
+    auto process = [&](size_t to_read) -> std::vector<float> {
+        std::vector<float> weights;
+        weights.reserve(to_read);
+        for (size_t i=0; i < to_read; ++i) {
+            if (!good()) { return {0, 0}; }
+            float weight = read();
+            if (!isfinite(weight)) {
+                myprintf("\nFailed to parse weight file. Non-finite weight in weight file at offset %d\n.", wtfile.tellg());
+                return {};
+            }
+
+            weights.push_back(weight);
+        }
+
+        return weights;
+    };
+
+    for (int block=0; block < 1 + (2 * blocks); ++block) {
+        // Convolution Weights
+        {
+            int count = filters * filters * 9;
+            if (!block) { // Very first has a different shape because it's the input layer
+                count = filters * 162;
+            }
+            std::vector<float> weights = process(count);
+            if (!weights.size()) {
+                return {0, 0};
+            }
+            m_conv_weights.emplace_back(std::move(weights));
+        }
+
+        // Convolution Biases
+        {
+            std::vector<float> biases = process(filters);
+            if (!biases.size()) {
+                return {0, 0};
+            }
+            m_conv_biases.emplace_back(std::move(biases));
+        }
+
+        // Batchnorm Means
+        {
+            std::vector<float> means = process(filters);
+            if (!means.size()) {
+                return {0, 0};
+            }
+            m_batchnorm_means.emplace_back(std::move(means));
+        }
+
+        // Batchnorm StdDevs
+        {
+            std::vector<float> stddevs = process(filters);
+            if (!stddevs.size()) {
+                return {0, 0};
+            }
+            process_bn_var(stddevs);
+            m_batchnorm_stddevs.emplace_back(std::move(stddevs));
+        }
+    }
+
+    // And the final fourteen
+
+    // Size 2 * filters
+    {
+        std::vector<float> weights = process(2 * filters);
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        m_conv_pol_w = std::move(weights);
+    }
+
+    // Size 2
+    {
+        std::vector<float> weights = process(2);
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        m_conv_pol_b = std::move(weights);
+    }
+
+    // Size 2
+    {
+        std::vector<float> weights = process(m_bn_pol_w1.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w1));
+    }
+
+    // Size 2
+    {
+        std::vector<float> weights = process(m_bn_pol_w2.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w2));
+    }
+
+    // Size 261364
+    {
+        std::vector<float> weights = process(m_ip_pol_w.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_w));
+    }
+
+    // Size 362
+    {
+        std::vector<float> weights = process(m_ip_pol_b.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_b));
+    }
+
+    // Size filters
+    {
+        std::vector<float> weights = process(filters);
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        m_conv_val_w = std::move(weights);
+    }
+
+    // Size 2
+    {
+        std::vector<float> weights = process(2);
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        m_conv_val_b = std::move(weights);
+    }
+
+    // Size 1
+    {
+        std::vector<float> weights = process(m_bn_val_w1.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w1));
+    }
+
+    // Size 1
+    {
+        std::vector<float> weights = process(m_bn_val_w2.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w2));
+    }
+
+    // Size 92416
+    {
+        std::vector<float> weights = process(m_ip1_val_w.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_w));
+    }
+
+    // Size 256
+    {
+        std::vector<float> weights = process(m_ip1_val_b.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_b));
+    }
+
+    // Size 256
+    {
+        std::vector<float> weights = process(m_ip2_val_w.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_w));
+    }
+
+    // Size 1
+    {
+        std::vector<float> weights = process(m_ip2_val_b.size());
+        if (!weights.size()) {
+            return {0, 0};
+        }
+        std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_b));
+    }
+
+    process_bn_var(m_bn_pol_w2);
+    process_bn_var(m_bn_val_w2);
+
+    // Finally, the file should be exhausted.  Double check.
+
+    if (wtfile.good()) {
+        myprintf("\nWarning, there still seems to be leftover data in the file.\n");
+        myprintf("Current position: %d. ", wtfile.tellg());
+        wtfile.seekg(0, std::ios_base::end);
+        myprintf("End position: %d. ", wtfile.tellg());
+    }
+
+    return {filters, blocks};
+}
+
 std::pair<int, int> Network::load_network_file(const std::string& filename) {
     // gzopen supports both gz and non-gz files, will decompress
     // or just read directly as needed.
@@ -299,19 +627,26 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
         auto iss = std::stringstream{line};
         // First line is the file format version id
         iss >> format_version;
-        if (iss.fail() || (format_version != 1 && format_version != 2)) {
+        if (iss.fail() || (format_version < 1 || format_version > 3)) {
             myprintf("Weights file is the wrong version.\n");
             return {0, 0};
         } else {
             // Version 2 networks are identical to v1, except
             // that they return the value for black instead of
             // the player to move. This is used by ELF Open Go.
+            // Version 3 networks can use either, and will be
+            // set later, so no harm in setting now.
             if (format_version == 2) {
                 m_value_head_not_stm = true;
             } else {
                 m_value_head_not_stm = false;
             }
-            return load_v1_network(buffer);
+
+            if (format_version == 3) {
+                return load_v3_network(buffer);
+            } else {
+                return load_v1_network(buffer);
+            }
         }
     }
     return {0, 0};
