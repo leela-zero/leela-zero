@@ -268,7 +268,7 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
 }
 
 std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
-    // Format for v3 is as follows 
+    // Format for v3 is as follows
     //
     // 5 bytes Magic Number '3LZW\n'
     // 1 byte for value head type: 0 for v1 type, 1 for v2 type
