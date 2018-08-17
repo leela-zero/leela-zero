@@ -399,8 +399,8 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
             if (!good()) { return {0, 0}; }
             float weight = read();
             if (!std::isfinite(weight)) {
-                myprintf("\nFailed to parse weight file. Non-finite weight in weight file at offset %d\n.", wtfile.tellg());
-                return {};
+                myprintf("\nFailed to parse weight file. Non-finite weight in weight file at offset %d\n.", wtfile.tellg() - to_read);
+                throw std::exception;
             }
 
             weights.push_back(weight);
@@ -409,187 +409,49 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
         return weights;
     };
 
-    for (int block=0; block < 1 + (2 * blocks); ++block) {
-        // Convolution Weights
-        {
-            int count = filters * filters * 9;
-            if (!block) { // Very first has a different shape because it's the input layer
-                count = filters * 162;
-            }
-            std::vector<float> weights = process(count);
-            if (!weights.size()) {
-                return {0, 0};
-            }
-            m_conv_weights.emplace_back(std::move(weights));
-        }
+    try {
+      for (int block=0; block < 1 + (2 * blocks); ++block) {
+          int count = filters * filters * 9;
+          if (!block) { // Very first has a different shape because it's the input layer
+              count = filters * 162;
+          }
+          m_conv_weights.emplace_back(process(count));
+          m_conv_biases.emplace_back(process(filters));
+          m_batchnorm_means.emplace_back(process(filters));
+          std::vector<float> stddevs = process(filters);
+          process_bn_var(stddevs);
+          m_batchnorm_stddevs.emplace_back(std::move(stddevs));
+      }
 
-        // Convolution Biases
-        {
-            std::vector<float> biases = process(filters);
-            if (!biases.size()) {
-                return {0, 0};
-            }
-            m_conv_biases.emplace_back(std::move(biases));
-        }
+      // And the final fourteen
+      m_conv_pol_w = process(2 * filters);                                           // Size 2 * filters
+      m_conv_pol_b = process(2);                                                     // Size 2
+      std::copy(cbegin(weights), cend(weights), begin(process(m_bn_pol_w1.size()))); // Size 2
+      std::copy(cbegin(weights), cend(weights), begin(process(m_bn_pol_w2.size()))); // Size 2
+      std::copy(cbegin(weights), cend(weights), begin(process(m_ip_pol_w.size())));  // Size 261364
+      std::copy(cbegin(weights), cend(weights), begin(process(m_ip_pol_b.size())));  // Size 362
+      m_conv_val_w = process(filters);                                               // Size filters
+      m_conv_val_b = process(2);                                                     // Size 2
+      std::copy(cbegin(weights), cend(weights), begin(process(m_bn_val_w1.size()))); // Size 1
+      std::copy(cbegin(weights), cend(weights), begin(process(m_bn_val_w2.size()))); // Size 1
+      std::copy(cbegin(weights), cend(weights), begin(process(m_ip1_val_w.size()))); // Size 92416
+      std::copy(cbegin(weights), cend(weights), begin(process(m_ip1_val_b.size()))); // Size 256
+      std::copy(cbegin(weights), cend(weights), begin(process(m_ip2_val_w.size()))); // Size 256
+      std::copy(cbegin(weights), cend(weights), begin(process(m_ip2_val_b.size()))); // Size 1
 
-        // Batchnorm Means
-        {
-            std::vector<float> means = process(filters);
-            if (!means.size()) {
-                return {0, 0};
-            }
-            m_batchnorm_means.emplace_back(std::move(means));
-        }
+      process_bn_var(m_bn_pol_w2);
+      process_bn_var(m_bn_val_w2);
 
-        // Batchnorm StdDevs
-        {
-            std::vector<float> stddevs = process(filters);
-            if (!stddevs.size()) {
-                return {0, 0};
-            }
-            process_bn_var(stddevs);
-            m_batchnorm_stddevs.emplace_back(std::move(stddevs));
-        }
-    }
+      // Finally, the file should be exhausted.  Double check.
 
-    // And the final fourteen
-
-    // Size 2 * filters
-    {
-        std::vector<float> weights = process(2 * filters);
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        m_conv_pol_w = std::move(weights);
-    }
-
-    // Size 2
-    {
-        std::vector<float> weights = process(2);
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        m_conv_pol_b = std::move(weights);
-    }
-
-    // Size 2
-    {
-        std::vector<float> weights = process(m_bn_pol_w1.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w1));
-    }
-
-    // Size 2
-    {
-        std::vector<float> weights = process(m_bn_pol_w2.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w2));
-    }
-
-    // Size 261364
-    {
-        std::vector<float> weights = process(m_ip_pol_w.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_w));
-    }
-
-    // Size 362
-    {
-        std::vector<float> weights = process(m_ip_pol_b.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_b));
-    }
-
-    // Size filters
-    {
-        std::vector<float> weights = process(filters);
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        m_conv_val_w = std::move(weights);
-    }
-
-    // Size 2
-    {
-        std::vector<float> weights = process(2);
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        m_conv_val_b = std::move(weights);
-    }
-
-    // Size 1
-    {
-        std::vector<float> weights = process(m_bn_val_w1.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w1));
-    }
-
-    // Size 1
-    {
-        std::vector<float> weights = process(m_bn_val_w2.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w2));
-    }
-
-    // Size 92416
-    {
-        std::vector<float> weights = process(m_ip1_val_w.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_w));
-    }
-
-    // Size 256
-    {
-        std::vector<float> weights = process(m_ip1_val_b.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_b));
-    }
-
-    // Size 256
-    {
-        std::vector<float> weights = process(m_ip2_val_w.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_w));
-    }
-
-    // Size 1
-    {
-        std::vector<float> weights = process(m_ip2_val_b.size());
-        if (!weights.size()) {
-            return {0, 0};
-        }
-        std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_b));
-    }
-
-    process_bn_var(m_bn_pol_w2);
-    process_bn_var(m_bn_val_w2);
-
-    // Finally, the file should be exhausted.  Double check.
-
-    if (wtfile.good()) {
-        myprintf("\nWarning, there still seems to be leftover data in the file.\n");
-        myprintf("Current position: %d. ", wtfile.tellg());
-        wtfile.seekg(0, std::ios_base::end);
-        myprintf("End position: %d. ", wtfile.tellg());
+      if (wtfile.good()) {
+          myprintf("\nWarning, there still seems to be leftover data in the file.\n");
+          myprintf("Current position: %d. ", wtfile.tellg());
+          wtfile.seekg(0, std::ios_base::end);
+          myprintf("End position: %d. ", wtfile.tellg());
+      }
+    } catch (std::exception) {
+      return {0, 0};
     }
 
     return {filters, blocks};
