@@ -457,8 +457,8 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
 
       // Size filters
       m_conv_val_w = process(filters);
-      // Size 2
-      m_conv_val_b = process(filters);
+      // Size 1
+      m_conv_val_b = process(1);
 
       // Size 1
       {
@@ -500,12 +500,13 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
       process_bn_var(m_bn_val_w2);
 
       // Finally, the file should be exhausted.  Double check.
-
-      if (wtfile.good()) {
+      size_t offset = wtfile.tellg();
+      wtfile.seekg(0, std::ios_base::end);
+      size_t file_size = wtfile.tellg();
+      if (offset != file_size) {
           myprintf("\nWarning, there still seems to be leftover data in the file.\n");
-          myprintf("Current position: %d. ", wtfile.tellg());
-          wtfile.seekg(0, std::ios_base::end);
-          myprintf("End position: %d. ", wtfile.tellg());
+          myprintf("Current position: %d. ", offset);
+          myprintf("End position: %d. ", file_size);
       }
     } catch (std::exception) {
       return {0, 0};
