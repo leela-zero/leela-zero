@@ -81,6 +81,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("noponder", "Disable thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
+        ("cpu-only", "Use CPU-only implementation and do not use GPU.")
         ("handicap", "Handicap mode.")
         ("nonslack", "Non-slack mode.")
         ("max-wr", po::value<float>(), "Maximal white winrate.")
@@ -105,6 +106,10 @@ static void parse_commandline(int argc, char *argv[]) {
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
         ("tune-only", "Tune OpenCL only and then exit.")
+#ifdef USE_HALF
+        ("precision", po::value<std::string>(), "Floating-point precision (single/half/auto).\n"
+                                                "Default is to auto which automatically determines which one to use.")
+#endif
         ;
 #endif
     po::options_description selfplay_desc("Self-play options");
@@ -311,13 +316,47 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_gtp_mode = true;
     }
 
+#ifdef USE_OPENCL
+    if (vm.count("gpu")) {
+        cfg_gpus = vm["gpu"].as<std::vector<int> >();
+        // if we use OpenCL, we probably need more threads for the max so that we can saturate the GPU.
+        cfg_max_threads *= cfg_gpus.size();
+        // we can't exceed MAX_CPUS
+        cfg_max_threads = std::min(cfg_max_threads, MAX_CPUS);
+    }
+
+    if (vm.count("full-tuner")) {
+        cfg_sgemm_exhaustive = true;
+    }
+
+    if (vm.count("tune-only")) {
+        cfg_tune_only = true;
+    }
+
+#ifdef USE_HALF
+    if (vm.count("precision")) {
+        auto precision = vm["precision"].as<std::string>();
+        if ("single" == precision) {
+            cfg_precision = precision_t::SINGLE;
+        } else if ("half" == precision) {
+            cfg_precision = precision_t::HALF;
+        } else if ("auto" == precision) {
+            cfg_precision = precision_t::AUTO;
+        } else {
+            printf("Unexpected option for --precision, expecting single/half/auto\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+#endif
+#endif
+
     if (!vm["threads"].defaulted()) {
         auto num_threads = vm["threads"].as<int>();
         if (num_threads > cfg_max_threads) {
             myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
-        } else if (num_threads != cfg_num_threads) {
-            cfg_num_threads = num_threads;
+            num_threads = cfg_max_threads;
         }
+        cfg_num_threads = num_threads;
     }
     myprintf("Using %d thread(s).\n", cfg_num_threads);
 
@@ -340,6 +379,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("dumbpass")) {
         cfg_dumbpass = true;
+    }
+
+    if (vm.count("cpu-only")) {
+        cfg_cpu_only = true;
     }
 
     if (vm.count("playouts")) {
@@ -411,21 +454,6 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_lagbuffer_cs = lagbuffer;
         }
     }
-
-#ifdef USE_OPENCL
-    if (vm.count("gpu")) {
-        cfg_gpus = vm["gpu"].as<std::vector<int> >();
-    }
-
-    if (vm.count("full-tuner")) {
-        cfg_sgemm_exhaustive = true;
-    }
-
-    if (vm.count("tune-only")) {
-        cfg_tune_only = true;
-    }
-#endif
-
     if (vm.count("benchmark")) {
         // These must be set later to override default arguments.
         cfg_allow_pondering = false;
@@ -442,6 +470,7 @@ static void parse_commandline(int argc, char *argv[]) {
         }
     }
 
+
     auto out = std::stringstream{};
     for (auto i = 1; i < argc; i++) {
         out << " " << argv[i];
@@ -450,6 +479,14 @@ static void parse_commandline(int argc, char *argv[]) {
         out << " --seed " << cfg_rng_seed;
     }
     cfg_options_str = out.str();
+}
+
+static void initialize_network() {
+    auto network = std::make_unique<Network>();
+    auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
+    network->initialize(playouts, cfg_weightsfile);
+
+    GTP::initialize(std::move(network));
 }
 
 // Setup global objects after command line has been parsed
@@ -465,12 +502,7 @@ void init_global_objects() {
     // improves reproducibility across platforms.
     Random::get_Rng().seedrandom(cfg_rng_seed);
 
-    // When visits are limited ensure cache size is still limited.
-    auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
-    NNCache::get_NNCache().set_size_from_playouts(playouts);
-
-    // Initialize network
-    Network::initialize();
+    initialize_network();
 }
 
 void benchmark(GameState& game) {
@@ -478,7 +510,8 @@ void benchmark(GameState& game) {
     game.play_textmove("b", "r16");
     game.play_textmove("w", "d4");
     game.play_textmove("b", "c3");
-    auto search = std::make_unique<UCTSearch>(game);
+
+    auto search = std::make_unique<UCTSearch>(game, *GTP::s_network);
     game.set_to_move(FastBoard::WHITE);
     search->think(FastBoard::WHITE);
 }

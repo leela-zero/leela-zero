@@ -97,10 +97,10 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
 
     child_cnt = 0;
     for (auto& child : m_children) {
-        auto score = child->get_score();
+        auto policy = child->get_policy();
         auto eta_a = dirichlet_vector[child_cnt++];
-        score = score * (1 - epsilon) + epsilon * eta_a;
-        child->set_score(score);
+        policy = policy * (1 - epsilon) + epsilon * eta_a;
+        child->set_policy(policy);
     }
 }
 
@@ -376,7 +376,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
     float root_eval;
     const auto had_children = has_children();
     if (expandable()) {
-        create_children(nodes, root_state, root_eval);
+        create_children(network, nodes, root_state, root_eval);
     }
 
     // There are a lot of special cases where code assumes

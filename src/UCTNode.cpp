@@ -40,7 +40,7 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float score) : m_move(vertex), m_score(score) {
+UCTNode::UCTNode(int vertex, float policy) : m_move(vertex), m_policy(policy) {
 }
 
 bool UCTNode::first_visit() const {
@@ -129,7 +129,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
-                            std::vector<Network::ScoreVertexPair>& nodelist,
+                            std::vector<Network::PolicyVertexPair>& nodelist,
                             float min_psa_ratio) {
     assert(min_psa_ratio < m_min_psa_ratio_children);
 
@@ -199,29 +199,30 @@ bool UCTNode::expandable(const float min_psa_ratio) const {
     return min_psa_ratio < m_min_psa_ratio_children;
 }
 
-float UCTNode::get_score() const {
-    return m_score;
+float UCTNode::get_policy() const {
+    return m_policy;
 }
 
-void UCTNode::set_score(float score) {
-    m_score = score;
+void UCTNode::set_policy(float policy) {
+    m_policy = policy;
 }
 
 int UCTNode::get_visits() const {
     return m_visits;
 }
 
-// Return the true score, without taking into account virtual losses.
-float UCTNode::get_pure_eval(int tomove) const {
-    //LOCK(get_mutex(), lock);
-    auto visits = get_visits();
+float UCTNode::get_raw_eval(int tomove, int virtual_loss) const {
+    auto visits = get_visits() + virtual_loss;
     assert(visits > 0);
     auto blackeval = get_blackevals();
-    auto score = static_cast<float>(blackeval / double(visits));
     if (tomove == FastBoard::WHITE) {
-        score = 1.0f - score;
+        blackeval += static_cast<double>(virtual_loss);
     }
-    return score;
+    auto eval = static_cast<float>(blackeval / double(visits));
+    if (tomove == FastBoard::WHITE) {
+        eval = 1.0f - eval;
+    }
+    return eval;
 }
 
 float UCTNode::get_eval(int tomove) const {
@@ -229,18 +230,7 @@ float UCTNode::get_eval(int tomove) const {
     // Due to the use of atomic updates and virtual losses, it is
     // possible for the visit count to change underneath us. Make sure
     // to return a consistent result to the caller by caching the values.
-    auto virtual_loss = int{m_virtual_loss};
-    auto visits = get_visits() + virtual_loss;
-    assert(visits > 0);
-    auto blackeval = get_blackevals();
-    if (tomove == FastBoard::WHITE) {
-        blackeval += static_cast<double>(virtual_loss);
-    }
-    auto score = static_cast<float>(blackeval / double(visits));
-    if (tomove == FastBoard::WHITE) {
-        score = 1.0f - score;
-    }
-    return score;
+    return get_raw_eval(tomove, m_virtual_loss);
 }
 
 float UCTNode::get_net_eval(int tomove) const {
@@ -268,7 +258,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         if (child.valid()) {
             parentvisits += child.get_visits();
             if (child.get_visits() > 0) {
-                total_visited_policy += child.get_score();
+                total_visited_policy += child.get_policy();
             }
         }
     }
@@ -283,7 +273,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     }
     // Estimated eval for unknown nodes = original parent NN eval - reduction
     auto visits = get_visits();
-    auto parent_eval = (cfg_dyn_fpu && visits > 0) ? get_pure_eval(color) : get_net_eval(color);
+    auto parent_eval = (cfg_dyn_fpu && visits > 0) ? get_raw_eval(color) : get_net_eval(color);
     auto fpu_eval = parent_eval - fpu_reduction;
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
@@ -299,7 +289,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         if (child_visits > 0 && (visits > 0 || !cfg_dyn_fpu)) {
             winrate = child.get_eval(color);
         }
-        auto psa = child.get_score();
+        auto psa = child.get_policy();
         auto denom = 1.0 + child.get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
         auto value = winrate + puct;
@@ -329,9 +319,9 @@ public:
             return a.get_visits() < b.get_visits();
         }
 
-        // neither has visits, sort on prior score
+        // neither has visits, sort on policy prior
         if (a.get_visits() == 0) {
-            return a.get_score() < b.get_score();
+            return a.get_policy() < b.get_policy();
         }
 
         // both have same non-zero number of visits

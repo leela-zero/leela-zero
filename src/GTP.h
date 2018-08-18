@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 
+#include "Network.h"
 #include "GameState.h"
 #include "UCTSearch.h"
 
@@ -71,6 +72,12 @@ extern bool cfg_dumbpass;
 extern std::vector<int> cfg_gpus;
 extern bool cfg_sgemm_exhaustive;
 extern bool cfg_tune_only;
+#ifdef USE_HALF
+enum class precision_t {
+    AUTO, SINGLE, HALF
+};
+extern precision_t cfg_precision;
+#endif
 #endif
 extern float cfg_puct;
 extern float cfg_softmax_temp;
@@ -81,6 +88,7 @@ extern FILE* cfg_logfile_handle;
 extern bool cfg_quiet;
 extern std::string cfg_options_str;
 extern bool cfg_benchmark;
+extern bool cfg_cpu_only;
 extern int cfg_analyze_interval_centis;
 
 /*
@@ -90,6 +98,8 @@ extern int cfg_analyze_interval_centis;
 */
 class GTP {
 public:
+    static std::unique_ptr<Network> s_network;
+    static void initialize(std::unique_ptr<Network>&& network);
     static bool execute(GameState & game, std::string xinput);
     static void setup_default_parameters();
 private:

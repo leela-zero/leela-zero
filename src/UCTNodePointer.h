@@ -46,7 +46,7 @@ class UCTNodePointer {
 private:
     // the raw storage used here.
     // if bit 0 is 0, m_data is the actual pointer.
-    // if bit 0 is 1, bit [31:16] is the vertex value, bit [63:32] is the score.
+    // if bit 0 is 1, bit [31:16] is the vertex value, bit [63:32] is the policy prior.
     // (C-style bit fields and unions are not portable)
     mutable uint64_t m_data = 1;
 
@@ -60,7 +60,7 @@ private:
         return static_cast<std::int16_t>(m_data >> 16);
     }
 
-    float read_score() const {
+    float read_policy() const {
         static_assert(sizeof(float) == 4,
             "This code assumes floats are 32-bit");
         assert(!is_inflated());
@@ -74,7 +74,7 @@ private:
 public:
     ~UCTNodePointer();
     UCTNodePointer(UCTNodePointer&& n);
-    UCTNodePointer(std::int16_t vertex, float score);
+    UCTNodePointer(std::int16_t vertex, float policy);
     UCTNodePointer(const UCTNodePointer&) = delete;
 
     bool is_inflated() const {
@@ -98,14 +98,14 @@ public:
         return ret;
     }
 
-    // construct UCTNode instance from the vertex/score pair
+    // construct UCTNode instance from the vertex/policy pair
     void inflate() const;
 
     // proxy of UCTNode methods which can be called without
     // constructing UCTNode
     bool valid() const;
     int get_visits() const;
-    float get_score() const;
+    float get_policy() const;
     bool active() const;
     int get_move() const;
     // this can only be called if it is an inflated pointer

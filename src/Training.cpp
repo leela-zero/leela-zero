@@ -153,13 +153,13 @@ TimeStep::NNPlanes Training::get_planes(const GameState* const state) {
     return planes;
 }
 
-void Training::record(GameState& state, UCTNode& root) {
+void Training::record(Network & network, GameState& state, UCTNode& root) {
     auto step = TimeStep{};
     step.to_move = state.board.get_to_move();
     step.planes = get_planes(&state);
 
     auto result =
-        Network::get_scored_moves(&state, Network::Ensemble::DIRECT, 0);
+        network.get_output(&state, Network::Ensemble::DIRECT, 0);
     step.net_winrate = result.winrate;
 
     const auto& best_node = root.get_best_root_child(step.to_move);
