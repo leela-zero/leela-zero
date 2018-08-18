@@ -65,6 +65,10 @@ public:
     }
 
     void dump_stats();
+    void clear_cache() {
+        m_cache.clear();
+    };
+
 private:
 
     std::mutex m_mutex;

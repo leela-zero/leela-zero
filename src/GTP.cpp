@@ -36,6 +36,7 @@
 #include "FullBoard.h"
 #include "GameState.h"
 #include "Network.h"
+#include "NNCache.h"
 #include "SGFTree.h"
 #include "SMP.h"
 #include "Training.h"
@@ -54,6 +55,30 @@ int cfg_max_visits;
 TimeManagement::enabled_t cfg_timemanage;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
+
+bool cfg_dyn_komi;
+float cfg_max_wr;
+float cfg_min_wr;
+float cfg_wr_margin;
+float cfg_target_komi;
+int cfg_adj_playouts;
+float cfg_adj_pct;
+bool cfg_pos;
+bool cfg_neg;
+bool cfg_nonslack;
+bool cfg_sure_backup;
+bool cfg_noshift;
+bool cfg_use_symmetries;
+bool cfg_orig_policy;
+bool cfg_dyn_fpu;
+bool cfg_backup_fpu;
+bool cfg_collect_during_search;
+bool cfg_always_collect;
+int cfg_max_num_adjustments;
+int cfg_fixed_symmetry;
+bool cfg_use_root_for_diff;
+bool cfg_auto_pos_neg;
+
 int cfg_noise;
 int cfg_random_cnt;
 int cfg_random_min_visits;
@@ -115,6 +140,23 @@ void GTP::setup_default_parameters() {
     cfg_fpu_reduction = 0.25f;
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
+
+    cfg_dyn_komi = false;
+    cfg_target_komi = 7.5f;
+    cfg_adj_playouts = 200;
+    cfg_adj_pct = 4.0;
+    cfg_pos = false;
+    cfg_neg = false;
+    cfg_nonslack = false;
+    cfg_sure_backup = true;
+    cfg_noshift = true;
+    cfg_use_symmetries = true;
+    cfg_orig_policy = true;
+    cfg_dyn_fpu = false;
+    cfg_backup_fpu = false; // to remove
+    cfg_use_root_for_diff = false;
+    cfg_auto_pos_neg = true;
+
     cfg_noise = false;
     cfg_random_cnt = 0;
     cfg_random_min_visits = 1;
@@ -141,6 +183,64 @@ void GTP::setup_default_parameters() {
     std::uint64_t seed2 = std::chrono::high_resolution_clock::
         now().time_since_epoch().count();
     cfg_rng_seed = seed1 ^ seed2;
+}
+
+int dyn_komi_test(GameState &game, int sym) {
+    // todo: configurable lower/upper limits and gap, allow black or white to move, more accurate (with raw_winrate, no bias towards pos or neg)
+    auto vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
+    auto current_komi = game.m_stm_komi;
+    std::vector<float> loc_incr;
+    game.m_stm_komi = -300.5f;
+    auto vec_old = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
+    auto accum_neg = 1.0f - vec_old.winrate;
+    myprintf("komi | winrate\n");
+    myprintf("---- | ----\n");
+    for (auto s = -300.0f; s <= 0.0f; s = s + 0.5) {
+        game.m_stm_komi = s;
+        vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
+        myprintf("%f | %f\n", s, vec.winrate);
+        if (vec_old.winrate < vec.winrate) {
+            loc_incr.emplace_back(s);
+            accum_neg += vec.winrate - vec_old.winrate;
+        }
+        vec_old = vec;
+    }
+    auto accum_pos = 0.0f;
+    for (auto s = 0.5; s <= 300.0f; s = s + 0.5) {
+        game.m_stm_komi = s;
+        vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
+        myprintf("%f | %f\n", s, vec.winrate);
+        if (vec_old.winrate < vec.winrate) {
+            loc_incr.emplace_back(s);
+            accum_pos += vec.winrate - vec_old.winrate;
+        }
+        vec_old = vec;
+    }
+    accum_pos += vec.winrate;
+    game.m_stm_komi = current_komi;
+    //if (loc_incr.empty()) { myprintf("Perfect weight file! 完美的权重！\n"); }
+    myprintf("在以下贴目值附近胜率是上升的：Winrate increasing near ");
+    for (float s : loc_incr) { myprintf("%4.1f, ", s); }
+    myprintf(".\n");
+    myprintf("Negative komi total score: %e\n", accum_neg);
+    myprintf("Positive komi total score: %e\n", accum_pos);
+    const auto thres = 0.05f;
+    if (accum_neg <= thres && accum_pos <= thres) {
+        myprintf("Weight file is of good quality for dynamic komi! 权重质量不错，可用于让子／不退让版。\n");
+        return 0;
+    }
+    else if (accum_neg > thres && accum_pos > thres) {
+        myprintf("Weight file is unusable for dynamic komi. Sorry. 权重质量不佳，不能用于让子／不退让版。\n");
+        return 1;
+    }
+    else if (accum_neg <= thres) {
+        myprintf("Weight file is of mediocre quality for dynamic komi. Use with the option --neg. 权重质量中等，正贴目表现不佳，推荐使用--neg参数。\n");
+        return 2;
+    }
+    else {
+        myprintf("Weight file is of mediocre quality for dynamic komi. Use with the option --pos. 权重质量中等，负贴目表现不佳，推荐使用--pos参数。\n");
+        return 3;
+    }
 }
 
 const std::string GTP::s_commands[] = {
@@ -170,6 +270,7 @@ const std::string GTP::s_commands[] = {
     "kgs-time_settings",
     "kgs-game_over",
     "heatmap",
+    "dyn_komi_test",
     "lz-analyze",
     "lz-genmove_analyze",
     ""
@@ -327,7 +428,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("komi") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        float komi = 7.5f;
+        float komi = cfg_target_komi;
         float old_komi = game.get_komi();
 
         cmdstream >> tmp;  // eat komi
@@ -336,6 +437,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         if (!cmdstream.fail()) {
             if (komi != old_komi) {
                 game.set_komi(komi);
+                NNCache::get_NNCache().clear_cache();
             }
             gtp_printf(id, "");
         } else {
@@ -622,6 +724,24 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         gtp_printf(id, "");
         return true;
+    }
+    else if (command.find("dyn_komi_test") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp;
+        std::string symmetry;
+
+        cmdstream >> tmp;   // eat dyn_komi_test
+        cmdstream >> symmetry;
+
+        int sym;
+        if (cmdstream.fail()) {
+            sym = Network::IDENTITY_SYMMETRY;
+        }
+        else {
+            sym = std::stoi(symmetry);
+        }
+        dyn_komi_test(game, sym);
+
     } else if (command.find("fixed_handicap") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;

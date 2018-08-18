@@ -580,7 +580,7 @@ void Network::compare_net_outputs(Netresult& data,
     error = std::sqrt(error);
 
     if (error > max_error || std::isnan(error)) {
-        printf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
+        myprintf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
                "played simultaneously.\n");
         throw std::runtime_error("OpenCL self-check mismatch.");
     }
@@ -696,13 +696,10 @@ Network::Netresult Network::get_output(
     return result;
 }
 
-Network::Netresult Network::get_output_internal(
-    const GameState* const state, const int symmetry, bool selfcheck) {
+Network::Netresult Network::get_scored_moves_from_input(std::vector<net_t>& input_data, int symmetry) {
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
     constexpr auto width = BOARD_SIZE;
     constexpr auto height = BOARD_SIZE;
-
-    const auto input_data = gather_features(state, symmetry);
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
 #ifdef USE_OPENCL_SELFCHECK
@@ -737,7 +734,7 @@ Network::Netresult Network::get_output_internal(
 
     Netresult result;
 
-    for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+    for (auto idx = size_t{ 0 }; idx < BOARD_SQUARES; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
         result.policy[sym_idx] = outputs[idx];
     }
@@ -746,6 +743,12 @@ Network::Netresult Network::get_output_internal(
     result.winrate = winrate;
 
     return result;
+}
+
+Network::Netresult Network::get_scored_moves_internal(
+    const GameState* const state, const int symmetry) {
+    assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
+    return get_scored_moves_from_input(gather_features(state, symmetry), symmetry);
 }
 
 void Network::show_heatmap(const FastState* const state,
@@ -834,9 +837,12 @@ std::vector<float> Network::gather_features(const GameState* const state,
     const auto white_it = blacks_move ?
                           begin(input_data) + INPUT_MOVES * BOARD_SQUARES :
                           begin(input_data);
-    const auto to_move_it = blacks_move ?
-        begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES :
-        begin(input_data) + (2 * INPUT_MOVES + 1) * BOARD_SQUARES;
+    const auto black_to_move_it = begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES;
+    const auto white_to_move_it = black_to_move_it + BOARD_SQUARES;
+    const net_t plus_komi = 0.5f + (state->get_stm_komi()) / 15.0f;
+    const net_t minus_komi = 0.5f - (state->get_stm_komi()) / 15.0f;
+    const net_t black_komi = blacks_move ? plus_komi : minus_komi;
+    const net_t white_komi = blacks_move ? minus_komi : plus_komi;
 
     const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
     // Go back in time, fill history boards
@@ -848,7 +854,8 @@ std::vector<float> Network::gather_features(const GameState* const state,
                               symmetry);
     }
 
-    std::fill(to_move_it, to_move_it + BOARD_SQUARES, float(true));
+    std::fill(black_to_move_it, black_to_move_it + BOARD_SQUARES, black_komi);
+    std::fill(white_to_move_it, white_to_move_it + BOARD_SQUARES, white_komi);
 
     return input_data;
 }

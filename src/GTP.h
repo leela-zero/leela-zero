@@ -1,4 +1,4 @@
-/*
+/* 
     This file is part of Leela Zero.
     Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
@@ -38,6 +38,30 @@ extern int cfg_max_visits;
 extern TimeManagement::enabled_t cfg_timemanage;
 extern int cfg_lagbuffer_cs;
 extern int cfg_resignpct;
+
+extern bool cfg_dyn_komi;
+extern float cfg_max_wr;
+extern float cfg_min_wr;
+extern float cfg_wr_margin;
+extern float cfg_target_komi;
+extern int cfg_adj_playouts;
+extern float cfg_adj_pct;
+extern bool cfg_pos;
+extern bool cfg_neg;
+extern bool cfg_nonslack;
+extern bool cfg_sure_backup;
+extern bool cfg_noshift;
+extern bool cfg_use_symmetries;
+extern bool cfg_orig_policy;
+extern bool cfg_dyn_fpu;
+extern bool cfg_backup_fpu;
+extern bool cfg_collect_during_search;
+extern bool cfg_always_collect;
+extern int cfg_max_num_adjustments;
+extern int cfg_fixed_symmetry;
+extern bool cfg_use_root_for_diff;
+extern bool cfg_auto_pos_neg;
+
 extern int cfg_noise;
 extern int cfg_random_cnt;
 extern int cfg_random_min_visits;

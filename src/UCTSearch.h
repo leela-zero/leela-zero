@@ -64,6 +64,13 @@ namespace TimeManagement {
     };
 };
 
+struct Sym_State {
+    int symmetry;
+    GameState state;
+    float winrate;
+    float diff{ -1.0f };
+};
+
 class UCTSearch {
 public:
     /*
@@ -98,8 +105,10 @@ public:
     void set_visit_limit(int visits);
     void ponder();
     bool is_running() const;
-    void increment_playouts();
-    SearchResult play_simulation(GameState& currstate, UCTNode* const node);
+    void increment_playouts(float eval);
+    SearchResult play_simulation(GameState& currstate, UCTNode* const node, int thread_num);
+    bool collecting;
+    std::array<std::vector<std::deque<std::shared_ptr<Sym_State>>>, 2> sym_states;
 
 private:
     float get_min_psa_ratio() const;
@@ -134,13 +143,14 @@ private:
 
 class UCTWorker {
 public:
-    UCTWorker(GameState & state, UCTSearch * search, UCTNode * root)
-      : m_rootstate(state), m_search(search), m_root(root) {}
+    UCTWorker(GameState & state, UCTSearch * search, UCTNode * root, int thread_num)
+      : m_rootstate(state), m_search(search), m_root(root), m_thread_num(thread_num){}
     void operator()();
 private:
     GameState & m_rootstate;
     UCTSearch * m_search;
     UCTNode * m_root;
+    int m_thread_num;
 };
 
 #endif
