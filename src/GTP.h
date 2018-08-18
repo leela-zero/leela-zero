@@ -58,6 +58,7 @@ extern bool cfg_collect_during_search;
 extern bool cfg_always_collect;
 extern int cfg_max_num_adjustments;
 extern int cfg_fixed_symmetry;
+extern bool cfg_use_root_for_diff;
 
 extern int cfg_noise;
 extern int cfg_random_cnt;

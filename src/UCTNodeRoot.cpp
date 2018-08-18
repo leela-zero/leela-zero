@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <execution>
 #include <iterator>
 #include <numeric>
 #include <random>
@@ -331,29 +332,30 @@ void adjust_komi(GameState& root_state, float root_eval, bool opp, std::function
 
 float mean_white_eval(std::vector<std::shared_ptr<Sym_State>>& ssi, float komi) {
     auto num_positions = ssi.size();
-    std::vector<float> evals;
-    evals.resize(num_positions);
-    //std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), 
-    //    [&](int index) {sym_states[index]->state.m_stm_komi = komi; evals[] });
-    // use threads = cfg_num_threads, parallelism
+    // std::vector<float> evals;
+    // evals.resize(num_positions);
+    // use threads = cfg_num_threads, parallelism?
     if (ssi[0]->state.m_stm_komi != komi) {
-        for (auto j = 0; j < num_positions; j++) {
-            ssi[j]->state.m_stm_komi = komi;
-            evals[j] = ssi[j]->winrate = Network::get_scored_moves(&ssi[j]->state, Network::Ensemble::DIRECT, ssi[j]->symmetry, true).winrate;
-        }
+        std::for_each(std::execution::par_unseq, ssi.begin(), ssi.end(),
+            [komi](const std::shared_ptr<Sym_State> &sym_state) {sym_state->state.m_stm_komi = komi;
+        sym_state->winrate = Network::get_scored_moves(&sym_state->state, Network::Ensemble::DIRECT, sym_state->symmetry, true).winrate; });
     }
-    else {
-        for (auto j = 0; j < num_positions; j++) {
-            evals[j] = ssi[j]->winrate;
-        }
+    /*
+    for (auto j = 0; j < num_positions; j++) {
+        ssi[j]->state.m_stm_komi = komi;
+        evals[j] = ssi[j]->winrate = Network::get_scored_moves(&ssi[j]->state, Network::Ensemble::DIRECT, ssi[j]->symmetry, true).winrate;
     }
-    auto mean = accumulate(evals.begin(), evals.end(), 0.0) / num_positions;
+}
+else {
+    for (auto j = 0; j < num_positions; j++) {
+        evals[j] = ssi[j]->winrate;
+    }
+}
+auto mean = accumulate(evals.begin(), evals.end(), 0.0) / num_positions;
+*/
+    auto mean = accumulate(ssi.begin(), ssi.end(), 0.0f, [](float s, std::shared_ptr<Sym_State> sym_state) {return s + sym_state->winrate; }) / num_positions;
     if (ssi[0]->state.get_to_move() == FastBoard::BLACK) { return 1.0f - mean; }
     else { return mean; }
-}
-
-bool comp(std::shared_ptr<Sym_State>& sym_state1, std::shared_ptr<Sym_State>& sym_state2) {
-    return sym_state1->diff < sym_state2->diff;
 }
 
 void UCTNode::clear(std::atomic<int>& nodes, GameState& root_state, float& eval) {
@@ -406,8 +408,8 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
     }
 
     std::array<std::vector<std::shared_ptr<Sym_State>>, 2> ss;
-    ss[0].reserve(cfg_adj_playouts + cfg_num_threads * 2);
-    ss[1].reserve(cfg_adj_playouts + cfg_num_threads * 2);
+    ss[0].reserve(cfg_adj_playouts + cfg_num_threads);
+    ss[1].reserve(cfg_adj_playouts + cfg_num_threads);
     for (auto i = 0; i < 2; i++) {
         for (auto j = 0; j < cfg_num_threads; j++) {
             ss[i].insert(ss[i].end(), search->sym_states[i][j].begin(),search->sym_states[i][j].end());
@@ -425,6 +427,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
             for (auto i = 0; i < 2; i++) {
                 auto num_removed = 0;
                 auto colored_root_eval = (i == color ? root_eval : 1.0f - root_eval);
+                if (!cfg_use_root_for_diff) { colored_root_eval = 0.0f; }
                 for (auto j = 0; j < ss[i].size(); j++) {
                     bool to_remove = false;
                     if ((!search->collecting &&
@@ -435,9 +438,14 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
                     else {
                         ss[i][j]->diff = abs(ss[i][j]->winrate - colored_root_eval);
                         ss[i][j - num_removed] = ss[i][j];
+                        if (!cfg_use_root_for_diff) { colored_root_eval += ss[i][j]->winrate; }
                     }
                 }
                 ss[i].resize(ss[i].size() - num_removed);
+                if (!cfg_use_root_for_diff) {
+                    colored_root_eval /= (ss[i].size());
+                    for (auto j = 0; j < ss[i].size(); j++) { ss[i][j]->diff = abs(ss[i][j]->winrate - colored_root_eval); }
+                }
             }
             Utils::myprintf("deleting non-descendents\n");
             Utils::myprintf("black positions: %d\n", ss[0].size());
@@ -450,8 +458,10 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
             to_adjust = true;
             auto num_positions = ceil(cfg_adj_playouts * cfg_adj_pct / 100.0);
             for (auto i = 0; i < 2; i++) {
-                std::nth_element(ss[i].begin(), ss[i].begin() + num_positions, ss[i].end(), comp);
-                ss[i].resize(num_positions); // maybe don't clear those?
+                std::nth_element(ss[i].begin(), ss[i].begin() + num_positions, ss[i].end(), 
+                    [](std::shared_ptr<Sym_State>& sym_state1, std::shared_ptr<Sym_State>& sym_state2) {
+                    return sym_state1->diff < sym_state2->diff; });
+                ss[i].resize(num_positions);
             }
             Utils::myprintf("keeping %f%% closest evals\n", cfg_adj_pct);
             Utils::myprintf("black positions: %d\n", ss[0].size());

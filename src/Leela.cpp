@@ -83,12 +83,10 @@ static void parse_commandline(int argc, char *argv[]) {
                       "-m0 -t1 -s1.")
         ("handicap", "Handicap mode.")
         ("nonslack", "Non-slack mode.")
-        ("sure-backup", "")
-        ("use-shift", "")
-        ("use-no-symmetries", "")
-        ("adjusted-policy", "")
-        ("no-dyn-fpu", "")
-        ("no-backup-fpu", "")
+        ("tg-sure-backup", "Toggle sure/no backup when --pos or --neg is used.")
+        ("fixed-symmetry", po::value<int>(), "Fixed symmetry, value in [0,7].")
+        ("tg-orig-policy", "Toggle original/adjusted policy when --pos or --neg is used.")
+        ("tg-dyn-fpu", "Toggle dynamical first-play-urgency.")
         ("max-wr", po::value<float>(), "Maximal white winrate.")
         ("min-wr", po::value<float>(), "Minimal white winrate.")
         ("wr-margin", po::value<float>(), "Adjust white winrate to min+margin or max-margin.")
@@ -198,7 +196,7 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_collect_during_search = true;
         //cfg_always_collect = true;
         cfg_max_num_adjustments = 1;
-        cfg_fixed_symmetry = 0;
+        cfg_fixed_symmetry = -1;
     }
 
     if (vm.count("nonslack")) { 
@@ -211,31 +209,26 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_collect_during_search = true;
         //cfg_always_collect = true;
         cfg_max_num_adjustments = 1;
-        cfg_fixed_symmetry = 0;
+        cfg_fixed_symmetry = -1;
     }
 
-    if (vm.count("sure-backup")) {
-        cfg_sure_backup = true;
+    if (vm.count("tg-sure-backup")) {
+        cfg_sure_backup = !cfg_sure_backup;
     }
 
-    if (vm.count("use-shift")) {
-        cfg_noshift = false;
+    if (vm.count("fixed-symmetry")) {
+        cfg_fixed_symmetry = vm["fixed-symmetry"].as<int>();
+        if (cfg_fixed_symmetry < 0 || cfg_fixed_symmetry > 7) {
+            cfg_fixed_symmetry = -1;
+        }
     }
 
-    if (vm.count("use-no-symmetries")) {
-        cfg_use_symmetries = false;
+    if (vm.count("tg-orig-policy")) {
+        cfg_orig_policy = !cfg_orig_policy;
     }
 
-    if (vm.count("adjusted-policy")) {
-        cfg_orig_policy = false;
-    }
-    
-    if (vm.count("no-dyn-fpu")) {
-        cfg_dyn_fpu = false;
-    }
-
-    if (vm.count("no-backup-fpu")) {
-        cfg_backup_fpu = false;
+    if (vm.count("tg-dyn-fpu")) {
+        cfg_dyn_fpu = !cfg_dyn_fpu;
     }
 
     if (vm.count("max-wr")) {

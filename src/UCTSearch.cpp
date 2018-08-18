@@ -772,7 +772,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
             // adjust during search
             if (cfg_collect_during_search) {
-                if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr || m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr)) {
+                if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr
+                    || (m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr 
+                        && (cfg_nonslack 
+                            || m_rootstate.m_stm_komi != cfg_target_komi 
+                            || m_rootstate.m_opp_komi != cfg_target_komi)))) {
                     collecting = true;
                     auto adj_playouts0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
                         [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); }),
@@ -785,11 +789,6 @@ int UCTSearch::think(int color, passflag_t passflag) {
                     }
                 }
                 else if (!cfg_always_collect) {
-                    /*
-                    for (auto j = 0; j < cfg_num_threads; j++) {
-                        sym_states[0][j].clear(); sym_states[1][j].clear();
-                    }
-                    */
                     sym_states[0].assign(cfg_num_threads, {});
                     sym_states[1].assign(cfg_num_threads, {});
                     collecting = false;
@@ -874,15 +873,14 @@ void UCTSearch::ponder() {
         }
 
         if (cfg_collect_during_search) {
-            if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr || m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr)) {
+            if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr
+                || (m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr
+                    && (cfg_nonslack
+                        || m_rootstate.m_stm_komi != cfg_target_komi
+                        || m_rootstate.m_opp_komi != cfg_target_komi)))) {
                 collecting = true;
             }
             else if (!cfg_always_collect) {
-                /*
-                for (auto j = 0; j < cfg_num_threads; j++) {
-                    sym_states[0][j].clear(); sym_states[1][j].clear();
-                }
-                */
                 sym_states[0].assign(cfg_num_threads, {});
                 sym_states[1].assign(cfg_num_threads, {});
                 collecting = false;

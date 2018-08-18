@@ -76,6 +76,7 @@ bool cfg_collect_during_search;
 bool cfg_always_collect;
 int cfg_max_num_adjustments;
 int cfg_fixed_symmetry;
+bool cfg_use_root_for_diff;
 
 int cfg_noise;
 int cfg_random_cnt;
@@ -126,7 +127,7 @@ void GTP::setup_default_parameters() {
 
     cfg_dyn_komi = false;
     cfg_target_komi = 7.5f;
-    cfg_adj_playouts = 250;
+    cfg_adj_playouts = 200;
     cfg_adj_pct = 4.0;
     cfg_pos = false;
     cfg_neg = false;
@@ -137,6 +138,7 @@ void GTP::setup_default_parameters() {
     cfg_orig_policy = true;
     cfg_dyn_fpu = false;
     cfg_backup_fpu = false; // to remove
+    cfg_use_root_for_diff = false;
 
     cfg_noise = false;
     cfg_random_cnt = 0;
