@@ -1,4 +1,4 @@
-/*
+/* 
     This file is part of Leela Zero.
     Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
