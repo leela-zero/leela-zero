@@ -51,7 +51,7 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(std::atomic<int>& nodecount,
+bool UCTNode::create_children(Network & network, std::atomic<int>& nodecount,
     GameState& state,
     float& eval,
     float min_psa_ratio,
@@ -80,10 +80,10 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
 
     Network::Netresult raw_netlist;
     if (symmetry == -1) {
-        raw_netlist = Network::get_scored_moves(&state, Network::Ensemble::RANDOM_SYMMETRY);
+        raw_netlist = network.get_output(&state, Network::Ensemble::RANDOM_SYMMETRY);
     }
     else {
-        raw_netlist = Network::get_scored_moves(&state, Network::Ensemble::DIRECT, symmetry);
+        raw_netlist = network.get_output(&state, Network::Ensemble::DIRECT, symmetry);
     }
 
     // DCNN returns winrate as side to move
@@ -94,7 +94,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     }
     eval = m_net_eval;
 
-    std::vector<Network::ScoreVertexPair> nodelist;
+    std::vector<Network::PolicyVertexPair> nodelist;
     const auto to_move = state.board.get_to_move();
 
     auto legal_sum = 0.0f;

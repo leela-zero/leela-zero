@@ -552,9 +552,9 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    extern int dyn_komi_test(GameState&, int);
+    extern int dyn_komi_test(Network*, GameState&, int);
     if (cfg_dyn_komi && cfg_auto_pos_neg) {
-        switch (dyn_komi_test(*maingame, 0)) {
+        switch (dyn_komi_test(&*GTP::s_network, *maingame, 0)) {
         case 0: break;
         case 1: cfg_pos = cfg_neg = true; myprintf("Automatically set --pos and --neg."); break;
         case 2: cfg_neg = true; myprintf("Automatically set --neg."); break;

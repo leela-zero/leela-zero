@@ -183,18 +183,18 @@ void UCTNode::inflate_all_children() {
 
 const int cfg_steps = 8;
 
-float white_net_eval(GameState& root_state) {
+float white_net_eval(Network & net, GameState& root_state) {
     float net_eval;
     if (cfg_use_symmetries) {
         if (cfg_fixed_symmetry == -1) {
-            net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
+            net_eval = net.get_output(&root_state, Network::Ensemble::AVERAGE, 8, true).winrate;
         }
         else {
-            net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::DIRECT, cfg_fixed_symmetry, true).winrate;
+            net_eval = net.get_output(&root_state, Network::Ensemble::DIRECT, cfg_fixed_symmetry, true).winrate;
         }
     }
     else {
-        net_eval = Network::get_scored_moves(&root_state, Network::Ensemble::RANDOM_SYMMETRY).winrate;
+        net_eval = net.get_output(&root_state, Network::Ensemble::RANDOM_SYMMETRY).winrate;
     }
     if (root_state.get_to_move() == FastBoard::WHITE) {
         return net_eval;
@@ -331,7 +331,7 @@ float adjust_komi(GameState& root_state, float root_eval, float target_wr, bool 
     }
 }
 
-float mean_white_eval(std::vector<std::shared_ptr<Sym_State>>& ssi, float komi) {
+float mean_white_eval(Network & net, std::vector<std::shared_ptr<Sym_State>>& ssi, float komi) {
     auto num_positions = ssi.size();
     // use threads = cfg_num_threads, parallelism?
     if (ssi[0]->state.m_stm_komi != komi) {
@@ -343,7 +343,7 @@ float mean_white_eval(std::vector<std::shared_ptr<Sym_State>>& ssi, float komi) 
         */
         for (auto j = 0; j < num_positions; j++) {
             ssi[j]->state.m_stm_komi = komi;
-            ssi[j]->winrate = Network::get_scored_moves(&ssi[j]->state, Network::Ensemble::DIRECT, ssi[j]->symmetry, true).winrate;
+            ssi[j]->winrate = net.get_output(&ssi[j]->state, Network::Ensemble::DIRECT, ssi[j]->symmetry, true).winrate;
         }
     }
     auto mean = accumulate(ssi.begin(), ssi.end(), 0.0f, [](float s, std::shared_ptr<Sym_State> sym_state) {return s + sym_state->winrate; }) / num_positions;
@@ -351,26 +351,26 @@ float mean_white_eval(std::vector<std::shared_ptr<Sym_State>>& ssi, float komi) 
     else { return mean; }
 }
 
-void UCTNode::clear(std::atomic<int>& nodes, GameState& root_state, float& eval) {
-    NNCache::get_NNCache().clear_cache();
+void UCTNode::clear(Network & net, std::atomic<int>& nodes, GameState& root_state, float& eval) {
+    net.clear_cache();
     m_visits = 0;
     m_blackevals = 0.0;
     m_min_psa_ratio_children = 2.0;
     m_children.clear();
 
-    create_children(nodes, root_state, eval);
+    create_children(net, nodes, root_state, eval);
     inflate_all_children();
     kill_superkos(root_state);
     if (root_state.eval_invalid()) {
         GameState tmpstate = root_state;
         tmpstate.play_move(get_first_child()->get_move());
-        eval = 1.0f - white_net_eval(tmpstate);
+        eval = 1.0f - white_net_eval(net, tmpstate);
     }
     update(eval);
     eval = (root_state.get_to_move() == FastBoard::BLACK ? eval : 1.0f - eval);
 }
 
-void UCTNode::prepare_root_node(int color, // redundant argument?
+void UCTNode::prepare_root_node(Network & network, int color, // redundant argument?
                                 std::atomic<int>& nodes,
                                 GameState& root_state, UCTSearch * search) {
     float root_eval;
@@ -394,7 +394,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
         if (root_state.eval_invalid()) {
             GameState tmpstate = root_state;
             tmpstate.play_move(get_first_child()->get_move());
-            root_eval = 1.0f - white_net_eval(tmpstate);
+            root_eval = 1.0f - white_net_eval(network, tmpstate);
         }
         update(root_eval);
         root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
@@ -464,19 +464,19 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
         if (!cfg_collect_during_search || to_adjust) {
             std::function<float(float)> get_white_eval;
             if (cfg_collect_during_search) {
-                get_white_eval = [&ss, color](float komi_) {return mean_white_eval(ss[color], komi_); };
+                get_white_eval = [&network, &ss, color](float komi_) {return mean_white_eval(network, ss[color], komi_); };
             }
             else {
-                get_white_eval = [&root_state](float) {return white_net_eval(root_state); };
+                get_white_eval = [&network, &root_state](float) {return white_net_eval(network, root_state); };
             }
-            auto white_root_eval = get_pure_eval(FastBoard::WHITE);
+            auto white_root_eval = get_raw_eval(FastBoard::WHITE);
             auto komi = root_state.m_stm_komi;
             auto opp_komi = root_state.m_opp_komi;
             auto tmp_komi = komi;
             auto target_wr = adjust_komi(root_state, white_root_eval, -1.0f, false, get_white_eval);
             tmp_komi = root_state.m_stm_komi;
             if (komi != root_state.m_stm_komi) {
-                clear(nodes, root_state, root_eval);
+                clear(network, nodes, root_state, root_eval);
                 search->sym_states[color].assign(cfg_num_threads, {});
             }
             if (komi != root_state.m_stm_komi || cfg_pos || cfg_neg) {
@@ -487,17 +487,17 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
                     GameState tmpstate = root_state;
                     tmpstate.play_move(get_first_child()->get_move());
                     if (cfg_collect_during_search) {
-                        get_white_eval = [&ss, color](float komi_) {return mean_white_eval(ss[!color], komi_); };
+                        get_white_eval = [&network, &ss, color](float komi_) {return mean_white_eval(network, ss[!color], komi_); };
                     }
                     else {
-                        get_white_eval = [&tmpstate](float) {return white_net_eval(tmpstate); };
+                        get_white_eval = [&network, &tmpstate](float) {return white_net_eval(network, tmpstate); };
                     }
                     adjust_komi(tmpstate, white_root_eval, target_wr, true, get_white_eval);
                     root_state.m_opp_komi = tmpstate.m_stm_komi;
                 }
 
                 if (opp_komi != root_state.m_opp_komi) {
-                    clear(nodes, root_state, root_eval);
+                    clear(network, nodes, root_state, root_eval);
                     search->sym_states[!color].assign(cfg_num_threads, {});
                 }
                 else if (!(cfg_pos || cfg_neg)) {
@@ -508,7 +508,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
                 root_state.m_stm_komi = root_state.m_opp_komi;
             }
             if (tmp_komi != root_state.m_stm_komi) {
-                clear(nodes, root_state, root_eval);
+                clear(network, nodes, root_state, root_eval);
                 search->sym_states[color].assign(cfg_num_threads, {});
             }
         }

@@ -220,7 +220,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                 else {
                     rand_sym = cfg_fixed_symmetry;
                 }
-                success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
+                success = node->create_children(m_network, m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
                 if (success) {
                     auto sym_state = std::make_shared<Sym_State>();
                     auto color = currstate.get_to_move();
@@ -235,7 +235,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                 }
             }
             else {
-                success = node->create_children(m_nodes, currstate, eval, get_min_psa_ratio(), cfg_fixed_symmetry);
+                success = node->create_children(m_network, m_nodes, currstate, eval, get_min_psa_ratio(), cfg_fixed_symmetry);
             }
 
             if (!had_children && success) {
@@ -346,7 +346,7 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         auto move_eval = node->get_visits() ?
                          static_cast<int>(node->get_raw_eval(color) * 10000) : 0;
         // Store data in array
-        float N_num_f = node->get_score() * 100.0f;
+        float N_num_f = node->get_policy() * 100.0f;
         sortable_data.emplace_back(move, node->get_visits(), move_eval, std::to_string(N_num_f), pv);
 
     }
@@ -750,7 +750,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
         // create a sorted list of legal moves (make sure we
         // play something legal and decent even in time trouble)
-        m_root->prepare_root_node(color, m_nodes, m_rootstate, this);
+        m_root->prepare_root_node(m_network, color, m_nodes, m_rootstate, this);
 
         m_run = true;
         ThreadGroup tg(thread_pool);
@@ -773,8 +773,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
             // adjust during search
             if (cfg_collect_during_search) {
-                if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr
-                    || (m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr 
+                if (m_root->get_visits() > 0 && (m_root->get_raw_eval(FastBoard::WHITE) < cfg_min_wr
+                    || (m_root->get_raw_eval(FastBoard::WHITE) > cfg_max_wr 
                         && (cfg_nonslack 
                             || m_rootstate.m_stm_komi != cfg_target_komi 
                             || m_rootstate.m_opp_komi != cfg_target_komi)))) {
@@ -855,7 +855,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 void UCTSearch::ponder() {
     update_root();
 
-    m_root->prepare_root_node(m_rootstate.board.get_to_move(),
+    m_root->prepare_root_node(m_network, m_rootstate.board.get_to_move(),
                               m_nodes, m_rootstate, this);
 
     m_run = true;
@@ -874,8 +874,8 @@ void UCTSearch::ponder() {
         }
 
         if (cfg_collect_during_search) {
-            if (m_root->get_visits() > 0 && (m_root->get_pure_eval(FastBoard::WHITE) < cfg_min_wr
-                || (m_root->get_pure_eval(FastBoard::WHITE) > cfg_max_wr
+            if (m_root->get_visits() > 0 && (m_root->get_raw_eval(FastBoard::WHITE) < cfg_min_wr
+                || (m_root->get_raw_eval(FastBoard::WHITE) > cfg_max_wr
                     && (cfg_nonslack
                         || m_rootstate.m_stm_komi != cfg_target_komi
                         || m_rootstate.m_opp_komi != cfg_target_komi)))) {
