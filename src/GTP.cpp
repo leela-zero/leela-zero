@@ -77,6 +77,7 @@ bool cfg_always_collect;
 int cfg_max_num_adjustments;
 int cfg_fixed_symmetry;
 bool cfg_use_root_for_diff;
+bool cfg_auto_pos_neg;
 
 int cfg_noise;
 int cfg_random_cnt;
@@ -139,6 +140,7 @@ void GTP::setup_default_parameters() {
     cfg_dyn_fpu = false;
     cfg_backup_fpu = false; // to remove
     cfg_use_root_for_diff = false;
+    cfg_auto_pos_neg = true;
 
     cfg_noise = false;
     cfg_random_cnt = 0;
@@ -160,6 +162,64 @@ void GTP::setup_default_parameters() {
     std::uint64_t seed2 = std::chrono::high_resolution_clock::
         now().time_since_epoch().count();
     cfg_rng_seed = seed1 ^ seed2;
+}
+
+int dyn_komi_test(GameState &game, int sym) {
+    // todo: configurable lower/upper limits and gap, allow black or white to move, more accurate (with raw_winrate, no bias towards pos or neg)
+    auto vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
+    auto current_komi = game.m_stm_komi;
+    std::vector<float> loc_incr;
+    game.m_stm_komi = -300.5f;
+    auto vec_old = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
+    auto accum_neg = 1.0f - vec_old.winrate;
+    myprintf("komi | winrate\n");
+    myprintf("---- | ----\n");
+    for (auto s = -300.0f; s <= 0.0f; s = s + 0.5) {
+        game.m_stm_komi = s;
+        vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
+        myprintf("%f | %f\n", s, vec.winrate);
+        if (vec_old.winrate < vec.winrate) {
+            loc_incr.emplace_back(s);
+            accum_neg += vec.winrate - vec_old.winrate;
+        }
+        vec_old = vec;
+    }
+    auto accum_pos = 0.0f;
+    for (auto s = 0.5; s <= 300.0f; s = s + 0.5) {
+        game.m_stm_komi = s;
+        vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
+        myprintf("%f | %f\n", s, vec.winrate);
+        if (vec_old.winrate < vec.winrate) {
+            loc_incr.emplace_back(s);
+            accum_pos += vec.winrate - vec_old.winrate;
+        }
+        vec_old = vec;
+    }
+    accum_pos += vec.winrate;
+    game.m_stm_komi = current_komi;
+    //if (loc_incr.empty()) { myprintf("Perfect weight file! 完美的权重！\n"); }
+    myprintf("在以下贴目值附近胜率是上升的：Winrate increasing near ");
+    for (float s : loc_incr) { myprintf("%4.1f, ", s); }
+    myprintf(".\n");
+    myprintf("Negative komi total score: %e\n", accum_neg);
+    myprintf("Positive komi total score: %e\n", accum_pos);
+    const auto thres = 0.05f;
+    if (accum_neg <= thres && accum_pos <= thres) {
+        myprintf("Weight file is of good quality for dynamic komi! 权重质量不错，可用于让子／不退让版。\n");
+        return 0;
+    }
+    else if (accum_neg > thres && accum_pos > thres) {
+        myprintf("Weight file is unusable for dynamic komi. Sorry. 权重质量不佳，不能用于让子／不退让版。\n");
+        return 1;
+    }
+    else if (accum_neg <= thres) {
+        myprintf("Weight file is of mediocre quality for dynamic komi. Use with the option --neg. 权重质量中等，正贴目表现不佳，推荐使用--neg参数。\n");
+        return 2;
+    }
+    else {
+        myprintf("Weight file is of mediocre quality for dynamic komi. Use with the option --pos. 权重质量中等，负贴目表现不佳，推荐使用--pos参数。\n");
+        return 3;
+    }
 }
 
 const std::string GTP::s_commands[] = {
@@ -653,65 +713,14 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> symmetry;
 
         int sym;
-
         if (cmdstream.fail()) {
             sym = Network::IDENTITY_SYMMETRY;
         }
         else {
             sym = std::stoi(symmetry);
         }
+        dyn_komi_test(game, sym);
 
-        // todo: configurable lower/upper limits and gap, allow black or white to move, more accurate (with raw_winrate, no bias towards pos or neg)
-        auto vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
-        auto current_komi = game.m_stm_komi;
-        std::vector<float> loc_incr;
-        game.m_stm_komi = -300.5f;
-        auto vec_old = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
-        auto accum_neg = 1.0f - vec_old.winrate;
-        myprintf("komi | winrate\n");
-        myprintf("---- | ----\n");
-        for (auto s = -300.0f; s <= 0.0f; s = s + 0.5) {
-            game.m_stm_komi = s;
-            vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
-            myprintf("%f | %f\n", s, vec.winrate);
-            if (vec_old.winrate < vec.winrate) {
-                loc_incr.emplace_back(s);
-                accum_neg += vec.winrate - vec_old.winrate;
-            }
-            vec_old = vec;
-        }
-        auto accum_pos = 0.0f;
-        for (auto s = 0.5; s <= 300.0f; s = s + 0.5) {
-            game.m_stm_komi = s;
-            vec = Network::get_scored_moves(&game, Network::Ensemble::DIRECT, sym, true);
-            myprintf("%f | %f\n", s, vec.winrate);
-            if (vec_old.winrate < vec.winrate) {
-                loc_incr.emplace_back(s);
-                accum_pos += vec.winrate - vec_old.winrate;
-            }
-            vec_old = vec;
-        }
-        accum_pos += vec.winrate;
-        game.m_stm_komi = current_komi;
-        //if (loc_incr.empty()) { myprintf("Perfect weight file! 完美的权重！\n"); }
-        myprintf("在以下贴目值附近胜率是上升的：Winrate increasing near ");
-        for (float s : loc_incr) { myprintf("%4.1f, ", s); }
-        myprintf(".\n");
-        myprintf("Negative komi total score: %e\n", accum_neg);
-        myprintf("Positive komi total score: %e\n", accum_pos);
-        const auto thres = 0.05f;
-        if (accum_neg <= thres && accum_pos <= thres) {
-            myprintf("Weight file is of good quality for dynamic komi! 权重质量不错，可用于让子／不退让版。\n");
-        }
-        else if (accum_neg > thres && accum_pos > thres) {
-            myprintf("Weight file is unusable for dynamic komi. Sorry. 权重质量不佳，不能用于让子／不退让版。\n");
-        }
-        else if (accum_neg <= thres) {
-            myprintf("Weight file is of mediocre quality for dynamic komi. Use with the option --neg. 权重质量中等，正贴目表现不佳，推荐使用--neg参数。\n");
-        }
-        else {
-            myprintf("Weight file is of mediocre quality for dynamic komi. Use with the option --pos. 权重质量中等，负贴目表现不佳，推荐使用--pos参数。\n");
-        }
     } else if (command.find("fixed_handicap") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;

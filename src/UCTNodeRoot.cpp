@@ -20,7 +20,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <execution>
+//#include <execution>
 #include <iterator>
 #include <numeric>
 #include <random>
@@ -208,21 +208,21 @@ float inv_wr(float wr) {
     return -log(1.0 / wr - 1.0) / 2.0;
 }
 
-void binary_search_komi(GameState& root_state, float shift, float high, float low, int steps, bool up, std::function<float(float)> get_white_eval) {
+void binary_search_komi(GameState& root_state, float shift, float high, float low, float target_wr, int steps, std::function<float(float)> get_white_eval) {
     while (steps-- > 0) {
         root_state.m_stm_komi = (high + low) / 2.0;
         auto net_eval = get_white_eval(root_state.m_stm_komi);
-        if (inv_wr(net_eval) + shift > inv_wr(up? cfg_min_wr + cfg_wr_margin : cfg_max_wr - cfg_wr_margin)) {
+        if (inv_wr(net_eval) + shift > inv_wr(target_wr)) {
             high = root_state.m_stm_komi;
         }
         else {
             low = root_state.m_stm_komi;
         }
     }
-    root_state.m_stm_komi = low;
+    root_state.m_stm_komi = (high + low) / 2.0;
 }
 
-void adjust_up_komi(GameState& root_state, float shift, std::function<float(float)> get_white_eval) {
+void adjust_up_komi(GameState& root_state, float shift, float target_wr, std::function<float(float)> get_white_eval) {
 	float net_eval;
     float old_komi;
 	do {
@@ -241,12 +241,12 @@ void adjust_up_komi(GameState& root_state, float shift, std::function<float(floa
             }
         }
         net_eval = get_white_eval(root_state.m_stm_komi);
-        if (inv_wr(net_eval) + shift > inv_wr(cfg_min_wr) && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
-	} while (inv_wr(net_eval) + shift < inv_wr(cfg_min_wr + cfg_wr_margin));
-	binary_search_komi(root_state, shift, root_state.m_stm_komi, old_komi, cfg_steps, true, get_white_eval);
+        if (inv_wr(net_eval) + shift > inv_wr(cfg_min_wr + cfg_wr_margin) && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
+	} while (inv_wr(net_eval) + shift < inv_wr(target_wr));
+    binary_search_komi(root_state, shift, root_state.m_stm_komi, old_komi, target_wr, cfg_steps, get_white_eval);
 }
 
-void adjust_down_komi(GameState& root_state, float shift, std::function<float(float)> get_white_eval) {
+void adjust_down_komi(GameState& root_state, float shift, float target_wr, std::function<float(float)> get_white_eval) {
     float net_eval;
     float old_komi;
     if (cfg_nonslack) {
@@ -266,21 +266,21 @@ void adjust_down_komi(GameState& root_state, float shift, std::function<float(fl
                 }
             }
             net_eval = get_white_eval(root_state.m_stm_komi);
-            if (inv_wr(net_eval) + shift < inv_wr(cfg_max_wr) && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
-        } while (inv_wr(net_eval) + shift > inv_wr(cfg_max_wr - cfg_wr_margin));
-        binary_search_komi(root_state, shift, old_komi, root_state.m_stm_komi, cfg_steps, true, get_white_eval);
+            if (inv_wr(net_eval) + shift < inv_wr(cfg_max_wr - cfg_wr_margin) && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
+        } while (inv_wr(net_eval) + shift > inv_wr(target_wr));
+        binary_search_komi(root_state, shift, old_komi, root_state.m_stm_komi, target_wr, cfg_steps, get_white_eval);
     }
     else {
         old_komi = root_state.m_stm_komi;
         root_state.m_stm_komi = cfg_target_komi;
         net_eval = get_white_eval(root_state.m_stm_komi);
-        if (inv_wr(net_eval) + shift < inv_wr(cfg_max_wr - cfg_wr_margin)) {
-            binary_search_komi(root_state, shift, old_komi, root_state.m_stm_komi, cfg_steps, false, get_white_eval);
+        if (inv_wr(net_eval) + shift < inv_wr(target_wr)) {
+            binary_search_komi(root_state, shift, old_komi, root_state.m_stm_komi, target_wr, cfg_steps, get_white_eval);
         }
     }
 }
 
-void adjust_komi(GameState& root_state, float root_eval, bool opp, std::function<float(float)> get_white_eval) {
+float adjust_komi(GameState& root_state, float root_eval, float target_wr, bool opp, std::function<float(float)> get_white_eval) {
     float shift;
     if (root_eval > cfg_max_wr || root_eval < cfg_min_wr) {
         auto net_eval = get_white_eval(root_state.m_stm_komi);
@@ -292,25 +292,26 @@ void adjust_komi(GameState& root_state, float root_eval, bool opp, std::function
             shift = inv_wr(root_eval) - inv_wr(net_eval);
         }
         Utils::myprintf("%f, %f, %f\n", root_eval, net_eval, shift); //
-        //Utils::myprintf("%f, %f, %f\n", cfg_min_wr, cfg_max_wr, cfg_wr_margin); //
         if (opp && !cfg_pos && !cfg_neg) {
-            if (root_eval < cfg_min_wr + cfg_wr_margin) {
-                adjust_up_komi(root_state, shift, get_white_eval);
-                return;
+            if (root_eval < target_wr) {
+                adjust_up_komi(root_state, shift, target_wr, get_white_eval);
+                return -1.0f;
             }
-            else if (root_eval > cfg_max_wr - cfg_wr_margin) {
-                adjust_down_komi(root_state, shift, get_white_eval);
-                return;
+            else if (root_eval > target_wr) {
+                adjust_down_komi(root_state, shift, target_wr, get_white_eval);
+                return -1.0f;
             }
         }
         else {
             if (root_eval < cfg_min_wr) {
-                adjust_up_komi(root_state, shift, get_white_eval);
-                return;
+                target_wr = cfg_min_wr + cfg_wr_margin;
+                adjust_up_komi(root_state, shift, target_wr, get_white_eval);
+                return target_wr;
             }
             else if ((root_state.m_stm_komi != cfg_target_komi || cfg_nonslack) && root_eval > cfg_max_wr) {
-                adjust_down_komi(root_state, shift, get_white_eval);
-                return;
+                target_wr = cfg_max_wr - cfg_wr_margin;
+                adjust_down_komi(root_state, shift, target_wr, get_white_eval);
+                return target_wr;
             }
         }
     }
@@ -332,27 +333,19 @@ void adjust_komi(GameState& root_state, float root_eval, bool opp, std::function
 
 float mean_white_eval(std::vector<std::shared_ptr<Sym_State>>& ssi, float komi) {
     auto num_positions = ssi.size();
-    // std::vector<float> evals;
-    // evals.resize(num_positions);
     // use threads = cfg_num_threads, parallelism?
     if (ssi[0]->state.m_stm_komi != komi) {
+        /*
+        Concurrency::parallel_for()
         std::for_each(std::execution::par_unseq, ssi.begin(), ssi.end(),
             [komi](const std::shared_ptr<Sym_State> &sym_state) {sym_state->state.m_stm_komi = komi;
         sym_state->winrate = Network::get_scored_moves(&sym_state->state, Network::Ensemble::DIRECT, sym_state->symmetry, true).winrate; });
+        */
+        for (auto j = 0; j < num_positions; j++) {
+            ssi[j]->state.m_stm_komi = komi;
+            ssi[j]->winrate = Network::get_scored_moves(&ssi[j]->state, Network::Ensemble::DIRECT, ssi[j]->symmetry, true).winrate;
+        }
     }
-    /*
-    for (auto j = 0; j < num_positions; j++) {
-        ssi[j]->state.m_stm_komi = komi;
-        evals[j] = ssi[j]->winrate = Network::get_scored_moves(&ssi[j]->state, Network::Ensemble::DIRECT, ssi[j]->symmetry, true).winrate;
-    }
-}
-else {
-    for (auto j = 0; j < num_positions; j++) {
-        evals[j] = ssi[j]->winrate;
-    }
-}
-auto mean = accumulate(evals.begin(), evals.end(), 0.0) / num_positions;
-*/
     auto mean = accumulate(ssi.begin(), ssi.end(), 0.0f, [](float s, std::shared_ptr<Sym_State> sym_state) {return s + sym_state->winrate; }) / num_positions;
     if (ssi[0]->state.get_to_move() == FastBoard::BLACK) { return 1.0f - mean; }
     else { return mean; }
@@ -480,7 +473,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
             auto komi = root_state.m_stm_komi;
             auto opp_komi = root_state.m_opp_komi;
             auto tmp_komi = komi;
-            adjust_komi(root_state, white_root_eval, false, get_white_eval);
+            auto target_wr = adjust_komi(root_state, white_root_eval, -1.0f, false, get_white_eval);
             tmp_komi = root_state.m_stm_komi;
             if (komi != root_state.m_stm_komi) {
                 clear(nodes, root_state, root_eval);
@@ -499,7 +492,7 @@ void UCTNode::prepare_root_node(int color, // redundant argument?
                     else {
                         get_white_eval = [&tmpstate](float) {return white_net_eval(tmpstate); };
                     }
-                    adjust_komi(tmpstate, white_root_eval, true, get_white_eval);
+                    adjust_komi(tmpstate, white_root_eval, target_wr, true, get_white_eval);
                     root_state.m_opp_komi = tmpstate.m_stm_komi;
                 }
 

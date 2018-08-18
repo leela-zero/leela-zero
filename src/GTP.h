@@ -59,6 +59,7 @@ extern bool cfg_always_collect;
 extern int cfg_max_num_adjustments;
 extern int cfg_fixed_symmetry;
 extern bool cfg_use_root_for_diff;
+extern bool cfg_auto_pos_neg;
 
 extern int cfg_noise;
 extern int cfg_random_cnt;
