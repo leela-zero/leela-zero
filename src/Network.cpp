@@ -30,6 +30,7 @@
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/home/x3.hpp>
+// #include <ctime>
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -366,13 +367,13 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
         auto sign = bytes >> 15;
 
         if (exponent == 0) { // Subnormal number
-            return mantissa * pow(2.0, -24.0) * (sign ? -1 : 1);
+            return mantissa / (double)(1 << 24) * (sign ? -1 : 1);
         } else if (exponent == 32) { // Infinite number
             // Don't bother distinguishing, this is a failure case
             return std::numeric_limits<float>::infinity();
         } else {
-            float significand = 1 + mantissa * pow(2.0, -10.0);
-            return significand * pow(2.0, exponent - 15) * (sign ? -1 : 1);
+            float significand = 1 + mantissa / (double)(1 << 10);
+            return significand * (double)(1 << exponent) / (double)(1 << 15) * (sign ? -1 : 1);
         }
     };
 
@@ -499,6 +500,11 @@ std::pair<int, int> Network::load_v3_network(std::istream& wtfile) {
       process_bn_var(m_bn_pol_w2);
       process_bn_var(m_bn_val_w2);
 
+      // We got all the data, but we overread on the last few bytes?
+      if (!good()) {
+          myprintf("\nWarning, it seems the file was slightly too short?\n");
+      }
+
       // Finally, the file should be exhausted.  Double check.
       size_t offset = wtfile.tellg();
       wtfile.seekg(0, std::ios_base::end);
@@ -562,11 +568,19 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
                 m_value_head_not_stm = false;
             }
 
+            std::pair<int,int> res;
+
+            // std::clock_t begin = clock();
             if (format_version == 3) {
-                return load_v3_network(buffer);
+                res = load_v3_network(buffer);
             } else {
-                return load_v1_network(buffer);
+                res = load_v1_network(buffer);
             }
+            // std::clock_t end = clock();
+
+            // myprintf("Loaded network in %g seconds.\n", double(end - begin) / CLOCKS_PER_SEC);
+
+            return res;
         }
     }
     return {0, 0};
