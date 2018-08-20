@@ -61,7 +61,7 @@ const std::string sourceCode_common =
 
 static const std::string sourceCode_config = R"(
 #define BOARD_SIZE )" + std::to_string(BOARD_SIZE) +
-"\n#define BOARD_SQUARES " + std::to_string(BOARD_SQUARES) +
+"\n#define NUM_INTERSECTIONS " + std::to_string(NUM_INTERSECTIONS) +
 "\n#define WINOGRAD_M " + std::to_string(WINOGRAD_M) +
 "\n#define WINOGRAD_ALPHA " + std::to_string(WINOGRAD_ALPHA) +
 "\n#define WTILES " + std::to_string(WINOGRAD_WTILES);
@@ -127,7 +127,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                              OpenCLContext & opencl_context,
                              const int batch_size) {
     constexpr auto tiles = WINOGRAD_P;
-    constexpr auto one_plane = BOARD_SQUARES * sizeof(net_t);
+    constexpr auto one_plane = NUM_INTERSECTIONS * sizeof(net_t);
     const auto finalSize_pol = m_layers[m_layers.size()-2].outputs * one_plane;
     const auto finalSize_val = m_layers.back().outputs * one_plane;
 
@@ -149,7 +149,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
         const auto n_ceil = ceilMultiple(ceilMultiple(tiles, nwg), vwn);
 
         const auto alloc_inSize =
-            MAX_BATCH * BOARD_SQUARES * max_channels * sizeof(net_t);
+            MAX_BATCH * NUM_INTERSECTIONS * max_channels * sizeof(net_t);
         const auto alloc_vm_size =
             MAX_BATCH * WINOGRAD_TILE * m_ceil * n_ceil * sizeof(net_t);
 
@@ -461,7 +461,7 @@ void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
                               int batch_size) {
     // The size of the board is defined at compile time
     constexpr int width = BOARD_SIZE;
-    constexpr int boardsize = BOARD_SQUARES;
+    constexpr int boardsize = NUM_INTERSECTIONS;
     constexpr int rowTiles = BOARD_SIZE;
 
     // Input channel grouping in multiples of 8
@@ -496,9 +496,10 @@ void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
         m_convolve_kernel->setArg(3, cl::Local(stripSize * channelGroup * rowGroup));
         m_convolve_kernel->setArg(4, cl::Local(rowSize));
 
-        queue.enqueueNDRangeKernel(*m_convolve_kernel, cl::NullRange,
-                                   cl::NDRange(channels, outputs, batch_size * rowTiles),
-                                   cl::NDRange(channelGroup, outputGroup, rowGroup));
+        queue.enqueueNDRangeKernel(
+            *m_convolve_kernel, cl::NullRange,
+            cl::NDRange(channels, outputs, batch_size * rowTiles),
+            cl::NDRange(channelGroup, outputGroup, rowGroup));
     } catch (const cl::Error &e) {
         std::cerr << "Error in convolve1: " << e.what() << ": "
                   << e.err() << std::endl;
@@ -513,9 +514,10 @@ void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
         merge_kernel.setArg(1, bufferOutput);
         merge_kernel.setArg(2, channels >> channelShift);
 
-        queue.enqueueNDRangeKernel(merge_kernel, cl::NullRange,
-                                   cl::NDRange(outputs, boardsize, batch_size),
-                                   cl::NDRange(std::min(8, outputs), BOARD_SIZE, 1));
+        queue.enqueueNDRangeKernel(
+            merge_kernel, cl::NullRange,
+            cl::NDRange(outputs, boardsize, batch_size),
+            cl::NDRange(std::min(8, outputs), BOARD_SIZE, 1));
     } catch (const cl::Error &e) {
         std::cerr << "Error in merge: " << e.what() << ": "
                   << e.err() << std::endl;
@@ -686,7 +688,8 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
                 myprintf("Device name:   %s\n",
                          trim(d.getInfo<CL_DEVICE_NAME>()).c_str());
                 myprintf("Device type:   %s\n",
-                         opencl_dev_type_to_string(d.getInfo<CL_DEVICE_TYPE>()).c_str());
+                         opencl_dev_type_to_string(
+                             d.getInfo<CL_DEVICE_TYPE>()).c_str());
                 myprintf("Device vendor: %s\n",
                           d.getInfo<CL_DEVICE_VENDOR>().c_str());
                 myprintf("Device driver: %s\n",
@@ -718,7 +721,8 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
                 best_device = d;
                 best_vendor = this_vendor;
                 if (preferred) {
-                    best_score = std::numeric_limits<decltype(best_score)>::max();
+                    best_score =
+                        std::numeric_limits<decltype(best_score)>::max();
                 } else {
                     best_score = this_score;
                 }
@@ -764,7 +768,8 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     m_cl_args = getClArgs<net_t>();
 
     myprintf("Half precision compute support: ");
-    if (m_device.getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp16") != std::string::npos) {
+    if (m_device.getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp16")
+        != std::string::npos) {
         myprintf("YES\n");
         m_cl_args += " -DFP16_SUPPORT";
     } else {
@@ -804,8 +809,8 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     process_tuners(sgemm_tuners);
 
     m_wavefront_size =
-        tdata.m_sgemm_kernel.getWorkGroupInfo<CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(
-            best_device);
+        tdata.m_sgemm_kernel.getWorkGroupInfo<
+            CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(best_device);
     myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
 
     m_max_workgroup_size = best_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();

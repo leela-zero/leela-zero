@@ -37,7 +37,7 @@ void im2col(const int channels,
     const float* data_im = input.data();
     float* data_col = output.data();
 
-    for (int channel = channels; channel--; data_im += BOARD_SQUARES) {
+    for (int channel = channels; channel--; data_im += NUM_INTERSECTIONS) {
         for (unsigned int kernel_row = 0; kernel_row < filter_size; kernel_row++) {
             for (unsigned int kernel_col = 0; kernel_col < filter_size; kernel_col++) {
                 int input_row = -pad + kernel_row;
@@ -69,7 +69,7 @@ template <>
 void im2col<1>(const int channels,
                const std::vector<float>& input,
                std::vector<float>& output) {
-    auto outSize = size_t{channels * static_cast<size_t>(BOARD_SQUARES)};
+    auto outSize = size_t{channels * static_cast<size_t>(NUM_INTERSECTIONS)};
     assert(output.size() == outSize);
     std::copy(begin(input), begin(input) + outSize, begin(output));
 }

@@ -63,7 +63,7 @@ namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
 // Symmetry helper
-static std::array<std::array<int, BOARD_SQUARES>,
+static std::array<std::array<int, NUM_INTERSECTIONS>,
                   Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
 
 float Network::benchmark_time(int centiseconds) {
@@ -348,13 +348,13 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     m_nncache.set_size_from_playouts(playouts);
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
-        for (auto v = 0; v < BOARD_SQUARES; ++v) {
+        for (auto v = 0; v < NUM_INTERSECTIONS; ++v) {
             const auto newvtx =
                 get_symmetry({v % BOARD_SIZE, v / BOARD_SIZE}, s);
             symmetry_nn_idx_table[s][v] =
                 (newvtx.second * BOARD_SIZE) + newvtx.first;
             assert(symmetry_nn_idx_table[s][v] >= 0
-                   && symmetry_nn_idx_table[s][v] < BOARD_SQUARES);
+                   && symmetry_nn_idx_table[s][v] < NUM_INTERSECTIONS);
         }
     }
 
@@ -639,7 +639,7 @@ bool Network::probe_cache(const GameState* const state,
             const auto hash = state->get_symmetry_hash(sym);
             if (m_nncache.lookup(hash, result)) {
                 decltype(result.policy) corrected_policy;
-                for (auto idx = size_t{0}; idx < BOARD_SQUARES; ++idx) {
+                for (auto idx = size_t{0}; idx < NUM_INTERSECTIONS; ++idx) {
                     const auto sym_idx = symmetry_nn_idx_table[sym][idx];
                     corrected_policy[idx] = result.policy[sym_idx];
                 }
@@ -678,7 +678,7 @@ Network::Netresult Network::get_output(
             result.policy_pass +=
                 tmpresult.policy_pass / static_cast<float>(NUM_SYMMETRIES);
 
-            for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+            for (auto idx = size_t{0}; idx < NUM_INTERSECTIONS; idx++) {
                 result.policy[idx] +=
                     tmpresult.policy[idx] / static_cast<float>(NUM_SYMMETRIES);
             }
@@ -735,33 +735,33 @@ Network::Netresult Network::get_output_internal(
 #endif
 
     // Get the moves
-    batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data,
+    batchnorm<NUM_INTERSECTIONS>(OUTPUTS_POLICY, policy_data,
         m_bn_pol_w1.data(), m_bn_pol_w2.data());
     const auto policy_out =
-        innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1, false>(
+        innerproduct<OUTPUTS_POLICY * NUM_INTERSECTIONS, POTENTIAL_MOVES, false>(
             policy_data, m_ip_pol_w, m_ip_pol_b);
     const auto outputs = softmax(policy_out, cfg_softmax_temp);
 
     // Now get the value
-    batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data,
+    batchnorm<NUM_INTERSECTIONS>(OUTPUTS_VALUE, value_data,
         m_bn_val_w1.data(), m_bn_val_w2.data());
     const auto winrate_data =
-        innerproduct<BOARD_SQUARES, 256, true>(value_data,
-                                               m_ip1_val_w, m_ip1_val_b);
+        innerproduct<OUTPUTS_VALUE * NUM_INTERSECTIONS, VALUE_LAYER, true>(
+            value_data, m_ip1_val_w, m_ip1_val_b);
     const auto winrate_out =
-        innerproduct<256, 1, false>(winrate_data, m_ip2_val_w, m_ip2_val_b);
+        innerproduct<VALUE_LAYER, 1, false>(winrate_data, m_ip2_val_w, m_ip2_val_b);
 
     // Map TanH output range [-1..1] to [0..1] range
     const auto winrate = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
 
     Netresult result;
 
-    for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+    for (auto idx = size_t{0}; idx < NUM_INTERSECTIONS; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
         result.policy[sym_idx] = outputs[idx];
     }
 
-    result.policy_pass = outputs[BOARD_SQUARES];
+    result.policy_pass = outputs[NUM_INTERSECTIONS];
     result.winrate = winrate;
 
     return result;
@@ -777,7 +777,7 @@ void Network::show_heatmap(const FastState* const state,
         for (unsigned int x = 0; x < BOARD_SIZE; x++) {
             auto policy = 0;
             const auto vertex = state->board.get_vertex(x, y);
-            if (state->board.get_square(vertex) == FastBoard::EMPTY) {
+            if (state->board.get_state(vertex) == FastBoard::EMPTY) {
                 policy = result.policy[y * BOARD_SIZE + x] * 1000;
             }
 
@@ -797,11 +797,11 @@ void Network::show_heatmap(const FastState* const state,
 
     if (topmoves) {
         std::vector<Network::PolicyVertexPair> moves;
-        for (auto i=0; i < BOARD_SQUARES; i++) {
+        for (auto i=0; i < NUM_INTERSECTIONS; i++) {
             const auto x = i % BOARD_SIZE;
             const auto y = i / BOARD_SIZE;
             const auto vertex = state->board.get_vertex(x, y);
-            if (state->board.get_square(vertex) == FastBoard::EMPTY) {
+            if (state->board.get_state(vertex) == FastBoard::EMPTY) {
                 moves.emplace_back(result.policy[i], vertex);
             }
         }
@@ -826,11 +826,11 @@ void Network::fill_input_plane_pair(const FullBoard& board,
                                     std::vector<float>::iterator black,
                                     std::vector<float>::iterator white,
                                     const int symmetry) {
-    for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
+    for (auto idx = 0; idx < NUM_INTERSECTIONS; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
         const auto x = sym_idx % BOARD_SIZE;
         const auto y = sym_idx / BOARD_SIZE;
-        const auto color = board.get_square(x, y);
+        const auto color = board.get_state(x, y);
         if (color == FastBoard::BLACK) {
             black[idx] = float(true);
         } else if (color == FastBoard::WHITE) {
@@ -842,32 +842,32 @@ void Network::fill_input_plane_pair(const FullBoard& board,
 std::vector<float> Network::gather_features(const GameState* const state,
                                             const int symmetry) {
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
-    auto input_data = std::vector<float>(INPUT_CHANNELS * BOARD_SQUARES);
+    auto input_data = std::vector<float>(INPUT_CHANNELS * NUM_INTERSECTIONS);
 
     const auto to_move = state->get_to_move();
     const auto blacks_move = to_move == FastBoard::BLACK;
 
     const auto black_it = blacks_move ?
                           begin(input_data) :
-                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES;
+                          begin(input_data) + INPUT_MOVES * NUM_INTERSECTIONS;
     const auto white_it = blacks_move ?
-                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES :
+                          begin(input_data) + INPUT_MOVES * NUM_INTERSECTIONS :
                           begin(input_data);
     const auto to_move_it = blacks_move ?
-        begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES :
-        begin(input_data) + (2 * INPUT_MOVES + 1) * BOARD_SQUARES;
+        begin(input_data) + 2 * INPUT_MOVES * NUM_INTERSECTIONS :
+        begin(input_data) + (2 * INPUT_MOVES + 1) * NUM_INTERSECTIONS;
 
     const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
     // Go back in time, fill history boards
     for (auto h = size_t{0}; h < moves; h++) {
         // collect white, black occupation planes
         fill_input_plane_pair(state->get_past_board(h),
-                              black_it + h * BOARD_SQUARES,
-                              white_it + h * BOARD_SQUARES,
+                              black_it + h * NUM_INTERSECTIONS,
+                              white_it + h * NUM_INTERSECTIONS,
                               symmetry);
     }
 
-    std::fill(to_move_it, to_move_it + BOARD_SQUARES, float(true));
+    std::fill(to_move_it, to_move_it + NUM_INTERSECTIONS, float(true));
 
     return input_data;
 }
