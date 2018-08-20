@@ -111,10 +111,8 @@ void OpenCL_Network<net_t>::add_weights(size_t layer,
         m_layers.push_back(Layer());
     }
 
-    auto converted_weights = std::vector<net_t>();
-    for (auto i = size_t{0}; i < size; i++) {
-        converted_weights.emplace_back(weights[i]);
-    }
+    auto converted_weights = std::vector<net_t>(size);
+    std::copy(weights, weights + size, begin(converted_weights));
 
     auto weightSize = size * sizeof(typename decltype(converted_weights)::value_type);
     m_layers.back().weights.emplace_back(
