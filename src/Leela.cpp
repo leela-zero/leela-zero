@@ -87,10 +87,10 @@ static void parse_commandline(int argc, char *argv[]) {
         ("max-wr", po::value<float>(), "Maximal white winrate.")
         ("min-wr", po::value<float>(), "Minimal white winrate.")
         ("wr-margin", po::value<float>(), "White winrate is adjusted to min+margin or max-margin.")
-        ("target-komi", po::value<float>(), "Target komi.")
-        ("adj-playouts", po::value<int>(), "Number of positions to collect for komi adjustment.")
-        ("adj-pct", po::value<float>(), "Percentage of collected positions to use for komi adjustment.")
-        ("num-adj", po::value<int>(), "Maximal number of komi adjustments for each genmove (default = 1).")
+        ("target-komi", po::value<float>(), "Target komi, default 7.5.")
+        ("adj-playouts", po::value<int>(), "Number of positions to collect for komi adjustment, default 200; should be higher for strong machines to achieve more accurate komi adjustment.")
+        ("adj-pct", po::value<float>(), "Percentage of collected positions to use for komi adjustment, default 4.")
+        ("num-adj", po::value<int>(), "Maximal number of komi adjustments for each genmove, default 1.")
         ("pos", "Use positive komi (for side-to-move) only.")
         ("neg", "Use negative komi only.")
         ("fixed-symmetry", po::value<int>(), "Fixed symmetry, value in [0,7].")
@@ -196,7 +196,7 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_dyn_komi = true;
         cfg_max_wr = 0.12;
         cfg_min_wr = 0.06;
-        cfg_wr_margin = 0.025;
+        cfg_wr_margin = 0.03;
         //cfg_target_komi = 0.0;
         cfg_dyn_fpu = true;
         cfg_resignpct = 0;
@@ -552,13 +552,13 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    extern int dyn_komi_test(Network*, GameState&, int);
+    extern int dyn_komi_test(Network&, GameState&, int);
     if (cfg_dyn_komi && cfg_auto_pos_neg) {
-        switch (dyn_komi_test(&*GTP::s_network, *maingame, 0)) {
+        switch (dyn_komi_test(*GTP::s_network, *maingame, 0)) {
         case 0: break;
-        case 1: cfg_pos = cfg_neg = true; myprintf("Automatically set --pos and --neg."); break;
-        case 2: cfg_neg = true; myprintf("Automatically set --neg."); break;
-        case 3: cfg_pos = true; myprintf("Automatically set --pos."); break;
+        case 1: cfg_pos = cfg_neg = true; myprintf("Automatically set --pos and --neg.\n"); break;
+        case 2: cfg_neg = true; myprintf("Automatically set --neg.\n"); break;
+        case 3: cfg_pos = true; myprintf("Automatically set --pos.\n"); break;
         }
     }
     if (cfg_pos && cfg_neg) { myprintf("Cannot set both --pos and --neg. Quitting."); return 0; }

@@ -225,6 +225,8 @@ void binary_search_komi(GameState& root_state, float shift, float high, float lo
 void adjust_up_komi(GameState& root_state, float shift, float target_wr, std::function<float(float)> get_white_eval) {
 	float net_eval;
     float old_komi;
+    float orig_komi = root_state.m_stm_komi;
+    int steps = cfg_steps;
 	do {
         old_komi = root_state.m_stm_komi;
         if (old_komi < -7.5) {
@@ -239,7 +241,8 @@ void adjust_up_komi(GameState& root_state, float shift, float target_wr, std::fu
                 root_state.m_stm_komi = 7.5;
                 return;
             }
-        }
+        }        
+        if (steps-- < 0) { root_state.m_stm_komi = orig_komi; return; }
         net_eval = get_white_eval(root_state.m_stm_komi);
         if (inv_wr(net_eval) + shift > inv_wr(cfg_min_wr + cfg_wr_margin) && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
 	} while (inv_wr(net_eval) + shift < inv_wr(target_wr));
@@ -249,6 +252,8 @@ void adjust_up_komi(GameState& root_state, float shift, float target_wr, std::fu
 void adjust_down_komi(GameState& root_state, float shift, float target_wr, std::function<float(float)> get_white_eval) {
     float net_eval;
     float old_komi;
+    float orig_komi = root_state.m_stm_komi;
+    int steps = cfg_steps;
     if (cfg_nonslack) {
         do {
             old_komi = root_state.m_stm_komi;
@@ -265,6 +270,7 @@ void adjust_down_komi(GameState& root_state, float shift, float target_wr, std::
                     return;
                 }
             }
+            if (steps-- < 0) { root_state.m_stm_komi = orig_komi; return; }
             net_eval = get_white_eval(root_state.m_stm_komi);
             if (inv_wr(net_eval) + shift < inv_wr(cfg_max_wr - cfg_wr_margin) && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
         } while (inv_wr(net_eval) + shift > inv_wr(target_wr));

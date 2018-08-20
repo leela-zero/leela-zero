@@ -185,19 +185,19 @@ void GTP::setup_default_parameters() {
     cfg_rng_seed = seed1 ^ seed2;
 }
 
-int dyn_komi_test(Network * net, GameState &game, int sym) {
+int dyn_komi_test(Network & net, GameState &game, int sym) {
     // todo: configurable lower/upper limits and gap, allow black or white to move, more accurate (with raw_winrate, no bias towards pos or neg)
-    auto vec = net->get_output(&game, Network::Ensemble::DIRECT, sym, true);
+    auto vec = net.get_output(&game, Network::Ensemble::DIRECT, sym, true);
     auto current_komi = game.m_stm_komi;
     std::vector<float> loc_incr;
     game.m_stm_komi = -300.5f;
-    auto vec_old = net->get_output(&game, Network::Ensemble::DIRECT, sym, true);
+    auto vec_old = net.get_output(&game, Network::Ensemble::DIRECT, sym, true);
     auto accum_neg = 1.0f - vec_old.winrate;
     myprintf("komi | winrate\n");
     myprintf("---- | ----\n");
     for (auto s = -300.0f; s <= 0.0f; s = s + 0.5) {
         game.m_stm_komi = s;
-        vec = net->get_output(&game, Network::Ensemble::DIRECT, sym, true);
+        vec = net.get_output(&game, Network::Ensemble::DIRECT, sym, true);
         myprintf("%f | %f\n", s, vec.winrate);
         if (vec_old.winrate < vec.winrate) {
             loc_incr.emplace_back(s);
@@ -208,7 +208,7 @@ int dyn_komi_test(Network * net, GameState &game, int sym) {
     auto accum_pos = 0.0f;
     for (auto s = 0.5; s <= 300.0f; s = s + 0.5) {
         game.m_stm_komi = s;
-        vec = net->get_output(&game, Network::Ensemble::DIRECT, sym, true);
+        vec = net.get_output(&game, Network::Ensemble::DIRECT, sym, true);
         myprintf("%f | %f\n", s, vec.winrate);
         if (vec_old.winrate < vec.winrate) {
             loc_incr.emplace_back(s);
@@ -739,7 +739,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         else {
             sym = std::stoi(symmetry);
         }
-        dyn_komi_test(&*s_network, game, sym);
+        dyn_komi_test(*s_network, game, sym);
 
     } else if (command.find("fixed_handicap") == 0) {
         std::istringstream cmdstream(command);
