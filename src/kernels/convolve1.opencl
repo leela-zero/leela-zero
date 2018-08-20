@@ -39,8 +39,8 @@ R"(
         const int channels = get_global_size(0);
         const int outputs  = get_global_size(1);
 
-        const int input_offset = batch * BOARD_SQUARES * channels;
-        const int merge_offset = batch * BOARD_SQUARES * (channels >> 3) * outputs;
+        const int input_offset = batch * NUM_INTERSECTIONS * channels;
+        const int merge_offset = batch * NUM_INTERSECTIONS * (channels >> 3) * outputs;
 
         // cl::NDRange local(2, (1->32), 1);
         const int lx = get_local_id(0);
@@ -105,7 +105,7 @@ __kernel void merge(
                         __global const net_t * restrict in,
                         __global net_t * restrict out,
                         __private const int channels) {
-        // cl::NDRange global(outputs, BOARD_SQUARES);
+        // cl::NDRange global(outputs, NUM_INTERSECTIONS);
         const int gx = get_global_id(0);
         const int gy = get_global_id(1);
         const int batch = get_global_id(2);
@@ -117,10 +117,10 @@ __kernel void merge(
         const int o = output;
         real sum = 0;
         for (int c = 0; c < channels; c++) {
-            sum += vload_net_t(batch * channels * BOARD_SQUARES * outputs +
-                (c * BOARD_SQUARES + b) * outputs + o, in);
+            sum += vload_net_t(batch * channels * NUM_INTERSECTIONS * outputs +
+                (c * NUM_INTERSECTIONS + b) * outputs + o, in);
         }
-        vstore_net_t(sum, batch * outputs * BOARD_SQUARES + o * BOARD_SQUARES + b, out);
+        vstore_net_t(sum, batch * outputs * NUM_INTERSECTIONS + o * NUM_INTERSECTIONS + b, out);
     }
 
 // End of the C++11 raw string literal

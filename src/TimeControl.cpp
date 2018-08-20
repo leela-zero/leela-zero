@@ -216,8 +216,8 @@ void TimeControl::adjust_time(int color, int time, int stones) {
 }
 
 size_t TimeControl::opening_moves(int boardsize) const {
-    auto squares = boardsize * boardsize;
-    auto fast_moves = squares / 6;
+    auto num_intersections = boardsize * boardsize;
+    auto fast_moves = num_intersections / 6;
     return fast_moves;
 }
 

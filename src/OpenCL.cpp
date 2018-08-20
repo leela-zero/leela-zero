@@ -61,7 +61,7 @@ const std::string sourceCode_common =
 
 static const std::string sourceCode_config = R"(
 #define BOARD_SIZE )" + std::to_string(BOARD_SIZE) +
-"\n#define BOARD_SQUARES " + std::to_string(BOARD_SQUARES) +
+"\n#define NUM_INTERSECTIONS " + std::to_string(NUM_INTERSECTIONS) +
 "\n#define WINOGRAD_M " + std::to_string(WINOGRAD_M) +
 "\n#define WINOGRAD_ALPHA " + std::to_string(WINOGRAD_ALPHA) +
 "\n#define WTILES " + std::to_string(WINOGRAD_WTILES);
@@ -461,7 +461,7 @@ void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
                               int batch_size) {
     // The size of the board is defined at compile time
     constexpr int width = BOARD_SIZE;
-    constexpr int boardsize = BOARD_SQUARES;
+    constexpr int boardsize = NUM_INTERSECTIONS;
     constexpr int rowTiles = BOARD_SIZE;
 
     // Input channel grouping in multiples of 8
