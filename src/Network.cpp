@@ -318,6 +318,22 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
 }
 
 void Network::initialize(int playouts, const std::string & weightsfile) {
+#ifdef USE_BLAS
+#ifndef __APPLE__
+#ifdef USE_OPENBLAS
+    openblas_set_num_threads(1);
+    myprintf("BLAS Core: %s\n", openblas_get_corename());
+#endif
+#ifdef USE_MKL
+    //mkl_set_threading_layer(MKL_THREADING_SEQUENTIAL);
+    mkl_set_num_threads(1);
+    MKLVersion Version;
+    mkl_get_version(&Version);
+    myprintf("BLAS core: MKL %s\n", Version.Processor);
+#endif
+#endif
+#endif
+
     m_nncache.set_size_from_playouts(playouts);
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
@@ -372,71 +388,9 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         m_conv_pol_b[i] = 0.0f;
     }
 
-#ifdef USE_HALF
-    std::unique_ptr<ForwardPipe> fp16net;
-#endif
-    std::vector<ForwardPipe*> to_init;
-
-    bool use_selfcheck = true;
-#ifdef USE_OPENCL
-    if (cfg_cpu_only) {
-        myprintf("Initializing CPU-only evaluation.\n");
-        m_forward = std::make_unique<CPUPipe>();
-
-        use_selfcheck = false;
-    } else {
-#ifdef USE_HALF
-        switch (cfg_precision) {
-            case precision_t::AUTO: {
-                // create fp16 and fp32 both here.  will select one of them later.
-                myprintf("Initializing OpenCL (autodetect precision).\n");
-                try {
-                    fp16net = std::make_unique<OpenCLScheduler<half_float::half>>();
-                    fp16net->initialize(channels);
-                    to_init.emplace_back(fp16net.get());
-                } catch (std::runtime_error) {
-                    myprintf("Failed to initialize half precision net.  Resorting to single precision.\n");
-                    fp16net.reset();
-                }
-                m_forward = std::make_unique<OpenCLScheduler<float>>();
-            }
-            break;
-            case precision_t::SINGLE: {
-                myprintf("Initializing OpenCL (single precision).\n");
-                m_forward = std::make_unique<OpenCLScheduler<float>>();
-            }
-            break;
-            case precision_t::HALF: {
-                myprintf("Initializing OpenCL (half precision).\n");
-                m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
-            }
-        }
-#else
-        myprintf("Initializing OpenCL (single precision).\n");
-        m_forward = std::make_unique<OpenCLScheduler<float>>();
-#endif
-    }
-
-#else //!USE_OPENCL
-    myprintf("Initializing CPU-only evaluation.\n");
-    m_forward = std::make_unique<CPUPipe>();
-    use_selfcheck = false;
-#endif
-
-    m_forward->initialize(channels);
-    to_init.emplace_back(m_forward.get());
-#ifdef USE_OPENCL_SELFCHECK
-    if (use_selfcheck) {
-        m_forward_cpu = std::make_unique<CPUPipe>();
-        m_forward_cpu->initialize(channels);
-        to_init.emplace_back(m_forward_cpu.get());
-    }
-#else
-    (void)use_selfcheck;
-#endif
-
-    for (const auto& p : to_init) {
-        weight_index = 0;
+    auto init_net = [this, channels, residual_blocks](auto&& p) {
+        p->initialize(channels);
+        auto weight_index = size_t{0};
 
         // Winograd filter transformation changes filter size to 4x4
         p->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
@@ -459,44 +413,85 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         // Output head convolutions
         p->push_convolve(1, channels, OUTPUTS_POLICY, m_conv_pol_w);
         p->push_convolve(1, channels, OUTPUTS_VALUE, m_conv_val_w);
-    }
-#ifdef USE_BLAS
-#ifndef __APPLE__
-#ifdef USE_OPENBLAS
-    openblas_set_num_threads(1);
-    myprintf("BLAS Core: %s\n", openblas_get_corename());
-#endif
-#ifdef USE_MKL
-    //mkl_set_threading_layer(MKL_THREADING_SEQUENTIAL);
-    mkl_set_num_threads(1);
-    MKLVersion Version;
-    mkl_get_version(&Version);
-    myprintf("BLAS core: MKL %s\n", Version.Processor);
-#endif
-#endif
-#endif
 
+        return std::move(p);
+    };
+
+
+    bool use_selfcheck = true;
+#ifdef USE_OPENCL
+    if (cfg_cpu_only) {
+        myprintf("Initializing CPU-only evaluation.\n");
+        m_forward = init_net(std::make_unique<CPUPipe>());
+
+        use_selfcheck = false;
+    } else {
 #ifdef USE_HALF
-    if (fp16net != nullptr) {
-        auto score_fp32 = benchmark_time(100);
-        std::swap(fp16net, m_forward);
-        auto score_fp16 = float{-1.0};
-        try {
-            score_fp16 = benchmark_time(100);
-        } catch (...) {
-            // empty - if exception thrown just throw away fp16 net
-        }
+        switch (cfg_precision) {
+            case precision_t::AUTO: {
+                auto score_fp16 = float{-1.0};
+                auto score_fp32 = float{-1.0};
 
-        if (score_fp16 < 0.0) {
-            std::swap(fp16net, m_forward);
-            myprintf("Using OpenCL single precision (half precision failed to run)\n");
-        } else if (score_fp32 * 1.05f > score_fp16) {
-            std::swap(fp16net, m_forward);
-            myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
-        } else {
-            myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
+                myprintf("Initializing OpenCL (autodetect precision).\n");
+                try {
+                    m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
+                    score_fp32 = benchmark_time(100);
+                } catch (...) {
+                    // empty - if exception thrown just throw away fp16 net
+                }
+
+                try {
+                    m_forward = init_net(std::make_unique<OpenCLScheduler<half_float::half>>());
+                    score_fp16 = benchmark_time(100);
+                } catch (...) {
+                    // empty - if exception thrown just throw away fp16 net
+                }
+
+
+                if (score_fp16 < 0.0 && score_fp32 < 0.0) {
+                    myprintf("Both single precision and half precision failed to run\n");
+                    throw std::runtime_error("Failed to initialize net");
+                } else if (score_fp16 < 0.0) {
+                    myprintf("Using OpenCL single precision (half precision failed to run)\n");
+                    m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
+                } else if (score_fp32 < 0.0) {
+                    myprintf("Using OpenCL half precision (single precision failed to run)\n");
+                } else if (score_fp32 * 1.05f > score_fp16) {
+                    myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
+                    m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
+                } else {
+                    myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
+                }
+            }
+            break;
+            case precision_t::SINGLE: {
+                myprintf("Initializing OpenCL (single precision).\n");
+                m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
+            }
+            break;
+            case precision_t::HALF: {
+                myprintf("Initializing OpenCL (half precision).\n");
+                m_forward = init_net(std::make_unique<OpenCLScheduler<half_float::half>>());
+            }
         }
+#else
+        myprintf("Initializing OpenCL (single precision).\n");
+        m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
+#endif
     }
+
+#else //!USE_OPENCL
+    myprintf("Initializing CPU-only evaluation.\n");
+    m_forward = init_net(std::make_unique<CPUPipe>());
+    use_selfcheck = false;
+#endif
+
+#ifdef USE_OPENCL_SELFCHECK
+    if (use_selfcheck) {
+        m_forward_cpu = init_net(std::make_unique<CPUPipe>());
+    }
+#else
+    (void)use_selfcheck;
 #endif
 }
 
