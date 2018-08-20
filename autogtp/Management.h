@@ -93,8 +93,8 @@ private:
     void sendAllGames();
     void checkStoredGames();
     QFileInfo getNextStored();
-    bool networkExists(const QString &name);
-    void fetchNetwork(const QString &net);
+    bool networkExists(const QString &name, const QString &gzipHash);
+    void fetchNetwork(const QString &net, const QString &hash);
     void printTimingInfo(float duration);
     void runTuningProcess(const QString &tuneCmdLine);
     void gzipFile(const QString &fileName);

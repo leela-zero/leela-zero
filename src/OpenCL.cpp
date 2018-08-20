@@ -106,22 +106,18 @@ void OpenCL<net_t>::ensure_context_initialized(OpenCLContext &opencl_context) {
 template <typename net_t>
 void OpenCL_Network<net_t>::add_weights(size_t layer,
                                  size_t size,
-                                 const float * weights) {
+                                 const net_t * weights) {
     if (layer >= m_layers.size()) {
         m_layers.push_back(Layer());
     }
 
-    auto converted_weights = std::vector<net_t>();
-    for (auto i = size_t{0}; i < size; i++) {
-        converted_weights.emplace_back(weights[i]);
-    }
-
-    auto weightSize = size * sizeof(typename decltype(converted_weights)::value_type);
+    auto weightSize = size * sizeof(net_t);
     m_layers.back().weights.emplace_back(
         m_opencl.m_context,
         CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
         weightSize,
-        const_cast<net_t*>(converted_weights.data()));
+        const_cast<net_t*>(weights)
+    );
 }
 
 template <typename net_t>
@@ -130,10 +126,8 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                              std::vector<float>& output_val,
                              OpenCLContext & opencl_context,
                              const int batch_size) {
-    constexpr auto width = BOARD_SIZE;
-    constexpr auto height = BOARD_SIZE;
     constexpr auto tiles = WINOGRAD_P;
-    constexpr auto one_plane = width * height * sizeof(net_t);
+    constexpr auto one_plane = BOARD_SQUARES * sizeof(net_t);
     const auto finalSize_pol = m_layers[m_layers.size()-2].outputs * one_plane;
     const auto finalSize_val = m_layers.back().outputs * one_plane;
 
@@ -155,7 +149,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
         const auto n_ceil = ceilMultiple(ceilMultiple(tiles, nwg), vwn);
 
         const auto alloc_inSize =
-            MAX_BATCH * m_ceil * m_ceil * max_channels * sizeof(net_t);
+            MAX_BATCH * BOARD_SQUARES * max_channels * sizeof(net_t);
         const auto alloc_vm_size =
             MAX_BATCH * WINOGRAD_TILE * m_ceil * n_ceil * sizeof(net_t);
 
