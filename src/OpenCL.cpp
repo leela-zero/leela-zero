@@ -106,20 +106,18 @@ void OpenCL<net_t>::ensure_context_initialized(OpenCLContext &opencl_context) {
 template <typename net_t>
 void OpenCL_Network<net_t>::add_weights(size_t layer,
                                  size_t size,
-                                 const float * weights) {
+                                 const net_t * weights) {
     if (layer >= m_layers.size()) {
         m_layers.push_back(Layer());
     }
 
-    auto converted_weights = std::vector<net_t>(size);
-    std::copy(weights, weights + size, begin(converted_weights));
-
-    auto weightSize = size * sizeof(typename decltype(converted_weights)::value_type);
+    auto weightSize = size * sizeof(net_t);
     m_layers.back().weights.emplace_back(
         m_opencl.m_context,
         CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
         weightSize,
-        const_cast<net_t*>(converted_weights.data()));
+        const_cast<net_t*>(weights)
+    );
 }
 
 template <typename net_t>
