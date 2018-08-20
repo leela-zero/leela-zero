@@ -28,16 +28,19 @@ using Utils::ceilMultiple;
 
 class from_float{
 public:
-    const std::vector<float>& m_f;
     from_float(const std::vector<float> & f) : m_f(f) {}
+
     operator const std::vector<float>&() {
         return m_f;
     }
+
     operator std::vector<half_float::half>() {
         auto ret = std::vector<half_float::half>(m_f.size());
-        std::copy(begin(m_f), end(m_f), begin(ret));
+        std::copy(cbegin(m_f), cend(m_f), begin(ret));
         return ret;
     }
+private:
+    const std::vector<float>& m_f;
 };
 
 template <typename T>

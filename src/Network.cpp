@@ -63,7 +63,8 @@ namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
 // Symmetry helper
-static std::array<std::array<int, BOARD_SQUARES>, Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
+static std::array<std::array<int, BOARD_SQUARES>,
+                  Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
 
 float Network::benchmark_time(int centiseconds) {
     const auto cpus = cfg_num_threads;
@@ -245,18 +246,28 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
             switch (linecount - plain_conv_wts) {
                 case  0: m_conv_pol_w = std::move(weights); break;
                 case  1: m_conv_pol_b = std::move(weights); break;
-                case  2: std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w1)); break;
-                case  3: std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w2)); break;
-                case  4: std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_w)); break;
-                case  5: std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_b)); break;
+                case  2: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_bn_pol_w1)); break;
+                case  3: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_bn_pol_w2)); break;
+                case  4: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip_pol_w)); break;
+                case  5: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip_pol_b)); break;
                 case  6: m_conv_val_w = std::move(weights); break;
                 case  7: m_conv_val_b = std::move(weights); break;
-                case  8: std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w1)); break;
-                case  9: std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w2)); break;
-                case 10: std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_w)); break;
-                case 11: std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_b)); break;
-                case 12: std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_w)); break;
-                case 13: std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_b)); break;
+                case  8: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_bn_val_w1)); break;
+                case  9: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_bn_val_w2)); break;
+                case 10: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip1_val_w)); break;
+                case 11: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip1_val_b)); break;
+                case 12: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip2_val_w)); break;
+                case 13: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip2_val_b)); break;
             }
         }
         linecount++;
@@ -338,9 +349,12 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
         for (auto v = 0; v < BOARD_SQUARES; ++v) {
-            const auto newvtx = get_symmetry({v % BOARD_SIZE, v / BOARD_SIZE}, s);
-            symmetry_nn_idx_table[s][v] = (newvtx.second * BOARD_SIZE) + newvtx.first;
-            assert(symmetry_nn_idx_table[s][v] >= 0 && symmetry_nn_idx_table[s][v] < BOARD_SQUARES);
+            const auto newvtx =
+                get_symmetry({v % BOARD_SIZE, v / BOARD_SIZE}, s);
+            symmetry_nn_idx_table[s][v] =
+                (newvtx.second * BOARD_SIZE) + newvtx.first;
+            assert(symmetry_nn_idx_table[s][v] >= 0
+                   && symmetry_nn_idx_table[s][v] < BOARD_SQUARES);
         }
     }
 
@@ -428,51 +442,56 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     } else {
 #ifdef USE_HALF
         switch (cfg_precision) {
-            case precision_t::AUTO: {
-                auto score_fp16 = float{-1.0};
-                auto score_fp32 = float{-1.0};
+            case precision_t::AUTO:
+                {
+                    auto score_fp16 = float{-1.0};
+                    auto score_fp32 = float{-1.0};
 
-                myprintf("Initializing OpenCL (autodetect precision).\n");
-                try {
-                    m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
-                    score_fp32 = benchmark_time(100);
-                } catch (...) {
-                    // empty - if exception thrown just throw away fp16 net
+                    myprintf("Initializing OpenCL (autodetect precision).\n");
+                    try {
+                        m_forward = init_net(
+                            std::make_unique<OpenCLScheduler<float>>());
+                        score_fp32 = benchmark_time(100);
+                    } catch (...) {
+                        // empty - if exception thrown just throw away fp32 net
+                    }
+
+                    try {
+                        m_forward = init_net(
+                            std::make_unique<OpenCLScheduler<half_float::half>>());
+                        score_fp16 = benchmark_time(100);
+                    } catch (...) {
+                        // empty - if exception thrown just throw away fp16 net
+                    }
+
+                    if (score_fp16 < 0.0f && score_fp32 < 0.0f) {
+                        myprintf("Both single precision and half precision failed to run\n");
+                        throw std::runtime_error("Failed to initialize net");
+                    } else if (score_fp16 < 0.0f) {
+                        myprintf("Using OpenCL single precision (half precision failed to run)\n");
+                        m_forward = init_net(
+                            std::make_unique<OpenCLScheduler<float>>());
+                    } else if (score_fp32 < 0.0f) {
+                        myprintf("Using OpenCL half precision (single precision failed to run)\n");
+                    } else if (score_fp32 * 1.05f > score_fp16) {
+                        myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
+                        m_forward = init_net(
+                            std::make_unique<OpenCLScheduler<float>>());
+                    } else {
+                        myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
+                    }
                 }
-
-                try {
-                    m_forward = init_net(std::make_unique<OpenCLScheduler<half_float::half>>());
-                    score_fp16 = benchmark_time(100);
-                } catch (...) {
-                    // empty - if exception thrown just throw away fp16 net
-                }
-
-
-                if (score_fp16 < 0.0 && score_fp32 < 0.0) {
-                    myprintf("Both single precision and half precision failed to run\n");
-                    throw std::runtime_error("Failed to initialize net");
-                } else if (score_fp16 < 0.0) {
-                    myprintf("Using OpenCL single precision (half precision failed to run)\n");
-                    m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
-                } else if (score_fp32 < 0.0) {
-                    myprintf("Using OpenCL half precision (single precision failed to run)\n");
-                } else if (score_fp32 * 1.05f > score_fp16) {
-                    myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
-                    m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
-                } else {
-                    myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
-                }
-            }
-            break;
-            case precision_t::SINGLE: {
+                break;
+            case precision_t::SINGLE:
                 myprintf("Initializing OpenCL (single precision).\n");
-                m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
-            }
-            break;
-            case precision_t::HALF: {
+                m_forward = init_net(
+                    std::make_unique<OpenCLScheduler<float>>());
+                break;
+            case precision_t::HALF:
                 myprintf("Initializing OpenCL (half precision).\n");
-                m_forward = init_net(std::make_unique<OpenCLScheduler<half_float::half>>());
-            }
+                m_forward = init_net(
+                    std::make_unique<OpenCLScheduler<half_float::half>>());
+                break;
         }
 #else
         myprintf("Initializing OpenCL (single precision).\n");
@@ -575,8 +594,8 @@ void Network::compare_net_outputs(Netresult& data,
     error = std::sqrt(error);
 
     if (error > max_error || std::isnan(error)) {
-        printf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
-               "played simultaneously.\n");
+        printf("Error in OpenCL calculation: Update your GPU drivers "
+               "or reduce the amount of games played simultaneously.\n");
         throw std::runtime_error("OpenCL self-check mismatch.");
     }
 }
@@ -654,11 +673,14 @@ Network::Netresult Network::get_output(
     } else if (ensemble == AVERAGE) {
         for (auto sym = 0; sym < NUM_SYMMETRIES; ++sym) {
             auto tmpresult = get_output_internal(state, sym);
-            result.winrate += tmpresult.winrate / static_cast<float>(NUM_SYMMETRIES);
-            result.policy_pass += tmpresult.policy_pass / static_cast<float>(NUM_SYMMETRIES);
+            result.winrate +=
+                tmpresult.winrate / static_cast<float>(NUM_SYMMETRIES);
+            result.policy_pass +=
+                tmpresult.policy_pass / static_cast<float>(NUM_SYMMETRIES);
 
             for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
-                result.policy[idx] += tmpresult.policy[idx] / static_cast<float>(NUM_SYMMETRIES);
+                result.policy[idx] +=
+                    tmpresult.policy[idx] / static_cast<float>(NUM_SYMMETRIES);
             }
         }
     } else {
@@ -669,9 +691,10 @@ Network::Netresult Network::get_output(
 #ifdef USE_OPENCL_SELFCHECK
         // Both implementations are available, self-check the OpenCL driver by
         // running both with a probability of 1/2000.
-        // selfcheck is done here because this is the only place NN evaluation is done
-        // on actual gameplay.
-        if (m_forward_cpu != nullptr && Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
+        // selfcheck is done here because this is the only place NN
+        // evaluation is done on actual gameplay.
+        if (m_forward_cpu != nullptr
+            && Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
             auto result_ref = get_output_internal(state, rand_sym, true);
             compare_net_outputs(result, result_ref);
         }
@@ -723,7 +746,8 @@ Network::Netresult Network::get_output_internal(
     batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data,
         m_bn_val_w1.data(), m_bn_val_w2.data());
     const auto winrate_data =
-        innerproduct<BOARD_SQUARES, 256, true>(value_data, m_ip1_val_w, m_ip1_val_b);
+        innerproduct<BOARD_SQUARES, 256, true>(value_data,
+                                               m_ip1_val_w, m_ip1_val_b);
     const auto winrate_out =
         innerproduct<256, 1, false>(winrate_data, m_ip2_val_w, m_ip2_val_b);
 
