@@ -114,7 +114,7 @@ private:
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
     // Is someone adding policy priors to this node?
-    bool m_is_expanding{false};
+    std::atomic<bool> m_is_expanding{false};
     SMP::Mutex m_nodemutex;
 
     // Tree data

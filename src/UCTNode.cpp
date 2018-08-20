@@ -70,12 +70,13 @@ bool UCTNode::create_children(Network & network,
     if (!expandable(min_psa_ratio)) {
         return false;
     }
-    // Someone else is running the expansion
-    if (m_is_expanding) {
+
+    // We'll be the one queueing this node for expansion, stop others
+    // If it was already true, someone else is running the expansion
+    bool expanding = m_is_expanding.exchange(true);
+    if (expanding) {
         return false;
     }
-    // We'll be the one queueing this node for expansion, stop others
-    m_is_expanding = true;
     lock.unlock();
 
     const auto raw_netlist = network.get_output(
@@ -242,7 +243,11 @@ void UCTNode::accumulate_eval(float eval) {
 }
 
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
-    LOCK(get_mutex(), lock);
+    // make sure expansion is done
+    while (m_is_expanding.load()) {}
+
+    // Once we made sure that the expansion is done, m_children is
+    // not going to be further modified, hence we don't need a lock here.
 
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
@@ -291,6 +296,8 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
     }
 
+    // the inflate() method has to be protected by the parent's lock
+    LOCK(m_nodemutex, lock);
     assert(best != nullptr);
     best->inflate();
     return best->get();
