@@ -86,7 +86,7 @@ public:
         const int symmetry,
         const int board_size = BOARD_SIZE);
 
-    void Network::clear_cache() {
+    void clear_cache() {
         m_nncache.clear_cache();
     }
 private:
