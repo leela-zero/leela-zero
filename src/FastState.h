@@ -26,6 +26,9 @@
 
 #include "FullBoard.h"
 
+extern bool cfg_pos;
+extern bool cfg_neg;
+
 class FastState {
 public:
     void init_game(int size, float komi);
@@ -33,11 +36,12 @@ public:
     void reset_board();
 
     void play_move(int vertex);
-
     bool is_move_legal(int color, int vertex);
 
     void set_komi(float komi);
     float get_komi() const;
+    float get_stm_komi() const;
+    float get_opp_komi() const;
     void set_handicap(int hcap);
     int get_handicap() const;
     int get_passes() const;
@@ -47,6 +51,7 @@ public:
     void increment_passes();
 
     float final_score() const;
+    std::uint64_t get_symmetry_hash(int symmetry) const;
 
     size_t get_movenum() const;
     int get_last_move() const;
@@ -56,11 +61,17 @@ public:
     FullBoard board;
 
     float m_komi;
+    float m_stm_komi;
+    float m_opp_komi;
     int m_handicap;
     int m_passes;
     int m_komove;
     size_t m_movenum;
     int m_lastmove;
+
+    bool pos_komi() { return (get_to_move() == FastBoard::BLACK && (m_opp_komi > 7.5 || m_stm_komi > 7.5)) || (get_to_move() == FastBoard::WHITE && (m_opp_komi < -7.5 || m_stm_komi < -7.5)); }
+    bool neg_komi() { return (get_to_move() == FastBoard::BLACK && (m_opp_komi < -7.5 || m_stm_komi < -7.5)) || (get_to_move() == FastBoard::WHITE && (m_opp_komi > 7.5 || m_stm_komi > 7.5)); }
+    bool eval_invalid() { return (pos_komi() && cfg_neg) || (neg_komi() && cfg_pos); }
 
 protected:
     void play_move(int color, int vertex);

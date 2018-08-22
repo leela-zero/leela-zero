@@ -36,3 +36,4 @@ autogtp.
     cp ../src/leelaz .
     ./autogtp
 
+While autogtp is running, typing q+Enter will save the processed data and exit. When autogtp runs next, autogtp will continue the game.

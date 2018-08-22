@@ -17,6 +17,7 @@
 #    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
+import math
 import os
 import sys
 
@@ -51,7 +52,7 @@ def to_move_str(to_move):
     if (to_move): return "W"
     else: return "B"
 
-def parseGameBody(filename, fh, tfh, verbose):
+def parseGameBody(filename, fh, tfh, verbose, resignthr):
     gs = GameStats(filename)
     movenum = 0
     while 1:
@@ -75,11 +76,11 @@ def parseGameBody(filename, fh, tfh, verbose):
             if verbose >= 3:
                 print("+", to_move, movenum, netwinrate, child_uctwinrate,
                       bestmovevisits)
-            if not gs.resign_type and child_uctwinrate < resignrate:
+            if not gs.resign_type and child_uctwinrate < resignthr:
                 if verbose >= 1:
-                    print(("Wrong resign -- %s rr=%0.3f wr=%0.3f "
+                    print(("Wrong resign -- %s rt=%0.3f wr=%0.3f "
                            "winner=%s movenum=%d") %
-                          (filename, resignrate, child_uctwinrate,
+                          (filename, resignthr, child_uctwinrate,
                            to_move_str(to_move), movenum))
                     if verbose >= 3:
                         print("policy_weights", policy_weights)
@@ -89,7 +90,7 @@ def parseGameBody(filename, fh, tfh, verbose):
             if verbose >= 2:
                 print("-", to_move, movenum, netwinrate, child_uctwinrate,
                       bestmovevisits)
-            if not gs.resign_type and child_uctwinrate < resignrate:
+            if not gs.resign_type and child_uctwinrate < resignthr:
                 if verbose >= 2:
                     print("Correct resign -- %s" % (filename))
                 gs.resign_type = "Correct"
@@ -97,7 +98,7 @@ def parseGameBody(filename, fh, tfh, verbose):
     gs.total_moves = movenum
     return gs
 
-def parseGames(filenames, resignrate, verbose, prefixes):
+def parseGames(filenames, resignthr, verbose, prefixes):
     gsd = {}
     for filename in filenames:
         training_filename = filename.replace(".debug", "")
@@ -113,13 +114,13 @@ def parseGames(filenames, resignrate, verbose, prefixes):
                     continue
             cfg_resignpct = int(cfg_resignpct)
             if cfg_resignpct == 0:
-                gsd[filename] = parseGameBody(filename, fh, tfh, verbose)
+                gsd[filename] = parseGameBody(filename, fh, tfh, verbose, resignthr)
             elif verbose >= 2:
                 print("{} was played with -r {}, skipping".format(
                         filename, cfg_resignpct))
     return gsd
 
-def resignStats(gsd, resignrate):
+def resignStats(gsd, resignthr):
     # [ B wins, W wins, Overall ]
     stats = [ TotalStats(), TotalStats(), TotalStats() ]
     for gs in gsd.values():
@@ -136,8 +137,8 @@ def resignStats(gsd, resignrate):
             stats[gs.winner].resigned_game_len_sum += gs.resign_movenum
         stats[gs.winner].game_len_sum += gs.total_moves
     stats[2].calcOverall(stats[0], stats[1])
-    print("Resign rate: %0.2f - Black won %d/%d (%0.2f%%)" % (
-        resignrate,
+    print("Resign thr: %0.2f - Black won %d/%d (%0.2f%%)" % (
+        resignthr,
         stats[0].num_games,
         stats[0].num_games+stats[1].num_games,
         100 * stats[0].num_games / (stats[0].num_games+stats[1].num_games)))
@@ -169,6 +170,7 @@ def resignStats(gsd, resignrate):
         print("%s - Average game length: %d/%d (%0.2f%% reduction)" % (
             win_str, resigned_avg_len, avg_len, avg_reduction*100))
     print()
+    return stats
 
 if __name__ == "__main__":
     usage_str = """
@@ -191,12 +193,17 @@ files hash.txt.0 to be in the same directory."""
     parser = argparse.ArgumentParser(
             formatter_class=argparse.RawDescriptionHelpFormatter,
             description=usage_str)
-    default_resignrates="0.5,0.2,0.15,0.1,0.05,0.02,0.01"
+    default_resignthrs="0.5,0.2,0.15,0.1,0.05,0.02,0.01"
     parser.add_argument(
-            "-r", metavar="Resign_rates", dest="resignrates", type=str,
-            default=default_resignrates,
+            "-r", metavar="Resign_thresholds", dest="resignthrs", type=str,
+            default=default_resignthrs,
             help="comma separated resign thresholds (default {})".format(
-                    default_resignrates))
+                    default_resignthrs))
+    parser.add_argument(
+            "-R", metavar="Resign_rate", dest="resignrate", type=float,
+            help="If specified, a search is performed that finds the maximum \
+            resign threshold that can be set without exceeding the given \
+            resign rate")
     parser.add_argument(
             "-v", metavar="Verbose", dest="verbose", type=int, default=0,
             help="Verbosity level (default 0)")
@@ -207,13 +214,36 @@ files hash.txt.0 to be in the same directory."""
             "-n", metavar="Prefix", dest="networks", nargs="+",
             help="Prefixes of specific networks to analyze")
     args = parser.parse_args()
-    resignrates = [float(i) for i in args.resignrates.split(",")]
+    resignthrs = [float(i) for i in args.resignthrs.split(",")]
     if args.networks:
         print("Analyzing networks starting with: {}".format(
                 ",".join(args.networks)))
-    for resignrate in (resignrates):
-        gsd = parseGames(args.data, resignrate, args.verbose, args.networks)
+
+    for resignthr in (resignthrs):
+        gsd = parseGames(args.data, resignthr, args.verbose, args.networks)
         if gsd:
-            resignStats(gsd, resignrate)
+            resignStats(gsd, resignthr)
         else:
             print("No games to analyze (for more info try running with -v 2)")
+
+    if args.resignrate:
+        L = 0.0
+        R = 0.5
+        while L < R :
+            resignthr = math.floor((L + R) * 50) / 100
+            gsd = parseGames(args.data, resignthr, args.verbose, args.networks)
+            if not gsd:
+                print("No games to analyze (for more info try running with -v 2)")
+                break
+            stats = resignStats(gsd, resignthr)
+            wrong_rate = stats[2].wrong_resign_count / stats[2].num_games
+            if wrong_rate > args.resignrate:
+                if R == resignthr:
+                    R = (math.floor(resignthr * 100) - 1) / 100
+                else:
+                    R = resignthr
+            else:
+                L = (math.floor(resignthr * 100) + 1) / 100
+        if (L == R):      
+            print(("The highest the resign threshold should be set to: %0.2f")
+                  % (R - 0.01))

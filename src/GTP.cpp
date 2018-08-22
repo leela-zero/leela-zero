@@ -1,4 +1,4 @@
-/*
+/* 
     This file is part of Leela Zero.
     Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
@@ -36,6 +36,7 @@
 #include "FullBoard.h"
 #include "GameState.h"
 #include "Network.h"
+#include "NNCache.h"
 #include "SGFTree.h"
 #include "SMP.h"
 #include "Training.h"
@@ -54,6 +55,30 @@ int cfg_max_visits;
 TimeManagement::enabled_t cfg_timemanage;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
+
+bool cfg_dyn_komi;
+float cfg_max_wr;
+float cfg_min_wr;
+float cfg_wr_margin;
+float cfg_target_komi;
+int cfg_adj_playouts;
+float cfg_adj_pct;
+bool cfg_pos;
+bool cfg_neg;
+bool cfg_nonslack;
+bool cfg_sure_backup;
+bool cfg_noshift;
+bool cfg_use_symmetries;
+bool cfg_orig_policy;
+bool cfg_dyn_fpu;
+bool cfg_backup_fpu;
+bool cfg_collect_during_search;
+bool cfg_always_collect;
+int cfg_max_num_adjustments;
+int cfg_fixed_symmetry;
+bool cfg_use_root_for_diff;
+bool cfg_auto_pos_neg;
+
 int cfg_noise;
 int cfg_random_cnt;
 int cfg_random_min_visits;
@@ -64,6 +89,9 @@ bool cfg_dumbpass;
 std::vector<int> cfg_gpus;
 bool cfg_sgemm_exhaustive;
 bool cfg_tune_only;
+#ifdef USE_HALF
+precision_t cfg_precision;
+#endif
 #endif
 float cfg_puct;
 float cfg_softmax_temp;
@@ -74,6 +102,14 @@ FILE* cfg_logfile_handle;
 bool cfg_quiet;
 std::string cfg_options_str;
 bool cfg_benchmark;
+bool cfg_cpu_only;
+int cfg_analyze_interval_centis;
+
+std::unique_ptr<Network> GTP::s_network;
+
+void GTP::initialize(std::unique_ptr<Network>&& net) {
+    s_network = std::move(net);
+}
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
@@ -81,6 +117,8 @@ void GTP::setup_default_parameters() {
     cfg_max_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
 #ifdef USE_OPENCL
     // If we will be GPU limited, using many threads won't help much.
+    // Multi-GPU is a different story, but we will assume that those people
+    // who do those stuff will know what they are doing.
     cfg_num_threads = std::min(2, cfg_max_threads);
 #else
     cfg_num_threads = cfg_max_threads;
@@ -93,12 +131,32 @@ void GTP::setup_default_parameters() {
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;
     cfg_tune_only = false;
+#ifdef USE_HALF
+    cfg_precision = precision_t::AUTO;
+#endif
 #endif
     cfg_puct = 0.8f;
     cfg_softmax_temp = 1.0f;
     cfg_fpu_reduction = 0.25f;
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
+
+    cfg_dyn_komi = false;
+    cfg_target_komi = 7.5f;
+    cfg_adj_playouts = 200;
+    cfg_adj_pct = 4.0;
+    cfg_pos = false;
+    cfg_neg = false;
+    cfg_nonslack = false;
+    cfg_sure_backup = true;
+    cfg_noshift = true;
+    cfg_use_symmetries = true;
+    cfg_orig_policy = true;
+    cfg_dyn_fpu = false;
+    cfg_backup_fpu = false; // to remove
+    cfg_use_root_for_diff = false;
+    cfg_auto_pos_neg = true;
+
     cfg_noise = false;
     cfg_random_cnt = 0;
     cfg_random_min_visits = 1;
@@ -107,6 +165,13 @@ void GTP::setup_default_parameters() {
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
     cfg_benchmark = false;
+#ifdef USE_CPU_ONLY
+    cfg_cpu_only = true;
+#else
+    cfg_cpu_only = false;
+#endif
+
+    cfg_analyze_interval_centis = 0;
 
     // C++11 doesn't guarantee *anything* about how random this is,
     // and in MinGW it isn't random at all. But we can mix it in, which
@@ -118,6 +183,64 @@ void GTP::setup_default_parameters() {
     std::uint64_t seed2 = std::chrono::high_resolution_clock::
         now().time_since_epoch().count();
     cfg_rng_seed = seed1 ^ seed2;
+}
+
+int dyn_komi_test(Network & net, GameState &game, int sym) {
+    // todo: configurable lower/upper limits and gap, allow black or white to move, more accurate (with raw_winrate, no bias towards pos or neg)
+    auto vec = net.get_output(&game, Network::Ensemble::DIRECT, sym, true);
+    auto current_komi = game.m_stm_komi;
+    std::vector<float> loc_incr;
+    game.m_stm_komi = -300.5f;
+    auto vec_old = net.get_output(&game, Network::Ensemble::DIRECT, sym, true);
+    auto accum_neg = 1.0f - vec_old.winrate;
+    myprintf("komi | winrate\n");
+    myprintf("---- | ----\n");
+    for (auto s = -300.0f; s <= 0.0f; s = s + 0.5) {
+        game.m_stm_komi = s;
+        vec = net.get_output(&game, Network::Ensemble::DIRECT, sym, true);
+        myprintf("%f | %f\n", s, vec.winrate);
+        if (vec_old.winrate < vec.winrate) {
+            loc_incr.emplace_back(s);
+            accum_neg += vec.winrate - vec_old.winrate;
+        }
+        vec_old = vec;
+    }
+    auto accum_pos = 0.0f;
+    for (auto s = 0.5; s <= 300.0f; s = s + 0.5) {
+        game.m_stm_komi = s;
+        vec = net.get_output(&game, Network::Ensemble::DIRECT, sym, true);
+        myprintf("%f | %f\n", s, vec.winrate);
+        if (vec_old.winrate < vec.winrate) {
+            loc_incr.emplace_back(s);
+            accum_pos += vec.winrate - vec_old.winrate;
+        }
+        vec_old = vec;
+    }
+    accum_pos += vec.winrate;
+    game.m_stm_komi = current_komi;
+    //if (loc_incr.empty()) { myprintf("Perfect weight file! 完美的权重！\n"); }
+    myprintf("在以下贴目值附近胜率是上升的：Winrate increasing near ");
+    for (float s : loc_incr) { myprintf("%4.1f, ", s); }
+    myprintf(".\n");
+    myprintf("Negative komi total score: %e\n", accum_neg);
+    myprintf("Positive komi total score: %e\n", accum_pos);
+    const auto thres = 0.05f;
+    if (accum_neg <= thres && accum_pos <= thres) {
+        myprintf("Weight file is of good quality for dynamic komi! 权重质量不错，可用于让子／不退让版。\n");
+        return 0;
+    }
+    else if (accum_neg > thres && accum_pos > thres) {
+        myprintf("Weight file is unusable for dynamic komi. Sorry. 权重质量不佳，不能用于让子／不退让版。\n");
+        return 1;
+    }
+    else if (accum_neg <= thres) {
+        myprintf("Weight file is of mediocre quality for dynamic komi. Use with the option --neg. 权重质量中等，正贴目表现不佳，推荐使用--neg参数。\n");
+        return 2;
+    }
+    else {
+        myprintf("Weight file is of mediocre quality for dynamic komi. Use with the option --pos. 权重质量中等，负贴目表现不佳，推荐使用--pos参数。\n");
+        return 3;
+    }
 }
 
 const std::string GTP::s_commands[] = {
@@ -147,6 +270,9 @@ const std::string GTP::s_commands[] = {
     "kgs-time_settings",
     "kgs-game_over",
     "heatmap",
+    "dyn_komi_test",
+    "lz-analyze",
+    "lz-genmove_analyze",
     ""
 };
 
@@ -182,7 +308,7 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
 
 bool GTP::execute(GameState & game, std::string xinput) {
     std::string input;
-    static auto search = std::make_unique<UCTSearch>(game);
+    static auto search = std::make_unique<UCTSearch>(game, *s_network);
 
     bool transform_lowercase = true;
 
@@ -296,13 +422,13 @@ bool GTP::execute(GameState & game, std::string xinput) {
     } else if (command.find("clear_board") == 0) {
         Training::clear_training();
         game.reset_game();
-        search = std::make_unique<UCTSearch>(game);
+        search = std::make_unique<UCTSearch>(game, *s_network);
         gtp_printf(id, "");
         return true;
     } else if (command.find("komi") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        float komi = 7.5f;
+        float komi = cfg_target_komi;
         float old_komi = game.get_komi();
 
         cmdstream >> tmp;  // eat komi
@@ -345,12 +471,18 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
         }
         return true;
-    } else if (command.find("genmove") == 0) {
+    } else if (command.find("genmove") == 0 || command.find("lz-genmove_analyze") == 0) {
+        auto analysis_output = command.find("lz-genmove_analyze") == 0;
+        auto interval = 0;
+
         std::istringstream cmdstream(command);
         std::string tmp;
 
         cmdstream >> tmp;  // eat genmove
         cmdstream >> tmp;
+        if (analysis_output) {
+            cmdstream >> interval;
+        }
 
         if (!cmdstream.fail()) {
             int who;
@@ -362,24 +494,66 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 gtp_fail_printf(id, "syntax error");
                 return 1;
             }
+            if (analysis_output) {
+                // Start of multi-line response
+                cfg_analyze_interval_centis = interval;
+                if (id != -1) gtp_printf_raw("=%d\n", id);
+                else gtp_printf_raw("=\n");
+            }
             // start thinking
             {
                 game.set_to_move(who);
+                // Outputs winrate and pvs for lz-genmove_analyze
                 int move = search->think(who);
                 game.play_move(move);
 
                 std::string vertex = game.move_to_text(move);
-                gtp_printf(id, "%s", vertex.c_str());
+                if (!analysis_output) {
+                    gtp_printf(id, "%s", vertex.c_str());
+                } else {
+                    gtp_printf_raw("play %s\n", vertex.c_str());
+                }
             }
             if (cfg_allow_pondering) {
                 // now start pondering
                 if (!game.has_resigned()) {
+                    // Outputs winrate and pvs through gtp for lz-genmove_analyze
                     search->ponder();
                 }
+            }
+            if (analysis_output) {
+                // Terminate multi-line response
+                gtp_printf_raw("\n");
             }
         } else {
             gtp_fail_printf(id, "syntax not understood");
         }
+        analysis_output = false;
+        return true;
+    } else if (command.find("lz-analyze") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp;
+        int interval;
+
+        cmdstream >> tmp; // eat lz-analyze
+        cmdstream >> interval;
+        if (!cmdstream.fail()) {
+            cfg_analyze_interval_centis = interval;
+        } else {
+            gtp_fail_printf(id, "syntax not understood");
+            return true;
+        }
+        // Start multi-line response
+        if (id != -1) gtp_printf_raw("=%d\n", id);
+        else gtp_printf_raw("=\n");
+        // now start pondering
+        if (!game.has_resigned()) {
+            // Outputs winrate and pvs through gtp
+            search->ponder();
+        }
+        cfg_analyze_interval_centis = 0;
+        // Terminate multi-line response
+        gtp_printf_raw("\n");
         return true;
     } else if (command.find("kgs-genmove_cleanup") == 0) {
         std::istringstream cmdstream(command);
@@ -526,20 +700,20 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         Network::Netresult vec;
         if (cmdstream.fail()) {
-            // Default = DIRECT with no rotation
-            vec = Network::get_scored_moves(
-                &game, Network::Ensemble::DIRECT, 0, true);
+            // Default = DIRECT with no symmetric change
+            vec = s_network->get_output(
+                &game, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY, true);
         } else if (symmetry == "all") {
-            for (auto r = 0; r < 8; r++) {
-                vec = Network::get_scored_moves(
-                    &game, Network::Ensemble::DIRECT, r, true);
+            for (auto s = 0; s < Network::NUM_SYMMETRIES; ++s) {
+                vec = s_network->get_output(
+                    &game, Network::Ensemble::DIRECT, s, true);
                 Network::show_heatmap(&game, vec, false);
             }
         } else if (symmetry == "average" || symmetry == "avg") {
-            vec = Network::get_scored_moves(
-                &game, Network::Ensemble::AVERAGE, 8, true);
+            vec = s_network->get_output(
+                &game, Network::Ensemble::AVERAGE, Network::NUM_SYMMETRIES, true);
         } else {
-            vec = Network::get_scored_moves(
+            vec = s_network->get_output(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
         }
 
@@ -549,6 +723,24 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         gtp_printf(id, "");
         return true;
+    }
+    else if (command.find("dyn_komi_test") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp;
+        std::string symmetry;
+
+        cmdstream >> tmp;   // eat dyn_komi_test
+        cmdstream >> symmetry;
+
+        int sym;
+        if (cmdstream.fail()) {
+            sym = Network::IDENTITY_SYMMETRY;
+        }
+        else {
+            sym = std::stoi(symmetry);
+        }
+        dyn_komi_test(*s_network, game, sym);
+
     } else if (command.find("fixed_handicap") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
@@ -573,7 +765,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> stones;
 
         if (!cmdstream.fail()) {
-            game.place_free_handicap(stones);
+            game.place_free_handicap(stones, *s_network);
             auto stonestring = game.board.get_stone_list();
             gtp_printf(id, "%s", stonestring.c_str());
         } else {
@@ -695,9 +887,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> iterations;
 
         if (!cmdstream.fail()) {
-            Network::benchmark(&game, iterations);
+            s_network->benchmark(&game, iterations);
         } else {
-            Network::benchmark(&game);
+            s_network->benchmark(&game);
         }
         gtp_printf(id, "");
         return true;

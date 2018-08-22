@@ -17,6 +17,7 @@
 */
 
 #include "GameState.h"
+#include "Network.h"
 
 #include <algorithm>
 #include <array>
@@ -39,7 +40,6 @@ void GameState::init_game(int size, float komi) {
     game_history.clear();
     game_history.emplace_back(std::make_shared<KoState>(*this));
 
-    m_timecontrol.set_boardsize(board.get_boardsize());
     m_timecontrol.reset_clocks();
 
     m_resigned = FastBoard::EMPTY;
@@ -177,20 +177,16 @@ bool GameState::has_resigned() const {
     return m_resigned != FastBoard::EMPTY;
 }
 
-TimeControl& GameState::get_timecontrol() {
+const TimeControl& GameState::get_timecontrol() const {
     return m_timecontrol;
 }
 
 void GameState::set_timecontrol(int maintime, int byotime,
                                 int byostones, int byoperiods) {
-    TimeControl timecontrol(board.get_boardsize(), maintime, byotime,
+    TimeControl timecontrol(maintime, byotime,
                             byostones, byoperiods);
 
     m_timecontrol = timecontrol;
-}
-
-void GameState::set_timecontrol(TimeControl tmc) {
-    m_timecontrol = tmc;
 }
 
 void GameState::adjust_time(int color, int time, int stones) {
@@ -301,7 +297,7 @@ bool GameState::valid_handicap(int handicap) {
     return true;
 }
 
-void GameState::place_free_handicap(int stones) {
+void GameState::place_free_handicap(int stones, Network & network) {
     int limit = board.get_boardsize() * board.get_boardsize();
     if (stones > limit / 2) {
         stones = limit / 2;
@@ -317,7 +313,7 @@ void GameState::place_free_handicap(int stones) {
     stones -= set_fixed_handicap_2(stones);
 
     for (int i = 0; i < stones; i++) {
-        auto search = std::make_unique<UCTSearch>(*this);
+        auto search = std::make_unique<UCTSearch>(*this, network);
         auto move = search->think(FastBoard::BLACK, UCTSearch::NOPASS);
         play_move(FastBoard::BLACK, move);
     }

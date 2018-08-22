@@ -106,9 +106,7 @@ static void gtp_base_printf(int id, std::string prefix,
     if (id != -1) {
         prefix += std::to_string(id);
     }
-
     gtp_fprintf(stdout, prefix, fmt, ap);
-
     if (cfg_logfile_handle) {
         std::lock_guard<std::mutex> lock(IOmutex);
         gtp_fprintf(cfg_logfile_handle, prefix, fmt, ap);
@@ -120,6 +118,20 @@ void Utils::gtp_printf(int id, const char *fmt, ...) {
     va_start(ap, fmt);
     gtp_base_printf(id, "=", fmt, ap);
     va_end(ap);
+}
+
+void Utils::gtp_printf_raw(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stdout, fmt, ap);
+    va_end(ap);
+
+    if (cfg_logfile_handle) {
+        std::lock_guard<std::mutex> lock(IOmutex);
+        va_start(ap, fmt);
+        vfprintf(cfg_logfile_handle, fmt, ap);
+        va_end(ap);
+    }
 }
 
 void Utils::gtp_fail_printf(int id, const char *fmt, ...) {

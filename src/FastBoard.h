@@ -43,10 +43,9 @@ public:
     static constexpr int MAXSQ = ((BOARD_SIZE + 2) * (BOARD_SIZE + 2));
 
     /*
-        infinite score
+        no applicable vertex
     */
-    static constexpr int BIG = 10000000;
-
+    static constexpr int NO_VERTEX = 0;
     /*
         vertex of a pass
     */
@@ -63,16 +62,10 @@ public:
         BLACK = 0, WHITE = 1, EMPTY = 2, INVAL = 3
     };
 
-    /*
-        move generation types
-    */
-    using movescore_t = std::pair<int, float>;
-    using scoredmoves_t = std::vector<movescore_t>;
-
     int get_boardsize(void) const;
     square_t get_square(int x, int y) const;
     square_t get_square(int vertex) const ;
-    int get_vertex(int i, int j) const;
+    int get_vertex(int x, int y) const;
     void set_square(int x, int y, square_t content);
     void set_square(int vertex, square_t content);
     std::pair<int, int> get_xy(int vertex) const;

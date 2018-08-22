@@ -107,39 +107,77 @@ R"(
 // =================================================================================================
 
 // Data-widths in dimension M
-#if VWM == 1
-    typedef real realM;
-    typedef short memM;
-#elif VWM == 2
-    typedef real2 realM;
-    typedef short2 memM;
-#elif VWM == 4
-    typedef real4 realM;
-    typedef short4 memM;
-#elif VWM == 8
-    typedef real8 realM;
-    typedef short8 memM;
-#elif VWM == 16
-    typedef real16 realM;
-    typedef short16 memM;
+#ifdef FP16_STORAGE
+  #if VWM == 1
+      typedef real realM;
+      typedef short memM;
+  #elif VWM == 2
+      typedef real2 realM;
+      typedef short2 memM;
+  #elif VWM == 4
+      typedef real4 realM;
+      typedef short4 memM;
+  #elif VWM == 8
+      typedef real8 realM;
+      typedef short8 memM;
+  #elif VWM == 16
+      typedef real16 realM;
+      typedef short16 memM;
+  #endif
+#else
+  #if VWM == 1
+      typedef real realM;
+      typedef real memM;
+  #elif VWM == 2
+      typedef real2 realM;
+      typedef real2 memM;
+  #elif VWM == 4
+      typedef real4 realM;
+      typedef real4 memM;
+  #elif VWM == 8
+      typedef real8 realM;
+      typedef real8 memM;
+  #elif VWM == 16
+      typedef real16 realM;
+      typedef real16 memM;
+  #endif
 #endif
 
 // Data-widths in dimension N
-#if VWN == 1
-    typedef real realN;
-    typedef short memN;
-#elif VWN == 2
-    typedef real2 realN;
-    typedef short2 memN;
-#elif VWN == 4
-    typedef real4 realN;
-    typedef short4 memN;
-#elif VWN == 8
-    typedef real8 realN;
-    typedef short8 memN;
-#elif VWN == 16
-    typedef real16 realN;
-    typedef short16 memN;
+#ifdef FP16_STORAGE
+  #if VWN == 1
+      typedef real realN;
+      typedef short memN;
+  #elif VWN == 2
+      typedef real2 realN;
+      typedef short2 memN;
+  #elif VWN == 4
+      typedef real4 realN;
+      typedef short4 memN;
+  #elif VWN == 8
+      typedef real8 realN;
+      typedef short8 memN;
+  #elif VWN == 16
+      typedef real16 realN;
+      typedef short16 memN;
+  #endif
+#else
+  #if VWN == 1
+      typedef real realN;
+      typedef real memN;
+  #elif VWN == 2
+      typedef real2 realN;
+      typedef real2 memN;
+  #elif VWN == 4
+      typedef real4 realN;
+      typedef real4 memN;
+  #elif VWN == 8
+      typedef real8 realN;
+      typedef real8 memN;
+  #elif VWN == 16
+      typedef real16 realN;
+      typedef real16 memN;
+  #endif
 #endif
 
 // =================================================================================================
@@ -268,16 +306,20 @@ INLINE_FUNC realM GlobalToPrivateA(const __global memM* restrict agm, const int 
   int idm = mg + GetGroupID0() * (MWG/VWM);
 
   // Loads the data from global memory (not transposed) and stores into registers
-#if VWM == 1
-  return vloada_half(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
-#elif VWM == 2
-  return vloada_half2(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
-#elif VWM == 4
-  return vloada_half4(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
-#elif VWM == 8
-  return vloada_half8(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
-#elif VWM == 16
-  return vloada_half16(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+#ifdef FP16_STORAGE
+  #if VWM == 1
+    return vloada_half(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #elif VWM == 2
+    return vloada_half2(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #elif VWM == 4
+    return vloada_half4(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #elif VWM == 8
+    return vloada_half8(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #elif VWM == 16
+    return vloada_half16(idk*(kSizeM/VWM) + idm, (const __global half*)agm);
+  #endif
+#else
+  return agm[idk*(kSizeM/VWM) + idm];
 #endif
 }
 #endif
@@ -297,16 +339,20 @@ INLINE_FUNC realN GlobalToPrivateB(const __global memN* restrict bgm, const int 
   int idn = ng + GetGroupID1() * (NWG/VWN);
 
   // Loads the data from global memory (transposed) and stores into registers
-#if VWN == 1
-  return vloada_half(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
-#elif VWN == 2
-  return vloada_half2(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
-#elif VWN == 4
-  return vloada_half4(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
-#elif VWN == 8
-  return vloada_half8(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
-#elif VWN == 16
-  return vloada_half16(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+#ifdef FP16_STORAGE
+  #if VWN == 1
+    return vloada_half(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #elif VWN == 2
+    return vloada_half2(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #elif VWN == 4
+    return vloada_half4(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #elif VWN == 8
+    return vloada_half8(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #elif VWN == 16
+    return vloada_half16(idk*(kSizeN/VWN) + idn, (const __global half*)bgm);
+  #endif
+#else
+  return bgm[idk*(kSizeN/VWN) + idn];
 #endif
 }
 #endif
@@ -322,6 +368,7 @@ INLINE_FUNC realM LocalToPrivateA(LOCAL_PTR memM* alm, const int _mi, const int 
   #elif STRM == 1
     int mg = get_local_id(0) + _mi*MDIMC;
   #endif
+#ifdef FP16_STORAGE
   #if VWM == 1
     return vloada_half(kg*(MWG/VWM) + mg, (LOCAL_PTR half*)alm);
   #elif VWM == 2
@@ -333,6 +380,9 @@ INLINE_FUNC realM LocalToPrivateA(LOCAL_PTR memM* alm, const int _mi, const int 
   #elif VWM == 16
     return vloada_half16(kg*(MWG/VWM) + mg, (LOCAL_PTR half*)alm);
   #endif
+#else
+  return alm[kg*(MWG/VWM) + mg];
+#endif
 }
 #endif
 
@@ -345,6 +395,7 @@ INLINE_FUNC realN LocalToPrivateB(LOCAL_PTR memN* blm, const int _ni, const int 
     int ng = get_local_id(1) + _ni*NDIMC;
   #endif
 
+#ifdef FP16_STORAGE
   #if VWN == 1
     return vloada_half(kg*(NWG/VWN) + ng, (LOCAL_PTR half*)blm);
   #elif VWN == 2
@@ -356,6 +407,9 @@ INLINE_FUNC realN LocalToPrivateB(LOCAL_PTR memN* blm, const int _ni, const int 
   #elif VWN == 16
     return vloada_half16(kg*(NWG/VWN) + ng, (LOCAL_PTR half*)blm);
   #endif
+#else
+  return blm[kg*(NWG/VWN) + ng];
+#endif
 }
 #endif
 

@@ -40,7 +40,7 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float score) : m_move(vertex), m_score(score) {
+UCTNode::UCTNode(int vertex, float policy) : m_move(vertex), m_policy(policy) {
 }
 
 bool UCTNode::first_visit() const {
@@ -51,10 +51,11 @@ SMP::Mutex& UCTNode::get_mutex() {
     return m_nodemutex;
 }
 
-bool UCTNode::create_children(std::atomic<int>& nodecount,
-                              GameState& state,
-                              float& eval,
-                              float min_psa_ratio) {
+bool UCTNode::create_children(Network & network, std::atomic<int>& nodecount,
+    GameState& state,
+    float& eval,
+    float min_psa_ratio,
+    int symmetry) {
     // check whether somebody beat us to it (atomic)
     if (!expandable(min_psa_ratio)) {
         return false;
@@ -77,19 +78,24 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
     m_is_expanding = true;
     lock.unlock();
 
-    const auto raw_netlist = Network::get_scored_moves(
-        &state, Network::Ensemble::RANDOM_SYMMETRY);
+    Network::Netresult raw_netlist;
+    if (symmetry == -1) {
+        raw_netlist = network.get_output(&state, Network::Ensemble::RANDOM_SYMMETRY);
+    }
+    else {
+        raw_netlist = network.get_output(&state, Network::Ensemble::DIRECT, symmetry);
+    }
 
     // DCNN returns winrate as side to move
     m_net_eval = raw_netlist.winrate;
-    const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
     if (state.board.white_to_move()) {
         m_net_eval = 1.0f - m_net_eval;
     }
     eval = m_net_eval;
 
-    std::vector<Network::ScoreVertexPair> nodelist;
+    std::vector<Network::PolicyVertexPair> nodelist;
+    const auto to_move = state.board.get_to_move();
 
     auto legal_sum = 0.0f;
     for (auto i = 0; i < BOARD_SQUARES; i++) {
@@ -109,7 +115,8 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
         for (auto& node : nodelist) {
             node.first /= legal_sum;
         }
-    } else {
+    }
+    else {
         // This can happen with new randomized nets.
         auto uniform_prob = 1.0f / nodelist.size();
         for (auto& node : nodelist) {
@@ -122,7 +129,7 @@ bool UCTNode::create_children(std::atomic<int>& nodecount,
 }
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
-                            std::vector<Network::ScoreVertexPair>& nodelist,
+                            std::vector<Network::PolicyVertexPair>& nodelist,
                             float min_psa_ratio) {
     assert(min_psa_ratio < m_min_psa_ratio_children);
 
@@ -192,34 +199,38 @@ bool UCTNode::expandable(const float min_psa_ratio) const {
     return min_psa_ratio < m_min_psa_ratio_children;
 }
 
-float UCTNode::get_score() const {
-    return m_score;
+float UCTNode::get_policy() const {
+    return m_policy;
 }
 
-void UCTNode::set_score(float score) {
-    m_score = score;
+void UCTNode::set_policy(float policy) {
+    m_policy = policy;
 }
 
 int UCTNode::get_visits() const {
     return m_visits;
 }
 
-float UCTNode::get_eval(int tomove) const {
-    // Due to the use of atomic updates and virtual losses, it is
-    // possible for the visit count to change underneath us. Make sure
-    // to return a consistent result to the caller by caching the values.
-    auto virtual_loss = int{m_virtual_loss};
+float UCTNode::get_raw_eval(int tomove, int virtual_loss) const {
     auto visits = get_visits() + virtual_loss;
     assert(visits > 0);
     auto blackeval = get_blackevals();
     if (tomove == FastBoard::WHITE) {
         blackeval += static_cast<double>(virtual_loss);
     }
-    auto score = static_cast<float>(blackeval / double(visits));
+    auto eval = static_cast<float>(blackeval / double(visits));
     if (tomove == FastBoard::WHITE) {
-        score = 1.0f - score;
+        eval = 1.0f - eval;
     }
-    return score;
+    return eval;
+}
+
+float UCTNode::get_eval(int tomove) const {
+    //LOCK(get_mutex(), lock);
+    // Due to the use of atomic updates and virtual losses, it is
+    // possible for the visit count to change underneath us. Make sure
+    // to return a consistent result to the caller by caching the values.
+    return get_raw_eval(tomove, m_virtual_loss);
 }
 
 float UCTNode::get_net_eval(int tomove) const {
@@ -247,7 +258,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         if (child.valid()) {
             parentvisits += child.get_visits();
             if (child.get_visits() > 0) {
-                total_visited_policy += child.get_score();
+                total_visited_policy += child.get_policy();
             }
         }
     }
@@ -261,7 +272,9 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         fpu_reduction = cfg_fpu_reduction * std::sqrt(total_visited_policy);
     }
     // Estimated eval for unknown nodes = original parent NN eval - reduction
-    auto fpu_eval = get_net_eval(color) - fpu_reduction;
+    auto visits = get_visits();
+    auto parent_eval = (cfg_dyn_fpu && visits > 0) ? get_raw_eval(color) : get_net_eval(color);
+    auto fpu_eval = parent_eval - fpu_reduction;
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
@@ -272,10 +285,11 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
 
         auto winrate = fpu_eval;
-        if (child.get_visits() > 0) {
+        auto child_visits = child.get_visits();
+        if (child_visits > 0 && (visits > 0 || !cfg_dyn_fpu)) {
             winrate = child.get_eval(color);
         }
-        auto psa = child.get_score();
+        auto psa = child.get_policy();
         auto denom = 1.0 + child.get_visits();
         auto puct = cfg_puct * psa * (numerator / denom);
         auto value = winrate + puct;
@@ -289,7 +303,9 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 
     assert(best != nullptr);
     best->inflate();
-    return best->get();
+    auto best_node = best->get();
+
+    return best_node;
 }
 
 class NodeComp : public std::binary_function<UCTNodePointer&,
@@ -303,9 +319,9 @@ public:
             return a.get_visits() < b.get_visits();
         }
 
-        // neither has visits, sort on prior score
+        // neither has visits, sort on policy prior
         if (a.get_visits() == 0) {
-            return a.get_score() < b.get_score();
+            return a.get_policy() < b.get_policy();
         }
 
         // both have same non-zero number of visits

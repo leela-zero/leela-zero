@@ -31,7 +31,7 @@
 
 class SGFTree {
 public:
-    static const int EOT = 0;               // End-Of-Tree marker
+    static constexpr auto EOT = 0;               // End-Of-Tree marker
 
     SGFTree() = default;
     void init_state();
@@ -39,13 +39,14 @@ public:
     KoState * get_state();
     GameState follow_mainline_state(unsigned int movenum = 999);
     std::vector<int> get_mainline();
-    void load_from_file(std::string filename, int index = 0);
-    void load_from_string(std::string gamebuff);
+    void load_from_file(const std::string& filename, int index = 0);
+    void load_from_string(const std::string& gamebuff);
 
     void add_property(std::string property, std::string value);
     SGFTree * add_child();
     SGFTree * get_child(size_t count);
     int get_move(int tomove);
+    std::pair<int, int> get_colored_move(void) const;
     bool is_initialized() const {
         return m_initialized;
     }

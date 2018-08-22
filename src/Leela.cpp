@@ -72,11 +72,32 @@ static void parse_commandline(int argc, char *argv[]) {
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
         ("quiet,q", "Disable all diagnostic output.")
         ("timemanage", po::value<std::string>()->default_value("auto"),
-                       "[auto|on|off|fast] Enable time management features.\n"
-                       "auto = off when using -m, otherwise on")
+                       "[auto|on|off|fast|no_pruning] Enable time management features.\n"
+                       "auto = no_pruning when using -n, otherwise on.\n"
+                       "on = Cut off search when the best move can't change"
+                       ", but use full time if moving faster doesn't save time.\n"
+                       "fast = Same as on but always plays faster.\n"
+                       "no_pruning = For self play training use.\n")
         ("noponder", "Disable thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
+        ("cpu-only", "Use CPU-only implementation and do not use GPU.")
+        ("handicap", "Handicap mode.")
+        ("nonslack", "Non-slack mode.")
+        ("max-wr", po::value<float>(), "Maximal white winrate.")
+        ("min-wr", po::value<float>(), "Minimal white winrate.")
+        ("wr-margin", po::value<float>(), "White winrate is adjusted to min+margin or max-margin.")
+        ("target-komi", po::value<float>(), "Target komi, default 7.5.")
+        ("adj-playouts", po::value<int>(), "Number of positions to collect for komi adjustment, default 200; should be higher for strong machines to achieve more accurate komi adjustment.")
+        ("adj-pct", po::value<float>(), "Percentage of collected positions to use for komi adjustment, default 4.")
+        ("num-adj", po::value<int>(), "Maximal number of komi adjustments for each genmove, default 1.")
+        ("pos", "Use positive komi (for side-to-move) only.")
+        ("neg", "Use negative komi only.")
+        ("fixed-symmetry", po::value<int>(), "Fixed symmetry, value in [0,7].")
+        ("tg-sure-backup", "Toggle sure/no backup when --pos or --neg is used.")
+        ("tg-orig-policy", "Toggle original/adjusted policy when --pos or --neg is used.")
+        ("tg-dyn-fpu", "Toggle using dynamic parent eval as first-play urgency.")
+        ("tg-auto-pn", "Toggle automatic setting of --pos or --neg.")
         ;
 #ifdef USE_OPENCL
     po::options_description gpu_desc("GPU options");
@@ -85,6 +106,10 @@ static void parse_commandline(int argc, char *argv[]) {
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
         ("tune-only", "Tune OpenCL only and then exit.")
+#ifdef USE_HALF
+        ("precision", po::value<std::string>(), "Floating-point precision (single/half/auto).\n"
+                                                "Default is to auto which automatically determines which one to use.")
+#endif
         ;
 #endif
     po::options_description selfplay_desc("Self-play options");
@@ -167,6 +192,101 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_quiet = true;  // Set this early to avoid unnecessary output.
     }
 
+    if (vm.count("handicap")) {
+        cfg_dyn_komi = true;
+        cfg_max_wr = 0.12;
+        cfg_min_wr = 0.06;
+        cfg_wr_margin = 0.03;
+        //cfg_target_komi = 0.0;
+        cfg_dyn_fpu = true;
+        cfg_resignpct = 0;
+        cfg_collect_during_search = true;
+        //cfg_always_collect = true;
+        cfg_max_num_adjustments = 1;
+        cfg_fixed_symmetry = -1;
+    }
+
+    if (vm.count("nonslack")) { 
+        cfg_dyn_komi = true;
+        cfg_max_wr = 0.9;
+        cfg_min_wr = 0.1;
+        cfg_wr_margin = 0.1;
+        cfg_nonslack = true;
+        cfg_dyn_fpu = true;
+        cfg_collect_during_search = true;
+        //cfg_always_collect = true;
+        cfg_max_num_adjustments = 1;
+        cfg_fixed_symmetry = -1;
+    }
+
+    if (vm.count("tg-sure-backup")) {
+        cfg_sure_backup = !cfg_sure_backup;
+    }
+
+    if (vm.count("fixed-symmetry")) {
+        cfg_fixed_symmetry = vm["fixed-symmetry"].as<int>();
+        if (cfg_fixed_symmetry < 0 || cfg_fixed_symmetry > 7) {
+            cfg_fixed_symmetry = -1;
+        }
+    }
+
+    if (vm.count("tg-orig-policy")) {
+        cfg_orig_policy = !cfg_orig_policy;
+    }
+
+    if (vm.count("tg-dyn-fpu")) {
+        cfg_dyn_fpu = !cfg_dyn_fpu;
+    }
+
+    if (vm.count("tg-auto-pn")) {
+        cfg_auto_pos_neg = !cfg_auto_pos_neg;
+    }
+
+    if (vm.count("max-wr")) {
+        cfg_max_wr = vm["max-wr"].as<float>();
+        if (cfg_max_wr > 0.9999 && !cfg_noshift) {
+            cfg_max_wr = 0.9999;
+        }
+    }
+
+    if (vm.count("min-wr")) {
+        cfg_min_wr = vm["min-wr"].as<float>();
+        if (cfg_min_wr < 0.0001 && !cfg_noshift) {
+            cfg_min_wr = 0.0001;
+        }
+    }
+
+    if (vm.count("wr-margin")) {
+        cfg_wr_margin = vm["wr-margin"].as<float>();
+    }
+
+    if (vm.count("target-komi")) {
+        cfg_target_komi = vm["target-komi"].as<float>();
+    }
+
+    if (vm.count("adj-playouts")) {
+        cfg_adj_playouts = vm["adj-playouts"].as<int>();
+        if (cfg_adj_playouts < 8) {
+            cfg_adj_playouts = 8;
+        }
+    }
+
+    if (vm.count("adj-pct")) {
+        cfg_adj_playouts = vm["adj-pct"].as<float>();
+    }
+
+    if (vm.count("num-adj")) {
+        cfg_max_num_adjustments = vm["num-adj"].as<int>();
+    }
+
+    if (vm.count("pos")) {
+        cfg_pos = true;
+    }
+
+    if (vm.count("neg")) {
+        cfg_neg = true;
+    }
+
 #ifdef USE_TUNER
     if (vm.count("puct")) {
         cfg_puct = vm["puct"].as<float>();
@@ -196,13 +316,47 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_gtp_mode = true;
     }
 
+#ifdef USE_OPENCL
+    if (vm.count("gpu")) {
+        cfg_gpus = vm["gpu"].as<std::vector<int> >();
+        // if we use OpenCL, we probably need more threads for the max so that we can saturate the GPU.
+        cfg_max_threads *= cfg_gpus.size();
+        // we can't exceed MAX_CPUS
+        cfg_max_threads = std::min(cfg_max_threads, MAX_CPUS);
+    }
+
+    if (vm.count("full-tuner")) {
+        cfg_sgemm_exhaustive = true;
+    }
+
+    if (vm.count("tune-only")) {
+        cfg_tune_only = true;
+    }
+
+#ifdef USE_HALF
+    if (vm.count("precision")) {
+        auto precision = vm["precision"].as<std::string>();
+        if ("single" == precision) {
+            cfg_precision = precision_t::SINGLE;
+        } else if ("half" == precision) {
+            cfg_precision = precision_t::HALF;
+        } else if ("auto" == precision) {
+            cfg_precision = precision_t::AUTO;
+        } else {
+            printf("Unexpected option for --precision, expecting single/half/auto\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+#endif
+#endif
+
     if (!vm["threads"].defaulted()) {
         auto num_threads = vm["threads"].as<int>();
         if (num_threads > cfg_max_threads) {
             myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
-        } else if (num_threads != cfg_num_threads) {
-            cfg_num_threads = num_threads;
+            num_threads = cfg_max_threads;
         }
+        cfg_num_threads = num_threads;
     }
     myprintf("Using %d thread(s).\n", cfg_num_threads);
 
@@ -225,6 +379,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("dumbpass")) {
         cfg_dumbpass = true;
+    }
+
+    if (vm.count("cpu-only")) {
+        cfg_cpu_only = true;
     }
 
     if (vm.count("playouts")) {
@@ -277,6 +435,8 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_timemanage = TimeManagement::OFF;
         } else if (tm == "fast") {
             cfg_timemanage = TimeManagement::FAST;
+        } else if (tm == "no_pruning") {
+            cfg_timemanage = TimeManagement::NO_PRUNING;
         } else {
             printf("Invalid timemanage value.\n");
             exit(EXIT_FAILURE);
@@ -284,7 +444,7 @@ static void parse_commandline(int argc, char *argv[]) {
     }
     if (cfg_timemanage == TimeManagement::AUTO) {
         cfg_timemanage =
-            cfg_random_cnt ? TimeManagement::OFF : TimeManagement::ON;
+            cfg_noise ? TimeManagement::NO_PRUNING : TimeManagement::ON;
     }
 
     if (vm.count("lagbuffer")) {
@@ -294,21 +454,6 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_lagbuffer_cs = lagbuffer;
         }
     }
-
-#ifdef USE_OPENCL
-    if (vm.count("gpu")) {
-        cfg_gpus = vm["gpu"].as<std::vector<int> >();
-    }
-
-    if (vm.count("full-tuner")) {
-        cfg_sgemm_exhaustive = true;
-    }
-
-    if (vm.count("tune-only")) {
-        cfg_tune_only = true;
-    }
-#endif
-
     if (vm.count("benchmark")) {
         // These must be set later to override default arguments.
         cfg_allow_pondering = false;
@@ -325,6 +470,7 @@ static void parse_commandline(int argc, char *argv[]) {
         }
     }
 
+
     auto out = std::stringstream{};
     for (auto i = 1; i < argc; i++) {
         out << " " << argv[i];
@@ -333,6 +479,14 @@ static void parse_commandline(int argc, char *argv[]) {
         out << " --seed " << cfg_rng_seed;
     }
     cfg_options_str = out.str();
+}
+
+static void initialize_network() {
+    auto network = std::make_unique<Network>();
+    auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
+    network->initialize(playouts, cfg_weightsfile);
+
+    GTP::initialize(std::move(network));
 }
 
 // Setup global objects after command line has been parsed
@@ -348,18 +502,16 @@ void init_global_objects() {
     // improves reproducibility across platforms.
     Random::get_Rng().seedrandom(cfg_rng_seed);
 
-    // When visits are limited ensure cache size is still limited.
-    auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
-    NNCache::get_NNCache().set_size_from_playouts(playouts);
-
-    // Initialize network
-    Network::initialize();
+    initialize_network();
 }
 
 void benchmark(GameState& game) {
     game.set_timecontrol(0, 1, 0, 0);  // Set infinite time.
-    game.play_textmove("b", "q16");
-    auto search = std::make_unique<UCTSearch>(game);
+    game.play_textmove("b", "r16");
+    game.play_textmove("w", "d4");
+    game.play_textmove("b", "c3");
+
+    auto search = std::make_unique<UCTSearch>(game, *GTP::s_network);
     game.set_to_move(FastBoard::WHITE);
     search->think(FastBoard::WHITE);
 }
@@ -391,7 +543,7 @@ int main(int argc, char *argv[]) {
     auto maingame = std::make_unique<GameState>();
 
     /* set board limits */
-    auto komi = 7.5f;
+    auto komi = cfg_target_komi;
     maingame->init_game(BOARD_SIZE, komi);
 
     if (cfg_benchmark) {
@@ -399,6 +551,17 @@ int main(int argc, char *argv[]) {
         benchmark(*maingame);
         return 0;
     }
+
+    extern int dyn_komi_test(Network&, GameState&, int);
+    if (cfg_dyn_komi && cfg_auto_pos_neg) {
+        switch (dyn_komi_test(*GTP::s_network, *maingame, 0)) {
+        case 0: break;
+        case 1: cfg_pos = cfg_neg = true; myprintf("Automatically set --pos and --neg.\n"); break;
+        case 2: cfg_neg = true; myprintf("Automatically set --neg.\n"); break;
+        case 3: cfg_pos = true; myprintf("Automatically set --pos.\n"); break;
+        }
+    }
+    if (cfg_pos && cfg_neg) { myprintf("Cannot set both --pos and --neg. Quitting."); return 0; }
 
     for (;;) {
         if (!cfg_gtp_mode) {

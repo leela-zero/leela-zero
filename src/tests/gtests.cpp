@@ -69,10 +69,12 @@ public:
         // improves reproducibility across platforms.
         Random::get_Rng().seedrandom(cfg_rng_seed);
 
-        NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
-
         cfg_weightsfile = "../src/tests/0k.txt";
-        Network::initialize();
+
+        auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
+        auto network = std::make_unique<Network>();
+        network->initialize(playouts, cfg_weightsfile);
+        GTP::initialize(std::move(network));
     }
     void TearDown() {}
 };

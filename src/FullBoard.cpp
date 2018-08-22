@@ -22,6 +22,7 @@
 #include <cassert>
 
 #include "FullBoard.h"
+#include "Network.h"
 #include "Utils.h"
 #include "Zobrist.h"
 
@@ -55,26 +56,26 @@ int FullBoard::remove_string(int i) {
     return removed;
 }
 
-std::uint64_t FullBoard::calc_ko_hash(void) {
+std::uint64_t FullBoard::calc_ko_hash() const {
     auto res = Zobrist::zobrist_empty;
 
-    for (int i = 0; i < m_maxsq; i++) {
+    for (auto i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
             res ^= Zobrist::zobrist[m_square[i]][i];
         }
     }
 
     /* Tromp-Taylor has positional superko */
-    m_ko_hash = res;
     return res;
 }
 
-std::uint64_t FullBoard::calc_hash(int komove) {
+template<class Function>
+std::uint64_t FullBoard::calc_hash(int komove, Function transform) const {
     auto res = Zobrist::zobrist_empty;
 
-    for (int i = 0; i < m_maxsq; i++) {
+    for (auto i = 0; i < m_maxsq; i++) {
         if (m_square[i] != INVAL) {
-            res ^= Zobrist::zobrist[m_square[i]][i];
+            res ^= Zobrist::zobrist[m_square[i]][transform(i)];
         }
     }
 
@@ -86,18 +87,31 @@ std::uint64_t FullBoard::calc_hash(int komove) {
         res ^= Zobrist::zobrist_blacktomove;
     }
 
-    res ^= Zobrist::zobrist_ko[komove];
-
-    m_hash = res;
+    res ^= Zobrist::zobrist_ko[transform(komove)];
 
     return res;
 }
 
-std::uint64_t FullBoard::get_hash(void) const {
+std::uint64_t FullBoard::calc_hash(int komove) const {
+    return calc_hash(komove, [](const auto vertex) { return vertex; });
+}
+
+std::uint64_t FullBoard::calc_symmetry_hash(int komove, int symmetry) const {
+    return calc_hash(komove, [this, symmetry](const auto vertex) {
+        if (vertex == NO_VERTEX) {
+            return NO_VERTEX;
+        } else {
+            const auto newvtx = Network::get_symmetry(get_xy(vertex), symmetry, m_boardsize);
+            return get_vertex(newvtx.first, newvtx.second);
+        }
+    });
+}
+
+std::uint64_t FullBoard::get_hash() const {
     return m_hash;
 }
 
-std::uint64_t FullBoard::get_ko_hash(void) const {
+std::uint64_t FullBoard::get_ko_hash() const {
     return m_ko_hash;
 }
 
@@ -179,7 +193,7 @@ int FullBoard::update_board(const int color, const int i) {
     }
 
     // No ko
-    return 0;
+    return NO_VERTEX;
 }
 
 void FullBoard::display_board(int lastmove) {
@@ -191,6 +205,6 @@ void FullBoard::display_board(int lastmove) {
 void FullBoard::reset_board(int size) {
     FastBoard::reset_board(size);
 
-    calc_hash();
-    calc_ko_hash();
+    m_hash = calc_hash();
+    m_ko_hash = calc_ko_hash();
 }

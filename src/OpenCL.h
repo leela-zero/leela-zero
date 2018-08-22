@@ -30,16 +30,15 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <cassert>
 
 #include "Tuner.h"
 
-static constexpr auto WINOGRAD_P = (BOARD_SIZE + 1) * (BOARD_SIZE + 1) / 4;
-static constexpr auto WINOGRAD_TILE = 4 * 4;
-
-class OpenCL;
+template <typename net_t> class OpenCL;
+template <typename net_t> class OpenCL_Network;
 
 class Layer {
-    friend class OpenCL_Network;
+    template <typename> friend class OpenCL_Network;
 private:
     unsigned int channels{0};
     unsigned int outputs{0};
@@ -50,9 +49,9 @@ private:
     std::vector<cl::Buffer> weights;
 };
 
-class ThreadData {
-    friend class OpenCL;
-    friend class OpenCL_Network;
+class OpenCLContext {
+    template <typename> friend class OpenCL;
+    template <typename> friend class OpenCL_Network;
 private:
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
@@ -71,10 +70,11 @@ private:
     bool m_buffers_allocated{false};
 };
 
+template <typename net_t>
 class OpenCL_Network {
 public:
-    OpenCL_Network(OpenCL & opencl) : m_opencl(opencl) {}
-    OpenCL & getOpenCL() {
+    OpenCL_Network(OpenCL<net_t> & opencl) : m_opencl(opencl) {}
+    OpenCL<net_t> & getOpenCL() {
         return m_opencl;
     }
 
@@ -116,9 +116,13 @@ public:
         m_layers[layer].channels = channels;
     }
 
-    void push_convolve1(unsigned int channels,
+    void push_convolve(unsigned int filter_size,
+                       unsigned int channels,
                        unsigned int outputs,
                        const std::vector<float>& weights) {
+        (void)filter_size;
+        assert(filter_size == 1);
+
         size_t layer = get_layer_count();
         push_weights(layer, weights);
         m_layers[layer].is_convolve1 = true;
@@ -130,9 +134,11 @@ public:
         return m_layers.size();
     }
 
-    void forward(const std::vector<net_t>& input,
-            std::vector<net_t>& output_pol,
-            std::vector<net_t>& output_val);
+    void forward(const std::vector<float>& input,
+            std::vector<float>& output_pol,
+            std::vector<float>& output_val,
+            OpenCLContext & opencl_context,
+            const int batch_size = 1);
 
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
@@ -142,7 +148,8 @@ private:
     }
     void add_weights(size_t layer, size_t size, const float* weights);
 
-    void convolve3(int channels, int outputs,
+    void convolve3(OpenCLContext & opencl_context,
+                    int channels, int outputs,
                     cl::Buffer& bufferIn,
                     cl::Buffer& bufferOut,
                     cl::Buffer& bufferV,
@@ -150,15 +157,18 @@ private:
                     cl::Buffer* bufferResidual,
                     weight_slice_t bn_weights,
                     bool skip_in_transform,
-                    bool fuse_in_transform, bool store_inout);
+                    bool fuse_in_transform, bool store_inout,
+                    int batch_size);
 
-    void convolve1(int channels, int outputs,
+    void convolve1(OpenCLContext & opencl_context,
+                  int channels, int outputs,
                   cl::Buffer& bufferInput,
                   cl::Buffer& bufferOutput,
                   cl::Buffer& bufferMerge,
-                  weight_slice_t weights);
+                  weight_slice_t weights,
+                  int batch_size);
 
-    OpenCL & m_opencl;
+    OpenCL<net_t> & m_opencl;
 
     // this mutex is not required for correctness, but this exists simply
     // because queue.finish() is a busy wait and having a lot of threads
@@ -168,13 +178,13 @@ private:
     std::vector<Layer> m_layers;
 };
 
+template <typename net_t>
 class OpenCL {
-    friend class OpenCL_Network;
-    friend class Tuner;
+    friend class OpenCL_Network<net_t>;
+    friend class Tuner<net_t>;
 public:
-    void initialize(const int channels, const std::vector<int> & gpus,
-                    bool silent = false);
-    void ensure_thread_initialized(void);
+    void initialize(const int channels, int gpu, bool silent = false);
+    void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
 
     std::vector<size_t> get_sgemm_tuners(void);
@@ -200,7 +210,7 @@ private:
     bool m_init_ok{false};
 };
 
-extern thread_local ThreadData opencl_thread_data;
 extern const std::string sourceCode_sgemm;
+extern const std::string sourceCode_common;
 
 #endif

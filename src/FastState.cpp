@@ -27,6 +27,7 @@
 #include "Utils.h"
 #include "Zobrist.h"
 
+extern bool cfg_dyn_komi;
 using namespace Utils;
 
 void FastState::init_game(int size, float komi) {
@@ -34,9 +35,11 @@ void FastState::init_game(int size, float komi) {
 
     m_movenum = 0;
 
-    m_komove = 0;
-    m_lastmove = 0;
+    m_komove = FastBoard::NO_VERTEX;
+    m_lastmove = FastBoard::NO_VERTEX;
     m_komi = komi;
+    m_stm_komi = komi;
+    m_opp_komi = komi;
     m_handicap = 0;
     m_passes = 0;
 
@@ -53,8 +56,8 @@ void FastState::reset_game(void) {
     m_movenum = 0;
     m_passes = 0;
     m_handicap = 0;
-    m_komove = 0;
-    m_lastmove = 0;
+    m_komove = FastBoard::NO_VERTEX;
+    m_lastmove = FastBoard::NO_VERTEX;
 }
 
 void FastState::reset_board(void) {
@@ -77,7 +80,7 @@ void FastState::play_move(int color, int vertex) {
     board.m_hash ^= Zobrist::zobrist_ko[m_komove];
     if (vertex == FastBoard::PASS) {
         // No Ko move
-        m_komove = 0;
+        m_komove = FastBoard::NO_VERTEX;
     } else {
         m_komove = board.update_board(color, vertex);
     }
@@ -98,6 +101,7 @@ void FastState::play_move(int color, int vertex) {
         set_passes(0);
     }
     board.m_hash ^= Zobrist::zobrist_pass[get_passes()];
+    std::swap(m_stm_komi, m_opp_komi);
 }
 
 size_t FastState::get_movenum() const {
@@ -148,11 +152,19 @@ std::string FastState::move_to_text(int move) {
 }
 
 float FastState::final_score() const {
-    return board.area_score(get_komi() + get_handicap());
+    return board.area_score(get_komi() + (cfg_dyn_komi? 0.0f : get_handicap()));
 }
 
 float FastState::get_komi() const {
     return m_komi;
+}
+
+float FastState::get_stm_komi() const {
+    return m_stm_komi;
+}
+
+float FastState::get_opp_komi() const {
+    return m_opp_komi;
 }
 
 void FastState::set_handicap(int hcap) {
@@ -161,4 +173,8 @@ void FastState::set_handicap(int hcap) {
 
 int FastState::get_handicap() const {
     return m_handicap;
+}
+
+std::uint64_t FastState::get_symmetry_hash(int symmetry) const {
+    return board.calc_symmetry_hash(m_komove, symmetry);
 }

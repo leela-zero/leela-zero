@@ -85,6 +85,7 @@ INLINE_FUNC void StoreResults(__global memM* cgm, realM cpm[NWI*MWI/VWM], const 
       int idn = ng + GetGroupID1() * NWG;
       int index = idn*(kSizeM/VWM) + idm;
 
+#ifdef FP16_STORAGE
 #if VWM == 1
       vstorea_half(cpm[_ni * (MWI/VWM) + _mi], index, (__global half*)cgm);
 #elif VWM == 2
@@ -96,7 +97,9 @@ INLINE_FUNC void StoreResults(__global memM* cgm, realM cpm[NWI*MWI/VWM], const 
 #elif VWM == 16
       vstorea_half16(cpm[_ni * (MWI/VWM) + _mi], index, (__global half*)cgm);
 #endif
-
+#else
+      cgm[index] = cpm[_ni * (MWI/VWM) + _mi];
+#endif
     }
   }
 }

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -82,6 +82,7 @@
     <ClCompile Include="..\..\src\Leela.cpp" />
     <ClCompile Include="..\..\src\Network.cpp" />
     <ClCompile Include="..\..\src\NNCache.cpp" />
+    <ClCompile Include="..\..\src\CPUPipe.cpp" />
     <ClCompile Include="..\..\src\OpenCL.cpp" />
     <ClCompile Include="..\..\src\OpenCLScheduler.cpp" />
     <ClCompile Include="..\..\src\Random.cpp" />
@@ -93,6 +94,7 @@
     <ClCompile Include="..\..\src\Training.cpp" />
     <ClCompile Include="..\..\src\Tuner.cpp" />
     <ClCompile Include="..\..\src\UCTNode.cpp" />
+    <ClCompile Include="..\..\src\UCTNodePointer.cpp" />
     <ClCompile Include="..\..\src\UCTNodeRoot.cpp" />
     <ClCompile Include="..\..\src\UCTSearch.cpp" />
     <ClCompile Include="..\..\src\Utils.cpp" />
@@ -109,6 +111,8 @@
     <ClInclude Include="..\..\src\KoState.h" />
     <ClInclude Include="..\..\src\Network.h" />
     <ClInclude Include="..\..\src\NNCache.h" />
+    <ClInclude Include="..\..\src\ForwardPipe.h" />
+    <ClInclude Include="..\..\src\CPUPipe.h" />
     <ClInclude Include="..\..\src\OpenCL.h" />
     <ClInclude Include="..\..\src\OpenCLScheduler.h" />
     <ClInclude Include="..\..\src\Random.h" />
@@ -121,6 +125,7 @@
     <ClInclude Include="..\..\src\Training.h" />
     <ClInclude Include="..\..\src\Tuner.h" />
     <ClInclude Include="..\..\src\UCTNode.h" />
+    <ClInclude Include="..\..\src\UCTNodePointer.h" />
     <ClInclude Include="..\..\src\UCTSearch.h" />
     <ClInclude Include="..\..\src\Utils.h" />
     <ClInclude Include="..\..\src\Zobrist.h" />
