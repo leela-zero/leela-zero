@@ -1,19 +1,19 @@
 /*
-This file is part of Leela Zero.
-Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    This file is part of Leela Zero.
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
-Leela Zero is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+    Leela Zero is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-Leela Zero is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+    Leela Zero is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
@@ -70,7 +70,7 @@ float Network::benchmark_time(int centiseconds) {
     const Time start;
 
     ThreadGroup tg(thread_pool);
-    std::atomic<int> runcount{ 0 };
+    std::atomic<int> runcount{0};
 
     GameState state;
     state.init_game(BOARD_SIZE, 7.5);
@@ -99,7 +99,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
     const Time start;
 
     ThreadGroup tg(thread_pool);
-    std::atomic<int> runcount{ 0 };
+    std::atomic<int> runcount{0};
 
     for (auto i = 0; i < cpus; i++) {
         tg.add_task([this, &runcount, iterations, state]() {
@@ -114,7 +114,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
     const Time end;
     const auto elapsed = Time::timediff_seconds(start, end);
     myprintf("%5d evaluations in %5.2f seconds -> %d n/s\n",
-        runcount.load(), elapsed, int(runcount.load() / elapsed));
+             runcount.load(), elapsed, int(runcount.load() / elapsed));
 }
 
 template<class container>
@@ -126,31 +126,31 @@ void process_bn_var(container& weights) {
 }
 
 std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
-    const int outputs,
-    const int channels) {
+                                                 const int outputs,
+                                                 const int channels) {
     // F(4x4, 3x3) Winograd filter transformation
     // transpose(G.dot(f).dot(G.transpose()))
     // U matrix is transposed for better memory layout in SGEMM
     auto U = std::vector<float>(WINOGRAD_TILE * outputs * channels);
     const auto G = std::array<float, 3 * WINOGRAD_ALPHA>
-    { 1.0f, 0.0f, 0.0f,
-        -2.0f / 3.0f, -SQ2 / 3.0f, -1.0f / 3.0f,
-        -2.0f / 3.0f, SQ2 / 3.0f, -1.0f / 3.0f,
-        1.0f / 6.0f, SQ2 / 6.0f, 1.0f / 3.0f,
-        1.0f / 6.0f, -SQ2 / 6.0f, 1.0f / 3.0f,
-        0.0f, 0.0f, 1.0f};
+                    { 1.0f,        0.0f,      0.0f,
+                      -2.0f/3.0f, -SQ2/3.0f, -1.0f/3.0f,
+                      -2.0f/3.0f,  SQ2/3.0f, -1.0f/3.0f,
+                      1.0f/6.0f,   SQ2/6.0f,  1.0f/3.0f,
+                      1.0f/6.0f,  -SQ2/6.0f,  1.0f/3.0f,
+                      0.0f,        0.0f,      1.0f};
 
     auto temp = std::array<float, 3 * WINOGRAD_ALPHA>{};
 
     for (auto o = 0; o < outputs; o++) {
         for (auto c = 0; c < channels; c++) {
-            for (auto i = 0; i < WINOGRAD_ALPHA; i++) {
+            for (auto i = 0; i < WINOGRAD_ALPHA; i++){
                 for (auto j = 0; j < 3; j++) {
                     auto acc = 0.0f;
                     for (auto k = 0; k < 3; k++) {
-                        acc += G[i * 3 + k] * f[o*channels * 9 + c * 9 + k * 3 + j];
+                        acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j];
                     }
-                    temp[i * 3 + j] = acc;
+                    temp[i*3 + j] = acc;
                 }
             }
 
@@ -158,12 +158,12 @@ std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
                 for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
                     auto acc = 0.0f;
                     for (auto k = 0; k < 3; k++) {
-                        acc += temp[xi * 3 + k] * G[nu * 3 + k];
+                        acc += temp[xi*3 + k] * G[nu*3 + k];
                     }
                     U[xi * (WINOGRAD_ALPHA * outputs * channels)
-                        + nu * (outputs * channels)
-                        + c * outputs
-                        + o] = acc;
+                      + nu * (outputs * channels)
+                      + c * outputs
+                      + o] = acc;
                 }
             }
         }
@@ -178,22 +178,21 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     // We are version 1 or 2
     if (m_value_head_not_stm) {
         myprintf("v%d...", 2);
-    }
-    else {
+    } else {
         myprintf("v%d...", 1);
     }
     // First line was the version number
-    auto linecount = size_t{ 1 };
+    auto linecount = size_t{1};
     auto channels = 0;
     auto line = std::string{};
     while (std::getline(wtfile, line)) {
-        auto iss = std::stringstream{ line };
+        auto iss = std::stringstream{line};
         // Third line of parameters are the convolution layer biases,
         // so this tells us the amount of channels in the residual layers.
         // We are assuming all layers have the same amount of filters.
         if (linecount == 2) {
             auto count = std::distance(std::istream_iterator<std::string>(iss),
-                std::istream_iterator<std::string>());
+                                       std::istream_iterator<std::string>());
             myprintf("%d channels...", count);
             channels = count;
         }
@@ -204,7 +203,7 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     auto residual_blocks = linecount - (1 + 4 + 14);
     if (residual_blocks % 8 != 0) {
         myprintf("\nInconsistent number of weights in the file.\n");
-        return { 0, 0 };
+        return {0, 0};
     }
     residual_blocks /= 8;
     myprintf("%d blocks.\n", residual_blocks);
@@ -223,45 +222,41 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
         std::vector<float> weights;
         auto it_line = line.cbegin();
         const auto ok = phrase_parse(it_line, line.cend(),
-            *x3::float_, x3::space, weights);
+                                     *x3::float_, x3::space, weights);
         if (!ok || it_line != line.cend()) {
             myprintf("\nFailed to parse weight file. Error on line %d.\n",
-                linecount + 2); //+1 from version line, +1 from 0-indexing
-            return { 0,0 };
+                    linecount + 2); //+1 from version line, +1 from 0-indexing
+            return {0,0};
         }
         if (linecount < plain_conv_wts) {
             if (linecount % 4 == 0) {
                 m_conv_weights.emplace_back(weights);
-            }
-            else if (linecount % 4 == 1) {
+            } else if (linecount % 4 == 1) {
                 // Redundant in our model, but they encode the
                 // number of outputs so we have to read them in.
                 m_conv_biases.emplace_back(weights);
-            }
-            else if (linecount % 4 == 2) {
+            } else if (linecount % 4 == 2) {
                 m_batchnorm_means.emplace_back(weights);
-            }
-            else if (linecount % 4 == 3) {
+            } else if (linecount % 4 == 3) {
                 process_bn_var(weights);
                 m_batchnorm_stddevs.emplace_back(weights);
             }
-        }
-        else {
+        } else {
             switch (linecount - plain_conv_wts) {
-            case  0: m_conv_pol_w = std::move(weights); break;
-            case  1: m_conv_pol_b = std::move(weights); break;
-            case  2: std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w1)); break;
-            case  3: std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w2)); break;
-            case  4: std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_w)); break;
-            case  5: std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_b)); break;
-            case  6: m_conv_val_w = std::move(weights); break;
-            case  7: m_conv_val_b = std::move(weights); break;
-            case  8: std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w1)); break;
-            case  9: std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w2)); break;
-            case 10: std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_w)); break;
-            case 11: std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_b)); break;
-            case 12: std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_w)); break;
-            case 13: std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_b)); break;
+                case  0: m_conv_pol_w = std::move(weights); break;
+                case  1: m_conv_pol_b = std::move(weights); break;
+                case  2: std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w1)); break;
+                case  3: std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w2)); break;
+                case  4: std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_w)); break;
+                case  5: std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_b)); break;
+                case  6: m_conv_val_w = std::move(weights); break;
+                case  7: m_conv_val_b = std::move(weights); break;
+                case  8: std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w1)); break;
+                case  9: std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w2)); break;
+                case 10: std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_w)); break;
+                case 11: std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_b)); break;
+                case 12: std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_w)); break;
+                case 13: std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_b)); break;
             }
         }
         linecount++;
@@ -269,7 +264,7 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     process_bn_var(m_bn_pol_w2);
     process_bn_var(m_bn_val_w2);
 
-    return { channels, static_cast<int>(residual_blocks) };
+    return {channels, static_cast<int>(residual_blocks)};
 }
 
 std::pair<int, int> Network::load_network_file(const std::string& filename) {
@@ -278,7 +273,7 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
     auto gzhandle = gzopen(filename.c_str(), "rb");
     if (gzhandle == nullptr) {
         myprintf("Could not open weights file: %s\n", filename.c_str());
-        return { 0, 0 };
+        return {0, 0};
     }
     // Stream the gz file in to a memory buffer stream.
     auto buffer = std::stringstream{};
@@ -290,7 +285,7 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
         if (bytesRead < 0) {
             myprintf("Failed to decompress or read: %s\n", filename.c_str());
             gzclose(gzhandle);
-            return { 0, 0 };
+            return {0, 0};
         }
         assert(bytesRead <= chunkBufferSize);
         buffer.write(chunkBuffer.data(), bytesRead);
@@ -301,27 +296,25 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
     auto line = std::string{};
     auto format_version = -1;
     if (std::getline(buffer, line)) {
-        auto iss = std::stringstream{ line };
+        auto iss = std::stringstream{line};
         // First line is the file format version id
         iss >> format_version;
         if (iss.fail() || (format_version != 1 && format_version != 2)) {
             myprintf("Weights file is the wrong version.\n");
-            return { 0, 0 };
-        }
-        else {
+            return {0, 0};
+        } else {
             // Version 2 networks are identical to v1, except
             // that they return the value for black instead of
             // the player to move. This is used by ELF Open Go.
             if (format_version == 2) {
                 m_value_head_not_stm = true;
-            }
-            else {
+            } else {
                 m_value_head_not_stm = false;
             }
             return load_v1_network(buffer);
         }
     }
-    return { 0, 0 };
+    return {0, 0};
 }
 
 void Network::initialize(int playouts, const std::string & weightsfile) {
@@ -329,7 +322,7 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
         for (auto v = 0; v < BOARD_SQUARES; ++v) {
-            const auto newvtx = get_symmetry({ v % BOARD_SIZE, v / BOARD_SIZE }, s);
+            const auto newvtx = get_symmetry({v % BOARD_SIZE, v / BOARD_SIZE}, s);
             symmetry_nn_idx_table[s][v] = (newvtx.second * BOARD_SIZE) + newvtx.first;
             assert(symmetry_nn_idx_table[s][v] >= 0 && symmetry_nn_idx_table[s][v] < BOARD_SQUARES);
         }
@@ -342,19 +335,19 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         exit(EXIT_FAILURE);
     }
 
-    auto weight_index = size_t{ 0 };
+    auto weight_index = size_t{0};
     // Input convolution
     // Winograd transform convolution weights
     m_conv_weights[weight_index] =
         winograd_transform_f(m_conv_weights[weight_index],
-            channels, INPUT_CHANNELS);
+                             channels, INPUT_CHANNELS);
     weight_index++;
 
     // Residual block convolutions
-    for (auto i = size_t{ 0 }; i < residual_blocks * 2; i++) {
+    for (auto i = size_t{0}; i < residual_blocks * 2; i++) {
         m_conv_weights[weight_index] =
             winograd_transform_f(m_conv_weights[weight_index],
-                channels, channels);
+                                 channels, channels);
         weight_index++;
     }
 
@@ -362,19 +355,19 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     // still have non-zero biases.
     // Move biases to batchnorm means to make the output match without having
     // to separately add the biases.
-    for (auto i = size_t{ 0 }; i < m_conv_biases.size(); i++) {
-        for (auto j = size_t{ 0 }; j < m_batchnorm_means[i].size(); j++) {
+    for (auto i = size_t{0}; i < m_conv_biases.size(); i++) {
+        for (auto j = size_t{0}; j < m_batchnorm_means[i].size(); j++) {
             m_batchnorm_means[i][j] -= m_conv_biases[i][j];
             m_conv_biases[i][j] = 0.0f;
         }
     }
 
-    for (auto i = size_t{ 0 }; i < m_bn_val_w1.size(); i++) {
+    for (auto i = size_t{0}; i < m_bn_val_w1.size(); i++) {
         m_bn_val_w1[i] -= m_conv_val_b[i];
         m_conv_val_b[i] = 0.0f;
     }
 
-    for (auto i = size_t{ 0 }; i < m_bn_pol_w1.size(); i++) {
+    for (auto i = size_t{0}; i < m_bn_pol_w1.size(); i++) {
         m_bn_pol_w1[i] -= m_conv_pol_b[i];
         m_conv_pol_b[i] = 0.0f;
     }
@@ -391,34 +384,32 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         m_forward = std::make_unique<CPUPipe>();
 
         use_selfcheck = false;
-    }
-    else {
+    } else {
 #ifdef USE_HALF
         switch (cfg_precision) {
-        case precision_t::AUTO: {
-            // create fp16 and fp32 both here.  will select one of them later.
-            myprintf("Initializing OpenCL (autodetect precision).\n");
-            try {
-                fp16net = std::make_unique<OpenCLScheduler<half_float::half>>();
-                fp16net->initialize(channels);
-                to_init.emplace_back(fp16net.get());
+            case precision_t::AUTO: {
+                // create fp16 and fp32 both here.  will select one of them later.
+                myprintf("Initializing OpenCL (autodetect precision).\n");
+                try {
+                    fp16net = std::make_unique<OpenCLScheduler<half_float::half>>();
+                    fp16net->initialize(channels);
+                    to_init.emplace_back(fp16net.get());
+                } catch (std::runtime_error) {
+                    myprintf("Failed to initialize half precision net.  Resorting to single precision.\n");
+                    fp16net.reset();
+                }
+                m_forward = std::make_unique<OpenCLScheduler<float>>();
             }
-            catch (std::runtime_error) {
-                myprintf("Failed to initialize half precision net.  Resorting to single precision.\n");
-                fp16net.reset();
+            break;
+            case precision_t::SINGLE: {
+                myprintf("Initializing OpenCL (single precision).\n");
+                m_forward = std::make_unique<OpenCLScheduler<float>>();
             }
-            m_forward = std::make_unique<OpenCLScheduler<float>>();
-        }
-                                break;
-        case precision_t::SINGLE: {
-            myprintf("Initializing OpenCL (single precision).\n");
-            m_forward = std::make_unique<OpenCLScheduler<float>>();
-        }
-                                  break;
-        case precision_t::HALF: {
-            myprintf("Initializing OpenCL (half precision).\n");
-            m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
-        }
+            break;
+            case precision_t::HALF: {
+                myprintf("Initializing OpenCL (half precision).\n");
+                m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
+            }
         }
 #else
         myprintf("Initializing OpenCL (single precision).\n");
@@ -454,14 +445,14 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         weight_index++;
 
         // residual blocks
-        for (auto i = size_t{ 0 }; i < residual_blocks; i++) {
+        for (auto i = size_t{0}; i < residual_blocks; i++) {
             p->push_residual(WINOGRAD_ALPHA, channels, channels,
-                m_conv_weights[weight_index],
-                m_batchnorm_means[weight_index],
-                m_batchnorm_stddevs[weight_index],
-                m_conv_weights[weight_index + 1],
-                m_batchnorm_means[weight_index + 1],
-                m_batchnorm_stddevs[weight_index + 1]);
+                             m_conv_weights[weight_index],
+                             m_batchnorm_means[weight_index],
+                             m_batchnorm_stddevs[weight_index],
+                             m_conv_weights[weight_index + 1],
+                             m_batchnorm_means[weight_index + 1],
+                             m_batchnorm_stddevs[weight_index + 1]);
             weight_index += 2;
         }
 
@@ -489,23 +480,20 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     if (fp16net != nullptr) {
         auto score_fp32 = benchmark_time(100);
         std::swap(fp16net, m_forward);
-        auto score_fp16 = float{ -1.0 };
+        auto score_fp16 = float{-1.0};
         try {
             score_fp16 = benchmark_time(100);
-        }
-        catch (...) {
+        } catch (...) {
             // empty - if exception thrown just throw away fp16 net
         }
 
         if (score_fp16 < 0.0) {
             std::swap(fp16net, m_forward);
             myprintf("Using OpenCL single precision (half precision failed to run)\n");
-        }
-        else if (score_fp32 * 1.05f > score_fp16) {
+        } else if (score_fp32 * 1.05f > score_fp16) {
             std::swap(fp16net, m_forward);
             myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
-        }
-        else {
+        } else {
             myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
         }
     }
@@ -515,23 +503,23 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 #ifdef USE_BLAS
 
 template<unsigned int inputs,
-    unsigned int outputs,
-    bool ReLU,
-    size_t W>
-    std::vector<float> innerproduct(const std::vector<float>& input,
-        const std::array<float, W>& weights,
-        const std::array<float, outputs>& biases) {
+         unsigned int outputs,
+         bool ReLU,
+         size_t W>
+std::vector<float> innerproduct(const std::vector<float>& input,
+                                const std::array<float, W>& weights,
+                                const std::array<float, outputs>& biases) {
     std::vector<float> output(outputs);
 
     cblas_sgemv(CblasRowMajor, CblasNoTrans,
-        // M     K
-        outputs, inputs,
-        1.0f, &weights[0], inputs,
-        &input[0], 1,
-        0.0f, &output[0], 1);
+                // M     K
+                outputs, inputs,
+                1.0f, &weights[0], inputs,
+                &input[0], 1,
+                0.0f, &output[0], 1);
 
     const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
-        val : 0.0f; };
+                                                          val : 0.0f; };
     for (unsigned int o = 0; o < outputs; o++) {
         auto val = biases[o] + output[o];
         if (ReLU) {
@@ -545,27 +533,26 @@ template<unsigned int inputs,
 
 template <size_t spatial_size>
 void batchnorm(const size_t channels,
-    std::vector<float>& data,
-    const float* const means,
-    const float* const stddivs,
-    const float* const eltwise = nullptr) {
+               std::vector<float>& data,
+               const float* const means,
+               const float* const stddivs,
+               const float* const eltwise = nullptr) {
     const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
-        val : 0.0f; };
-    for (auto c = size_t{ 0 }; c < channels; ++c) {
+                                                          val : 0.0f; };
+    for (auto c = size_t{0}; c < channels; ++c) {
         const auto mean = means[c];
         const auto scale_stddiv = stddivs[c];
         const auto arr = &data[c * spatial_size];
 
         if (eltwise == nullptr) {
             // Classical BN
-            for (auto b = size_t{ 0 }; b < spatial_size; b++) {
+            for (auto b = size_t{0}; b < spatial_size; b++) {
                 arr[b] = lambda_ReLU(scale_stddiv * (arr[b] - mean));
             }
-        }
-        else {
+        } else {
             // BN + residual add
             const auto res = &eltwise[c * spatial_size];
-            for (auto b = size_t{ 0 }; b < spatial_size; b++) {
+            for (auto b = size_t{0}; b < spatial_size; b++) {
                 arr[b] = lambda_ReLU((scale_stddiv * (arr[b] - mean)) + res[b]);
             }
         }
@@ -575,13 +562,13 @@ void batchnorm(const size_t channels,
 
 #ifdef USE_OPENCL_SELFCHECK
 void Network::compare_net_outputs(Netresult& data,
-    Netresult& ref) {
+                                  Netresult& ref) {
     // Calculates L2-norm between data and ref.
     constexpr auto max_error = 0.2f;
 
     auto error = 0.0f;
 
-    for (auto idx = size_t{ 0 }; idx < data.policy.size(); ++idx) {
+    for (auto idx = size_t{0}; idx < data.policy.size(); ++idx) {
         const auto diff = data.policy[idx] - ref.policy[idx];
         error += diff * diff;
     }
@@ -594,14 +581,14 @@ void Network::compare_net_outputs(Netresult& data,
 
     if (error > max_error || std::isnan(error)) {
         myprintf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
-            "played simultaneously.\n");
+               "played simultaneously.\n");
         throw std::runtime_error("OpenCL self-check mismatch.");
     }
 }
 #endif
 
 std::vector<float> softmax(const std::vector<float>& input,
-    const float temperature = 1.0f) {
+                           const float temperature = 1.0f) {
     auto output = std::vector<float>{};
     output.reserve(input.size());
 
@@ -622,7 +609,7 @@ std::vector<float> softmax(const std::vector<float>& input,
 }
 
 bool Network::probe_cache(const GameState* const state,
-    Network::Netresult& result) {
+                          Network::Netresult& result) {
     if (m_nncache.lookup(state->board.get_hash(), result)) {
         return true;
     }
@@ -630,7 +617,7 @@ bool Network::probe_cache(const GameState* const state,
     // symmetries if we are in the early opening.
     if (!cfg_noise && !cfg_random_cnt
         && state->get_movenum()
-        < (state->get_timecontrol().opening_moves(BOARD_SIZE) / 2)) {
+           < (state->get_timecontrol().opening_moves(BOARD_SIZE) / 2)) {
         for (auto sym = 0; sym < Network::NUM_SYMMETRIES; ++sym) {
             if (sym == Network::IDENTITY_SYMMETRY) {
                 continue;
@@ -638,7 +625,7 @@ bool Network::probe_cache(const GameState* const state,
             const auto hash = state->get_symmetry_hash(sym);
             if (m_nncache.lookup(hash, result)) {
                 decltype(result.policy) corrected_policy;
-                for (auto idx = size_t{ 0 }; idx < BOARD_SQUARES; ++idx) {
+                for (auto idx = size_t{0}; idx < BOARD_SQUARES; ++idx) {
                     const auto sym_idx = symmetry_nn_idx_table[sym][idx];
                     corrected_policy[idx] = result.policy[sym_idx];
                 }
@@ -669,19 +656,17 @@ Network::Netresult Network::get_output(
     if (ensemble == DIRECT) {
         assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
         result = get_output_internal(state, symmetry);
-    }
-    else if (ensemble == AVERAGE) {
+    } else if (ensemble == AVERAGE) {
         for (auto sym = 0; sym < NUM_SYMMETRIES; ++sym) {
             auto tmpresult = get_output_internal(state, sym);
             result.winrate += tmpresult.winrate / static_cast<float>(NUM_SYMMETRIES);
             result.policy_pass += tmpresult.policy_pass / static_cast<float>(NUM_SYMMETRIES);
 
-            for (auto idx = size_t{ 0 }; idx < BOARD_SQUARES; idx++) {
+            for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
                 result.policy[idx] += tmpresult.policy[idx] / static_cast<float>(NUM_SYMMETRIES);
             }
         }
-    }
-    else {
+    } else {
         assert(ensemble == RANDOM_SYMMETRY);
         assert(symmetry == -1);
         const auto rand_sym = Random::get_Rng().randfix<NUM_SYMMETRIES>();
@@ -723,13 +708,12 @@ Network::Netresult Network::get_output_internal(
 #ifdef USE_OPENCL_SELFCHECK
     if (selfcheck) {
         m_forward_cpu->forward(input_data, policy_data, value_data);
-    }
-    else {
+    } else {
         m_forward->forward(input_data, policy_data, value_data);
     }
 #else
     m_forward->forward(input_data, policy_data, value_data);
-    (void)selfcheck;
+    (void) selfcheck;
 #endif
 
     // Get the moves
@@ -753,7 +737,7 @@ Network::Netresult Network::get_output_internal(
 
     Netresult result;
 
-    for (auto idx = size_t{ 0 }; idx < BOARD_SQUARES; idx++) {
+    for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
         result.policy[sym_idx] = outputs[idx];
     }
@@ -765,8 +749,8 @@ Network::Netresult Network::get_output_internal(
 }
 
 void Network::show_heatmap(const FastState* const state,
-    const Netresult& result,
-    const bool topmoves) {
+                           const Netresult& result,
+                           const bool topmoves) {
     std::vector<std::string> display_map;
     std::string line;
 
@@ -794,7 +778,7 @@ void Network::show_heatmap(const FastState* const state,
 
     if (topmoves) {
         std::vector<Network::PolicyVertexPair> moves;
-        for (auto i = 0; i < BOARD_SQUARES; i++) {
+        for (auto i=0; i < BOARD_SQUARES; i++) {
             const auto x = i % BOARD_SIZE;
             const auto y = i / BOARD_SIZE;
             const auto vertex = state->board.get_vertex(x, y);
@@ -811,8 +795,8 @@ void Network::show_heatmap(const FastState* const state,
         while (cum < 0.85f && tried < moves.size()) {
             if (moves[tried].first < 0.01f) break;
             myprintf("%1.3f (%s)\n",
-                moves[tried].first,
-                state->board.move_to_text(moves[tried].second).c_str());
+                    moves[tried].first,
+                    state->board.move_to_text(moves[tried].second).c_str());
             cum += moves[tried].first;
             tried++;
         }
@@ -820,9 +804,9 @@ void Network::show_heatmap(const FastState* const state,
 }
 
 void Network::fill_input_plane_pair(const FullBoard& board,
-    std::vector<float>::iterator black,
-    std::vector<float>::iterator white,
-    const int symmetry) {
+                                    std::vector<float>::iterator black,
+                                    std::vector<float>::iterator white,
+                                    const int symmetry) {
     for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
         const auto x = sym_idx % BOARD_SIZE;
@@ -830,15 +814,14 @@ void Network::fill_input_plane_pair(const FullBoard& board,
         const auto color = board.get_square(x, y);
         if (color == FastBoard::BLACK) {
             black[idx] = float(true);
-        }
-        else if (color == FastBoard::WHITE) {
+        } else if (color == FastBoard::WHITE) {
             white[idx] = float(true);
         }
     }
 }
 
 std::vector<float> Network::gather_features(const GameState* const state,
-    const int symmetry) {
+                                            const int symmetry) {
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
     auto input_data = std::vector<float>(INPUT_CHANNELS * BOARD_SQUARES);
 
@@ -846,26 +829,26 @@ std::vector<float> Network::gather_features(const GameState* const state,
     const auto blacks_move = to_move == FastBoard::BLACK;
 
     const auto black_it = blacks_move ?
-        begin(input_data) :
-        begin(input_data) + INPUT_MOVES * BOARD_SQUARES;
+                          begin(input_data) :
+                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES;
     const auto white_it = blacks_move ?
-        begin(input_data) + INPUT_MOVES * BOARD_SQUARES :
-        begin(input_data);
+                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES :
+                          begin(input_data); 
     const auto black_to_move_it = begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES;
     const auto white_to_move_it = black_to_move_it + BOARD_SQUARES;
     const float plus_komi = 0.5f + (state->get_stm_komi()) / 15.0f;
     const float minus_komi = 0.5f - (state->get_stm_komi()) / 15.0f;
-    const auto black_komi = blacks_move ? plus_komi : minus_komi;
-    const auto white_komi = blacks_move ? minus_komi : plus_komi;
+    const float black_komi = blacks_move ? plus_komi : minus_komi;
+    const float white_komi = blacks_move ? minus_komi : plus_komi;
 
     const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
     // Go back in time, fill history boards
-    for (auto h = size_t{ 0 }; h < moves; h++) {
+    for (auto h = size_t{0}; h < moves; h++) {
         // collect white, black occupation planes
         fill_input_plane_pair(state->get_past_board(h),
-            black_it + h * BOARD_SQUARES,
-            white_it + h * BOARD_SQUARES,
-            symmetry);
+                              black_it + h * BOARD_SQUARES,
+                              white_it + h * BOARD_SQUARES,
+                              symmetry);
     }
 
     std::fill(black_to_move_it, black_to_move_it + BOARD_SQUARES, black_komi);
@@ -875,8 +858,8 @@ std::vector<float> Network::gather_features(const GameState* const state,
 }
 
 std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex,
-    const int symmetry,
-    const int board_size) {
+                                          const int symmetry,
+                                          const int board_size) {
     auto x = vertex.first;
     auto y = vertex.second;
     assert(x >= 0 && x < board_size);
@@ -898,5 +881,5 @@ std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex,
     assert(x >= 0 && x < board_size);
     assert(y >= 0 && y < board_size);
     assert(symmetry != IDENTITY_SYMMETRY || vertex == std::make_pair(x, y));
-    return { x, y };
+    return {x, y};
 }

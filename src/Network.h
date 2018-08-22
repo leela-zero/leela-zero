@@ -1,19 +1,19 @@
 /*
-This file is part of Leela Zero.
-Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    This file is part of Leela Zero.
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
-Leela Zero is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+    Leela Zero is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-Leela Zero is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+    Leela Zero is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef NETWORK_H_INCLUDED
@@ -59,13 +59,13 @@ public:
     enum Ensemble {
         DIRECT, RANDOM_SYMMETRY, AVERAGE
     };
-    using PolicyVertexPair = std::pair<float, int>;
+    using PolicyVertexPair = std::pair<float,int>;
     using Netresult = NNCache::Netresult;
 
     Netresult get_output(const GameState* const state,
-        const Ensemble ensemble,
-        const int symmetry = -1,
-        const bool skip_cache = false);
+                         const Ensemble ensemble,
+                         const int symmetry = -1,
+                         const bool skip_cache = false);
 
     static constexpr auto INPUT_MOVES = 8;
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
@@ -76,17 +76,16 @@ public:
 
     float benchmark_time(int centiseconds);
     void benchmark(const GameState * const state,
-        const int iterations = 1600);
+                   const int iterations = 1600);
     static void show_heatmap(const FastState * const state,
-        const Netresult & netres, const bool topmoves);
+                             const Netresult & netres, const bool topmoves);
 
     static std::vector<float> gather_features(const GameState* const state,
-        const int symmetry);
+                                              const int symmetry);
     static std::pair<int, int> get_symmetry(const std::pair<int, int>& vertex,
-        const int symmetry,
-        const int board_size = BOARD_SIZE);
-
-    void Network::clear_cache() {
+                                            const int symmetry,
+                                            const int board_size = BOARD_SIZE);
+    void clear_cache() {
         m_nncache.clear_cache();
     }
 private:
@@ -94,31 +93,31 @@ private:
     std::pair<int, int> load_network_file(const std::string& filename);
 
     static std::vector<float> winograd_transform_f(const std::vector<float>& f,
-        const int outputs, const int channels);
+                                                   const int outputs, const int channels);
     static std::vector<float> zeropad_U(const std::vector<float>& U,
-        const int outputs, const int channels,
-        const int outputs_pad, const int channels_pad);
+                                        const int outputs, const int channels,
+                                        const int outputs_pad, const int channels_pad);
     static void winograd_transform_in(const std::vector<float>& in,
-        std::vector<float>& V,
-        const int C);
+                                      std::vector<float>& V,
+                                      const int C);
     static void winograd_transform_out(const std::vector<float>& M,
-        std::vector<float>& Y,
-        const int K);
+                                       std::vector<float>& Y,
+                                       const int K);
     static void winograd_convolve3(const int outputs,
-        const std::vector<float>& input,
-        const std::vector<float>& U,
-        std::vector<float>& V,
-        std::vector<float>& M,
-        std::vector<float>& output);
+                                   const std::vector<float>& input,
+                                   const std::vector<float>& U,
+                                   std::vector<float>& V,
+                                   std::vector<float>& M,
+                                   std::vector<float>& output);
     static void winograd_sgemm(const std::vector<float>& U,
-        const std::vector<float>& V,
-        std::vector<float>& M, const int C, const int K);
+                               const std::vector<float>& V,
+                               std::vector<float>& M, const int C, const int K);
     Netresult get_output_internal(const GameState* const state,
-        const int symmetry, bool selfcheck = false);
+                                  const int symmetry, bool selfcheck = false);
     static void fill_input_plane_pair(const FullBoard& board,
-        std::vector<float>::iterator black,
-        std::vector<float>::iterator white,
-        const int symmetry);
+                                      std::vector<float>::iterator black,
+                                      std::vector<float>::iterator white,
+                                      const int symmetry);
     bool probe_cache(const GameState* const state, Network::Netresult& result);
     std::unique_ptr<ForwardPipe> m_forward;
 #ifdef USE_OPENCL_SELFCHECK
