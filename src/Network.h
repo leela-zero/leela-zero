@@ -47,7 +47,7 @@
 // Winograd filter transformation changes 3x3 filters to M + 3 - 1
 constexpr auto WINOGRAD_M = 4;
 constexpr auto WINOGRAD_ALPHA = WINOGRAD_M + 3 - 1;
-constexpr auto WINOGRAD_WTILES = BOARD_SIZE / WINOGRAD_M + (BOARD_SIZE % WINOGRAD_M != 0);
+constexpr auto WINOGRAD_WTILES = BOARD_LENGTH / WINOGRAD_M + (BOARD_LENGTH % WINOGRAD_M != 0);
 constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 constexpr auto WINOGRAD_P = WINOGRAD_WTILES * WINOGRAD_WTILES;
 constexpr auto SQ2 = 1.4142135623730951f; // Square root of 2
@@ -85,7 +85,7 @@ public:
                                               const int symmetry);
     static std::pair<int, int> get_symmetry(const std::pair<int, int>& vertex,
                                             const int symmetry,
-                                            const int board_size = BOARD_SIZE);
+                                            const int board_length = BOARD_LENGTH);
 private:
     std::pair<int, int> load_v1_network(std::istream& wtfile);
     std::pair<int, int> load_network_file(const std::string& filename);

@@ -28,7 +28,7 @@
 
 class KoState : public FastState {
 public:
-    void init_game(int size, float komi);
+    void init_game(int length, float komi);
     bool superko(void) const;
     void reset_game();
 

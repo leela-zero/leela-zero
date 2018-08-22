@@ -136,11 +136,11 @@ void TimeControl::display_times() {
     myprintf("\n");
 }
 
-int TimeControl::max_time_for_move(int boardsize,
+int TimeControl::max_time_for_move(int boardlength,
                                    int color, size_t movenum) const {
     // default: no byo yomi (absolute)
     auto time_remaining = m_remaining_time[color];
-    auto moves_remaining = get_moves_expected(boardsize, movenum);
+    auto moves_remaining = get_moves_expected(boardlength, movenum);
     auto extra_time_per_move = 0;
 
     if (m_byotime != 0) {
@@ -215,13 +215,13 @@ void TimeControl::adjust_time(int color, int time, int stones) {
     }
 }
 
-size_t TimeControl::opening_moves(int boardsize) const {
-    auto num_intersections = boardsize * boardsize;
+size_t TimeControl::opening_moves(int boardlength) const {
+    auto num_intersections = boardlength * boardlength;
     auto fast_moves = num_intersections / 6;
     return fast_moves;
 }
 
-int TimeControl::get_moves_expected(int boardsize, size_t movenum) const {
+int TimeControl::get_moves_expected(int boardlength, size_t movenum) const {
     auto board_div = 5;
     if (cfg_timemanage != TimeManagement::OFF) {
         // We will take early exits with time management on, so
@@ -231,10 +231,10 @@ int TimeControl::get_moves_expected(int boardsize, size_t movenum) const {
 
     // Note this is constant as we play, so it's fair
     // to underestimate quite a bit.
-    auto base_remaining = (boardsize * boardsize) / board_div;
+    auto base_remaining = (boardlength * boardlength) / board_div;
 
     // Don't think too long in the opening.
-    auto fast_moves = opening_moves(boardsize);
+    auto fast_moves = opening_moves(boardlength);
     if (movenum < fast_moves) {
         return (base_remaining + fast_moves) - movenum;
     } else {

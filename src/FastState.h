@@ -28,7 +28,7 @@
 
 class FastState {
 public:
-    void init_game(int size, float komi);
+    void init_game(int length, float komi);
     void reset_game();
     void reset_board();
 

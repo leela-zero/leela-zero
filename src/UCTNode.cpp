@@ -94,8 +94,8 @@ bool UCTNode::create_children(Network & network,
 
     auto legal_sum = 0.0f;
     for (auto i = 0; i < NUM_INTERSECTIONS; i++) {
-        const auto x = i % BOARD_SIZE;
-        const auto y = i / BOARD_SIZE;
+        const auto x = i % BOARD_LENGTH;
+        const auto y = i / BOARD_LENGTH;
         const auto vertex = state.board.get_vertex(x, y);
         if (state.is_move_legal(to_move, vertex)) {
             nodelist.emplace_back(raw_netlist.policy[i], vertex);

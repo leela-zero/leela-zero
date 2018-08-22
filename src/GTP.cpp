@@ -181,8 +181,8 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
     const auto& board = game.board;
 
     if (live) {
-        for (int i = 0; i < board.get_boardsize(); i++) {
-            for (int j = 0; j < board.get_boardsize(); j++) {
+        for (int i = 0; i < board.get_boardlength(); i++) {
+            for (int j = 0; j < board.get_boardlength(); j++) {
                 int vertex = board.get_vertex(i, j);
 
                 if (board.get_state(vertex) != FastBoard::EMPTY) {
@@ -305,7 +305,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         cmdstream >> tmp;
 
         if (!cmdstream.fail()) {
-            if (tmp != BOARD_SIZE) {
+            if (tmp != BOARD_LENGTH) {
                 gtp_fail_printf(id, "unacceptable size");
             } else {
                 float old_komi = game.get_komi();

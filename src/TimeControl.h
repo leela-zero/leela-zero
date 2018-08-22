@@ -35,17 +35,17 @@ public:
 
     void start(int color);
     void stop(int color);
-    int max_time_for_move(int boardsize, int color, size_t movenum) const;
+    int max_time_for_move(int boardlength, int color, size_t movenum) const;
     void adjust_time(int color, int time, int stones);
     void display_times();
     void reset_clocks();
     bool can_accumulate_time(int color) const;
-    size_t opening_moves(int boardsize) const;
+    size_t opening_moves(int boardlength) const;
     std::string to_text_sgf() const;
 
 private:
     void display_color_time(int color);
-    int get_moves_expected(int boardsize, size_t movenum) const;
+    int get_moves_expected(int boardlength, size_t movenum) const;
 
     int m_maintime;
     int m_byotime;

@@ -74,7 +74,7 @@ float Network::benchmark_time(int centiseconds) {
     std::atomic<int> runcount{0};
 
     GameState state;
-    state.init_game(BOARD_SIZE, 7.5);
+    state.init_game(BOARD_LENGTH, 7.5);
     for (auto i = 0; i < cpus; i++) {
         tg.add_task([this, &runcount, start, centiseconds, state]() {
             while (true) {
@@ -350,9 +350,9 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
         for (auto v = 0; v < NUM_INTERSECTIONS; ++v) {
             const auto newvtx =
-                get_symmetry({v % BOARD_SIZE, v / BOARD_SIZE}, s);
+                get_symmetry({v % BOARD_LENGTH, v / BOARD_LENGTH}, s);
             symmetry_nn_idx_table[s][v] =
-                (newvtx.second * BOARD_SIZE) + newvtx.first;
+                (newvtx.second * BOARD_LENGTH) + newvtx.first;
             assert(symmetry_nn_idx_table[s][v] >= 0
                    && symmetry_nn_idx_table[s][v] < NUM_INTERSECTIONS);
         }
@@ -631,7 +631,7 @@ bool Network::probe_cache(const GameState* const state,
     // symmetries if we are in the early opening.
     if (!cfg_noise && !cfg_random_cnt
         && state->get_movenum()
-           < (state->get_timecontrol().opening_moves(BOARD_SIZE) / 2)) {
+           < (state->get_timecontrol().opening_moves(BOARD_LENGTH) / 2)) {
         for (auto sym = 0; sym < Network::NUM_SYMMETRIES; ++sym) {
             if (sym == Network::IDENTITY_SYMMETRY) {
                 continue;
@@ -656,7 +656,7 @@ Network::Netresult Network::get_output(
     const GameState* const state, const Ensemble ensemble,
     const int symmetry, const bool skip_cache) {
     Netresult result;
-    if (state->board.get_boardsize() != BOARD_SIZE) {
+    if (state->board.get_boardlength() != BOARD_LENGTH) {
         return result;
     }
 
@@ -717,8 +717,8 @@ Network::Netresult Network::get_output(
 Network::Netresult Network::get_output_internal(
     const GameState* const state, const int symmetry, bool selfcheck) {
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
-    constexpr auto width = BOARD_SIZE;
-    constexpr auto height = BOARD_SIZE;
+    constexpr auto width = BOARD_LENGTH;
+    constexpr auto height = BOARD_LENGTH;
 
     const auto input_data = gather_features(state, symmetry);
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
@@ -773,12 +773,12 @@ void Network::show_heatmap(const FastState* const state,
     std::vector<std::string> display_map;
     std::string line;
 
-    for (unsigned int y = 0; y < BOARD_SIZE; y++) {
-        for (unsigned int x = 0; x < BOARD_SIZE; x++) {
+    for (unsigned int y = 0; y < BOARD_LENGTH; y++) {
+        for (unsigned int x = 0; x < BOARD_LENGTH; x++) {
             auto policy = 0;
             const auto vertex = state->board.get_vertex(x, y);
             if (state->board.get_state(vertex) == FastBoard::EMPTY) {
-                policy = result.policy[y * BOARD_SIZE + x] * 1000;
+                policy = result.policy[y * BOARD_LENGTH + x] * 1000;
             }
 
             line += boost::str(boost::format("%3d ") % policy);
@@ -798,8 +798,8 @@ void Network::show_heatmap(const FastState* const state,
     if (topmoves) {
         std::vector<Network::PolicyVertexPair> moves;
         for (auto i=0; i < NUM_INTERSECTIONS; i++) {
-            const auto x = i % BOARD_SIZE;
-            const auto y = i / BOARD_SIZE;
+            const auto x = i % BOARD_LENGTH;
+            const auto y = i / BOARD_LENGTH;
             const auto vertex = state->board.get_vertex(x, y);
             if (state->board.get_state(vertex) == FastBoard::EMPTY) {
                 moves.emplace_back(result.policy[i], vertex);
@@ -828,8 +828,8 @@ void Network::fill_input_plane_pair(const FullBoard& board,
                                     const int symmetry) {
     for (auto idx = 0; idx < NUM_INTERSECTIONS; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
-        const auto x = sym_idx % BOARD_SIZE;
-        const auto y = sym_idx / BOARD_SIZE;
+        const auto x = sym_idx % BOARD_LENGTH;
+        const auto y = sym_idx / BOARD_LENGTH;
         const auto color = board.get_state(x, y);
         if (color == FastBoard::BLACK) {
             black[idx] = float(true);
@@ -874,11 +874,11 @@ std::vector<float> Network::gather_features(const GameState* const state,
 
 std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex,
                                           const int symmetry,
-                                          const int board_size) {
+                                          const int board_length) {
     auto x = vertex.first;
     auto y = vertex.second;
-    assert(x >= 0 && x < board_size);
-    assert(y >= 0 && y < board_size);
+    assert(x >= 0 && x < board_length);
+    assert(y >= 0 && y < board_length);
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
 
     if ((symmetry & 4) != 0) {
@@ -886,15 +886,15 @@ std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex,
     }
 
     if ((symmetry & 2) != 0) {
-        x = board_size - x - 1;
+        x = board_length - x - 1;
     }
 
     if ((symmetry & 1) != 0) {
-        y = board_size - y - 1;
+        y = board_length - y - 1;
     }
 
-    assert(x >= 0 && x < board_size);
-    assert(y >= 0 && y < board_size);
+    assert(x >= 0 && x < board_length);
+    assert(y >= 0 && y < board_length);
     assert(symmetry != IDENTITY_SYMMETRY || vertex == std::make_pair(x, y));
     return {x, y};
 }

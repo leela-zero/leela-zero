@@ -22,8 +22,8 @@
 R"(
 void __in_transform_eq(real x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * restrict V, int offset, int CPpad) {
 
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
+    const int W = BOARD_LENGTH;
+    const int H = BOARD_LENGTH;
     const int P = WTILES * WTILES;
 
     real T1[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
@@ -89,8 +89,8 @@ void __in_transform_eq(real x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * 
 __kernel void in_transform(__global net_t * restrict in, __global net_t * restrict V,
                            const int C, const int Cpad,
                            const int Ppad, const int batch_size) {
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
+    const int W = BOARD_LENGTH;
+    const int H = BOARD_LENGTH;
     const int P = WTILES * WTILES;
     const int CPpad = Ppad * Cpad;
 
@@ -135,8 +135,8 @@ void __out_transform_eq(__global const net_t * restrict M, real o[WINOGRAD_M * W
                         int Kpad, int Ppad, int block)
 {
 
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
+    const int W = BOARD_LENGTH;
+    const int H = BOARD_LENGTH;
     const int P = WTILES * WTILES;
 
     const int k = get_global_id(0);
@@ -212,8 +212,8 @@ __kernel void out_transform_fused_bn(__global const net_t * restrict M,
                                      __constant const net_t * restrict means,
                                      __constant const net_t * restrict stddivs) {
 
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
+    const int W = BOARD_LENGTH;
+    const int H = BOARD_LENGTH;
     const int P = WTILES * WTILES;
 
     const int k = get_global_id(0);
@@ -263,8 +263,8 @@ __kernel void out_transform_fused_bn_in(
                                      __constant const net_t * restrict stddivs,
                                      __local real * ybuf) {
 
-    const int W = BOARD_SIZE;
-    const int H = BOARD_SIZE;
+    const int W = BOARD_LENGTH;
+    const int H = BOARD_LENGTH;
     const int P = WTILES * WTILES;
 
     const int k = get_global_id(0);

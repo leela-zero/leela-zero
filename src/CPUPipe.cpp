@@ -42,8 +42,8 @@ void CPUPipe::initialize(int channels) {
 void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                                     std::vector<float>& V,
                                     const int C) {
-    constexpr auto W = BOARD_SIZE;
-    constexpr auto H = BOARD_SIZE;
+    constexpr auto W = BOARD_LENGTH;
+    constexpr auto H = BOARD_LENGTH;
     constexpr auto WTILES = WINOGRAD_WTILES;
     constexpr auto P = WINOGRAD_P;
 
@@ -137,8 +137,8 @@ void CPUPipe::winograd_sgemm(const std::vector<float>& U,
 void CPUPipe::winograd_transform_out(const std::vector<float>& M,
                                      std::vector<float>& Y,
                                      const int K) {
-    constexpr auto W = BOARD_SIZE;
-    constexpr auto H = BOARD_SIZE;
+    constexpr auto W = BOARD_LENGTH;
+    constexpr auto H = BOARD_LENGTH;
     constexpr auto WTILES = WINOGRAD_WTILES;
     constexpr auto P = WINOGRAD_P;
 
@@ -224,8 +224,8 @@ void convolve(const size_t outputs,
               const std::vector<float>& biases,
               std::vector<float>& output) {
     // The size of the board is defined at compile time
-    constexpr unsigned int width = BOARD_SIZE;
-    constexpr unsigned int height = BOARD_SIZE;
+    constexpr unsigned int width = BOARD_LENGTH;
+    constexpr unsigned int height = BOARD_LENGTH;
     constexpr auto num_intersections = width * height;
     constexpr auto filter_len = filter_size * filter_size;
     const auto input_channels = weights.size() / (biases.size() * filter_len);

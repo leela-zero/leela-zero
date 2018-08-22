@@ -33,8 +33,8 @@ R"(
         const int o   = get_global_id(1);  // output
         const int row_batch = get_global_id(2);  // row * batch_size
 
-        const int row = row_batch % BOARD_SIZE;
-        const int batch = row_batch / BOARD_SIZE;
+        const int row = row_batch % BOARD_LENGTH;
+        const int batch = row_batch / BOARD_LENGTH;
 
         const int channels = get_global_size(0);
         const int outputs  = get_global_size(1);
@@ -53,17 +53,17 @@ R"(
         // output = outputs * height * width
         // weights = output * channels * filter
         // merge = channels * outputs * height * width
-        const int width = BOARD_SIZE;
-        const int height = BOARD_SIZE;
+        const int width = BOARD_LENGTH;
+        const int height = BOARD_LENGTH;
         const int strip_size = width;
         // Copy the input channels (strips) locally
-        if (out_buff_size < BOARD_SIZE && ly == 0) {
+        if (out_buff_size < BOARD_LENGTH && ly == 0) {
             // strip-row
             for (int w = 0; w < width; w++) {
                 channel_buff[lx * width + w] =
                     vload_net_t((c * height + row) * width + w + input_offset, in);
             }
-        } else if (out_buff_size >= BOARD_SIZE && ly < BOARD_SIZE) {
+        } else if (out_buff_size >= BOARD_LENGTH && ly < BOARD_LENGTH) {
             // Every thread copies a column
             channel_buff[lx * width + ly] = vload_net_t((c * height + row) * width +
                 ly + input_offset, in);
@@ -112,8 +112,8 @@ __kernel void merge(
         const int output = gx;
         const int b = gy;
         const int outputs = get_global_size(0);
-        const int width = BOARD_SIZE;
-        const int height = BOARD_SIZE;
+        const int width = BOARD_LENGTH;
+        const int height = BOARD_LENGTH;
         const int o = output;
         real sum = 0;
         for (int c = 0; c < channels; c++) {

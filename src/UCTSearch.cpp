@@ -358,8 +358,8 @@ bool UCTSearch::should_resign(passflag_t passflag, float besteval) {
         return false;
     }
 
-    const size_t num_intersections = m_rootstate.board.get_boardsize()
-                                   * m_rootstate.board.get_boardsize();
+    const size_t num_intersections = m_rootstate.board.get_boardlength()
+                                   * m_rootstate.board.get_boardlength();
     const auto move_threshold = num_intersections / 4;
     const auto movenum = m_rootstate.get_movenum();
     if (movenum <= move_threshold) {
@@ -676,7 +676,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     auto time_for_move =
         m_rootstate.get_timecontrol().max_time_for_move(
-            m_rootstate.board.get_boardsize(),
+            m_rootstate.board.get_boardlength(),
             color, m_rootstate.get_movenum());
 
     myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
