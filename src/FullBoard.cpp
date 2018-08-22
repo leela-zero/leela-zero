@@ -101,7 +101,7 @@ std::uint64_t FullBoard::calc_symmetry_hash(int komove, int symmetry) const {
         if (vertex == NO_VERTEX) {
             return NO_VERTEX;
         } else {
-            const auto newvtx = Network::get_symmetry(get_xy(vertex), symmetry, m_boardsize);
+            const auto newvtx = Network::get_symmetry(get_xy(vertex), symmetry, m_boardlength);
             return get_vertex(newvtx.first, newvtx.second);
         }
     });
@@ -202,8 +202,8 @@ void FullBoard::display_board(int lastmove) {
     myprintf("Hash: %llX Ko-Hash: %llX\n\n", get_hash(), get_ko_hash());
 }
 
-void FullBoard::reset_board(int size) {
-    FastBoard::reset_board(size);
+void FullBoard::reset_board(int length) {
+    FastBoard::reset_board(length);
 
     m_hash = calc_hash();
     m_ko_hash = calc_ko_hash();

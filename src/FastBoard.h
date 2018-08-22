@@ -40,7 +40,7 @@ public:
     /*
         number of vertices in a "letterboxed" board representation
     */
-    static constexpr int NUM_VERTICES = ((BOARD_SIZE + 2) * (BOARD_SIZE + 2));
+    static constexpr int NUM_VERTICES = ((BOARD_LENGTH + 2) * (BOARD_LENGTH + 2));
 
     /*
         no applicable vertex
@@ -62,7 +62,7 @@ public:
         BLACK = 0, WHITE = 1, EMPTY = 2, INVAL = 3
     };
 
-    int get_boardsize(void) const;
+    int get_boardlength(void) const;
     vertex_t get_state(int x, int y) const;
     vertex_t get_state(int vertex) const ;
     int get_vertex(int x, int y) const;
@@ -87,11 +87,11 @@ public:
     std::string get_stone_list() const;
     std::string get_string(int vertex) const;
 
-    void reset_board(int size);
+    void reset_board(int length);
     void display_board(int lastmove = -1);
 
-    static bool starpoint(int size, int point);
-    static bool starpoint(int size, int x, int y);
+    static bool starpoint(int length, int point);
+    static bool starpoint(int length, int x, int y);
 
 protected:
     /*
@@ -115,7 +115,7 @@ protected:
     int m_tomove;
     int m_numvertices;
 
-    int m_boardsize;
+    int m_boardlength;
     int m_sidevertices;
 
     int calc_reach_color(int color) const;

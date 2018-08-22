@@ -60,7 +60,7 @@ const std::string sourceCode_common =
 ;
 
 static const std::string sourceCode_config = R"(
-#define BOARD_SIZE )" + std::to_string(BOARD_SIZE) +
+#define BOARD_LENGTH )" + std::to_string(BOARD_LENGTH) +
 "\n#define NUM_INTERSECTIONS " + std::to_string(NUM_INTERSECTIONS) +
 "\n#define WINOGRAD_M " + std::to_string(WINOGRAD_M) +
 "\n#define WINOGRAD_ALPHA " + std::to_string(WINOGRAD_ALPHA) +
@@ -343,8 +343,8 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
     assert(wavefront_size != 0);
 
     constexpr auto tiles = WINOGRAD_P;
-    constexpr auto width = BOARD_SIZE;
-    constexpr auto height = BOARD_SIZE;
+    constexpr auto width = BOARD_LENGTH;
+    constexpr auto height = BOARD_LENGTH;
 
     auto wgs = ceilMultiple(batch_size * tiles, wavefront_size);
     auto wgs_single = ceilMultiple(tiles, wavefront_size);
@@ -460,9 +460,9 @@ void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
                               weight_slice_t weights,
                               int batch_size) {
     // The size of the board is defined at compile time
-    constexpr int width = BOARD_SIZE;
-    constexpr int boardsize = NUM_INTERSECTIONS;
-    constexpr int rowTiles = BOARD_SIZE;
+    constexpr int width = BOARD_LENGTH;
+    constexpr int numIntersections = NUM_INTERSECTIONS;
+    constexpr int rowTiles = BOARD_LENGTH;
 
     // Input channel grouping in multiples of 8
     constexpr int channelGroup = 8;
@@ -474,7 +474,7 @@ void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
 
 #ifndef NDEBUG
     // Total output size after reducing
-    size_t outSize = boardsize * outputs * sizeof(net_t);
+    size_t outSize = numIntersections * outputs * sizeof(net_t);
 
     // Produce channel * output planes and merge them at the end
     size_t mergeSize = (channels >> channelShift) * outSize;
@@ -516,8 +516,8 @@ void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
 
         queue.enqueueNDRangeKernel(
             merge_kernel, cl::NullRange,
-            cl::NDRange(outputs, boardsize, batch_size),
-            cl::NDRange(std::min(8, outputs), BOARD_SIZE, 1));
+            cl::NDRange(outputs, numIntersections, batch_size),
+            cl::NDRange(std::min(8, outputs), BOARD_LENGTH, 1));
     } catch (const cl::Error &e) {
         std::cerr << "Error in merge: " << e.what() << ": "
                   << e.err() << std::endl;

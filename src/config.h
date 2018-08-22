@@ -31,13 +31,13 @@
 #endif
 
 /*
- * BOARD_SIZE: Define size of the board to compile Leela with, must be an odd
+ * BOARD_LENGTH: Define length of the board to compile Leela with, must be an odd
    number due to winograd tiles
  */
-static constexpr auto BOARD_SIZE = 19;
-static_assert(BOARD_SIZE % 2 == 1, "Code assumes odd board size, remove at your own risk!");
+static constexpr auto BOARD_LENGTH = 19;
+static_assert(BOARD_LENGTH % 2 == 1, "Code assumes odd board length, remove at your own risk!");
 
-static constexpr auto NUM_INTERSECTIONS = BOARD_SIZE * BOARD_SIZE;
+static constexpr auto NUM_INTERSECTIONS = BOARD_LENGTH * BOARD_LENGTH;
 static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
 
 /*

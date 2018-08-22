@@ -27,10 +27,10 @@
 #include "FastState.h"
 #include "FullBoard.h"
 
-void KoState::init_game(int size, float komi) {
-    assert(size <= BOARD_SIZE);
+void KoState::init_game(int length, float komi) {
+    assert(length <= BOARD_LENGTH);
 
-    FastState::init_game(size, komi);
+    FastState::init_game(length, komi);
 
     m_ko_hash_history.clear();
     m_ko_hash_history.emplace_back(board.get_ko_hash());

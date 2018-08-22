@@ -29,8 +29,8 @@
 
 using namespace Utils;
 
-void FastState::init_game(int size, float komi) {
-    board.reset_board(size);
+void FastState::init_game(int length, float komi) {
+    board.reset_board(length);
 
     m_movenum = 0;
 
@@ -58,7 +58,7 @@ void FastState::reset_game(void) {
 }
 
 void FastState::reset_board(void) {
-    board.reset_board(board.get_boardsize());
+    board.reset_board(board.get_boardlength());
 }
 
 bool FastState::is_move_legal(int color, int vertex) {

@@ -34,8 +34,8 @@
 #include "KoState.h"
 #include "UCTSearch.h"
 
-void GameState::init_game(int size, float komi) {
-    KoState::init_game(size, komi);
+void GameState::init_game(int length, float komi) {
+    KoState::init_game(length, komi);
 
     game_history.clear();
     game_history.emplace_back(std::make_shared<KoState>(*this));
@@ -139,8 +139,8 @@ bool GameState::play_textmove(const std::string& color,
     parsestream >> row;
     row--;
 
-    auto boardsize = board.get_boardsize();
-    if (row >= boardsize || column >= boardsize) {
+    auto boardlength = board.get_boardlength();
+    if (row >= boardlength || column >= boardlength) {
         return false;
     }
 
@@ -205,11 +205,11 @@ bool GameState::set_fixed_handicap(int handicap) {
         return false;
     }
 
-    int board_size = board.get_boardsize();
-    int high = board_size >= 13 ? 3 : 2;
-    int mid = board_size / 2;
+    int board_length = board.get_boardlength();
+    int high = board_length >= 13 ? 3 : 2;
+    int mid = board_length / 2;
 
-    int low = board_size - 1 - high;
+    int low = board_length - 1 - high;
     if (handicap >= 2) {
         play_move(FastBoard::BLACK, board.get_vertex(low, low));
         play_move(FastBoard::BLACK, board.get_vertex(high, high));
@@ -247,10 +247,10 @@ bool GameState::set_fixed_handicap(int handicap) {
 }
 
 int GameState::set_fixed_handicap_2(int handicap) {
-    int board_size = board.get_boardsize();
-    int low = board_size >= 13 ? 3 : 2;
-    int mid = board_size / 2;
-    int high = board_size - 1 - low;
+    int board_length = board.get_boardlength();
+    int low = board_length >= 13 ? 3 : 2;
+    int mid = board_length / 2;
+    int high = board_length - 1 - low;
 
     int interval = (high - mid) / 2;
     int placed = 0;
@@ -279,18 +279,18 @@ int GameState::set_fixed_handicap_2(int handicap) {
 }
 
 bool GameState::valid_handicap(int handicap) {
-    int board_size = board.get_boardsize();
+    int board_length = board.get_boardlength();
 
     if (handicap < 2 || handicap > 9) {
         return false;
     }
-    if (board_size % 2 == 0 && handicap > 4) {
+    if (board_length % 2 == 0 && handicap > 4) {
         return false;
     }
-    if (board_size == 7 && handicap > 4) {
+    if (board_length == 7 && handicap > 4) {
         return false;
     }
-    if (board_size < 7 && handicap > 0) {
+    if (board_length < 7 && handicap > 0) {
         return false;
     }
 
@@ -298,7 +298,7 @@ bool GameState::valid_handicap(int handicap) {
 }
 
 void GameState::place_free_handicap(int stones, Network & network) {
-    int limit = board.get_boardsize() * board.get_boardsize();
+    int limit = board.get_boardlength() * board.get_boardlength();
     if (stones > limit / 2) {
         stones = limit / 2;
     }

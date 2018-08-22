@@ -189,7 +189,7 @@ void Training::record(Network & network, GameState& state, UCTNode& root) {
         auto move = child->get_move();
         if (move != FastBoard::PASS) {
             auto xy = state.board.get_xy(move);
-            step.probabilities[xy.second * BOARD_SIZE + xy.first] = prob;
+            step.probabilities[xy.second * BOARD_LENGTH + xy.first] = prob;
         } else {
             step.probabilities[NUM_INTERSECTIONS] = prob;
         }
@@ -247,7 +247,7 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
                 out << std::hex << hexbyte;
             }
             // NUM_INTERSECTIONS % 4 = 1 so the last bit goes by itself
-            // for odd sizes
+            // for odd-squared boards
             assert(plane.size() % 4 == 1);
             out << plane[plane.size() - 1];
             out << std::dec << std::endl;
@@ -322,7 +322,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         if (move_vertex != FastBoard::PASS) {
             // get x y coords for actual move
             auto xy = state.board.get_xy(move_vertex);
-            move_idx = (xy.second * BOARD_SIZE) + xy.first;
+            move_idx = (xy.second * BOARD_LENGTH) + xy.first;
         } else {
             move_idx = NUM_INTERSECTIONS; // PASS
         }
@@ -388,7 +388,7 @@ void Training::dump_supervised(const std::string& sgf_name,
         auto state =
             std::make_unique<GameState>(sgftree->follow_mainline_state());
         // Our board size is hardcoded in several places
-        if (state->board.get_boardsize() != BOARD_SIZE) {
+        if (state->board.get_boardlength() != BOARD_LENGTH) {
             continue;
         }
 

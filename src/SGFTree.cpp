@@ -138,11 +138,11 @@ void SGFTree::populate_states(void) {
     if (it != end(m_properties)) {
         std::string size = it->second;
         std::istringstream strm(size);
-        int bsize;
-        strm >> bsize;
-        if (bsize == BOARD_SIZE) {
+        int board_length;
+        strm >> board_length;
+        if (board_length == BOARD_LENGTH) {
             // Assume 7.5 komi if not specified
-            m_state.init_game(bsize, 7.5f);
+            m_state.init_game(board_length, 7.5f);
             valid_size = true;
         } else {
             throw std::runtime_error("Board size not supported.");
@@ -158,12 +158,12 @@ void SGFTree::populate_states(void) {
         strm >> komi;
         int handicap = m_state.get_handicap();
         // last ditch effort: if no GM or SZ, assume 19x19 Go here
-        int bsize = 19;
+        int board_length = 19;
         if (valid_size) {
-            bsize = m_state.board.get_boardsize();
+            board_length = m_state.board.get_boardlength();
         }
-        if (bsize == BOARD_SIZE) {
-            m_state.init_game(bsize, komi);
+        if (board_length == BOARD_LENGTH) {
+            m_state.init_game(board_length, komi);
             m_state.set_handicap(handicap);
         } else {
             throw std::runtime_error("Board size not supported.");
@@ -298,15 +298,15 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
         return FastBoard::PASS;
     }
 
-    if (m_state.board.get_boardsize() <= 19) {
+    if (m_state.board.get_boardlength() <= 19) {
         if (movestring == "tt") {
             return FastBoard::PASS;
         }
     }
 
-    int bsize = m_state.board.get_boardsize();
-    if (bsize == 0) {
-        throw std::runtime_error("Node has 0 sized board");
+    int board_length = m_state.board.get_boardlength();
+    if (board_length == 0) {
+        throw std::runtime_error("Node has 0-sized board");
     }
 
     char c1 = movestring[0];
@@ -321,14 +321,14 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
         cc1 = c1 - 'a';
     }
     if (c2 >= 'A' && c2 <= 'Z') {
-        cc2 = bsize - 26 - (c2 - 'A') - 1;
+        cc2 = board_length - 26 - (c2 - 'A') - 1;
     } else {
-        cc2 = bsize - (c2 - 'a') - 1;
+        cc2 = board_length - (c2 - 'a') - 1;
     }
 
     // catch illegal SGF
-    if (cc1 < 0 || cc1 >= bsize
-        || cc2 < 0 || cc2 >= bsize) {
+    if (cc1 < 0 || cc1 >= board_length
+        || cc2 < 0 || cc2 >= board_length) {
         throw std::runtime_error("Illegal SGF move");
     }
 
@@ -402,7 +402,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     std::string moves;
 
     auto komi = state->get_komi();
-    auto size = state->board.get_boardsize();
+    auto length = state->board.get_boardlength();
     time_t now;
     time(&now);
     char timestr[sizeof "2017-10-16"];
@@ -410,7 +410,7 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
 
     header.append("(;GM[1]FF[4]RU[Chinese]");
     header.append("DT[" + std::string(timestr) + "]");
-    header.append("SZ[" + std::to_string(size) + "]");
+    header.append("SZ[" + std::to_string(length) + "]");
     header.append("KM[" + str(boost::format("%.1f") % komi) + "]");
     header.append(state->get_timecontrol().to_text_sgf());
 
@@ -440,8 +440,8 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     auto handicap = 0;
     std::string handicapstr;
 
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
+    for (int i = 0; i < length; i++) {
+        for (int j = 0; j < length; j++) {
             int vertex = state->board.get_vertex(i, j);
             int vtx_state = state->board.get_state(vertex);
 

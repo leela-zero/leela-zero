@@ -32,7 +32,7 @@ public:
     std::uint64_t get_ko_hash() const;
     void set_to_move(int tomove);
 
-    void reset_board(int size);
+    void reset_board(int length);
     void display_board(int lastmove = -1);
 
     std::uint64_t calc_hash(int komove = NO_VERTEX) const;
