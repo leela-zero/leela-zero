@@ -60,7 +60,7 @@ UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
 }
 
 void UCTNodePointer::inflate() const {
-    while(true) {
+    while (true) {
         auto v = m_data.load();
         if (is_inflated(v)) return;
 

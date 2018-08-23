@@ -61,7 +61,7 @@ bool UCTNode::create_children(Network & network,
     if (!success) {
         return false;
     }
-    
+
     // no successors in final state
     if (state.get_passes() >= 2) {
         expand_cancel();
@@ -320,8 +320,9 @@ void UCTNode::sort_children(int color) {
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
-    assert(!m_children.empty());
     check_expanded();
+
+    assert(!m_children.empty());
 
     auto ret = std::max_element(begin(m_children), end(m_children),
                                 NodeComp(color));

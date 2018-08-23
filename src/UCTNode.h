@@ -117,10 +117,10 @@ private:
     // see manipulation methods below for possible state transition
     enum class ExpandState : std::uint8_t {
         // initial state, no children
-        INITIAL=0,         
+        INITIAL = 0,
 
         // creating children.  the thread that changed the node's state to
-        // EXPANDING is responsible of finishing the expansion and then 
+        // EXPANDING is responsible of finishing the expansion and then
         // move to EXPANDED, or revert to INITIAL if impossible
         EXPANDING,
 
@@ -128,7 +128,7 @@ private:
         // context, until node is destroyed.
         EXPANDED,
 
-        // m_children is being modified on a multi-thread context.
+        // m_children is being modified on a single-thread context.
         SINGLE_THREAD_USE
     };
     std::atomic<ExpandState> m_expand_state{ExpandState::INITIAL};
@@ -144,11 +144,11 @@ private:
 
     // EXPANDING -> DONE
     void expand_done();
-    
+
     // EXPANDING -> INITIAL
     void expand_cancel();
 
-    // make sure we are on EXPANDED state
+    // wait until we are on EXPANDED state
     void check_expanded();
 
     // EXPANDED -> SINGLE_THREAD_USE
