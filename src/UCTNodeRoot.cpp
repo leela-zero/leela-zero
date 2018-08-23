@@ -420,7 +420,6 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
 
     if (cfg_dyn_komi) {
         if (cfg_collect_during_search) {
-            // root changed, clear all sym_states that are not descendents of root
             auto hash = root_state.board.get_ko_hash();
             auto index = root_state.m_ko_hash_history.size() - 1;
             for (auto i = 0; i < 2; i++) {
@@ -429,7 +428,7 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
                 if (!cfg_use_root_for_diff) { colored_root_eval = 0.0f; }
                 for (auto j = 0; j < ss[i].size(); j++) {
                     bool to_remove = false;
-                    if ((!search->collecting &&
+                    if ((!search->collecting && // root changed, clear all sym_states that are not descendents of root
                         (ss[i][j]->state.m_ko_hash_history.size() <= index
                             || ss[i][j]->state.m_ko_hash_history[index] != hash))) {
                         num_removed++;
@@ -452,7 +451,7 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
         }
 
         bool to_adjust = false;
-        // no need to collect ss[0] or ss[1] if cfg_pos or cfg_neg?
+        // no need to collect ss[0] or ss[1] if cfg_pos or cfg_neg ..
         if (search->collecting || (ss[0].size() >= cfg_adj_playouts && ss[1].size() >= cfg_adj_playouts)) {
             to_adjust = true;
             auto num_positions = ceil(cfg_adj_playouts * cfg_adj_pct / 100.0);
@@ -483,7 +482,7 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
             tmp_komi = root_state.m_stm_komi;
             if (komi != root_state.m_stm_komi) {
                 clear(network, nodes, root_state, root_eval);
-                search->sym_states[color].assign(cfg_num_threads, {});
+                //search->sym_states[color].assign(cfg_num_threads, {});
             }
             if (komi != root_state.m_stm_komi || cfg_pos || cfg_neg) {
                 if (!(cfg_pos || cfg_neg) && (root_state.m_stm_komi == cfg_target_komi || root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5)) {
@@ -504,7 +503,7 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
 
                 if (opp_komi != root_state.m_opp_komi) {
                     clear(network, nodes, root_state, root_eval);
-                    search->sym_states[!color].assign(cfg_num_threads, {});
+                    //search->sym_states[!color].assign(cfg_num_threads, {});
                 }
                 else if (!(cfg_pos || cfg_neg)) {
                     root_state.m_stm_komi = komi;
@@ -515,9 +514,11 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
             }
             if (tmp_komi != root_state.m_stm_komi) {
                 clear(network, nodes, root_state, root_eval);
-                search->sym_states[color].assign(cfg_num_threads, {});
+                //search->sym_states[color].assign(cfg_num_threads, {});
             }
         }
+        search->sym_states[0].assign(cfg_num_threads, {});
+        search->sym_states[1].assign(cfg_num_threads, {});
         Utils::myprintf("NN eval=%f\n", root_eval);
         Utils::myprintf("komi=%f\n", root_state.m_stm_komi);
         Utils::myprintf("opp_komi=%f\n", root_state.m_opp_komi);
