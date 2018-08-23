@@ -47,10 +47,6 @@ bool UCTNode::first_visit() const {
     return m_visits == 0;
 }
 
-SMP::Mutex& UCTNode::get_mutex() {
-    return m_nodemutex;
-}
-
 bool UCTNode::create_children(Network & network,
                               std::atomic<int>& nodecount,
                               GameState& state,
@@ -61,22 +57,22 @@ bool UCTNode::create_children(Network & network,
         return false;
     }
     // acquire the lock
-    LOCK(get_mutex(), lock);
+    bool success = acquire_expanding();
+    if (!success) {
+        return false;
+    }
+    
     // no successors in final state
     if (state.get_passes() >= 2) {
+        expand_done();
         return false;
     }
+
     // check whether somebody beat us to it (after taking the lock)
     if (!expandable(min_psa_ratio)) {
+        expand_cancel();
         return false;
     }
-    // Someone else is running the expansion
-    if (m_is_expanding) {
-        return false;
-    }
-    // We'll be the one queueing this node for expansion, stop others
-    m_is_expanding = true;
-    lock.unlock();
 
     const auto raw_netlist = network.get_output(
         &state, Network::Ensemble::RANDOM_SYMMETRY);
@@ -119,6 +115,7 @@ bool UCTNode::create_children(Network & network,
     }
 
     link_nodelist(nodecount, nodelist, min_psa_ratio);
+    expand_done();
     return true;
 }
 
@@ -133,8 +130,6 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
 
     // Use best to worst order, so highest go first
     std::stable_sort(rbegin(nodelist), rend(nodelist));
-
-    LOCK(get_mutex(), lock);
 
     const auto max_psa = nodelist[0].first;
     const auto old_min_psa = max_psa * m_min_psa_ratio_children;
@@ -160,7 +155,6 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
     }
 
     m_min_psa_ratio_children = skipped_children ? min_psa_ratio : 0.0f;
-    m_is_expanding = false;
 }
 
 const std::vector<UCTNodePointer>& UCTNode::get_children() const {
@@ -242,7 +236,7 @@ void UCTNode::accumulate_eval(float eval) {
 }
 
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
-    LOCK(get_mutex(), lock);
+    check_expanded();
 
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
@@ -320,17 +314,21 @@ private:
 };
 
 void UCTNode::sort_children(int color) {
-    LOCK(get_mutex(), lock);
+    decl_single_thread_use();
     std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color));
+    finish_single_thread_use();
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
-    LOCK(get_mutex(), lock);
     assert(!m_children.empty());
+
+    decl_single_thread_use();
 
     auto ret = std::max_element(begin(m_children), end(m_children),
                                 NodeComp(color));
     ret->inflate();
+
+    finish_single_thread_use();
     return *(ret->get());
 }
 

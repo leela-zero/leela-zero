@@ -46,7 +46,7 @@ UCTNodePointer::UCTNodePointer(std::int16_t vertex, float policy) {
     std::memcpy(&i_policy, &policy, sizeof(i_policy));
 
     m_data =  (static_cast<std::uint64_t>(i_policy)  << 32)
-            | (static_cast<std::uint64_t>(i_vertex) << 16) | 1ULL;
+            | (static_cast<std::uint64_t>(i_vertex) << 16);
 }
 
 UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
