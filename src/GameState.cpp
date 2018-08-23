@@ -56,7 +56,7 @@ void GameState::reset_game() {
     m_resigned = FastBoard::EMPTY;
 }
 
-bool GameState::forward_move(void) {
+bool GameState::forward_move() {
     if (game_history.size() > m_movenum + 1) {
         m_movenum++;
         *(static_cast<KoState*>(this)) = *game_history[m_movenum];
@@ -66,7 +66,7 @@ bool GameState::forward_move(void) {
     }
 }
 
-bool GameState::undo_move(void) {
+bool GameState::undo_move() {
     if (m_movenum > 0) {
         m_movenum--;
 
@@ -80,7 +80,7 @@ bool GameState::undo_move(void) {
     }
 }
 
-void GameState::rewind(void) {
+void GameState::rewind() {
     *(static_cast<KoState*>(this)) = *game_history[0];
     m_movenum = 0;
 }
@@ -193,7 +193,7 @@ void GameState::adjust_time(int color, int time, int stones) {
     m_timecontrol.adjust_time(color, time, stones);
 }
 
-void GameState::anchor_game_history(void) {
+void GameState::anchor_game_history() {
     // handicap moves don't count in game history
     m_movenum = 0;
     game_history.clear();

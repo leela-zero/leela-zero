@@ -84,7 +84,7 @@ std::istream& operator>> (std::istream& stream, TimeStep& timestep) {
     return stream;
 }
 
-std::string OutputChunker::gen_chunk_name(void) const {
+std::string OutputChunker::gen_chunk_name() const {
     auto base = std::string{m_basename};
     base.append("." + std::to_string(m_chunk_count) + ".gz");
     return base;

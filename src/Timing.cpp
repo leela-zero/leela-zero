@@ -30,6 +30,6 @@ double Time::timediff_seconds(Time start, Time end) {
     return std::chrono::duration<double>(end.m_time - start.m_time).count();
 }
 
-Time::Time(void) {
+Time::Time() {
     m_time = std::chrono::steady_clock::now();
 }
