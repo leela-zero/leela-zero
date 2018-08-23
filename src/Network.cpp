@@ -63,7 +63,8 @@ namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
 // Symmetry helper
-static std::array<std::array<int, BOARD_SQUARES>, Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
+static std::array<std::array<int, NUM_INTERSECTIONS>,
+                  Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
 
 float Network::benchmark_time(int centiseconds) {
     const auto cpus = cfg_num_threads;
@@ -245,18 +246,28 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
             switch (linecount - plain_conv_wts) {
                 case  0: m_conv_pol_w = std::move(weights); break;
                 case  1: m_conv_pol_b = std::move(weights); break;
-                case  2: std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w1)); break;
-                case  3: std::copy(cbegin(weights), cend(weights), begin(m_bn_pol_w2)); break;
-                case  4: std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_w)); break;
-                case  5: std::copy(cbegin(weights), cend(weights), begin(m_ip_pol_b)); break;
+                case  2: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_bn_pol_w1)); break;
+                case  3: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_bn_pol_w2)); break;
+                case  4: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip_pol_w)); break;
+                case  5: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip_pol_b)); break;
                 case  6: m_conv_val_w = std::move(weights); break;
                 case  7: m_conv_val_b = std::move(weights); break;
-                case  8: std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w1)); break;
-                case  9: std::copy(cbegin(weights), cend(weights), begin(m_bn_val_w2)); break;
-                case 10: std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_w)); break;
-                case 11: std::copy(cbegin(weights), cend(weights), begin(m_ip1_val_b)); break;
-                case 12: std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_w)); break;
-                case 13: std::copy(cbegin(weights), cend(weights), begin(m_ip2_val_b)); break;
+                case  8: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_bn_val_w1)); break;
+                case  9: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_bn_val_w2)); break;
+                case 10: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip1_val_w)); break;
+                case 11: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip1_val_b)); break;
+                case 12: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip2_val_w)); break;
+                case 13: std::copy(cbegin(weights), cend(weights),
+                                   begin(m_ip2_val_b)); break;
             }
         }
         linecount++;
@@ -318,13 +329,32 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
 }
 
 void Network::initialize(int playouts, const std::string & weightsfile) {
+#ifdef USE_BLAS
+#ifndef __APPLE__
+#ifdef USE_OPENBLAS
+    openblas_set_num_threads(1);
+    myprintf("BLAS Core: %s\n", openblas_get_corename());
+#endif
+#ifdef USE_MKL
+    //mkl_set_threading_layer(MKL_THREADING_SEQUENTIAL);
+    mkl_set_num_threads(1);
+    MKLVersion Version;
+    mkl_get_version(&Version);
+    myprintf("BLAS core: MKL %s\n", Version.Processor);
+#endif
+#endif
+#endif
+
     m_nncache.set_size_from_playouts(playouts);
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
-        for (auto v = 0; v < BOARD_SQUARES; ++v) {
-            const auto newvtx = get_symmetry({v % BOARD_SIZE, v / BOARD_SIZE}, s);
-            symmetry_nn_idx_table[s][v] = (newvtx.second * BOARD_SIZE) + newvtx.first;
-            assert(symmetry_nn_idx_table[s][v] >= 0 && symmetry_nn_idx_table[s][v] < BOARD_SQUARES);
+        for (auto v = 0; v < NUM_INTERSECTIONS; ++v) {
+            const auto newvtx =
+                get_symmetry({v % BOARD_SIZE, v / BOARD_SIZE}, s);
+            symmetry_nn_idx_table[s][v] =
+                (newvtx.second * BOARD_SIZE) + newvtx.first;
+            assert(symmetry_nn_idx_table[s][v] >= 0
+                   && symmetry_nn_idx_table[s][v] < NUM_INTERSECTIONS);
         }
     }
 
@@ -372,71 +402,9 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         m_conv_pol_b[i] = 0.0f;
     }
 
-#ifdef USE_HALF
-    std::unique_ptr<ForwardPipe> fp16net;
-#endif
-    std::vector<ForwardPipe*> to_init;
-
-    bool use_selfcheck = true;
-#ifdef USE_OPENCL
-    if (cfg_cpu_only) {
-        myprintf("Initializing CPU-only evaluation.\n");
-        m_forward = std::make_unique<CPUPipe>();
-
-        use_selfcheck = false;
-    } else {
-#ifdef USE_HALF
-        switch (cfg_precision) {
-            case precision_t::AUTO: {
-                // create fp16 and fp32 both here.  will select one of them later.
-                myprintf("Initializing OpenCL (autodetect precision).\n");
-                try {
-                    fp16net = std::make_unique<OpenCLScheduler<half_float::half>>();
-                    fp16net->initialize(channels);
-                    to_init.emplace_back(fp16net.get());
-                } catch (std::runtime_error) {
-                    myprintf("Failed to initialize half precision net.  Resorting to single precision.\n");
-                    fp16net.reset();
-                }
-                m_forward = std::make_unique<OpenCLScheduler<float>>();
-            }
-            break;
-            case precision_t::SINGLE: {
-                myprintf("Initializing OpenCL (single precision).\n");
-                m_forward = std::make_unique<OpenCLScheduler<float>>();
-            }
-            break;
-            case precision_t::HALF: {
-                myprintf("Initializing OpenCL (half precision).\n");
-                m_forward = std::make_unique<OpenCLScheduler<half_float::half>>();
-            }
-        }
-#else
-        myprintf("Initializing OpenCL (single precision).\n");
-        m_forward = std::make_unique<OpenCLScheduler<float>>();
-#endif
-    }
-
-#else //!USE_OPENCL
-    myprintf("Initializing CPU-only evaluation.\n");
-    m_forward = std::make_unique<CPUPipe>();
-    use_selfcheck = false;
-#endif
-
-    m_forward->initialize(channels);
-    to_init.emplace_back(m_forward.get());
-#ifdef USE_OPENCL_SELFCHECK
-    if (use_selfcheck) {
-        m_forward_cpu = std::make_unique<CPUPipe>();
-        m_forward_cpu->initialize(channels);
-        to_init.emplace_back(m_forward_cpu.get());
-    }
-#else
-    (void)use_selfcheck;
-#endif
-
-    for (const auto& p : to_init) {
-        weight_index = 0;
+    auto init_net = [this, channels, residual_blocks](auto&& p) {
+        p->initialize(channels);
+        auto weight_index = size_t{0};
 
         // Winograd filter transformation changes filter size to 4x4
         p->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
@@ -459,44 +427,90 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         // Output head convolutions
         p->push_convolve(1, channels, OUTPUTS_POLICY, m_conv_pol_w);
         p->push_convolve(1, channels, OUTPUTS_VALUE, m_conv_val_w);
-    }
-#ifdef USE_BLAS
-#ifndef __APPLE__
-#ifdef USE_OPENBLAS
-    openblas_set_num_threads(1);
-    myprintf("BLAS Core: %s\n", openblas_get_corename());
-#endif
-#ifdef USE_MKL
-    //mkl_set_threading_layer(MKL_THREADING_SEQUENTIAL);
-    mkl_set_num_threads(1);
-    MKLVersion Version;
-    mkl_get_version(&Version);
-    myprintf("BLAS core: MKL %s\n", Version.Processor);
-#endif
-#endif
-#endif
 
+        return std::move(p);
+    };
+
+
+    bool use_selfcheck = true;
+#ifdef USE_OPENCL
+    if (cfg_cpu_only) {
+        myprintf("Initializing CPU-only evaluation.\n");
+        m_forward = init_net(std::make_unique<CPUPipe>());
+
+        use_selfcheck = false;
+    } else {
 #ifdef USE_HALF
-    if (fp16net != nullptr) {
-        auto score_fp32 = benchmark_time(100);
-        std::swap(fp16net, m_forward);
-        auto score_fp16 = float{-1.0};
-        try {
-            score_fp16 = benchmark_time(100);
-        } catch (...) {
-            // empty - if exception thrown just throw away fp16 net
-        }
+        switch (cfg_precision) {
+            case precision_t::AUTO:
+                {
+                    auto score_fp16 = float{-1.0};
+                    auto score_fp32 = float{-1.0};
 
-        if (score_fp16 < 0.0) {
-            std::swap(fp16net, m_forward);
-            myprintf("Using OpenCL single precision (half precision failed to run)\n");
-        } else if (score_fp32 * 1.05f > score_fp16) {
-            std::swap(fp16net, m_forward);
-            myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
-        } else {
-            myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
+                    myprintf("Initializing OpenCL (autodetect precision).\n");
+                    try {
+                        m_forward = init_net(
+                            std::make_unique<OpenCLScheduler<float>>());
+                        score_fp32 = benchmark_time(100);
+                    } catch (...) {
+                        // empty - if exception thrown just throw away fp32 net
+                    }
+
+                    try {
+                        m_forward = init_net(
+                            std::make_unique<OpenCLScheduler<half_float::half>>());
+                        score_fp16 = benchmark_time(100);
+                    } catch (...) {
+                        // empty - if exception thrown just throw away fp16 net
+                    }
+
+                    if (score_fp16 < 0.0f && score_fp32 < 0.0f) {
+                        myprintf("Both single precision and half precision failed to run\n");
+                        throw std::runtime_error("Failed to initialize net");
+                    } else if (score_fp16 < 0.0f) {
+                        myprintf("Using OpenCL single precision (half precision failed to run)\n");
+                        m_forward = init_net(
+                            std::make_unique<OpenCLScheduler<float>>());
+                    } else if (score_fp32 < 0.0f) {
+                        myprintf("Using OpenCL half precision (single precision failed to run)\n");
+                    } else if (score_fp32 * 1.05f > score_fp16) {
+                        myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
+                        m_forward = init_net(
+                            std::make_unique<OpenCLScheduler<float>>());
+                    } else {
+                        myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
+                    }
+                }
+                break;
+            case precision_t::SINGLE:
+                myprintf("Initializing OpenCL (single precision).\n");
+                m_forward = init_net(
+                    std::make_unique<OpenCLScheduler<float>>());
+                break;
+            case precision_t::HALF:
+                myprintf("Initializing OpenCL (half precision).\n");
+                m_forward = init_net(
+                    std::make_unique<OpenCLScheduler<half_float::half>>());
+                break;
         }
+#else
+        myprintf("Initializing OpenCL (single precision).\n");
+        m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
+#endif
     }
+
+#else //!USE_OPENCL
+    myprintf("Initializing CPU-only evaluation.\n");
+    m_forward = init_net(std::make_unique<CPUPipe>());
+    use_selfcheck = false;
+#endif
+
+#ifdef USE_OPENCL_SELFCHECK
+    if (use_selfcheck) {
+        m_forward_cpu = init_net(std::make_unique<CPUPipe>());
+    }
+#else
+    (void)use_selfcheck;
 #endif
 }
 
@@ -580,8 +594,8 @@ void Network::compare_net_outputs(Netresult& data,
     error = std::sqrt(error);
 
     if (error > max_error || std::isnan(error)) {
-        printf("Error in OpenCL calculation: Update your GPU drivers or reduce the amount of games "
-               "played simultaneously.\n");
+        printf("Error in OpenCL calculation: Update your GPU drivers "
+               "or reduce the amount of games played simultaneously.\n");
         throw std::runtime_error("OpenCL self-check mismatch.");
     }
 }
@@ -625,7 +639,7 @@ bool Network::probe_cache(const GameState* const state,
             const auto hash = state->get_symmetry_hash(sym);
             if (m_nncache.lookup(hash, result)) {
                 decltype(result.policy) corrected_policy;
-                for (auto idx = size_t{0}; idx < BOARD_SQUARES; ++idx) {
+                for (auto idx = size_t{0}; idx < NUM_INTERSECTIONS; ++idx) {
                     const auto sym_idx = symmetry_nn_idx_table[sym][idx];
                     corrected_policy[idx] = result.policy[sym_idx];
                 }
@@ -659,11 +673,14 @@ Network::Netresult Network::get_output(
     } else if (ensemble == AVERAGE) {
         for (auto sym = 0; sym < NUM_SYMMETRIES; ++sym) {
             auto tmpresult = get_output_internal(state, sym);
-            result.winrate += tmpresult.winrate / static_cast<float>(NUM_SYMMETRIES);
-            result.policy_pass += tmpresult.policy_pass / static_cast<float>(NUM_SYMMETRIES);
+            result.winrate +=
+                tmpresult.winrate / static_cast<float>(NUM_SYMMETRIES);
+            result.policy_pass +=
+                tmpresult.policy_pass / static_cast<float>(NUM_SYMMETRIES);
 
-            for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
-                result.policy[idx] += tmpresult.policy[idx] / static_cast<float>(NUM_SYMMETRIES);
+            for (auto idx = size_t{0}; idx < NUM_INTERSECTIONS; idx++) {
+                result.policy[idx] +=
+                    tmpresult.policy[idx] / static_cast<float>(NUM_SYMMETRIES);
             }
         }
     } else {
@@ -674,9 +691,10 @@ Network::Netresult Network::get_output(
 #ifdef USE_OPENCL_SELFCHECK
         // Both implementations are available, self-check the OpenCL driver by
         // running both with a probability of 1/2000.
-        // selfcheck is done here because this is the only place NN evaluation is done
-        // on actual gameplay.
-        if (m_forward_cpu != nullptr && Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
+        // selfcheck is done here because this is the only place NN
+        // evaluation is done on actual gameplay.
+        if (m_forward_cpu != nullptr
+            && Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
             auto result_ref = get_output_internal(state, rand_sym, true);
             compare_net_outputs(result, result_ref);
         }
@@ -717,32 +735,33 @@ Network::Netresult Network::get_output_internal(
 #endif
 
     // Get the moves
-    batchnorm<BOARD_SQUARES>(OUTPUTS_POLICY, policy_data,
+    batchnorm<NUM_INTERSECTIONS>(OUTPUTS_POLICY, policy_data,
         m_bn_pol_w1.data(), m_bn_pol_w2.data());
     const auto policy_out =
-        innerproduct<OUTPUTS_POLICY * BOARD_SQUARES, BOARD_SQUARES + 1, false>(
+        innerproduct<OUTPUTS_POLICY * NUM_INTERSECTIONS, POTENTIAL_MOVES, false>(
             policy_data, m_ip_pol_w, m_ip_pol_b);
     const auto outputs = softmax(policy_out, cfg_softmax_temp);
 
     // Now get the value
-    batchnorm<BOARD_SQUARES>(OUTPUTS_VALUE, value_data,
+    batchnorm<NUM_INTERSECTIONS>(OUTPUTS_VALUE, value_data,
         m_bn_val_w1.data(), m_bn_val_w2.data());
     const auto winrate_data =
-        innerproduct<BOARD_SQUARES, 256, true>(value_data, m_ip1_val_w, m_ip1_val_b);
+        innerproduct<OUTPUTS_VALUE * NUM_INTERSECTIONS, VALUE_LAYER, true>(
+            value_data, m_ip1_val_w, m_ip1_val_b);
     const auto winrate_out =
-        innerproduct<256, 1, false>(winrate_data, m_ip2_val_w, m_ip2_val_b);
+        innerproduct<VALUE_LAYER, 1, false>(winrate_data, m_ip2_val_w, m_ip2_val_b);
 
     // Map TanH output range [-1..1] to [0..1] range
     const auto winrate = (1.0f + std::tanh(winrate_out[0])) / 2.0f;
 
     Netresult result;
 
-    for (auto idx = size_t{0}; idx < BOARD_SQUARES; idx++) {
+    for (auto idx = size_t{0}; idx < NUM_INTERSECTIONS; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
         result.policy[sym_idx] = outputs[idx];
     }
 
-    result.policy_pass = outputs[BOARD_SQUARES];
+    result.policy_pass = outputs[NUM_INTERSECTIONS];
     result.winrate = winrate;
 
     return result;
@@ -758,7 +777,7 @@ void Network::show_heatmap(const FastState* const state,
         for (unsigned int x = 0; x < BOARD_SIZE; x++) {
             auto policy = 0;
             const auto vertex = state->board.get_vertex(x, y);
-            if (state->board.get_square(vertex) == FastBoard::EMPTY) {
+            if (state->board.get_state(vertex) == FastBoard::EMPTY) {
                 policy = result.policy[y * BOARD_SIZE + x] * 1000;
             }
 
@@ -778,11 +797,11 @@ void Network::show_heatmap(const FastState* const state,
 
     if (topmoves) {
         std::vector<Network::PolicyVertexPair> moves;
-        for (auto i=0; i < BOARD_SQUARES; i++) {
+        for (auto i=0; i < NUM_INTERSECTIONS; i++) {
             const auto x = i % BOARD_SIZE;
             const auto y = i / BOARD_SIZE;
             const auto vertex = state->board.get_vertex(x, y);
-            if (state->board.get_square(vertex) == FastBoard::EMPTY) {
+            if (state->board.get_state(vertex) == FastBoard::EMPTY) {
                 moves.emplace_back(result.policy[i], vertex);
             }
         }
@@ -807,11 +826,11 @@ void Network::fill_input_plane_pair(const FullBoard& board,
                                     std::vector<float>::iterator black,
                                     std::vector<float>::iterator white,
                                     const int symmetry) {
-    for (auto idx = 0; idx < BOARD_SQUARES; idx++) {
+    for (auto idx = 0; idx < NUM_INTERSECTIONS; idx++) {
         const auto sym_idx = symmetry_nn_idx_table[symmetry][idx];
         const auto x = sym_idx % BOARD_SIZE;
         const auto y = sym_idx / BOARD_SIZE;
-        const auto color = board.get_square(x, y);
+        const auto color = board.get_state(x, y);
         if (color == FastBoard::BLACK) {
             black[idx] = float(true);
         } else if (color == FastBoard::WHITE) {
@@ -823,32 +842,32 @@ void Network::fill_input_plane_pair(const FullBoard& board,
 std::vector<float> Network::gather_features(const GameState* const state,
                                             const int symmetry) {
     assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
-    auto input_data = std::vector<float>(INPUT_CHANNELS * BOARD_SQUARES);
+    auto input_data = std::vector<float>(INPUT_CHANNELS * NUM_INTERSECTIONS);
 
     const auto to_move = state->get_to_move();
     const auto blacks_move = to_move == FastBoard::BLACK;
 
     const auto black_it = blacks_move ?
                           begin(input_data) :
-                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES;
+                          begin(input_data) + INPUT_MOVES * NUM_INTERSECTIONS;
     const auto white_it = blacks_move ?
-                          begin(input_data) + INPUT_MOVES * BOARD_SQUARES :
+                          begin(input_data) + INPUT_MOVES * NUM_INTERSECTIONS :
                           begin(input_data);
     const auto to_move_it = blacks_move ?
-        begin(input_data) + 2 * INPUT_MOVES * BOARD_SQUARES :
-        begin(input_data) + (2 * INPUT_MOVES + 1) * BOARD_SQUARES;
+        begin(input_data) + 2 * INPUT_MOVES * NUM_INTERSECTIONS :
+        begin(input_data) + (2 * INPUT_MOVES + 1) * NUM_INTERSECTIONS;
 
     const auto moves = std::min<size_t>(state->get_movenum() + 1, INPUT_MOVES);
     // Go back in time, fill history boards
     for (auto h = size_t{0}; h < moves; h++) {
         // collect white, black occupation planes
         fill_input_plane_pair(state->get_past_board(h),
-                              black_it + h * BOARD_SQUARES,
-                              white_it + h * BOARD_SQUARES,
+                              black_it + h * NUM_INTERSECTIONS,
+                              white_it + h * NUM_INTERSECTIONS,
                               symmetry);
     }
 
-    std::fill(to_move_it, to_move_it + BOARD_SQUARES, float(true));
+    std::fill(to_move_it, to_move_it + NUM_INTERSECTIONS, float(true));
 
     return input_data;
 }

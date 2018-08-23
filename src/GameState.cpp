@@ -145,7 +145,7 @@ bool GameState::play_textmove(const std::string& color,
     }
 
     auto move = board.get_vertex(column, row);
-    if (board.get_square(move) != FastBoard::EMPTY) {
+    if (board.get_state(move) != FastBoard::EMPTY) {
         return false;
     }
 
@@ -259,15 +259,15 @@ int GameState::set_fixed_handicap_2(int handicap) {
         for (int i = low; i <= high; i += interval) {
             for (int j = low; j <= high; j += interval) {
                 if (placed >= handicap) return placed;
-                if (board.get_square(i-1, j-1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i-1, j) != FastBoard::EMPTY) continue;
-                if (board.get_square(i-1, j+1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i, j-1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i, j) != FastBoard::EMPTY) continue;
-                if (board.get_square(i, j+1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i+1, j-1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i+1, j) != FastBoard::EMPTY) continue;
-                if (board.get_square(i+1, j+1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i-1, j-1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i-1, j) != FastBoard::EMPTY) continue;
+                if (board.get_state(i-1, j+1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i, j-1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i, j) != FastBoard::EMPTY) continue;
+                if (board.get_state(i, j+1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i+1, j-1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i+1, j) != FastBoard::EMPTY) continue;
+                if (board.get_state(i+1, j+1) != FastBoard::EMPTY) continue;
                 play_move(FastBoard::BLACK, board.get_vertex(i, j));
                 placed++;
             }

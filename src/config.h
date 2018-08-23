@@ -37,7 +37,8 @@
 static constexpr auto BOARD_SIZE = 19;
 static_assert(BOARD_SIZE % 2 == 1, "Code assumes odd board size, remove at your own risk!");
 
-static constexpr auto BOARD_SQUARES = BOARD_SIZE * BOARD_SIZE;
+static constexpr auto NUM_INTERSECTIONS = BOARD_SIZE * BOARD_SIZE;
+static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
 
 /*
  * Features

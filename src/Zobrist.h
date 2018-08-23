@@ -31,10 +31,10 @@ public:
     static constexpr auto zobrist_empty = 0x1234567887654321;
     static constexpr auto zobrist_blacktomove = 0xABCDABCDABCDABCD;
 
-    static std::array<std::array<std::uint64_t, FastBoard::MAXSQ>,     4> zobrist;
-    static std::array<std::uint64_t, FastBoard::MAXSQ>                    zobrist_ko;
-    static std::array<std::array<std::uint64_t, FastBoard::MAXSQ * 2>, 2> zobrist_pris;
-    static std::array<std::uint64_t, 5>                                   zobrist_pass;
+    static std::array<std::array<std::uint64_t, FastBoard::NUM_VERTICES>,     4> zobrist;
+    static std::array<std::uint64_t, FastBoard::NUM_VERTICES>                    zobrist_ko;
+    static std::array<std::array<std::uint64_t, FastBoard::NUM_VERTICES * 2>, 2> zobrist_pris;
+    static std::array<std::uint64_t, 5>                                          zobrist_pass;
 
     static void init_zobrist(Random& rng);
 };
