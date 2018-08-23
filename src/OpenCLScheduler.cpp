@@ -25,6 +25,7 @@
 #include "OpenCLScheduler.h"
 
 using Utils::ceilMultiple;
+using Utils::myprintf;
 
 static std::vector<float> zeropad_U(const std::vector<float>& U,
                                     const int outputs, const int channels,
@@ -73,6 +74,8 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     const auto num_threads = (cfg_num_threads + gpus.size() - 1) / gpus.size();
     m_context_pool.resize(num_threads);
 
+    m_opencl_contexts.resize(gpus.size());
+
     for (auto gpu : gpus) {
         auto opencl = std::make_unique<OpenCL<net_t>>();
         auto net = std::make_unique<OpenCL_Network<net_t>>(*opencl);
@@ -86,6 +89,8 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
         for (auto i = size_t{0}; i < num_threads; i++) {
             m_context_pool[i].emplace_back(std::make_shared<ContextPoolEntry>(gnum));
         }
+
+        m_worker_threads.emplace_back(std::thread(&OpenCLScheduler<net_t>::batch_worker, this, gnum));
         gnum++;
     }
 }
@@ -164,28 +169,81 @@ template <typename net_t>
 void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
                                      std::vector<float>& output_pol,
                                      std::vector<float>& output_val) {
-    std::shared_ptr<ContextPoolEntry> ctx;
-    auto queue_num = size_t{0};
-    {
-        LOCK(m_context_pool_mutex, lock);
-        while (queue_num < m_context_pool.size()) {
-            if (!m_context_pool[queue_num].empty()) {
-                ctx = std::move(m_context_pool[queue_num].front());
-                m_context_pool[queue_num].pop_front();
-                break;
+    LOCK(m_forward_queue_mutex, lock);
+    m_forward_queue.emplace_back(input, output_pol, output_val);
+
+    ForwardQueueEntry &entry = m_forward_queue.front();
+    auto mutex = entry.mutex;
+    auto cv = entry.cv;
+    lock.unlock();
+    std::unique_lock<std::mutex> lk(*mutex);
+    myprintf("forward wait\n");
+    cv->wait(lk);
+    myprintf("forward done\n");
+}
+
+static constexpr auto BATCH_SIZE = 4;
+static auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SQUARES * MAX_BATCH);
+static auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SQUARES * MAX_BATCH);
+static auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SQUARES * MAX_BATCH);
+size_t batch_index = 0;
+
+template <typename net_t>
+void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
+    myprintf("worker %d started\n", gnum);
+    while(1) {
+        std::list<ForwardQueueEntry> inputs;
+        size_t count = 0;
+        {
+            LOCK(m_forward_queue_mutex, lock);
+            count = std::min(m_forward_queue.size(), size_t{BATCH_SIZE});
+            if (count > 0) {
+                batch_index++;
+                myprintf("%d: found %d entries (total %d)\n", batch_index, count, m_forward_queue.size());
+                auto begin = m_forward_queue.begin();
+                auto end = begin;
+                std::advance(end, count);
+                std::move(begin, end, std::back_inserter(inputs));
+                m_forward_queue.erase(begin, end);
+                myprintf("%d: left %d entries\n", batch_index, m_forward_queue.size());
             }
-            queue_num++;
         }
-        // if this failed, it means we ran out of contexts
-        // which should be more than or equal to the number of threads
-        assert(ctx != nullptr);
-    }
 
-    m_networks[ctx->net_index]->forward(input, output_pol, output_val, ctx->context);
+        if (count == 0) {
+            //TODO add wait
+            continue;
+        }
 
-    {
-        LOCK(m_context_pool_mutex, lock);
-        m_context_pool[queue_num].push_back(std::move(ctx));
+        {
+            myprintf("%d: prepare inputs from %d entries\n", batch_index, count);
+            size_t index = 0;
+            for (auto it = inputs.begin(); it != inputs.end(); ++it) {
+                std::copy(it->in.begin(), it->in.end(), batch_input.begin() + Network::INPUT_CHANNELS * BOARD_SQUARES * index);
+                index++;
+            }
+        }
+
+        {
+            myprintf("%d: forwarding %d, %d\n", batch_index, gnum, count);
+            m_networks[gnum]->forward(
+                batch_input, batch_output_pol, batch_output_val, m_opencl_contexts[gnum], count);
+        }
+
+        {
+            myprintf("%d: gather outputs\n", batch_index);
+            size_t index = 0;
+            for (auto it = inputs.begin(); it != inputs.end(); ++it) {
+                std::copy(batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SQUARES * index,
+                          batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SQUARES * (index + 1),
+                          it->out_p.begin());
+                std::copy(batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SQUARES * index,
+                          batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SQUARES * (index + 1),
+                          it->out_v.begin());
+                myprintf("%d: notify %d\n", batch_index, index);
+                it->cv->notify_all();
+                index++;
+            }
+        }
     }
 }
 

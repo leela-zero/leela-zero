@@ -86,8 +86,7 @@ static constexpr auto BOARD_SQUARES = BOARD_SIZE * BOARD_SIZE;
 
 /* Maximum supported batch size for OpenCL.
  */
-static constexpr auto MAX_BATCH = 1;
-static_assert(MAX_BATCH == 1, "MAX_BATCH != 1 not implemented");
+static constexpr auto MAX_BATCH = 64;
 
 /*
  * USE_TUNER: Expose some extra command line parameters that allow tuning the

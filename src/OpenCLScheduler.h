@@ -22,6 +22,8 @@
 
 #include <list>
 #include <vector>
+#include <queue>
+#include <thread>
 
 #include "SMP.h"
 #include "ForwardPipe.h"
@@ -36,6 +38,19 @@ class OpenCLScheduler : public ForwardPipe {
         size_t net_index;
         OpenCLContext context;
         ContextPoolEntry(size_t index) : net_index(index) {}
+    };
+    class ForwardQueueEntry {
+    public:
+      std::shared_ptr<std::mutex> mutex;
+      std::shared_ptr<std::condition_variable> cv;
+      const std::vector<float>& in;
+      std::vector<float>& out_p;
+      std::vector<float>& out_v;
+      ForwardQueueEntry(const std::vector<float>& input,
+                        std::vector<float>& output_pol,
+                        std::vector<float>& output_val) : in(input), out_p(output_pol), out_v(output_val),
+        mutex(std::make_shared<std::mutex>()), cv(std::make_shared<std::condition_variable>())
+        {}
     };
 public:
     virtual void initialize(const int channels);
@@ -73,6 +88,16 @@ private:
     std::vector<ContextPoolQueue> m_context_pool;
 
     SMP::Mutex m_context_pool_mutex;
+
+    std::vector<OpenCLContext> m_opencl_contexts;
+    OpenCLContext m_single_context;
+
+    SMP::Mutex m_forward_queue_mutex;
+    std::list<ForwardQueueEntry> m_forward_queue;
+
+    std::vector<std::thread> m_worker_threads;
+
+    void batch_worker(const size_t gnum);
 };
 
 #endif
