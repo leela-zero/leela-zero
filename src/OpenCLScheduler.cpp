@@ -201,9 +201,9 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
 }
 
 static constexpr auto BATCH_SIZE = 4;
-static auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SQUARES * MAX_BATCH);
-static auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SQUARES * MAX_BATCH);
-static auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SQUARES * MAX_BATCH);
+static auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * MAX_BATCH);
+static auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * MAX_BATCH);
+static auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * MAX_BATCH);
 size_t batch_index = 0;
 
 template <typename net_t>
@@ -236,7 +236,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             myprintf("%d: prepare inputs from %d entries\n", batch_index, count);
             size_t index = 0;
             for (auto it = inputs.begin(); it != inputs.end(); ++it) {
-                std::copy(it->in.begin(), it->in.end(), batch_input.begin() + Network::INPUT_CHANNELS * BOARD_SQUARES * index);
+                std::copy(it->in.begin(), it->in.end(), batch_input.begin() + Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * index);
                 index++;
             }
         }
@@ -251,11 +251,11 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             myprintf("%d: gather outputs\n", batch_index);
             size_t index = 0;
             for (auto it = inputs.begin(); it != inputs.end(); ++it) {
-                std::copy(batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SQUARES * index,
-                          batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SQUARES * (index + 1),
+                std::copy(batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * index,
+                          batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * (index + 1),
                           it->out_p.begin());
-                std::copy(batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SQUARES * index,
-                          batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SQUARES * (index + 1),
+                std::copy(batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * index,
+                          batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * (index + 1),
                           it->out_v.begin());
                 myprintf("%d: notify %d\n", batch_index, index);
                 it->cv->notify_all();
