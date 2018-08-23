@@ -850,7 +850,7 @@ std::vector<float> Network::gather_features(const GameState* const state,
                               white_it + h * BOARD_SQUARES,
                               symmetry);
     }
-
+    
     std::fill(black_to_move_it, black_to_move_it + BOARD_SQUARES, black_komi);
     std::fill(white_to_move_it, white_to_move_it + BOARD_SQUARES, white_komi);
 

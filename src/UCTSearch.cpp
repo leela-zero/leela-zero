@@ -80,8 +80,8 @@ UCTSearch::UCTSearch(GameState& g, Network& network)
     set_visit_limit(cfg_max_visits);
 
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
-    sym_states[0].resize(cfg_num_threads);
-    sym_states[1].resize(cfg_num_threads);
+    sym_states[0].assign(cfg_num_threads, {});
+    sym_states[1].assign(cfg_num_threads, {});
 }
 
 bool UCTSearch::advance_to_new_rootstate() {
@@ -221,7 +221,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                     rand_sym = cfg_fixed_symmetry;
                 }
                 success = node->create_children(m_network, m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
-                if (success) {
+                if (success && sym_states[color][thread_num].size() * cfg_num_threads < cfg_adj_playouts) {
                     auto sym_state = std::make_shared<Sym_State>();
                     auto color = currstate.get_to_move();
                     (*sym_state).symmetry = rand_sym;
@@ -230,7 +230,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                     //LOCK(get_mutex(), lock);
                     sym_states[color][thread_num].push_back(sym_state);
                     if ((sym_states[color][thread_num].size() - 1) * cfg_num_threads >= cfg_adj_playouts) {
-                        sym_states[color][thread_num].pop_front();
+                        //sym_states[color][thread_num].pop_front();
                     }
                 }
             }
@@ -790,8 +790,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
                     }
                 }
                 else if (!cfg_always_collect) {
-                    sym_states[0].assign(cfg_num_threads, {});
-                    sym_states[1].assign(cfg_num_threads, {});
+                    //sym_states[0].assign(cfg_num_threads, {});
+                    //sym_states[1].assign(cfg_num_threads, {});
                     collecting = false;
                 }
             }
@@ -882,8 +882,8 @@ void UCTSearch::ponder() {
                 collecting = true;
             }
             else if (!cfg_always_collect) {
-                sym_states[0].assign(cfg_num_threads, {});
-                sym_states[1].assign(cfg_num_threads, {});
+                //sym_states[0].assign(cfg_num_threads, {});
+                //sym_states[1].assign(cfg_num_threads, {});
                 collecting = false;
             }
         }
