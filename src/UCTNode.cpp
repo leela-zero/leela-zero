@@ -64,7 +64,7 @@ bool UCTNode::create_children(Network & network,
     
     // no successors in final state
     if (state.get_passes() >= 2) {
-        expand_done();
+        expand_cancel();
         return false;
     }
 
@@ -321,14 +321,12 @@ void UCTNode::sort_children(int color) {
 
 UCTNode& UCTNode::get_best_root_child(int color) {
     assert(!m_children.empty());
-
-    decl_single_thread_use();
+    check_expanded();
 
     auto ret = std::max_element(begin(m_children), end(m_children),
                                 NodeComp(color));
     ret->inflate();
 
-    finish_single_thread_use();
     return *(ret->get());
 }
 
@@ -360,3 +358,47 @@ bool UCTNode::valid() const {
 bool UCTNode::active() const {
     return m_status == ACTIVE;
 }
+
+bool UCTNode::acquire_expanding() {
+    auto expected = ExpandState::INITIAL;
+    auto newval = ExpandState::EXPANDING;
+    return m_expand_state.compare_exchange_strong(expected, newval);
+}
+
+void UCTNode::expand_done() {
+    auto v = m_expand_state.exchange(ExpandState::EXPANDED);
+#ifdef NDEBUG
+    (void)v;
+#endif
+    assert(v == ExpandState::EXPANDING);
+}
+void UCTNode::expand_cancel() {
+    auto v = m_expand_state.exchange(ExpandState::INITIAL);
+#ifdef NDEBUG
+    (void)v;
+#endif
+    assert(v == ExpandState::EXPANDING);
+}
+void UCTNode::check_expanded() {
+    while (m_expand_state.load() == ExpandState::EXPANDING) {}
+    auto v = m_expand_state.load();
+#ifdef NDEBUG
+    (void)v;
+#endif
+    assert(v == ExpandState::EXPANDED);
+}
+void UCTNode::decl_single_thread_use() {
+    auto v = m_expand_state.exchange(ExpandState::SINGLE_THREAD_USE);
+#ifdef NDEBUG
+    (void)v;
+#endif
+    assert(v == ExpandState::EXPANDED);
+}
+void UCTNode::finish_single_thread_use() {
+    auto v = m_expand_state.exchange(ExpandState::EXPANDED);
+#ifdef NDEBUG
+    (void)v;
+#endif
+    assert(v == ExpandState::SINGLE_THREAD_USE);
+}
+

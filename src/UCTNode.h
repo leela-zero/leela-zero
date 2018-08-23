@@ -113,44 +113,49 @@ private:
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
 
+    // m_expand_state acts as the lock for m_children.
+    // see manipulation methods below for possible state transition
+    enum class ExpandState : std::uint8_t {
+        // initial state, no children
+        INITIAL=0,         
 
-    enum class expand_t {
-        INITIAL=0,
+        // creating children.  the thread that changed the node's state to
+        // EXPANDING is responsible of finishing the expansion and then 
+        // move to EXPANDED, or revert to INITIAL if impossible
         EXPANDING,
+
+        // expansion done.  m_children cannot be modified on a multi-thread
+        // context, until node is destroyed.
         EXPANDED,
+
+        // m_children is being modified on a multi-thread context.
         SINGLE_THREAD_USE
     };
-    std::atomic<expand_t> m_expand_state{expand_t::INITIAL};
-    bool acquire_expanding() {
-        auto expected = expand_t::INITIAL;
-        auto newval = expand_t::EXPANDING;
-        return m_expand_state.compare_exchange_strong(expected, newval);
-    }
-    void expand_done() {
-        auto v = m_expand_state.exchange(expand_t::EXPANDED);
-        assert(v == expand_t::EXPANDING);
-    }
-    void expand_cancel() {
-    auto v = m_expand_state.exchange(expand_t::INITIAL);
-        assert(v == expand_t::EXPANDING);
-    }
-    void check_expanded() {
-        while (m_expand_state.load() == expand_t::EXPANDING) {}
-        auto v = m_expand_state.load();
-        assert(v == expand_t::EXPANDED);
-    }
-    void decl_single_thread_use() {
-        auto v = m_expand_state.exchange(expand_t::SINGLE_THREAD_USE);
-        assert(v == expand_t::EXPANDED);
-    }
-    void finish_single_thread_use() {
-        auto v = m_expand_state.exchange(expand_t::EXPANDED);
-        assert(v == expand_t::SINGLE_THREAD_USE);
-    }
+    std::atomic<ExpandState> m_expand_state{ExpandState::INITIAL};
 
     // Tree data
     std::atomic<float> m_min_psa_ratio_children{2.0f};
     std::vector<UCTNodePointer> m_children;
+
+    //  m_expand_state manipulation methods
+    // INITIAL -> EXPANDING
+    // Return false if current state is not INITIAL
+    bool acquire_expanding();
+
+    // EXPANDING -> DONE
+    void expand_done();
+    
+    // EXPANDING -> INITIAL
+    void expand_cancel();
+
+    // make sure we are on EXPANDED state
+    void check_expanded();
+
+    // EXPANDED -> SINGLE_THREAD_USE
+    void decl_single_thread_use();
+
+    // SINGLE_THREAD_USE -> EXPANDED
+    void finish_single_thread_use();
 };
 
 #endif
