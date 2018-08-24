@@ -213,7 +213,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         size_t count = 0;
         {
 #ifdef USE_LOCK_FREE_QUEUE
-            count = m_forward_queue.try_dequeue_bulk(std::inserter(inputs, inputs.begin()), BATCH_SIZE);
+            count = m_forward_queue.try_dequeue_bulk(std::inserter(inputs, inputs.begin()), cfg_batch_size);
 #else
             LOCK(m_forward_queue_mutex, lock);
             count = std::min(m_forward_queue.size(), size_t(cfg_batch_size));
