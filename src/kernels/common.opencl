@@ -18,10 +18,34 @@ R"(
 
 #define ROUTINE_GEMMBATCHED
 
-// Parameters set by the tuner or by the database. Here they are given a basic default value in case
-// this file is used outside of the CLBlast library.
+#ifdef USE_HALF
+    #ifdef FP16_SUPPORT
+        #define FP16_COMPUTE
+    #else
+        #define FP16_STORAGE
+    #endif
+#endif
+
 #ifndef PRECISION
-  #define PRECISION 32      // Data-types: half, single or double precision, complex or regular
+    #ifdef FP16_COMPUTE
+      #define PRECISION 16
+    #else 
+      #define PRECISION 32      // Data-types: half, single or double precision, complex or regular
+    #endif
+#endif
+
+#ifdef FP16_STORAGE
+    typedef half net_t;
+    #define vload_net_t(offset,p) vload_half(offset,p)
+    #define vstore_net_t(data,offset,p) vstore_half(data,offset,p)
+#else
+    #ifdef FP16_COMPUTE
+        typedef half net_t;
+    #else
+        typedef float net_t;
+    #endif
+    #define vload_net_t(offset,p) ((p)[(offset)])
+    #define vstore_net_t(data,offset,p) (((p)[(offset)])=(data))
 #endif
 
 // =================================================================================================
@@ -39,6 +63,7 @@ R"(
   typedef half4 real4;
   typedef half8 real8;
   typedef half16 real16;
+  #define SQ2 1.4142135623730951
   #define ZERO 0
   #define ONE 1
   #define SMALLEST -1.0e14
@@ -50,6 +75,7 @@ R"(
   typedef float4 real4;
   typedef float8 real8;
   typedef float16 real16;
+  #define SQ2 1.4142135623730951f
   #define ZERO 0.0f
   #define ONE 1.0f
   #define SMALLEST -1.0e37f

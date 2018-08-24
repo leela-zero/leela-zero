@@ -17,6 +17,7 @@
 */
 
 #include "GameState.h"
+#include "Network.h"
 
 #include <algorithm>
 #include <array>
@@ -144,7 +145,7 @@ bool GameState::play_textmove(const std::string& color,
     }
 
     auto move = board.get_vertex(column, row);
-    if (board.get_square(move) != FastBoard::EMPTY) {
+    if (board.get_state(move) != FastBoard::EMPTY) {
         return false;
     }
 
@@ -258,15 +259,15 @@ int GameState::set_fixed_handicap_2(int handicap) {
         for (int i = low; i <= high; i += interval) {
             for (int j = low; j <= high; j += interval) {
                 if (placed >= handicap) return placed;
-                if (board.get_square(i-1, j-1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i-1, j) != FastBoard::EMPTY) continue;
-                if (board.get_square(i-1, j+1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i, j-1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i, j) != FastBoard::EMPTY) continue;
-                if (board.get_square(i, j+1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i+1, j-1) != FastBoard::EMPTY) continue;
-                if (board.get_square(i+1, j) != FastBoard::EMPTY) continue;
-                if (board.get_square(i+1, j+1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i-1, j-1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i-1, j) != FastBoard::EMPTY) continue;
+                if (board.get_state(i-1, j+1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i, j-1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i, j) != FastBoard::EMPTY) continue;
+                if (board.get_state(i, j+1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i+1, j-1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i+1, j) != FastBoard::EMPTY) continue;
+                if (board.get_state(i+1, j+1) != FastBoard::EMPTY) continue;
                 play_move(FastBoard::BLACK, board.get_vertex(i, j));
                 placed++;
             }
@@ -296,7 +297,7 @@ bool GameState::valid_handicap(int handicap) {
     return true;
 }
 
-void GameState::place_free_handicap(int stones) {
+void GameState::place_free_handicap(int stones, Network & network) {
     int limit = board.get_boardsize() * board.get_boardsize();
     if (stones > limit / 2) {
         stones = limit / 2;
@@ -312,7 +313,7 @@ void GameState::place_free_handicap(int stones) {
     stones -= set_fixed_handicap_2(stones);
 
     for (int i = 0; i < stones; i++) {
-        auto search = std::make_unique<UCTSearch>(*this);
+        auto search = std::make_unique<UCTSearch>(*this, network);
         auto move = search->think(FastBoard::BLACK, UCTSearch::NOPASS);
         play_move(FastBoard::BLACK, move);
     }

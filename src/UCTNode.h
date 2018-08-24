@@ -39,11 +39,12 @@ public:
     // search tree.
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
     // Defined in UCTNode.cpp
-    explicit UCTNode(int vertex, float score);
+    explicit UCTNode(int vertex, float policy);
     UCTNode() = delete;
     ~UCTNode() = default;
 
-    bool create_children(std::atomic<int>& nodecount,
+    bool create_children(Network & network,
+                         std::atomic<int>& nodecount,
                          GameState& state, float& eval,
                          float min_psa_ratio = 0.0f);
 
@@ -63,10 +64,10 @@ public:
     bool active() const;
     int get_move() const;
     int get_visits() const;
-    float get_score() const;
-    void set_score(float score);
+    float get_policy() const;
+    void set_policy(float policy);
     float get_eval(int tomove) const;
-    float get_pure_eval(int tomove) const;
+    float get_raw_eval(int tomove, int virtual_loss = 0) const;
     float get_net_eval(int tomove) const;
     void virtual_loss(void);
     void virtual_loss_undo(void);
@@ -74,7 +75,7 @@ public:
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch
     void randomize_first_proportionally();
-    void prepare_root_node(int color,
+    void prepare_root_node(Network & network, int color,
                            std::atomic<int>& nodecount,
                            GameState& state);
 
@@ -90,7 +91,7 @@ private:
         ACTIVE
     };
     void link_nodelist(std::atomic<int>& nodecount,
-                       std::vector<Network::ScoreVertexPair>& nodelist,
+                       std::vector<Network::PolicyVertexPair>& nodelist,
                        float min_psa_ratio);
     double get_blackevals() const;
     void accumulate_eval(float eval);
@@ -107,12 +108,12 @@ private:
     std::atomic<std::int16_t> m_virtual_loss{0};
     std::atomic<int> m_visits{0};
     // UCT eval
-    float m_score;
+    float m_policy;
     // Original net eval for this node (not children).
     float m_net_eval{0.0f};
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
-    // Is someone adding scores to this node?
+    // Is someone adding policy priors to this node?
     bool m_is_expanding{false};
     SMP::Mutex m_nodemutex;
 

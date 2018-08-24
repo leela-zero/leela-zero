@@ -39,12 +39,12 @@ UCTNodePointer::UCTNodePointer(UCTNodePointer&& n) {
     n.m_data = 1; // non-inflated garbage
 }
 
-UCTNodePointer::UCTNodePointer(std::int16_t vertex, float score) {
-    std::uint32_t i_score;
+UCTNodePointer::UCTNodePointer(std::int16_t vertex, float policy) {
+    std::uint32_t i_policy;
     auto i_vertex = static_cast<std::uint16_t>(vertex);
-    std::memcpy(&i_score, &score, sizeof(i_score));
+    std::memcpy(&i_policy, &policy, sizeof(i_policy));
 
-    m_data =  (static_cast<std::uint64_t>(i_score)  << 32)
+    m_data =  (static_cast<std::uint64_t>(i_policy)  << 32)
             | (static_cast<std::uint64_t>(i_vertex) << 16) | 1ULL;
 }
 
@@ -61,7 +61,7 @@ UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
 void UCTNodePointer::inflate() const {
     if (is_inflated()) return;
     m_data = reinterpret_cast<std::uint64_t>(
-        new UCTNode(read_vertex(), read_score()));
+        new UCTNode(read_vertex(), read_policy()));
 }
 
 bool UCTNodePointer::valid() const {
@@ -74,9 +74,9 @@ int UCTNodePointer::get_visits() const {
     return 0;
 }
 
-float UCTNodePointer::get_score() const {
-    if (is_inflated()) return read_ptr()->get_score();
-    return read_score();
+float UCTNodePointer::get_policy() const {
+    if (is_inflated()) return read_ptr()->get_policy();
+    return read_policy();
 }
 
 bool UCTNodePointer::active() const {

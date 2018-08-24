@@ -28,6 +28,8 @@
 #include "KoState.h"
 #include "TimeControl.h"
 
+class Network;
+
 class GameState : public KoState {
 public:
     explicit GameState() = default;
@@ -40,7 +42,7 @@ public:
     void reset_game();
     bool set_fixed_handicap(int stones);
     int set_fixed_handicap_2(int stones);
-    void place_free_handicap(int stones);
+    void place_free_handicap(int stones, Network & network);
     void anchor_game_history(void);
 
     void rewind(void); /* undo infinite */

@@ -33,7 +33,7 @@
 
 class TimeStep {
 public:
-    using BoardPlane = std::bitset<BOARD_SQUARES>;
+    using BoardPlane = std::bitset<NUM_INTERSECTIONS>;
     using NNPlanes = std::vector<BoardPlane>;
     NNPlanes planes;
     std::vector<float> probabilities;
@@ -71,7 +71,7 @@ public:
     static void dump_training(int winner_color,
                               const std::string& out_filename);
     static void dump_debug(const std::string& out_filename);
-    static void record(GameState& state, UCTNode& node);
+    static void record(Network & network, GameState& state, UCTNode& node);
 
     static void dump_supervised(const std::string& sgf_file,
                                 const std::string& out_filename);

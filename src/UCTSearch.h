@@ -31,6 +31,7 @@
 #include "FastState.h"
 #include "GameState.h"
 #include "UCTNode.h"
+#include "Network.h"
 
 
 class SearchResult {
@@ -77,8 +78,8 @@ public:
 
     /*
         Maximum size of the tree in memory. Nodes are about
-        48 bytes, so limit to ~1.2G on 32-bits and about 5.5G
-        on 64-bits.
+        56 bytes, so limit to ~1.3GiB on 32-bits and about
+        5.2GiB on 64-bits.
     */
     static constexpr auto MAX_TREE_SIZE =
         (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
@@ -91,7 +92,7 @@ public:
     static constexpr auto UNLIMITED_PLAYOUTS =
         std::numeric_limits<int>::max() / 2;
 
-    UCTSearch(GameState& g);
+    UCTSearch(GameState& g, Network & network);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
@@ -106,7 +107,7 @@ private:
     void tree_stats(const UCTNode& node);
     std::string get_pv(FastState& state, UCTNode& parent);
     void dump_analysis(int playouts);
-    bool should_resign(passflag_t passflag, float bestscore);
+    bool should_resign(passflag_t passflag, float besteval);
     bool have_alternate_moves(int elapsed_centis, int time_for_move);
     int est_playouts_left(int elapsed_centis, int time_for_move) const;
     size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0,
@@ -127,6 +128,8 @@ private:
     int m_maxvisits;
 
     std::list<Utils::ThreadGroup> m_delete_futures;
+
+    Network & m_network;
 };
 
 class UCTWorker {

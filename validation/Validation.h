@@ -28,9 +28,25 @@
 #include "../autogtp/Game.h"
 #include "Results.h"
 
+class Engine {
+public:
+    Engine(const QString& network,
+           const QString& options,
+           const QStringList& commands = QStringList("time_settings 0 1 0"),
+           const QString& binary = QString("./leelaz")) :
+        m_binary(binary), m_options(options),
+        m_network(network), m_commands(commands) {}
+    Engine() = default;
+    QString m_binary;
+    QString m_options;
+    QString m_network;
+    QStringList m_commands;
+};
+
 class ValidationWorker : public QThread {
     Q_OBJECT
 public:
+
     enum {
         RUNNING = 0,
         FINISHING
@@ -39,12 +55,7 @@ public:
     ValidationWorker(const ValidationWorker& w) : QThread(w.parent()) {}
     ~ValidationWorker() = default;
     void init(const QString& gpuIndex,
-              const QString& firstNet,
-              const QString& secondNet,
-              const QString& firstBin,
-              const QString& secondBin,
-              const QString& firstOpts,
-              const QString& secondOpts,
+              const QVector<Engine>& engines,
               const QString& keep,
               int expected);
     void run() override;
@@ -53,14 +64,9 @@ public:
 signals:
     void resultReady(Sprt::GameResult r, int net_one_color);
 private:
-    QString m_firstNet;
-    QString m_secondNet;
+    QVector<Engine> m_engines;
     int m_expected;
     QString m_keepPath;
-    QString m_firstBin;
-    QString m_secondBin;
-    QString m_firstOpts;
-    QString m_secondOpts;
     QAtomicInt m_state;
 };
 
@@ -70,14 +76,9 @@ class Validation : public QObject {
 public:
     Validation(const int gpus, const int games,
                const QStringList& gpusList,
-               const QString& firstNet,
-               const QString& secondNet,
+               QVector<Engine>& engines,
                const QString& keep,
                QMutex* mutex,
-               const QString& firstBin,
-               const QString& secondBin,
-               const QString& firstOpts,
-               const QString& secondOpts,
                const float& h0,
                const float& h1);
     ~Validation() = default;
@@ -98,12 +99,7 @@ private:
     int m_games;
     int m_gpus;
     QStringList m_gpusList;
-    QString m_firstNet;
-    QString m_secondNet;
-    QString m_firstBin;
-    QString m_secondBin;
-    QString m_firstOpts;
-    QString m_secondOpts;
+    QVector<Engine>& m_engines;
     QString m_keepPath;
     void quitThreads();
     void saveSprt();
