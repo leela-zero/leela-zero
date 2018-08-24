@@ -664,7 +664,6 @@ void UCTSearch::increment_playouts() {
 }
 
 extern size_t batch_stats[];
-static constexpr auto BATCH_SIZE = 8;
 
 int UCTSearch::think(int color, passflag_t passflag) {
     // Start counting time for us
@@ -754,7 +753,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
                  static_cast<int>(m_playouts),
                  (m_playouts * 100.0) / (elapsed_centis+1));
         std::string stats;
-        for(auto i=1;i<=BATCH_SIZE;i++) {
+        for(auto i=1;i<=cfg_batch_size;i++) {
             stats += std::to_string(batch_stats[i]);
             stats += ", ";
         }

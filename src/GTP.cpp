@@ -64,6 +64,7 @@ bool cfg_dumbpass;
 std::vector<int> cfg_gpus;
 bool cfg_sgemm_exhaustive;
 bool cfg_tune_only;
+int cfg_batch_size;
 #ifdef USE_HALF
 precision_t cfg_precision;
 #endif
@@ -106,6 +107,7 @@ void GTP::setup_default_parameters() {
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;
     cfg_tune_only = false;
+    cfg_batch_size = 8;
 #ifdef USE_HALF
     cfg_precision = precision_t::AUTO;
 #endif
