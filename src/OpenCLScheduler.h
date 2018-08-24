@@ -29,7 +29,9 @@
 #include "ForwardPipe.h"
 #include "OpenCL.h"
 #include "ThreadPool.h"
+#include "concurrentqueue.h"
 
+#define USE_LOCK_FREE_QUEUE 1
 
 template <typename net_t>
 class OpenCLScheduler : public ForwardPipe {
@@ -91,8 +93,12 @@ private:
     std::vector<OpenCLContext> m_opencl_contexts;
     OpenCLContext m_single_context;
 
+#ifdef USE_LOCK_FREE_QUEUE
+    moodycamel::ConcurrentQueue<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
+#else
     SMP::Mutex m_forward_queue_mutex;
     std::list<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
+#endif
 
     std::vector<std::thread> m_worker_threads;
 

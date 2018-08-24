@@ -188,9 +188,13 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
                                      std::vector<float>& output_pol,
                                      std::vector<float>& output_val) {
     auto entry = std::make_shared<ForwardQueueEntry>(input, output_pol, output_val);
+#ifdef USE_LOCK_FREE_QUEUE
+    m_forward_queue.enqueue(entry);
+#else
     LOCK(m_forward_queue_mutex, lock);
     m_forward_queue.push_back(entry);
     lock.unlock();
+#endif
     std::unique_lock<std::mutex> lk(entry->mutex);
     entry->cv.wait(lk);
 }
@@ -209,23 +213,28 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
         size_t count = 0;
         {
+#ifdef USE_LOCK_FREE_QUEUE
+            count = m_forward_queue.try_dequeue_bulk(std::inserter(inputs, inputs.begin()), BATCH_SIZE);
+#else
             LOCK(m_forward_queue_mutex, lock);
             count = std::min(m_forward_queue.size(), size_t{BATCH_SIZE});
             if (count > 0) {
-                batch_index++;
-                batch_stats[count]++;
                 auto begin = m_forward_queue.begin();
                 auto end = begin;
                 std::advance(end, count);
                 std::move(begin, end, std::back_inserter(inputs));
                 m_forward_queue.erase(begin, end);
             }
+#endif
         }
 
         if (count == 0) {
             //TODO add wait
             continue;
         }
+
+        batch_index++;
+        batch_stats[count]++;
 
         {
             size_t index = 0;
