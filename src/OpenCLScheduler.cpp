@@ -213,14 +213,12 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             count = std::min(m_forward_queue.size(), size_t{BATCH_SIZE});
             if (count > 0) {
                 batch_index++;
-                myprintf("%d: found %d entries (total %d)\n", batch_index, count, m_forward_queue.size());
                 batch_stats[count]++;
                 auto begin = m_forward_queue.begin();
                 auto end = begin;
                 std::advance(end, count);
                 std::move(begin, end, std::back_inserter(inputs));
                 m_forward_queue.erase(begin, end);
-                myprintf("%d: left %d entries\n", batch_index, m_forward_queue.size());
             }
         }
 
@@ -230,7 +228,6 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         }
 
         {
-            myprintf("%d: prepare inputs from %d entries\n", batch_index, count);
             size_t index = 0;
             for (auto it = inputs.begin(); it != inputs.end(); ++it) {
                 std::copy((*it)->in.begin(), (*it)->in.end(), batch_input.begin() + Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * index);
@@ -239,13 +236,11 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         }
 
         {
-            myprintf("%d: forwarding %d, %d\n", batch_index, gnum, count);
             m_networks[gnum]->forward(
                 batch_input, batch_output_pol, batch_output_val, m_opencl_contexts[gnum], count);
         }
 
         {
-            myprintf("%d: gather outputs\n", batch_index);
             size_t index = 0;
             for (auto it = inputs.begin(); it != inputs.end(); ++it) {
                 std::copy(batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * index,
@@ -254,7 +249,6 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                 std::copy(batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * index,
                           batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * (index + 1),
                           (*it)->out_v.begin());
-                myprintf("%d: notify %d\n", batch_index, index);
                 (*it)->cv.notify_all();
                 index++;
             }

@@ -663,6 +663,9 @@ void UCTSearch::increment_playouts() {
     m_playouts++;
 }
 
+extern size_t batch_stats[];
+static constexpr auto BATCH_SIZE = 8;
+
 int UCTSearch::think(int color, passflag_t passflag) {
     // Start counting time for us
     m_rootstate.start_clock(color);
@@ -750,6 +753,12 @@ int UCTSearch::think(int color, passflag_t passflag) {
                  static_cast<int>(m_nodes),
                  static_cast<int>(m_playouts),
                  (m_playouts * 100.0) / (elapsed_centis+1));
+        std::string stats;
+        for(auto i=1;i<=BATCH_SIZE;i++) {
+            stats += std::to_string(batch_stats[i]);
+            stats += ", ";
+        }
+        myprintf("batch stats: %s\n", stats.c_str());
     }
     int bestmove = get_best_move(passflag);
 
