@@ -518,7 +518,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 // now start pondering
                 if (!game.has_resigned()) {
                     // Outputs winrate and pvs through gtp for lz-genmove_analyze
-                    search->ponder();
+                    search->ponder(false);
                 }
             }
             if (analysis_output) {
@@ -549,7 +549,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
         // now start pondering
         if (!game.has_resigned()) {
             // Outputs winrate and pvs through gtp
-            search->ponder();
+            search->ponder(true);
         }
         cfg_analyze_interval_centis = 0;
         // Terminate multi-line response
@@ -584,7 +584,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             if (cfg_allow_pondering) {
                 // now start pondering
                 if (!game.has_resigned()) {
-                    search->ponder();
+                    search->ponder(false);
                 }
             }
         } else {
@@ -667,7 +667,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 // KGS sends this after our move
                 // now start pondering
                 if (!game.has_resigned()) {
-                    search->ponder();
+                    search->ponder(false);
                 }
             }
         } else {

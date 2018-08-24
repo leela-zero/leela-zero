@@ -779,14 +779,18 @@ int UCTSearch::think(int color, passflag_t passflag) {
                             || m_rootstate.m_stm_komi != cfg_target_komi 
                             || m_rootstate.m_opp_komi != cfg_target_komi)))) {
                     collecting = true;
-                    auto adj_playouts0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
-                        [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); }),
-                        adj_playouts1 = std::accumulate(sym_states[1].begin(), sym_states[1].end(), 0,
-                            [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); });
-                    if (num_adjustments < cfg_max_num_adjustments && adj_playouts0 >= cfg_adj_playouts && adj_playouts1 >= cfg_adj_playouts && elapsed_centis * 2.0f < time_for_move && m_playouts * 2 < m_maxplayouts) {
-                        to_adjust = true;
-                        num_adjustments++;
-                        break;
+                    if (num_adjustments < cfg_max_num_adjustments
+                        && elapsed_centis * 2.0f < time_for_move
+                        && m_playouts * 2 < m_maxplayouts) {
+                        auto adj_playouts0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
+                            [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); }),
+                            adj_playouts1 = std::accumulate(sym_states[1].begin(), sym_states[1].end(), 0,
+                                [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); });
+                        if (adj_playouts0 >= cfg_adj_playouts && adj_playouts1 >= cfg_adj_playouts) {
+                            to_adjust = true;
+                            num_adjustments++;
+                            break;
+                        }
                     }
                 }
                 else if (!cfg_always_collect) {
@@ -852,57 +856,75 @@ int UCTSearch::think(int color, passflag_t passflag) {
     return bestmove;
 }
 
-void UCTSearch::ponder() {
+void UCTSearch::ponder(bool analyzing) {
     update_root();
 
-    m_root->prepare_root_node(m_network, m_rootstate.board.get_to_move(),
-                              m_nodes, m_rootstate, this);
 
-    m_run = true;
-    ThreadGroup tg(thread_pool);
-    for (int i = 1; i < cfg_num_threads; i++) {
-        tg.add_task(UCTWorker(m_rootstate, this, m_root.get(), i));
-    }
-    Time start;
-    auto keeprunning = true;
-    auto last_output = 0;
-    do {
-        auto currstate = std::make_unique<GameState>(m_rootstate);
-        auto result = play_simulation(*currstate, m_root.get(), 0);
-        if (result.valid()) {
-            increment_playouts(result.eval());
+    bool to_adjust;
+    int num_adjustments = 0;
+    do { //adjust during search
+        to_adjust = false;
+
+        m_root->prepare_root_node(m_network, m_rootstate.board.get_to_move(),
+            m_nodes, m_rootstate, this);
+
+        m_run = true;
+        ThreadGroup tg(thread_pool);
+        for (int i = 1; i < cfg_num_threads; i++) {
+            tg.add_task(UCTWorker(m_rootstate, this, m_root.get(), i));
         }
-
-        if (cfg_collect_during_search) {
-            if (m_root->get_visits() > 0 && (m_root->get_raw_eval(FastBoard::WHITE) < cfg_min_wr
-                || (m_root->get_raw_eval(FastBoard::WHITE) > cfg_max_wr
-                    && (cfg_nonslack
-                        || m_rootstate.m_stm_komi != cfg_target_komi
-                        || m_rootstate.m_opp_komi != cfg_target_komi)))) {
-                collecting = true;
+        Time start;
+        auto keeprunning = true;
+        auto last_output = 0;
+        do {
+            auto currstate = std::make_unique<GameState>(m_rootstate);
+            auto result = play_simulation(*currstate, m_root.get(), 0);
+            if (result.valid()) {
+                increment_playouts(result.eval());
             }
-            else if (!cfg_always_collect) {
-                //sym_states[0].assign(cfg_num_threads, {});
-                //sym_states[1].assign(cfg_num_threads, {});
-                collecting = false;
-            }
-        }
 
-        if (cfg_analyze_interval_centis) {
-            Time elapsed;
-            int elapsed_centis = Time::timediff_centis(start, elapsed);
-            if (elapsed_centis - last_output > cfg_analyze_interval_centis) {
-                last_output = elapsed_centis;
-                output_analysis(m_rootstate, *m_root);
+            if (cfg_collect_during_search) {
+                if (m_root->get_visits() > 0 && (m_root->get_raw_eval(FastBoard::WHITE) < cfg_min_wr
+                    || (m_root->get_raw_eval(FastBoard::WHITE) > cfg_max_wr
+                        && (cfg_nonslack
+                            || m_rootstate.m_stm_komi != cfg_target_komi
+                            || m_rootstate.m_opp_komi != cfg_target_komi)))) {
+                    collecting = true;
+                    if (analyzing && num_adjustments < cfg_max_num_adjustments) {
+                        auto adj_playouts0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
+                            [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); }),
+                            adj_playouts1 = std::accumulate(sym_states[1].begin(), sym_states[1].end(), 0,
+                                [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); });
+                        if (adj_playouts0 >= cfg_adj_playouts && adj_playouts1 >= cfg_adj_playouts) {
+                            to_adjust = true;
+                            num_adjustments++;
+                            break;
+                        }
+                    }
+                }
+                else if (!cfg_always_collect) {
+                    //sym_states[0].assign(cfg_num_threads, {});
+                    //sym_states[1].assign(cfg_num_threads, {});
+                    collecting = false;
+                }
             }
-        }
-        keeprunning  = is_running();
-        keeprunning &= !stop_thinking(0, 1);
-    } while (!Utils::input_pending() && keeprunning);
 
-    // stop the search
-    m_run = false;
-    tg.wait_all();
+            if (cfg_analyze_interval_centis) {
+                Time elapsed;
+                int elapsed_centis = Time::timediff_centis(start, elapsed);
+                if (elapsed_centis - last_output > cfg_analyze_interval_centis) {
+                    last_output = elapsed_centis;
+                    output_analysis(m_rootstate, *m_root);
+                }
+            }
+            keeprunning = is_running();
+            keeprunning &= !stop_thinking(0, 1);
+        } while (!Utils::input_pending() && keeprunning);
+
+        // stop the search
+        m_run = false;
+        tg.wait_all();
+    } while (to_adjust);
 
     // display search info
     myprintf("\n");

@@ -103,7 +103,7 @@ public:
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
-    void ponder();
+    void ponder(bool analyzing);
     bool is_running() const;
     void increment_playouts(float eval);
     SearchResult play_simulation(GameState& currstate, UCTNode* const node, int thread_num);
