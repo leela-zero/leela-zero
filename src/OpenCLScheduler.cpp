@@ -199,7 +199,6 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
     entry->cv.wait(lk);
 }
 
-static constexpr auto BATCH_SIZE = 4;
 static auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * MAX_BATCH);
 static auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * MAX_BATCH);
 static auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * MAX_BATCH);
@@ -208,7 +207,7 @@ size_t batch_stats[MAX_BATCH+1] = {};
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
-    myprintf("worker %d started\n", gnum);
+    myprintf("worker %d started, batch size %d\n", gnum, cfg_batch_size);
     while(1) {
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
         size_t count = 0;
@@ -217,7 +216,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             count = m_forward_queue.try_dequeue_bulk(std::inserter(inputs, inputs.begin()), BATCH_SIZE);
 #else
             LOCK(m_forward_queue_mutex, lock);
-            count = std::min(m_forward_queue.size(), size_t{BATCH_SIZE});
+            count = std::min(m_forward_queue.size(), size_t(cfg_batch_size));
             if (count > 0) {
                 auto begin = m_forward_queue.begin();
                 auto end = begin;

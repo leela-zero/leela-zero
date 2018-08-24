@@ -90,6 +90,7 @@ static void parse_commandline(int argc, char *argv[]) {
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
         ("tune-only", "Tune OpenCL only and then exit.")
+        ("batchsize", po::value<int>(), "Max batch size. Default 8.")
 #ifdef USE_HALF
         ("precision", po::value<std::string>(), "Floating-point precision (single/half/auto).\n"
                                                 "Default is to auto which automatically determines which one to use.")
@@ -220,6 +221,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("tune-only")) {
         cfg_tune_only = true;
+    }
+
+    if (vm.count("batchsize")) {
+        cfg_batch_size = vm["batchsize"].as<int>();
     }
 
 #ifdef USE_HALF
