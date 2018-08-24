@@ -131,7 +131,6 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
     const auto finalSize_pol = m_layers[m_layers.size()-2].outputs * one_plane;
     const auto finalSize_val = m_layers.back().outputs * one_plane;
 
-    myprintf("opencl init %d\n", batch_size);
     m_opencl.ensure_context_initialized(opencl_context);
 
     if (!opencl_context.m_buffers_allocated) {
@@ -277,8 +276,6 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
         }
     }
 
-    myprintf("opencl enqueue buffer %d\n", batch_size);
-
     auto pinnedOutBufferHost_pol = queue.enqueueMapBuffer(
         opencl_context.m_pinnedOutBuffer_pol, CL_FALSE,
         CL_MAP_READ, 0, batch_size * finalSize_pol);
@@ -286,16 +283,12 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
         opencl_context.m_pinnedOutBuffer_val, CL_FALSE,
         CL_MAP_READ, 0, batch_size * finalSize_val);
 
-    myprintf("opencl queue finish %d %d %d\n", batch_size, finalSize_pol, finalSize_val);
-
     {
         // Finish call is usually a busy wait. When using multiple threads
         // use the lock to avoid busy waiting with all threads.
         std::lock_guard<std::mutex> lock(m_queue_finish_mutex);
         queue.finish();
     }
-
-    myprintf("opencl output %d\n", batch_size);
 
     auto polptr = static_cast<net_t*>(pinnedOutBufferHost_pol);
     auto valptr = static_cast<net_t*>(pinnedOutBufferHost_val);

@@ -41,15 +41,14 @@ class OpenCLScheduler : public ForwardPipe {
     };
     class ForwardQueueEntry {
     public:
-      std::shared_ptr<std::mutex> mutex;
-      std::shared_ptr<std::condition_variable> cv;
+      std::mutex mutex;
+      std::condition_variable cv;
       const std::vector<float>& in;
       std::vector<float>& out_p;
       std::vector<float>& out_v;
       ForwardQueueEntry(const std::vector<float>& input,
                         std::vector<float>& output_pol,
-                        std::vector<float>& output_val) : in(input), out_p(output_pol), out_v(output_val),
-        mutex(std::make_shared<std::mutex>()), cv(std::make_shared<std::condition_variable>())
+                        std::vector<float>& output_val) : in(input), out_p(output_pol), out_v(output_val)
         {}
     };
 public:
@@ -93,10 +92,12 @@ private:
     OpenCLContext m_single_context;
 
     SMP::Mutex m_forward_queue_mutex;
-    std::list<ForwardQueueEntry> m_forward_queue;
+    std::list<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
 
     std::vector<std::thread> m_worker_threads;
 
+    std::mutex m_worker_mutex;
+    std::condition_variable m_worker_cv;
     void batch_worker(const size_t gnum);
 };
 

@@ -187,17 +187,12 @@ template <typename net_t>
 void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
                                      std::vector<float>& output_pol,
                                      std::vector<float>& output_val) {
+    auto entry = std::make_shared<ForwardQueueEntry>(input, output_pol, output_val);
     LOCK(m_forward_queue_mutex, lock);
-    m_forward_queue.emplace_back(input, output_pol, output_val);
-
-    ForwardQueueEntry &entry = m_forward_queue.front();
-    auto mutex = entry.mutex;
-    auto cv = entry.cv;
+    m_forward_queue.push_back(entry);
     lock.unlock();
-    std::unique_lock<std::mutex> lk(*mutex);
-    myprintf("forward wait\n");
-    cv->wait(lk);
-    myprintf("forward done\n");
+    std::unique_lock<std::mutex> lk(entry->mutex);
+    entry->cv.wait(lk);
 }
 
 static constexpr auto BATCH_SIZE = 4;
@@ -205,12 +200,13 @@ static auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SIZ
 static auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * MAX_BATCH);
 static auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * MAX_BATCH);
 size_t batch_index = 0;
+size_t batch_stats[MAX_BATCH+1] = {};
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
     myprintf("worker %d started\n", gnum);
     while(1) {
-        std::list<ForwardQueueEntry> inputs;
+        std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
         size_t count = 0;
         {
             LOCK(m_forward_queue_mutex, lock);
@@ -218,6 +214,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             if (count > 0) {
                 batch_index++;
                 myprintf("%d: found %d entries (total %d)\n", batch_index, count, m_forward_queue.size());
+                batch_stats[count]++;
                 auto begin = m_forward_queue.begin();
                 auto end = begin;
                 std::advance(end, count);
@@ -236,7 +233,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             myprintf("%d: prepare inputs from %d entries\n", batch_index, count);
             size_t index = 0;
             for (auto it = inputs.begin(); it != inputs.end(); ++it) {
-                std::copy(it->in.begin(), it->in.end(), batch_input.begin() + Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * index);
+                std::copy((*it)->in.begin(), (*it)->in.end(), batch_input.begin() + Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * index);
                 index++;
             }
         }
@@ -253,12 +250,12 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             for (auto it = inputs.begin(); it != inputs.end(); ++it) {
                 std::copy(batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * index,
                           batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * (index + 1),
-                          it->out_p.begin());
+                          (*it)->out_p.begin());
                 std::copy(batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * index,
                           batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * (index + 1),
-                          it->out_v.begin());
+                          (*it)->out_v.begin());
                 myprintf("%d: notify %d\n", batch_index, index);
-                it->cv->notify_all();
+                (*it)->cv.notify_all();
                 index++;
             }
         }
