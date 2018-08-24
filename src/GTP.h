@@ -44,7 +44,7 @@ extern float cfg_max_wr;
 extern float cfg_min_wr;
 extern float cfg_wr_margin;
 extern float cfg_target_komi;
-extern int cfg_adj_playouts;
+extern int cfg_adj_positions;
 extern float cfg_adj_pct;
 extern bool cfg_pos;
 extern bool cfg_neg;

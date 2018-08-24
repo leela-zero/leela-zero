@@ -61,7 +61,7 @@ float cfg_max_wr;
 float cfg_min_wr;
 float cfg_wr_margin;
 float cfg_target_komi;
-int cfg_adj_playouts;
+int cfg_adj_positions;
 float cfg_adj_pct;
 bool cfg_pos;
 bool cfg_neg;
@@ -143,7 +143,7 @@ void GTP::setup_default_parameters() {
 
     cfg_dyn_komi = false;
     cfg_target_komi = 7.5f;
-    cfg_adj_playouts = 200;
+    cfg_adj_positions = 200;
     cfg_adj_pct = 4.0;
     cfg_pos = false;
     cfg_neg = false;

@@ -407,8 +407,8 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
     }
 
     std::array<std::vector<std::shared_ptr<Sym_State>>, 2> ss;
-    ss[0].reserve(cfg_adj_playouts + cfg_num_threads);
-    ss[1].reserve(cfg_adj_playouts + cfg_num_threads);
+    ss[0].reserve(cfg_adj_positions + cfg_num_threads);
+    ss[1].reserve(cfg_adj_positions + cfg_num_threads);
     for (auto i = 0; i < 2; i++) {
         for (auto j = 0; j < cfg_num_threads; j++) {
             ss[i].insert(ss[i].end(), search->sym_states[i][j].begin(),search->sym_states[i][j].end());
@@ -452,9 +452,9 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
 
         bool to_adjust = false;
         // no need to collect ss[0] or ss[1] if cfg_pos or cfg_neg ..
-        if (search->collecting || (ss[0].size() >= cfg_adj_playouts && ss[1].size() >= cfg_adj_playouts)) {
+        if (search->collecting || (ss[0].size() >= cfg_adj_positions && ss[1].size() >= cfg_adj_positions)) {
             to_adjust = true;
-            auto num_positions = ceil(cfg_adj_playouts * cfg_adj_pct / 100.0);
+            auto num_positions = ceil(cfg_adj_positions * cfg_adj_pct / 100.0);
             for (auto i = 0; i < 2; i++) {
                 std::nth_element(ss[i].begin(), ss[i].begin() + num_positions, ss[i].end(), 
                     [](std::shared_ptr<Sym_State>& sym_state1, std::shared_ptr<Sym_State>& sym_state2) {

@@ -221,7 +221,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                     rand_sym = cfg_fixed_symmetry;
                 }
                 success = node->create_children(m_network, m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
-                if (success && sym_states[color][thread_num].size() * cfg_num_threads < cfg_adj_playouts) {
+                if (success && sym_states[color][thread_num].size() * cfg_num_threads < cfg_adj_positions) {
                     auto sym_state = std::make_shared<Sym_State>();
                     auto color = currstate.get_to_move();
                     (*sym_state).symmetry = rand_sym;
@@ -229,7 +229,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                     (*sym_state).winrate = (color == FastBoard::BLACK ? eval : 1.0f - eval);
                     //LOCK(get_mutex(), lock);
                     sym_states[color][thread_num].push_back(sym_state);
-                    if ((sym_states[color][thread_num].size() - 1) * cfg_num_threads >= cfg_adj_playouts) {
+                    if ((sym_states[color][thread_num].size() - 1) * cfg_num_threads >= cfg_adj_positions) {
                         //sym_states[color][thread_num].pop_front();
                     }
                 }
@@ -782,11 +782,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
                     if (num_adjustments < cfg_max_num_adjustments
                         && elapsed_centis * 2.0f < time_for_move
                         && m_playouts * 2 < m_maxplayouts) {
-                        auto adj_playouts0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
+                        auto adj_positions0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
                             [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); }),
-                            adj_playouts1 = std::accumulate(sym_states[1].begin(), sym_states[1].end(), 0,
+                            adj_positions1 = std::accumulate(sym_states[1].begin(), sym_states[1].end(), 0,
                                 [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); });
-                        if (adj_playouts0 >= cfg_adj_playouts && adj_playouts1 >= cfg_adj_playouts) {
+                        if (adj_positions0 >= cfg_adj_positions && adj_positions1 >= cfg_adj_positions) {
                             to_adjust = true;
                             num_adjustments++;
                             break;
@@ -891,11 +891,11 @@ void UCTSearch::ponder(bool analyzing) {
                             || m_rootstate.m_opp_komi != cfg_target_komi)))) {
                     collecting = true;
                     if (analyzing && num_adjustments < cfg_max_num_adjustments) {
-                        auto adj_playouts0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
+                        auto adj_positions0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
                             [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); }),
-                            adj_playouts1 = std::accumulate(sym_states[1].begin(), sym_states[1].end(), 0,
+                            adj_positions1 = std::accumulate(sym_states[1].begin(), sym_states[1].end(), 0,
                                 [](int p, std::deque<std::shared_ptr<Sym_State>> q) {return p + q.size(); });
-                        if (adj_playouts0 >= cfg_adj_playouts && adj_playouts1 >= cfg_adj_playouts) {
+                        if (adj_positions0 >= cfg_adj_positions && adj_positions1 >= cfg_adj_positions) {
                             to_adjust = true;
                             num_adjustments++;
                             break;

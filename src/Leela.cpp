@@ -88,7 +88,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("min-wr", po::value<float>(), "Minimal white winrate.")
         ("wr-margin", po::value<float>(), "White winrate is adjusted to min+margin or max-margin.")
         ("target-komi", po::value<float>(), "Target komi, default 7.5.")
-        ("adj-playouts", po::value<int>(), "Number of positions to collect for komi adjustment, default 200; should be higher for strong machines to achieve more accurate komi adjustment.")
+        ("adj-positions", po::value<int>(), "Number of positions to collect for komi adjustment, default 200; should be higher for strong machines to achieve more accurate komi adjustment.")
         ("adj-pct", po::value<float>(), "Percentage of collected positions to use for komi adjustment, default 4.")
         ("num-adj", po::value<int>(), "Maximal number of komi adjustments for each genmove, default 1.")
         ("pos", "Use positive komi (for side-to-move) only.")
@@ -264,15 +264,15 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_target_komi = vm["target-komi"].as<float>();
     }
 
-    if (vm.count("adj-playouts")) {
-        cfg_adj_playouts = vm["adj-playouts"].as<int>();
-        if (cfg_adj_playouts < 8) {
-            cfg_adj_playouts = 8;
+    if (vm.count("adj-positions")) {
+        cfg_adj_positions = vm["adj-positions"].as<int>();
+        if (cfg_adj_positions < 8) {
+            cfg_adj_positions = 8;
         }
     }
 
     if (vm.count("adj-pct")) {
-        cfg_adj_playouts = vm["adj-pct"].as<float>();
+        cfg_adj_positions = vm["adj-pct"].as<float>();
     }
 
     if (vm.count("num-adj")) {
