@@ -289,7 +289,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
     {
         // Finish call is usually a busy wait. When using multiple threads
         // use the lock to avoid busy waiting with all threads.
-//        std::lock_guard<std::mutex> lock(m_queue_finish_mutex);
+        std::lock_guard<std::mutex> lock(m_queue_finish_mutex);
         queue.finish();
     }
 
