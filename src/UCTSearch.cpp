@@ -663,7 +663,7 @@ void UCTSearch::increment_playouts() {
     m_playouts++;
 }
 
-extern size_t batch_stats[];
+extern std::atomic<size_t> batch_stats[];
 
 int UCTSearch::think(int color, passflag_t passflag) {
     // Start counting time for us

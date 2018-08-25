@@ -31,8 +31,6 @@
 #include "ThreadPool.h"
 #include "concurrentqueue.h"
 
-#define USE_LOCK_FREE_QUEUE 1
-
 template <typename net_t>
 class OpenCLScheduler : public ForwardPipe {
     class ContextPoolEntry {
@@ -82,25 +80,17 @@ public:
                                const std::vector<float>& weights);
 
 private:
-    std::vector<std::unique_ptr<OpenCL_Network<net_t>>> m_networks;
-    std::vector<std::unique_ptr<OpenCL<net_t>>> m_opencl;
+    std::vector<std::vector<std::unique_ptr<OpenCL_Network<net_t>>>> m_networks;
+    std::vector<std::vector<std::unique_ptr<OpenCL<net_t>>>> m_opencl;
 
     using ContextPoolQueue = std::list<std::shared_ptr<ContextPoolEntry>>;
     std::vector<ContextPoolQueue> m_context_pool;
 
-    SMP::Mutex m_context_pool_mutex;
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
 
-    std::vector<OpenCLContext> m_opencl_contexts;
-    OpenCLContext m_single_context;
-
-#ifdef USE_LOCK_FREE_QUEUE
-    moodycamel::ConcurrentQueue<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
-#else
     SMP::Mutex m_forward_queue_mutex;
     std::list<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
-#endif
-
-    std::vector<std::thread> m_worker_threads;
 
     std::mutex m_worker_mutex;
     std::condition_variable m_worker_cv;

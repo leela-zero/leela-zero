@@ -183,7 +183,7 @@ class OpenCL {
     friend class OpenCL_Network<net_t>;
     friend class Tuner<net_t>;
 public:
-    void initialize(const int channels, int gpu, bool silent = false);
+    void initialize(const int channels, int gpu, bool silent = false, int batch_size=1);
     void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
 
@@ -195,6 +195,7 @@ private:
     void tune_sgemm(void);
     void process_tuners(std::string tuners);
 
+    int m_batch_size = 1;
     cl::Program m_program;
     std::string m_cl_args;
 
