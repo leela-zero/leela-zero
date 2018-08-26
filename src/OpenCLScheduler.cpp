@@ -26,18 +26,36 @@
 
 using Utils::ceilMultiple;
 
-static std::vector<float> zeropad_U(const std::vector<float>& U,
-                                    const int outputs, const int channels,
-                                    const int outputs_pad,
-                                    const int channels_pad) {
+class from_float{
+public:
+    from_float(const std::vector<float> & f) : m_f(f) {}
+
+    operator const std::vector<float>&() {
+        return m_f;
+    }
+
+    operator std::vector<half_float::half>() {
+        auto ret = std::vector<half_float::half>(m_f.size());
+        std::copy(cbegin(m_f), cend(m_f), begin(ret));
+        return ret;
+    }
+private:
+    const std::vector<float>& m_f;
+};
+
+template <typename T>
+static std::vector<T> zeropad_U(const std::vector<float>& U,
+                                const int outputs, const int channels,
+                                const int outputs_pad,
+                                const int channels_pad) {
     // Fill with zeroes
     auto Upad =
-        std::vector<float>(WINOGRAD_TILE * outputs_pad * channels_pad);
+        std::vector<T>(WINOGRAD_TILE * outputs_pad * channels_pad);
 
-    for (auto o = 0; o < outputs; o++) {
-        for (auto c = 0; c < channels; c++) {
-            for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++){
-                for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
+    for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++){
+        for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
+            for (auto c = 0; c < channels; c++) {
+                for (auto o = 0; o < outputs; o++) {
                     Upad[xi * (WINOGRAD_ALPHA * outputs_pad * channels_pad)
                          + nu * (outputs_pad * channels_pad)
                          + c * outputs_pad +
@@ -107,12 +125,12 @@ void OpenCLScheduler<net_t>::push_input_convolution(unsigned int filter_size,
         const auto m_ceil = ceilMultiple(ceilMultiple(outputs, mwg), vwm);
         const auto k_ceil = ceilMultiple(ceilMultiple(channels, kwg), vwm);
 
-        const auto Upad = zeropad_U(weights,
-                                    outputs, channels,
-                                    m_ceil, k_ceil);
+        const auto Upad = zeropad_U<net_t>(weights,
+                                           outputs, channels,
+                                           m_ceil, k_ceil);
         opencl_net->push_input_convolution(
             filter_size, channels, outputs,
-            Upad, means, variances
+            Upad, from_float(means), from_float(variances)
         );
     }
 }
@@ -134,19 +152,19 @@ void OpenCLScheduler<net_t>::push_residual(unsigned int filter_size,
         const auto vwm = tuners[3];
 
         const auto m_ceil = ceilMultiple(ceilMultiple(outputs, mwg), vwm);
-        const auto Upad1 = zeropad_U(weights_1,
-                                     outputs, outputs,
-                                     m_ceil, m_ceil);
-        const auto Upad2 = zeropad_U(weights_2,
-                                     outputs, outputs,
-                                     m_ceil, m_ceil);
+        const auto Upad1 = zeropad_U<net_t>(weights_1,
+                                            outputs, outputs,
+                                            m_ceil, m_ceil);
+        const auto Upad2 = zeropad_U<net_t>(weights_2,
+                                            outputs, outputs,
+                                            m_ceil, m_ceil);
         opencl_net->push_residual(filter_size, channels, outputs,
                                   Upad1,
-                                  means_1,
-                                  variances_1,
+                                  from_float(means_1),
+                                  from_float(variances_1),
                                   Upad2,
-                                  means_2,
-                                  variances_2);
+                                  from_float(means_2),
+                                  from_float(variances_2));
     }
 }
 
@@ -156,7 +174,7 @@ void OpenCLScheduler<net_t>::push_convolve(unsigned int filter_size,
                                            unsigned int outputs,
                                            const std::vector<float>& weights) {
     for (const auto & opencl_net : m_networks) {
-        opencl_net->push_convolve(filter_size, channels, outputs, weights);
+        opencl_net->push_convolve(filter_size, channels, outputs, from_float(weights));
     }
 }
 

@@ -68,7 +68,7 @@ bool FastState::is_move_legal(int color, int vertex) {
     return vertex == FastBoard::PASS ||
            vertex == FastBoard::RESIGN ||
            (vertex != m_komove &&
-                board.get_square(vertex) == FastBoard::EMPTY &&
+                board.get_state(vertex) == FastBoard::EMPTY &&
                 !board.is_suicide(vertex, color));
 }
 

@@ -50,7 +50,7 @@ public:
     bool is_initialized() const {
         return m_initialized;
     }
-    FastBoard::square_t get_winner() const;
+    FastBoard::vertex_t get_winner() const;
 
     static std::string state_to_string(GameState& state, int compcolor);
 
@@ -65,7 +65,7 @@ private:
 
     bool m_initialized{false};
     KoState m_state;
-    FastBoard::square_t m_winner{FastBoard::INVAL};
+    FastBoard::vertex_t m_winner{FastBoard::INVAL};
     std::vector<SGFTree> m_children;
     PropertyMap m_properties;
 };

@@ -31,7 +31,7 @@ class NNCache {
 public:
     struct Netresult {
         // 19x19 board positions
-        std::array<float, BOARD_SQUARES> policy;
+        std::array<float, NUM_INTERSECTIONS> policy;
 
         // pass
         float policy_pass;

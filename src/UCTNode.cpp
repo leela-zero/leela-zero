@@ -98,7 +98,7 @@ bool UCTNode::create_children(Network & network, std::atomic<int>& nodecount,
     const auto to_move = state.board.get_to_move();
 
     auto legal_sum = 0.0f;
-    for (auto i = 0; i < BOARD_SQUARES; i++) {
+    for (auto i = 0; i < NUM_INTERSECTIONS; i++) {
         const auto x = i % BOARD_SIZE;
         const auto y = i / BOARD_SIZE;
         const auto vertex = state.board.get_vertex(x, y);

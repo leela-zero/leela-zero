@@ -81,9 +81,9 @@ public:
     void push_input_convolution(unsigned int filter_size,
                        unsigned int channels,
                        unsigned int outputs,
-                       const std::vector<float>& weights,
-                       const std::vector<float>& means,
-                       const std::vector<float>& variances) {
+                       const std::vector<net_t>& weights,
+                       const std::vector<net_t>& means,
+                       const std::vector<net_t>& variances) {
         size_t layer = get_layer_count();
         push_weights(layer, weights);
         push_weights(layer, means);
@@ -97,12 +97,12 @@ public:
     void push_residual(unsigned int filter_size,
                        unsigned int channels,
                        unsigned int outputs,
-                       const std::vector<float>& weights_1,
-                       const std::vector<float>& means_1,
-                       const std::vector<float>& variances_1,
-                       const std::vector<float>& weights_2,
-                       const std::vector<float>& means_2,
-                       const std::vector<float>& variances_2) {
+                       const std::vector<net_t>& weights_1,
+                       const std::vector<net_t>& means_1,
+                       const std::vector<net_t>& variances_1,
+                       const std::vector<net_t>& weights_2,
+                       const std::vector<net_t>& means_2,
+                       const std::vector<net_t>& variances_2) {
         size_t layer = get_layer_count();
         push_weights(layer, weights_1);
         push_weights(layer, means_1);
@@ -119,7 +119,7 @@ public:
     void push_convolve(unsigned int filter_size,
                        unsigned int channels,
                        unsigned int outputs,
-                       const std::vector<float>& weights) {
+                       const std::vector<net_t>& weights) {
         (void)filter_size;
         assert(filter_size == 1);
 
@@ -143,10 +143,10 @@ public:
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
 
-    void push_weights(size_t layer, const std::vector<float>& weights) {
+    void push_weights(size_t layer, const std::vector<net_t>& weights) {
         add_weights(layer, weights.size(), weights.data());
     }
-    void add_weights(size_t layer, size_t size, const float* weights);
+    void add_weights(size_t layer, size_t size, const net_t* weights);
 
     void convolve3(OpenCLContext & opencl_context,
                     int channels, int outputs,

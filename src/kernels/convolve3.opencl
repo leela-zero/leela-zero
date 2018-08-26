@@ -114,8 +114,8 @@ __kernel void in_transform(__global net_t * restrict in, __global net_t * restri
                 int b = yin + i;
                 // x is transposed here for better layout later
                 if (b >= 0 && a >= 0 && b < H && a < W) {
-                    x[j][i] = vload_net_t(batch * C * BOARD_SQUARES +
-                        ch * BOARD_SQUARES + b * W + a, in);
+                    x[j][i] = vload_net_t(batch * C * NUM_INTERSECTIONS +
+                        ch * NUM_INTERSECTIONS + b * W + a, in);
                 } else {
                     x[j][i] = ZERO;
                 }
@@ -227,7 +227,7 @@ __kernel void out_transform_fused_bn(__global const net_t * restrict M,
     int y = WINOGRAD_M * block_y;
 
     if (k < K && block < batch_size * P) {
-        const int kHW = batch * K * BOARD_SQUARES + k * BOARD_SQUARES;
+        const int kHW = batch * K * NUM_INTERSECTIONS + k * NUM_INTERSECTIONS;
 
         real o[WINOGRAD_M * WINOGRAD_M];
         __out_transform_eq(M, o, Kpad, Ppad, block);
@@ -282,7 +282,7 @@ __kernel void out_transform_fused_bn_in(
     const int y = WINOGRAD_M * block_y;
 
     if (k < K && block < P) {
-        const int kHW = batch * K * BOARD_SQUARES + k * BOARD_SQUARES;
+        const int kHW = batch * K * NUM_INTERSECTIONS + k * NUM_INTERSECTIONS;
 
         real o[WINOGRAD_M * WINOGRAD_M];
         __out_transform_eq(M, o, Kpad, Ppad, block + P * batch);
@@ -300,7 +300,7 @@ __kernel void out_transform_fused_bn_in(
                         o[in_idx] += vload_net_t(kHW + out_idx, residual);
                     }
                     o[in_idx] = o[in_idx] > 0 ? o[in_idx] : ZERO;
-                    ybuf[kg * BOARD_SQUARES + out_idx] = o[in_idx];
+                    ybuf[kg * NUM_INTERSECTIONS + out_idx] = o[in_idx];
                     if (Y) {
                         vstore_net_t(o[in_idx], kHW + out_idx, Y);
                     }
@@ -321,7 +321,7 @@ __kernel void out_transform_fused_bn_in(
                 int a = xin + j;
                 // x is transposed here for better layout later
                 if (b >= 0 && a >= 0 && b < H && a < W) {
-                    xx[j][i] = ybuf[kg * BOARD_SQUARES + b * W + a];
+                    xx[j][i] = ybuf[kg * NUM_INTERSECTIONS + b * W + a];
                 } else {
                     xx[j][i] = ZERO;
                 }

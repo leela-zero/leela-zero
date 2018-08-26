@@ -286,7 +286,7 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
             for (int j = 0; j < board.get_boardsize(); j++) {
                 int vertex = board.get_vertex(i, j);
 
-                if (board.get_square(vertex) != FastBoard::EMPTY) {
+                if (board.get_state(vertex) != FastBoard::EMPTY) {
                     stringlist.push_back(board.get_string(vertex));
                 }
             }

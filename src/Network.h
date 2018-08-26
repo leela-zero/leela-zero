@@ -71,6 +71,7 @@ public:
     static constexpr auto INPUT_CHANNELS = 2 * INPUT_MOVES + 2;
     static constexpr auto OUTPUTS_POLICY = 2;
     static constexpr auto OUTPUTS_VALUE = 1;
+    static constexpr auto VALUE_LAYER = 256;
 
     void initialize(int playouts, const std::string & weightsfile);
 
@@ -137,22 +138,22 @@ private:
     // Policy head
     std::vector<float> m_conv_pol_w;
     std::vector<float> m_conv_pol_b;
-    std::array<float, 2> m_bn_pol_w1;
-    std::array<float, 2> m_bn_pol_w2;
+    std::array<float, OUTPUTS_POLICY> m_bn_pol_w1;
+    std::array<float, OUTPUTS_POLICY> m_bn_pol_w2;
 
-    std::array<float, (BOARD_SQUARES + 1) * BOARD_SQUARES * 2> m_ip_pol_w;
-    std::array<float, BOARD_SQUARES + 1> m_ip_pol_b;
+    std::array<float, OUTPUTS_POLICY * NUM_INTERSECTIONS * POTENTIAL_MOVES> m_ip_pol_w;
+    std::array<float, POTENTIAL_MOVES> m_ip_pol_b;
 
     // Value head
     std::vector<float> m_conv_val_w;
     std::vector<float> m_conv_val_b;
-    std::array<float, 1> m_bn_val_w1;
-    std::array<float, 1> m_bn_val_w2;
+    std::array<float, OUTPUTS_VALUE> m_bn_val_w1;
+    std::array<float, OUTPUTS_VALUE> m_bn_val_w2;
 
-    std::array<float, BOARD_SQUARES * 256> m_ip1_val_w;
-    std::array<float, 256> m_ip1_val_b;
+    std::array<float, OUTPUTS_VALUE * NUM_INTERSECTIONS * VALUE_LAYER> m_ip1_val_w;
+    std::array<float, VALUE_LAYER> m_ip1_val_b;
 
-    std::array<float, 256> m_ip2_val_w;
+    std::array<float, VALUE_LAYER> m_ip2_val_w;
     std::array<float, 1> m_ip2_val_b;
     bool m_value_head_not_stm;
 };
