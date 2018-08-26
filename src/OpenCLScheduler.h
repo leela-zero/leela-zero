@@ -52,6 +52,7 @@ class OpenCLScheduler : public ForwardPipe {
         {}
     };
 public:
+    virtual ~OpenCLScheduler();
     virtual void initialize(const int channels);
     virtual void forward(const std::vector<float>& input,
                          std::vector<float>& output_pol,
@@ -80,20 +81,15 @@ public:
                                const std::vector<float>& weights);
 
 private:
+    bool m_running = true;
     std::vector<std::vector<std::unique_ptr<OpenCL_Network<net_t>>>> m_networks;
     std::vector<std::vector<std::unique_ptr<OpenCL<net_t>>>> m_opencl;
 
-    using ContextPoolQueue = std::list<std::shared_ptr<ContextPoolEntry>>;
-    std::vector<ContextPoolQueue> m_context_pool;
-
     std::mutex m_mutex;
     std::condition_variable m_cv;
-
-    SMP::Mutex m_forward_queue_mutex;
     std::list<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
+    std::list<std::thread> m_worker_threads;
 
-    std::mutex m_worker_mutex;
-    std::condition_variable m_worker_cv;
     void batch_worker(const size_t gnum);
 };
 

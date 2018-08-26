@@ -90,11 +90,6 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     auto silent{false};
     auto gnum = size_t{0};
 
-    // launch the worker thread.  round_up(cfg_num_threads / gpus.size()) threads
-    // so that we only have enough contexts to achieve full parallelism.
-    const auto num_threads = (cfg_num_threads + gpus.size() - 1) / gpus.size();
-    m_context_pool.resize(num_threads);
-
     for (auto gpu : gpus) {
         m_opencl.emplace_back();
         m_networks.emplace_back();
@@ -117,15 +112,24 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
         // starting next GPU, let's not dump full list of GPUs
         silent = true;
 
-        for (auto i = size_t{0}; i < num_threads; i++) {
-            m_context_pool[i].emplace_back(std::make_shared<ContextPoolEntry>(gnum));
+        for(int i=0; i<2; i++) {
+            auto t = std::thread(&OpenCLScheduler<net_t>::batch_worker, this, gnum);
+            m_worker_threads.push_back(std::move(t));
         }
-
-        auto t = std::thread(&OpenCLScheduler<net_t>::batch_worker, this, gnum);
-        t.detach();
-        t = std::thread(&OpenCLScheduler<net_t>::batch_worker, this, gnum);
-        t.detach();
         gnum++;
+    }
+}
+
+
+template <typename net_t>
+OpenCLScheduler<net_t>::~OpenCLScheduler() {
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+        m_running = false;
+    }
+    m_cv.notify_all();
+    for(auto & x : m_worker_threads) {
+        x.join();
     }
 }
 
@@ -237,6 +241,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         {
             std::unique_lock<std::mutex> lk(m_mutex);
             while (true) {
+                if(!m_running) return;
                 count = std::min(m_forward_queue.size(), size_t(cfg_batch_size));
                 if (count > 0 && count < cfg_batch_size) {
                     count = 1;
@@ -250,7 +255,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                     break;
                 }
                 else {
-                    m_cv.wait(lk, [this](){ return !m_forward_queue.empty(); });
+                    m_cv.wait(lk, [this](){ return !m_running || !m_forward_queue.empty(); });
                 }
             }
         }
