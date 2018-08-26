@@ -725,6 +725,24 @@ void UCTSearch::increment_playouts(float eval) {
     }
 }
 
+bool UCTSearch::wr_out_of_range() {
+    if (m_root->get_visits() == 0) {
+        return false;
+    }
+    auto white_eval = m_root->get_raw_eval(FastBoard::WHITE);
+    return white_eval < cfg_min_wr
+        || (white_eval > cfg_max_wr
+            && (cfg_nonslack
+                || m_rootstate.m_stm_komi != cfg_target_komi
+                || m_rootstate.m_opp_komi != cfg_target_komi))
+        || (cfg_nonslack
+            && (m_rootstate.m_stm_komi < cfg_target_komi || m_rootstate.m_opp_komi < cfg_target_komi)
+            && white_eval < cfg_max_wr - cfg_wr_margin)
+        || (cfg_nonslack
+            && (m_rootstate.m_stm_komi > cfg_target_komi || m_rootstate.m_opp_komi > cfg_target_komi)
+            && white_eval > cfg_min_wr + cfg_wr_margin);
+}
+
 int UCTSearch::think(int color, passflag_t passflag) {
     // Start counting time for us
     m_rootstate.start_clock(color);
@@ -773,11 +791,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
             // adjust during search
             if (cfg_collect_during_search) {
-                if (m_root->get_visits() > 0 && (m_root->get_raw_eval(FastBoard::WHITE) < cfg_min_wr
-                    || (m_root->get_raw_eval(FastBoard::WHITE) > cfg_max_wr 
-                        && (cfg_nonslack 
-                            || m_rootstate.m_stm_komi != cfg_target_komi 
-                            || m_rootstate.m_opp_komi != cfg_target_komi)))) {
+                if (wr_out_of_range()){
                     collecting = true;
                     if (num_adjustments < cfg_max_num_adjustments
                         && elapsed_centis * 2.0f < time_for_move
@@ -858,8 +872,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
 void UCTSearch::ponder(bool analyzing) {
     update_root();
-
-
+    
     bool to_adjust;
     int num_adjustments = 0;
     do { //adjust during search
@@ -884,11 +897,7 @@ void UCTSearch::ponder(bool analyzing) {
             }
 
             if (cfg_collect_during_search) {
-                if (m_root->get_visits() > 0 && (m_root->get_raw_eval(FastBoard::WHITE) < cfg_min_wr
-                    || (m_root->get_raw_eval(FastBoard::WHITE) > cfg_max_wr
-                        && (cfg_nonslack
-                            || m_rootstate.m_stm_komi != cfg_target_komi
-                            || m_rootstate.m_opp_komi != cfg_target_komi)))) {
+                if (wr_out_of_range()) {
                     collecting = true;
                     if (analyzing && num_adjustments < cfg_max_num_adjustments) {
                         auto adj_positions0 = std::accumulate(sym_states[0].begin(), sym_states[0].end(), 0,
