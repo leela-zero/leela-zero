@@ -212,6 +212,8 @@ class ChunkParser:
         winner = float(text_item[18])
         if not(winner == 1.0 or winner == -1.0):
             return False, None
+        if stm == 1
+            winner = -winner
         winner = int((winner + 1) / 2)
 
         version = struct.pack('i', 1)
