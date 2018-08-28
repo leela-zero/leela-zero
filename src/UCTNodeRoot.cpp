@@ -258,7 +258,7 @@ void adjust_down_komi(GameState& root_state, float shift, float target_wr, std::
     if (cfg_nonslack) {
         do {
             last_komi = root_state.m_stm_komi;
-            if (steps-- < 0 || last_komi < cfg_min_komi) { root_state.m_stm_komi = orig_komi; return; }
+            if (steps-- < 0 || last_komi <= cfg_min_komi) { root_state.m_stm_komi = orig_komi; return; }
             if (last_komi > 7.5) {
                 root_state.m_stm_komi = 7.5;
             }
