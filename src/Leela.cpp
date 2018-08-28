@@ -88,6 +88,8 @@ static void parse_commandline(int argc, char *argv[]) {
         ("min-wr", po::value<float>(), "Minimal white winrate.")
         ("wr-margin", po::value<float>(), "White winrate is adjusted to min+margin or max-margin.")
         ("target-komi", po::value<float>(), "Target komi, default 7.5.")
+        ("max-komi", po::value<float>(), "Maximal komi allowed.")
+        ("min-komi", po::value<float>(), "Minimal komi allowed.")
         ("adj-positions", po::value<int>(), "Number of positions to collect for komi adjustment, default 200; should be higher for strong machines to achieve more accurate komi adjustment.")
         ("adj-pct", po::value<float>(), "Percentage of collected positions to use for komi adjustment, default 4.")
         ("num-adj", po::value<int>(), "Maximal number of komi adjustments for each genmove, default 1.")
@@ -285,6 +287,14 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("neg")) {
         cfg_neg = true;
+    }
+
+    if (vm.count("max-komi")) {
+        cfg_max_komi = vm["max-komi"].as<float>();
+    }
+
+    if (vm.count("min-komi")) {
+        cfg_min_komi = vm["min-komi"].as<float>();
     }
 
 #ifdef USE_TUNER

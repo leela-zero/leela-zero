@@ -78,6 +78,8 @@ int cfg_max_num_adjustments;
 int cfg_fixed_symmetry;
 bool cfg_use_root_for_diff;
 bool cfg_auto_pos_neg;
+float cfg_max_komi;
+float cfg_min_komi;
 
 int cfg_noise;
 int cfg_random_cnt;
@@ -156,6 +158,8 @@ void GTP::setup_default_parameters() {
     cfg_backup_fpu = false; // to remove
     cfg_use_root_for_diff = false;
     cfg_auto_pos_neg = true;
+    cfg_max_komi = std::numeric_limits<float>::max();
+    cfg_min_komi = -cfg_max_komi;
 
     cfg_noise = false;
     cfg_random_cnt = 0;

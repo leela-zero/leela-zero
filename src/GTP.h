@@ -61,6 +61,8 @@ extern int cfg_max_num_adjustments;
 extern int cfg_fixed_symmetry;
 extern bool cfg_use_root_for_diff;
 extern bool cfg_auto_pos_neg;
+extern float cfg_max_komi;
+extern float cfg_min_komi;
 
 extern int cfg_noise;
 extern int cfg_random_cnt;
