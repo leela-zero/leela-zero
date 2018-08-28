@@ -245,7 +245,9 @@ void adjust_up_komi(GameState& root_state, float shift, float target_wr, std::fu
             if (root_state.m_stm_komi >= cfg_max_komi) { root_state.m_stm_komi = cfg_max_komi; }
         }
         net_eval = get_white_eval(root_state.m_stm_komi);
-        if (inv_wr(net_eval) + shift > inv_wr(cfg_min_wr + cfg_wr_margin) && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
+        if (inv_wr(net_eval) + shift > inv_wr(cfg_min_wr + cfg_wr_margin) 
+            && inv_wr(net_eval) + shift < inv_wr(cfg_max_wr - cfg_wr_margin)
+            && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
 	} while (inv_wr(net_eval) + shift < inv_wr(target_wr));
     binary_search_komi(root_state, shift, root_state.m_stm_komi, last_komi, target_wr, cfg_steps, get_white_eval);
 }
@@ -274,7 +276,9 @@ void adjust_down_komi(GameState& root_state, float shift, float target_wr, std::
                 if (root_state.m_stm_komi <= cfg_min_komi) { root_state.m_stm_komi = cfg_min_komi; }
             }
             net_eval = get_white_eval(root_state.m_stm_komi);
-            if (inv_wr(net_eval) + shift < inv_wr(cfg_max_wr - cfg_wr_margin) && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
+            if (inv_wr(net_eval) + shift < inv_wr(cfg_max_wr - cfg_wr_margin) 
+                && inv_wr(net_eval) + shift > inv_wr(cfg_min_wr + cfg_wr_margin)
+                && (root_state.m_stm_komi == 7.5 || root_state.m_stm_komi == -7.5 || root_state.m_stm_komi == cfg_target_komi)) { return; }
         } while (inv_wr(net_eval) + shift > inv_wr(target_wr));
         binary_search_komi(root_state, shift, last_komi, root_state.m_stm_komi, target_wr, cfg_steps, get_white_eval);
     }
