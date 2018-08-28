@@ -100,7 +100,7 @@ public:
         std::numeric_limits<int>::max() / 2;
 
     UCTSearch(GameState& g, Network & network);
-    bool UCTSearch::wr_out_of_range();
+    bool wr_out_of_range();
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
