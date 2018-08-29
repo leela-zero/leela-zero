@@ -420,6 +420,8 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
             ss[i].insert(ss[i].end(), search->sym_states[i][j].begin(),search->sym_states[i][j].end());
         }
     }
+    search->sym_states[0].assign(cfg_num_threads, {});
+    search->sym_states[1].assign(cfg_num_threads, {});
 
     Utils::myprintf("black positions: %d\n", ss[0].size());
     Utils::myprintf("white positions: %d\n", ss[1].size());
@@ -428,6 +430,7 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
         if (cfg_collect_during_search) {
             auto hash = root_state.board.get_ko_hash();
             auto index = root_state.m_ko_hash_history.size() - 1;
+            int thread[2] = { 0,0 };
             for (auto i = 0; i < 2; i++) {
                 auto num_removed = 0;
                 auto colored_root_eval = (i == color ? root_eval : 1.0f - root_eval);
@@ -440,6 +443,8 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
                         num_removed++;
                     }
                     else {
+                        search->sym_states[i][thread[i]].push_back(ss[i][j]);
+                        thread[i] = (thread[i] + 1) % cfg_num_threads;
                         ss[i][j]->diff = abs(ss[i][j]->winrate - colored_root_eval);
                         ss[i][j - num_removed] = ss[i][j];
                         if (!cfg_use_root_for_diff) { colored_root_eval += ss[i][j]->winrate; }

@@ -224,9 +224,9 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                 if (success && sym_states[color][thread_num].size() * cfg_num_threads < cfg_adj_positions) {
                     auto sym_state = std::make_shared<Sym_State>();
                     auto color = currstate.get_to_move();
-                    (*sym_state).symmetry = rand_sym;
-                    (*sym_state).state = currstate;
-                    (*sym_state).winrate = (color == FastBoard::BLACK ? eval : 1.0f - eval);
+                    sym_state->symmetry = rand_sym;
+                    sym_state->state = currstate;
+                    sym_state->winrate = (color == FastBoard::BLACK ? eval : 1.0f - eval);
                     //LOCK(get_mutex(), lock);
                     sym_states[color][thread_num].push_back(sym_state);
                     if ((sym_states[color][thread_num].size() - 1) * cfg_num_threads >= cfg_adj_positions) {
