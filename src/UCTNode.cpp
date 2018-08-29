@@ -271,7 +271,8 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     auto best_value = std::numeric_limits<double>::lowest();
 
     for (auto& child : m_children) {
-        if (!child.active()) {
+        child.inflate();
+        if (!child.active() || child->m_is_expanding) {
             continue;
         }
 

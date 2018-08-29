@@ -229,6 +229,7 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
 
 std::atomic<size_t> batch_index;
 std::atomic<size_t> batch_stats[MAX_BATCH+1];
+std::atomic<bool> is_finishing{false};
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
@@ -243,8 +244,8 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             while (true) {
                 if(!m_running) return;
                 count = std::min(m_forward_queue.size(), size_t(cfg_batch_size));
-                if (count > 0 && count < cfg_batch_size) {
-                    count = 1;
+                if (count < cfg_batch_size && !is_finishing) {
+                    count = 0;
                 }
                 if (count > 0) {
                     auto begin = m_forward_queue.begin();
@@ -255,7 +256,9 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                     break;
                 }
                 else {
-                    m_cv.wait(lk, [this](){ return !m_running || !m_forward_queue.empty(); });
+                    // wait with pred does not work anymore, not sure why yet
+                    m_cv.wait(lk);
+                    //m_cv.wait(lk, [this](){ return !m_running || !m_forward_queue.empty(); });
                 }
             }
         }

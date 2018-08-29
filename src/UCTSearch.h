@@ -102,6 +102,7 @@ public:
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
+    void timer(Time start, int time_for_move);
     float get_min_psa_ratio() const;
     void dump_stats(FastState& state, UCTNode& parent);
     void tree_stats(const UCTNode& node);
@@ -113,6 +114,7 @@ private:
     size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0,
                                bool prune = true);
     bool stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
+    bool predict_stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
     int get_best_move(passflag_t passflag);
     void update_root();
     bool advance_to_new_rootstate();
@@ -130,6 +132,8 @@ private:
     std::list<Utils::ThreadGroup> m_delete_futures;
 
     Network & m_network;
+
+    std::thread m_timer_thread;
 };
 
 class UCTWorker {
