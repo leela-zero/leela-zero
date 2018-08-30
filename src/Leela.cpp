@@ -63,15 +63,15 @@ static void parse_commandline(int argc, char *argv[]) {
                        "Requires --noponder.")
         ("visits,v", po::value<int>(),
                      "Weaken engine by limiting the number of visits.")
-        ("lagbuffer,b", po::value<int>()->default_value(cfg_lagbuffer_cs),
+        ("lagbuffer,b", po::value<int>(),//->default_value(cfg_lagbuffer_cs),
                         "Safety margin for time usage in centiseconds.")
-        ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
+        ("resignpct,r", po::value<int>(),
                         "Resign when winrate is less than x%.\n"
                         "-1 uses 10% but scales for handicap.")
         ("weights,w", po::value<std::string>(), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
         ("quiet,q", "Disable all diagnostic output.")
-        ("timemanage", po::value<std::string>()->default_value("auto"),
+        ("timemanage", po::value<std::string>(),//->default_value("auto"),
                        "[auto|on|off|fast|no_pruning] Enable time management features.\n"
                        "auto = no_pruning when using -n, otherwise on.\n"
                        "on = Cut off search when the best move can't change"

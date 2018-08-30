@@ -807,10 +807,13 @@ int UCTSearch::think(int color, passflag_t passflag) {
                         }
                     }
                 }
-                else if (!cfg_always_collect) {
-                    //sym_states[0].assign(cfg_num_threads, {});
-                    //sym_states[1].assign(cfg_num_threads, {});
-                    collecting = false;
+                else {
+                    if (m_playouts > 3.0f * cfg_adj_positions) { num_adjustments = cfg_max_num_adjustments + 1; }
+                    if (!cfg_always_collect) {
+                        //sym_states[0].assign(cfg_num_threads, {});
+                        //sym_states[1].assign(cfg_num_threads, {});
+                        collecting = false;
+                    }
                 }
             }
 
