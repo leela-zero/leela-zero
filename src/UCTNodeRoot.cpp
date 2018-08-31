@@ -341,6 +341,7 @@ float adjust_komi(GameState& root_state, float root_eval, float target_wr, bool 
             root_state.m_stm_komi = komi;
         }
     }
+    return 0.0f;
 }
 
 float mean_white_eval(Network & net, std::vector<std::shared_ptr<Sym_State>>& ssi, float komi) {
@@ -353,7 +354,7 @@ float mean_white_eval(Network & net, std::vector<std::shared_ptr<Sym_State>>& ss
             [komi](const std::shared_ptr<Sym_State> &sym_state) {sym_state->state.m_stm_komi = komi;
         sym_state->winrate = Network::get_scored_moves(&sym_state->state, Network::Ensemble::DIRECT, sym_state->symmetry, true).winrate; });
         */
-        for (auto j = 0; j < num_positions; j++) {
+        for (auto j = 0; j < (int) num_positions; j++) {
             ssi[j]->state.m_stm_komi = komi;
             ssi[j]->winrate = net.get_output(&ssi[j]->state, Network::Ensemble::DIRECT, ssi[j]->symmetry, true).winrate;
         }
@@ -435,8 +436,8 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
                 auto num_removed = 0;
                 auto colored_root_eval = (i == color ? root_eval : 1.0f - root_eval);
                 if (!cfg_use_root_for_diff) { colored_root_eval = 0.0f; }
-                for (auto j = 0; j < ss[i].size(); j++) {
-                    bool to_remove = false;
+                for (auto j = 0; j < (int) ss[i].size(); j++) {
+                    //bool to_remove = false;
                     if ((!search->collecting && // root changed, clear all sym_states that are not descendents of root
                         (ss[i][j]->state.m_ko_hash_history.size() <= index
                             || ss[i][j]->state.m_ko_hash_history[index] != hash))) {
@@ -453,7 +454,7 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
                 ss[i].resize(ss[i].size() - num_removed);
                 if (!cfg_use_root_for_diff) {
                     colored_root_eval /= (ss[i].size());
-                    for (auto j = 0; j < ss[i].size(); j++) { ss[i][j]->diff = abs(ss[i][j]->winrate - colored_root_eval); }
+                    for (auto j = 0; j < (int) ss[i].size(); j++) { ss[i][j]->diff = abs(ss[i][j]->winrate - colored_root_eval); }
                 }
             }
             Utils::myprintf("deleting non-descendents\n");
@@ -463,7 +464,7 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
 
         bool to_adjust = false;
         // no need to collect ss[0] or ss[1] if cfg_pos or cfg_neg ..
-        if (search->collecting || (ss[0].size() >= cfg_adj_positions && ss[1].size() >= cfg_adj_positions)) {
+        if (  search->collecting || ( (int) ss[0].size()  >= cfg_adj_positions && (int) ss[1].size() >= cfg_adj_positions)) {
             to_adjust = true;
             auto num_positions = ceil(cfg_adj_positions * cfg_adj_pct / 100.0);
             for (auto i = 0; i < 2; i++) {
