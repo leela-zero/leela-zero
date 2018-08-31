@@ -273,6 +273,11 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     for (auto& child : m_children) {
         if (!child.active()) {
             continue;
+        } else {
+            child.inflate();
+            if (child->m_is_expanding) {
+                continue;
+            }
         }
 
         auto winrate = fpu_eval;
