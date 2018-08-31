@@ -271,13 +271,8 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     auto best_value = std::numeric_limits<double>::lowest();
 
     for (auto& child : m_children) {
-        if (!child.active()) {
+        if (!child.active() || (child.is_inflated() && child->m_is_expanding)) {
             continue;
-        } else {
-            child.inflate();
-            if (child->m_is_expanding) {
-                continue;
-            }
         }
 
         auto winrate = fpu_eval;
