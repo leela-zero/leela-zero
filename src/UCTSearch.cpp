@@ -221,7 +221,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                     rand_sym = cfg_fixed_symmetry;
                 }
                 success = node->create_children(m_network, m_nodes, currstate, eval, get_min_psa_ratio(), rand_sym);
-                if (success && sym_states[color][thread_num].size() * cfg_num_threads < cfg_adj_positions) {
+                if (success && int( sym_states[color][thread_num].size() * cfg_num_threads ) < cfg_adj_positions) {
                     auto sym_state = std::make_shared<Sym_State>();
                     auto color = currstate.get_to_move();
                     sym_state->symmetry = rand_sym;
@@ -229,7 +229,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                     sym_state->winrate = (color == FastBoard::BLACK ? eval : 1.0f - eval);
                     //LOCK(get_mutex(), lock);
                     sym_states[color][thread_num].push_back(sym_state);
-                    if ((sym_states[color][thread_num].size() - 1) * cfg_num_threads >= cfg_adj_positions) {
+                    if ( int( (sym_states[color][thread_num].size() - 1) * cfg_num_threads ) >= cfg_adj_positions) {
                         //sym_states[color][thread_num].pop_front();
                     }
                 }
