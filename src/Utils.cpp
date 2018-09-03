@@ -27,9 +27,6 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <shlwapi.h>
-#pragma comment(lib,"shlwapi.lib")
-#include "shlobj.h"
 #else
 #include <sys/select.h>
 #include <unistd.h>
@@ -165,30 +162,9 @@ size_t Utils::ceilMultiple(size_t a, size_t b) {
     return ret;
 }
 
-#ifdef _WIN32
-// https://stackoverflow.com/a/3999597
-// Convert a wide Unicode string to an UTF8 string
-std::string utf8_encode(const std::wstring &wstr)
-{
-    if (wstr.empty()) {
-        return std::string();
-    }
-    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), nullptr, 0, nullptr, nullptr);
-    std::string strTo(size_needed, 0);
-    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, nullptr, nullptr);
-    return strTo;
-}
-#endif
-
 const std::string Utils::leelaz_file(std::string file) {
 #ifdef _WIN32
-    // https://stackoverflow.com/a/11032792 but avoiding the UNICODE mess and just using W variants
-    wchar_t szPath[MAX_PATH];
-    if (!SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, szPath))) {
-        return std::string();
-    }
-    PathAppendW(szPath, L"\\Leela Zero\\");
-    boost::filesystem::path dir(utf8_encode(szPath));
+    boost::filesystem::path dir(boost::filesystem::current_path());
 #else
     // https://stackoverflow.com/a/26696759
     const char *homedir;
