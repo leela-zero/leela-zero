@@ -45,7 +45,7 @@ const std::array<FastBoard::vertex_t, 4> FastBoard::s_cinvert = {
     WHITE, BLACK, EMPTY, INVAL
 };
 
-int FastBoard::get_boardsize(void) const {
+int FastBoard::get_boardsize() const {
     return m_boardsize;
 }
 

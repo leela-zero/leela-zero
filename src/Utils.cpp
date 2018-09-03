@@ -33,7 +33,7 @@
 
 Utils::ThreadPool thread_pool;
 
-bool Utils::input_pending(void) {
+bool Utils::input_pending() {
 #ifdef HAVE_SELECT
     fd_set read_fds;
     FD_ZERO(&read_fds);

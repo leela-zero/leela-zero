@@ -62,7 +62,7 @@ public:
         BLACK = 0, WHITE = 1, EMPTY = 2, INVAL = 3
     };
 
-    int get_boardsize(void) const;
+    int get_boardsize() const;
     vertex_t get_state(int x, int y) const;
     vertex_t get_state(int vertex) const ;
     int get_vertex(int x, int y) const;
