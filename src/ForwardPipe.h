@@ -54,6 +54,8 @@ public:
                                unsigned int outputs,
                                const std::vector<float>& weights) = 0;
 
+    virtual void set_batching(bool is_batching) = 0;
+
 
 };
 

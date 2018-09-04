@@ -54,6 +54,8 @@ public:
                                unsigned int outputs,
                                const std::vector<float>& weights);
 
+    virtual void set_batching(bool is_batching) {};
+
 
 private:
     void winograd_transform_in(const std::vector<float>& in,

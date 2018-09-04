@@ -209,7 +209,12 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
 
 std::atomic<size_t> batch_index;
 std::atomic<size_t> batch_stats[2];
-std::atomic<bool> is_finishing{false};
+
+template <typename net_t>
+void OpenCLScheduler<net_t>::set_batching(bool is_batching) {
+    m_is_batching = is_batching;
+    m_cv.notify_one();
+}
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
@@ -227,7 +232,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             while (true) {
                 if(!m_running) return;
                 count = std::min(m_forward_queue.size(), size_t(cfg_batch_size));
-                if (count < cfg_batch_size && !is_finishing) {
+                if (count < cfg_batch_size && m_is_batching) {
                     count = 0;
                 }
                 if (count > 0) {

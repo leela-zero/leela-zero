@@ -670,7 +670,6 @@ void UCTSearch::increment_playouts() {
 }
 
 extern std::atomic<size_t> batch_stats[];
-extern std::atomic<bool> is_finishing;
 
 void UCTSearch::timer(Time start, int time_for_move) {
     using namespace std::chrono_literals;
@@ -682,14 +681,7 @@ void UCTSearch::timer(Time start, int time_for_move) {
         std::this_thread::sleep_for(200ms);
     }
     myprintf("time up, finishing\n");
-    is_finishing = true;
-    // Notify the scheduler to stop waiting and pass whatever have to GPU
-    // This is done by do one more simulation, a bit hacky
-    auto currstate = std::make_unique<GameState>(m_rootstate);
-    auto result = play_simulation(*currstate, m_root.get());
-    if (result.valid()) {
-        increment_playouts();
-    }
+    m_network.set_batching(false);
 }
 
 int UCTSearch::think(int color, passflag_t passflag) {
@@ -713,9 +705,9 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     // create a sorted list of legal moves (make sure we
     // play something legal and decent even in time trouble)
-    is_finishing = true;
+    m_network.set_batching(false);
     m_root->prepare_root_node(m_network, color, m_nodes, m_rootstate);
-    is_finishing = false;
+    m_network.set_batching(true);
 
     m_run = true;
     int cpus = cfg_num_threads;
