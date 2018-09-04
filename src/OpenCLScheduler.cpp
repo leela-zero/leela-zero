@@ -213,6 +213,9 @@ std::atomic<bool> is_finishing{false};
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
+    auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
+    auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
+    auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
     OpenCLContext context;
     myprintf("worker %d started, batch size %d\n", gnum, cfg_batch_size);
     while (true) {
@@ -243,9 +246,9 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             }
         }
 
-        auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * count);
-        auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * count);
-        auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * count);
+        batch_input.resize(Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * count);
+        batch_output_pol.resize(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * count);
+        batch_output_val.resize(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * count);
 
         batch_index++;
         batch_stats[count == cfg_batch_size ? 1 : 0]++;

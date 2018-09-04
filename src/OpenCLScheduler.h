@@ -29,7 +29,6 @@
 #include "ForwardPipe.h"
 #include "OpenCL.h"
 #include "ThreadPool.h"
-#include "concurrentqueue.h"
 
 template <typename net_t>
 class OpenCLScheduler : public ForwardPipe {
