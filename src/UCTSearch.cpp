@@ -680,7 +680,6 @@ void UCTSearch::timer(Time start, int time_for_move) {
         elapsed_centis = Time::timediff_centis(start, elapsed2);
         std::this_thread::sleep_for(200ms);
     }
-    myprintf("time up, finishing\n");
     m_network.set_batching(false);
 }
 
@@ -747,7 +746,6 @@ int UCTSearch::think(int color, passflag_t passflag) {
         keeprunning &= have_alternate_moves(elapsed_centis, time_for_move);
     } while (keeprunning);
 
-    myprintf("stopped %d\n", std::this_thread::get_id());
     // stop the search
     m_run = false;
     tg.wait_all();
@@ -786,6 +784,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
 }
 
 void UCTSearch::ponder() {
+    m_network.set_batching(false);
+
     update_root();
 
     m_root->prepare_root_node(m_network, m_rootstate.board.get_to_move(),

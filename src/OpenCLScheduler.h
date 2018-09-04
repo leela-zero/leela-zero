@@ -22,7 +22,6 @@
 
 #include <list>
 #include <vector>
-#include <queue>
 #include <thread>
 
 #include "SMP.h"

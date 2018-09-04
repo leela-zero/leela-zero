@@ -19,8 +19,6 @@
 
 #ifdef USE_OPENCL
 
-#include <chrono>
-
 #include "GTP.h"
 #include "Random.h"
 #include "Network.h"
@@ -207,7 +205,6 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
     entry->cv.wait(lk);
 }
 
-std::atomic<size_t> batch_index;
 std::atomic<size_t> batch_stats[2];
 
 template <typename net_t>
@@ -222,7 +219,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
     auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
     auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
     OpenCLContext context;
-    myprintf("worker %d started, batch size %d\n", gnum, cfg_batch_size);
+
     while (true) {
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
         size_t count = 0;
@@ -255,7 +252,6 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         batch_output_pol.resize(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * count);
         batch_output_val.resize(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * count);
 
-        batch_index++;
         batch_stats[count == cfg_batch_size ? 1 : 0]++;
 
         {

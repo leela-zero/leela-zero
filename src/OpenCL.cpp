@@ -126,9 +126,6 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                              std::vector<float>& output_val,
                              OpenCLContext & opencl_context,
                              const int batch_size) {
-
-    assert(batch_size == getOpenCL().m_batch_size);
-
     constexpr auto tiles = WINOGRAD_P;
     constexpr auto one_plane = NUM_INTERSECTIONS * sizeof(net_t);
     const auto finalSize_pol = m_layers[m_layers.size()-2].outputs * one_plane;
