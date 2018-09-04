@@ -107,7 +107,7 @@ void GTP::setup_default_parameters() {
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;
     cfg_tune_only = false;
-    cfg_batch_size = 8;
+    cfg_batch_size = 4;
 #ifdef USE_HALF
     cfg_precision = precision_t::AUTO;
 #endif
