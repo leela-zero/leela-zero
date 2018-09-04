@@ -199,15 +199,11 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
                                      std::vector<float>& output_val) {
     auto entry = std::make_shared<ForwardQueueEntry>(input, output_pol, output_val);
     std::unique_lock<std::mutex> lk(entry->mutex);
-#ifdef USE_LOCK_FREE_QUEUE
-    m_forward_queue.enqueue(entry);
-#else
     {
         std::unique_lock<std::mutex> lk(m_mutex);
         m_forward_queue.push_back(entry);
     }
     m_cv.notify_one();
-#endif
     entry->cv.wait(lk);
 }
 
