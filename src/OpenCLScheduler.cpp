@@ -228,7 +228,7 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
 }
 
 std::atomic<size_t> batch_index;
-std::atomic<size_t> batch_stats[MAX_BATCH+1];
+std::atomic<size_t> batch_stats[2];
 std::atomic<bool> is_finishing{false};
 
 template <typename net_t>
@@ -269,7 +269,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * count);
 
         batch_index++;
-        batch_stats[count]++;
+        batch_stats[count == cfg_batch_size ? 1 : 0]++;
 
         {
             size_t index = 0;

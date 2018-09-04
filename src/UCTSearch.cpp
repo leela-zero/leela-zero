@@ -784,12 +784,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
                  static_cast<int>(m_nodes),
                  static_cast<int>(m_playouts),
                  (m_playouts * 100.0) / (elapsed_centis+1));
-        std::string stats;
-        for(auto i=1;i<=cfg_batch_size;i++) {
-            stats += std::to_string(batch_stats[i]);
-            stats += ", ";
-        }
-        myprintf("batch stats: %s\n", stats.c_str());
+        myprintf("batch stats: %d %d\n", batch_stats[0].load(), batch_stats[1].load());
     }
     int bestmove = get_best_move(passflag);
 
