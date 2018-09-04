@@ -91,22 +91,12 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     auto gnum = size_t{0};
 
     for (auto gpu : gpus) {
-        m_opencl.emplace_back();
-        m_networks.emplace_back();
-
-        {
-            auto opencl = std::make_unique<OpenCL<net_t>>();
-            auto net = std::make_unique<OpenCL_Network<net_t>>(*opencl);
-            opencl->initialize(channels, gpu, silent, 1);
-            m_opencl[gnum].push_back(std::move(opencl));
-            m_networks[gnum].push_back(std::move(net));
-        }
         {
             auto opencl = std::make_unique<OpenCL<net_t>>();
             auto net = std::make_unique<OpenCL_Network<net_t>>(*opencl);
             opencl->initialize(channels, gpu, silent, cfg_batch_size);
-            m_opencl[gnum].push_back(std::move(opencl));
-            m_networks[gnum].push_back(std::move(net));
+            m_opencl.push_back(std::move(opencl));
+            m_networks.push_back(std::move(net));
         }
 
         // starting next GPU, let's not dump full list of GPUs
@@ -140,25 +130,23 @@ void OpenCLScheduler<net_t>::push_input_convolution(unsigned int filter_size,
                                                     const std::vector<float>& weights,
                                                     const std::vector<float>& means,
                                                     const std::vector<float>& variances) {
-    for (const auto& net2 : m_networks) {
-        for (const auto& opencl_net : net2) {
-            const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
-    
-            const auto mwg = tuners[0];
-            const auto kwg = tuners[2];
-            const auto vwm = tuners[3];
-    
-            const auto m_ceil = ceilMultiple(ceilMultiple(outputs, mwg), vwm);
-            const auto k_ceil = ceilMultiple(ceilMultiple(channels, kwg), vwm);
-    
-            const auto Upad = zeropad_U<net_t>(weights,
-                                               outputs, channels,
-                                               m_ceil, k_ceil);
-            opencl_net->push_input_convolution(
-                filter_size, channels, outputs,
-                Upad, from_float(means), from_float(variances)
+    for (const auto& opencl_net : m_networks) {
+        const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
+
+        const auto mwg = tuners[0];
+        const auto kwg = tuners[2];
+        const auto vwm = tuners[3];
+
+        const auto m_ceil = ceilMultiple(ceilMultiple(outputs, mwg), vwm);
+        const auto k_ceil = ceilMultiple(ceilMultiple(channels, kwg), vwm);
+
+        const auto Upad = zeropad_U<net_t>(weights,
+                                           outputs, channels,
+                                           m_ceil, k_ceil);
+        opencl_net->push_input_convolution(
+            filter_size, channels, outputs,
+            Upad, from_float(means), from_float(variances)
             );
-        }
     }
 }
 
@@ -172,28 +160,26 @@ void OpenCLScheduler<net_t>::push_residual(unsigned int filter_size,
                                            const std::vector<float>& weights_2,
                                            const std::vector<float>& means_2,
                                            const std::vector<float>& variances_2) {
-    for (const auto& net2 : m_networks) {
-        for (const auto& opencl_net : net2) {
-            const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
-    
-            const auto mwg = tuners[0];
-            const auto vwm = tuners[3];
-    
-            const auto m_ceil = ceilMultiple(ceilMultiple(outputs, mwg), vwm);
-            const auto Upad1 = zeropad_U<net_t>(weights_1,
-                                                outputs, outputs,
-                                                m_ceil, m_ceil);
-            const auto Upad2 = zeropad_U<net_t>(weights_2,
-                                                outputs, outputs,
-                                                m_ceil, m_ceil);
-            opencl_net->push_residual(filter_size, channels, outputs,
-                                      Upad1,
-                                      from_float(means_1),
-                                      from_float(variances_1),
-                                      Upad2,
-                                      from_float(means_2),
-                                      from_float(variances_2));
-        }
+    for (const auto& opencl_net : m_networks) {
+        const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
+
+        const auto mwg = tuners[0];
+        const auto vwm = tuners[3];
+
+        const auto m_ceil = ceilMultiple(ceilMultiple(outputs, mwg), vwm);
+        const auto Upad1 = zeropad_U<net_t>(weights_1,
+                                            outputs, outputs,
+                                            m_ceil, m_ceil);
+        const auto Upad2 = zeropad_U<net_t>(weights_2,
+                                            outputs, outputs,
+                                            m_ceil, m_ceil);
+        opencl_net->push_residual(filter_size, channels, outputs,
+                                  Upad1,
+                                  from_float(means_1),
+                                  from_float(variances_1),
+                                  Upad2,
+                                  from_float(means_2),
+                                  from_float(variances_2));
     }
 }
 
@@ -202,10 +188,8 @@ void OpenCLScheduler<net_t>::push_convolve(unsigned int filter_size,
                                            unsigned int channels,
                                            unsigned int outputs,
                                            const std::vector<float>& weights) {
-    for (const auto & net2 : m_networks) {
-        for (const auto & opencl_net : net2) {
-            opencl_net->push_convolve(filter_size, channels, outputs, from_float(weights));
-        }
+    for (const auto & opencl_net : m_networks) {
+        opencl_net->push_convolve(filter_size, channels, outputs, from_float(weights));
     }
 }
 
@@ -233,7 +217,7 @@ std::atomic<bool> is_finishing{false};
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
-    std::vector<OpenCLContext> contexts(2);
+    OpenCLContext context;
     myprintf("worker %d started, batch size %d\n", gnum, cfg_batch_size);
     while (true) {
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
@@ -263,7 +247,6 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             }
         }
 
-        auto & context = contexts[count == 1 ? 0 : 1];
         auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * count);
         auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * count);
         auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * count);
@@ -281,7 +264,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         }
 
         {
-            m_networks[gnum][count == 1 ? 0 : 1]->forward(
+            m_networks[gnum]->forward(
                 batch_input, batch_output_pol, batch_output_val, context, count);
         }
 

@@ -82,8 +82,8 @@ public:
 
 private:
     bool m_running = true;
-    std::vector<std::vector<std::unique_ptr<OpenCL_Network<net_t>>>> m_networks;
-    std::vector<std::vector<std::unique_ptr<OpenCL<net_t>>>> m_opencl;
+    std::vector<std::unique_ptr<OpenCL_Network<net_t>>> m_networks;
+    std::vector<std::unique_ptr<OpenCL<net_t>>> m_opencl;
 
     std::mutex m_mutex;
     std::condition_variable m_cv;
