@@ -250,10 +250,12 @@ static void parse_commandline(int argc, char *argv[]) {
             myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
             num_threads = cfg_max_threads;
         }
+#ifdef USE_OPENCL
         if (num_threads < cfg_batch_size) {
             printf("Threads number = %d must be larger than batch size = %d\n", num_threads, cfg_batch_size);
             exit(EXIT_FAILURE);
         }
+#endif
         cfg_num_threads = num_threads;
     }
     myprintf("Using %d thread(s).\n", cfg_num_threads);
