@@ -271,12 +271,15 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     auto best_value = std::numeric_limits<double>::lowest();
 
     for (auto& child : m_children) {
-        if (!child.active() || (child.is_inflated() && child->m_is_expanding)) {
+        if (!child.active()) {
             continue;
         }
 
         auto winrate = fpu_eval;
-        if (child.get_visits() > 0) {
+        if (child.is_inflated() && child->m_is_expanding) {
+            winrate = -fpu_reduction - 1.0;
+        }
+        else if (child.get_visits() > 0) {
             winrate = child.get_eval(color);
         }
         auto psa = child.get_policy();
