@@ -64,7 +64,7 @@ bool UCTNode::create_children(Network & network,
 
     // can we actually expand?
     if (!expandable(min_psa_ratio)) {
-        expand_cancel();
+        expand_done();
         return false;
     }
 

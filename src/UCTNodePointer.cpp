@@ -26,7 +26,7 @@
 #include "UCTNode.h"
 
 UCTNodePointer::~UCTNodePointer() {
-    auto v = std::atomic_exchange(&m_data, INVALID);
+    auto v = m_data.load();
     if (is_inflated(v)) {
         delete read_ptr(v);
     }
