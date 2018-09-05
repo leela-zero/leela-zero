@@ -83,6 +83,7 @@ public:
     void set_to_move(int color);
 
     std::string move_to_text(int move) const;
+    int text_to_move(std::string move) const;
     std::string move_to_text_sgf(int move) const;
     std::string get_stone_list() const;
     std::string get_string(int vertex) const;
