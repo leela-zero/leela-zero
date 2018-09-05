@@ -21,7 +21,7 @@ clang:
 		LDFLAGS='$(LDFLAGS) -flto -fuse-linker-plugin' \
 		leelaz
 
-DYNAMIC_LIBS = -lboost_program_options -lpthread -lz
+DYNAMIC_LIBS = -lboost_system -lboost_filesystem -lboost_program_options -lpthread -lz
 LIBS =
 
 ifeq ($(THE_OS),Linux)

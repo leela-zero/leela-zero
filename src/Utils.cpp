@@ -23,10 +23,15 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include <boost/filesystem.hpp>
+
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/select.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 #endif
 
 #include "GTP.h"
@@ -155,4 +160,25 @@ size_t Utils::ceilMultiple(size_t a, size_t b) {
 
     auto ret = a + (b - a % b);
     return ret;
+}
+
+const std::string Utils::leelaz_file(std::string file) {
+#ifdef _WIN32
+    boost::filesystem::path dir(boost::filesystem::current_path());
+#else
+    // https://stackoverflow.com/a/26696759
+    const char *homedir;
+    if ((homedir = getenv("HOME")) == nullptr) {
+        struct passwd *pwd;
+        if ((pwd = getpwuid(getuid())) == nullptr) { // NOLINT(runtime/threadsafe_fn)
+            return std::string();
+        }
+        homedir = pwd->pw_dir;
+    }
+    boost::filesystem::path dir(homedir);
+    dir /= ".local/share/leela-zero";
+#endif
+    boost::filesystem::create_directories(dir);
+    dir /= file;
+    return dir.string();
 }
