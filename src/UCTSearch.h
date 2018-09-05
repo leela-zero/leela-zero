@@ -108,7 +108,7 @@ public:
     bool is_running() const;
     void increment_playouts(float eval);
     SearchResult play_simulation(GameState& currstate, UCTNode* const node, int thread_num);
-    bool collecting;
+	bool collecting{ false };
     std::array<std::vector<std::deque<std::shared_ptr<Sym_State>>>, 2> sym_states;
 
 private:

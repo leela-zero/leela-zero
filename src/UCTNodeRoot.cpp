@@ -466,7 +466,7 @@ void UCTNode::prepare_root_node(Network & network, int color, // redundant argum
         // no need to collect ss[0] or ss[1] if cfg_pos or cfg_neg ..
         if (  search->collecting || ( (int) ss[0].size()  >= cfg_adj_positions && (int) ss[1].size() >= cfg_adj_positions)) {
             to_adjust = true;
-            auto num_positions = ceil(cfg_adj_positions * cfg_adj_pct / 100.0);
+            int num_positions = ceil(cfg_adj_positions * cfg_adj_pct / 100.0);
             for (auto i = 0; i < 2; i++) {
                 std::nth_element(ss[i].begin(), ss[i].begin() + num_positions, ss[i].end(), 
                     [](std::shared_ptr<Sym_State>& sym_state1, std::shared_ptr<Sym_State>& sym_state2) {

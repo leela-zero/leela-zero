@@ -24,10 +24,10 @@
 #include <vector>
 
 #include "FastBoard.h"
+#include "GTP.h"
 #include "Utils.h"
 #include "Zobrist.h"
 
-extern bool cfg_dyn_komi;
 using namespace Utils;
 
 void FastState::init_game(int size, float komi) {
