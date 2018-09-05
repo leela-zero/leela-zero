@@ -86,6 +86,10 @@ public:
     UCTNodePointer(const UCTNodePointer&) = delete;
 
 
+    bool is_inflated() const {
+        return is_inflated(m_data.load());
+    }
+
     // methods from std::unique_ptr<UCTNode>
     typename std::add_lvalue_reference<UCTNode>::type operator*() const{
         return *read_ptr(m_data.load());

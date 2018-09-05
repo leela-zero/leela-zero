@@ -53,7 +53,7 @@ public:
     UCTNode& get_best_root_child(int color);
     UCTNode* uct_select_child(int color, bool is_root);
 
-    size_t count_nodes() const;
+    size_t count_nodes_and_clear_expand_state();
     bool first_visit() const;
     bool has_children() const;
     bool expandable(const float min_psa_ratio = 0.0f) const;
@@ -83,6 +83,7 @@ public:
     std::unique_ptr<UCTNode> find_child(const int move);
     void inflate_all_children();
 
+    void clear_expand_state();
 private:
     enum Status : char {
         INVALID, // superko
@@ -149,10 +150,10 @@ private:
     void expand_cancel();
 
     // wait until we are on EXPANDED state
-    void check_expanded();
+    void wait_expanded();
 
     // EXPANDED -> SINGLE_THREAD_USE
-    void decl_single_thread_use();
+    void enforce_single_thread_use();
 
     // SINGLE_THREAD_USE -> EXPANDED
     void finish_single_thread_use();
