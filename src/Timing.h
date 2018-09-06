@@ -24,7 +24,7 @@
 class Time {
 public:
     /* sets to current time */
-    Time(void);
+    Time();
 
     /* time difference in centiseconds */
     static int timediff_centis(Time start, Time end);

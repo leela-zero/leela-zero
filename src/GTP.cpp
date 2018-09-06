@@ -102,6 +102,7 @@ void GTP::setup_default_parameters() {
     cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
     cfg_timemanage = TimeManagement::AUTO;
     cfg_lagbuffer_cs = 100;
+    cfg_weightsfile = leelaz_file("best-network");
 #ifdef USE_OPENCL
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;

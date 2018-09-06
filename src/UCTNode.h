@@ -68,8 +68,8 @@ public:
     float get_eval(int tomove) const;
     float get_raw_eval(int tomove, int virtual_loss = 0) const;
     float get_net_eval(int tomove) const;
-    void virtual_loss(void);
-    void virtual_loss_undo(void);
+    void virtual_loss();
+    void virtual_loss_undo();
     void update(float eval);
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch

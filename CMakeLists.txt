@@ -22,7 +22,7 @@ add_subdirectory(gtest EXCLUDE_FROM_ALL) # We don't want to install gtest, exclu
 # Required Packages
 set(Boost_MIN_VERSION "1.58.0")
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.58.0 REQUIRED program_options)
+find_package(Boost 1.58.0 REQUIRED program_options filesystem)
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(OpenCL REQUIRED)
@@ -108,7 +108,7 @@ target_link_libraries(leelaz ${BLAS_LIBRARIES})
 target_link_libraries(leelaz ${OpenCL_LIBRARIES})
 target_link_libraries(leelaz ${ZLIB_LIBRARIES})
 target_link_libraries(leelaz ${CMAKE_THREAD_LIBS_INIT})
-install(TARGETS leelaz DESTINATION bin)
+install(TARGETS leelaz DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if(Qt5Core_FOUND)
     if(NOT Qt5Core_VERSION VERSION_LESS "5.3.0")
