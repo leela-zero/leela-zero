@@ -502,7 +502,7 @@ void Tuner<net_t>::store_sgemm_tuners(const int m, const int n, const int k,
     if (file.fail()) {
         myprintf("Could not save the tuning result.\n");
         myprintf("Do I have write permissions on %s?\n",
-            tuner_file);
+            tuner_file.c_str());
     }
 }
 
