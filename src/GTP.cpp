@@ -345,30 +345,22 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         return true;
     } else if (command.find("play") == 0) {
-        if (command.find("resign") != std::string::npos) {
-            game.play_move(FastBoard::RESIGN);
-            gtp_printf(id, "");
-        } else if (command.find("pass") != std::string::npos) {
-            game.play_move(FastBoard::PASS);
-            gtp_printf(id, "");
-        } else {
-            std::istringstream cmdstream(command);
-            std::string tmp;
-            std::string color, vertex;
+        std::istringstream cmdstream(command);
+        std::string tmp;
+        std::string color, vertex;
 
-            cmdstream >> tmp;   //eat play
-            cmdstream >> color;
-            cmdstream >> vertex;
+        cmdstream >> tmp;   //eat play
+        cmdstream >> color;
+        cmdstream >> vertex;
 
-            if (!cmdstream.fail()) {
-                if (!game.play_textmove(color, vertex)) {
-                    gtp_fail_printf(id, "illegal move");
-                } else {
-                    gtp_printf(id, "");
-                }
+        if (!cmdstream.fail()) {
+            if (!game.play_textmove(color, vertex)) {
+                gtp_fail_printf(id, "illegal move");
             } else {
-                gtp_fail_printf(id, "syntax not understood");
+                gtp_printf(id, "");
             }
+        } else {
+            gtp_fail_printf(id, "syntax not understood");
         }
         return true;
     } else if (command.find("genmove") == 0 || command.find("lz-genmove_analyze") == 0) {
