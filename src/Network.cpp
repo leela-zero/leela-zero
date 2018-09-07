@@ -231,21 +231,21 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
         }
         if (linecount < plain_conv_wts) {
             if (linecount % 4 == 0) {
-                m_conv_weights.emplace_back(weights);
+                m_fwd_weights->m_conv_weights.emplace_back(weights);
             } else if (linecount % 4 == 1) {
                 // Redundant in our model, but they encode the
                 // number of outputs so we have to read them in.
-                m_conv_biases.emplace_back(weights);
+                m_fwd_weights->m_conv_biases.emplace_back(weights);
             } else if (linecount % 4 == 2) {
-                m_batchnorm_means.emplace_back(weights);
+                m_fwd_weights->m_batchnorm_means.emplace_back(weights);
             } else if (linecount % 4 == 3) {
                 process_bn_var(weights);
-                m_batchnorm_stddevs.emplace_back(weights);
+                m_fwd_weights->m_batchnorm_stddevs.emplace_back(weights);
             }
         } else {
             switch (linecount - plain_conv_wts) {
-                case  0: m_conv_pol_w = std::move(weights); break;
-                case  1: m_conv_pol_b = std::move(weights); break;
+                case  0: m_fwd_weights->m_conv_pol_w = std::move(weights); break;
+                case  1: m_fwd_weights->m_conv_pol_b = std::move(weights); break;
                 case  2: std::copy(cbegin(weights), cend(weights),
                                    begin(m_bn_pol_w1)); break;
                 case  3: std::copy(cbegin(weights), cend(weights),
@@ -254,8 +254,8 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
                                    begin(m_ip_pol_w)); break;
                 case  5: std::copy(cbegin(weights), cend(weights),
                                    begin(m_ip_pol_b)); break;
-                case  6: m_conv_val_w = std::move(weights); break;
-                case  7: m_conv_val_b = std::move(weights); break;
+                case  6: m_fwd_weights->m_conv_val_w = std::move(weights); break;
+                case  7: m_fwd_weights->m_conv_val_b = std::move(weights); break;
                 case  8: std::copy(cbegin(weights), cend(weights),
                                    begin(m_bn_val_w1)); break;
                 case  9: std::copy(cbegin(weights), cend(weights),
@@ -345,6 +345,8 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 #endif
 #endif
 
+    m_fwd_weights = std::make_shared<ForwardPipeWeights>();
+
     m_nncache.set_size_from_playouts(playouts);
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
@@ -368,15 +370,15 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     auto weight_index = size_t{0};
     // Input convolution
     // Winograd transform convolution weights
-    m_conv_weights[weight_index] =
-        winograd_transform_f(m_conv_weights[weight_index],
+    m_fwd_weights->m_conv_weights[weight_index] =
+        winograd_transform_f(m_fwd_weights->m_conv_weights[weight_index],
                              channels, INPUT_CHANNELS);
     weight_index++;
 
     // Residual block convolutions
     for (auto i = size_t{0}; i < residual_blocks * 2; i++) {
-        m_conv_weights[weight_index] =
-            winograd_transform_f(m_conv_weights[weight_index],
+        m_fwd_weights->m_conv_weights[weight_index] =
+            winograd_transform_f(m_fwd_weights->m_conv_weights[weight_index],
                                  channels, channels);
         weight_index++;
     }
@@ -385,48 +387,26 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     // still have non-zero biases.
     // Move biases to batchnorm means to make the output match without having
     // to separately add the biases.
-    for (auto i = size_t{0}; i < m_conv_biases.size(); i++) {
-        for (auto j = size_t{0}; j < m_batchnorm_means[i].size(); j++) {
-            m_batchnorm_means[i][j] -= m_conv_biases[i][j];
-            m_conv_biases[i][j] = 0.0f;
+    for (auto i = size_t{0}; i < m_fwd_weights->m_conv_biases.size(); i++) {
+        for (auto j = size_t{0}; j < m_fwd_weights->m_batchnorm_means[i].size(); j++) {
+            m_fwd_weights->m_batchnorm_means[i][j] -= m_fwd_weights->m_conv_biases[i][j];
+            m_fwd_weights->m_conv_biases[i][j] = 0.0f;
         }
     }
 
     for (auto i = size_t{0}; i < m_bn_val_w1.size(); i++) {
-        m_bn_val_w1[i] -= m_conv_val_b[i];
-        m_conv_val_b[i] = 0.0f;
+        m_bn_val_w1[i] -= m_fwd_weights->m_conv_val_b[i];
+        m_fwd_weights->m_conv_val_b[i] = 0.0f;
     }
 
     for (auto i = size_t{0}; i < m_bn_pol_w1.size(); i++) {
-        m_bn_pol_w1[i] -= m_conv_pol_b[i];
-        m_conv_pol_b[i] = 0.0f;
+        m_bn_pol_w1[i] -= m_fwd_weights->m_conv_pol_b[i];
+        m_fwd_weights->m_conv_pol_b[i] = 0.0f;
     }
 
     auto init_net = [this, channels, residual_blocks](auto&& p) {
         p->initialize(channels);
-        auto weight_index = size_t{0};
-
-        // Winograd filter transformation changes filter size to 4x4
-        p->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
-            channels, m_conv_weights[weight_index],
-            m_batchnorm_means[weight_index], m_batchnorm_stddevs[weight_index]);
-        weight_index++;
-
-        // residual blocks
-        for (auto i = size_t{0}; i < residual_blocks; i++) {
-            p->push_residual(WINOGRAD_ALPHA, channels, channels,
-                             m_conv_weights[weight_index],
-                             m_batchnorm_means[weight_index],
-                             m_batchnorm_stddevs[weight_index],
-                             m_conv_weights[weight_index + 1],
-                             m_batchnorm_means[weight_index + 1],
-                             m_batchnorm_stddevs[weight_index + 1]);
-            weight_index += 2;
-        }
-
-        // Output head convolutions
-        p->push_convolve(1, channels, OUTPUTS_POLICY, m_conv_pol_w);
-        p->push_convolve(1, channels, OUTPUTS_VALUE, m_conv_val_w);
+        p->push_weights(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, m_fwd_weights);
 
         return std::move(p);
     };
@@ -512,6 +492,8 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 #else
     (void)use_selfcheck;
 #endif
+
+    m_fwd_weights.reset();
 }
 
 #ifdef USE_BLAS
