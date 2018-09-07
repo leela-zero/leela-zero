@@ -264,7 +264,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
 
         auto winrate = fpu_eval;
-        if (child.is_inflated() && child->m_is_expanding) {
+        if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
             // Someone else is expanding this node, never select it
             // if we can avoid so, because we'd block on it.
             winrate = -1.0f - fpu_reduction;
@@ -312,9 +312,7 @@ private:
 };
 
 void UCTNode::sort_children(int color) {
-    enforce_single_thread_use();
     std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color));
-    finish_single_thread_use();
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
@@ -386,19 +384,5 @@ void UCTNode::wait_expanded() {
     (void)v;
 #endif
     assert(v == ExpandState::EXPANDED);
-}
-void UCTNode::enforce_single_thread_use() {
-    auto v = m_expand_state.exchange(ExpandState::SINGLE_THREAD_USE);
-#ifdef NDEBUG
-    (void)v;
-#endif
-    assert(v == ExpandState::EXPANDED);
-}
-void UCTNode::finish_single_thread_use() {
-    auto v = m_expand_state.exchange(ExpandState::EXPANDED);
-#ifdef NDEBUG
-    (void)v;
-#endif
-    assert(v == ExpandState::SINGLE_THREAD_USE);
 }
 

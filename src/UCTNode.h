@@ -128,9 +128,6 @@ private:
         // expansion done.  m_children cannot be modified on a multi-thread
         // context, until node is destroyed.
         EXPANDED,
-
-        // m_children is being modified on a single-thread context.
-        SINGLE_THREAD_USE
     };
     std::atomic<ExpandState> m_expand_state{ExpandState::INITIAL};
 
@@ -151,12 +148,6 @@ private:
 
     // wait until we are on EXPANDED state
     void wait_expanded();
-
-    // EXPANDED -> SINGLE_THREAD_USE
-    void enforce_single_thread_use();
-
-    // SINGLE_THREAD_USE -> EXPANDED
-    void finish_single_thread_use();
 };
 
 #endif
