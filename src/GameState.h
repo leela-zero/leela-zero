@@ -52,8 +52,7 @@ public:
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
-    bool play_textmove(const std::string& color,
-                       const std::string& vertex);
+    bool play_textmove(std::string color, const std::string& vertex);
 
     void start_clock(int color);
     void stop_clock(int color);

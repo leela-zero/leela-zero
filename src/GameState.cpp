@@ -99,9 +99,9 @@ void GameState::play_move(int color, int vertex) {
     game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
-bool GameState::play_textmove(const std::string& color,
-                              const std::string& vertex) {
+bool GameState::play_textmove(std::string color, const std::string& vertex) {
     int who;
+    transform(cbegin(color), cend(color), begin(color), tolower);
     if (color == "w" || color == "white") {
         who = FullBoard::WHITE;
     } else if (color == "b" || color == "black") {
@@ -111,7 +111,8 @@ bool GameState::play_textmove(const std::string& color,
     }
 
     const auto move = board.text_to_move(vertex);
-    if (board.get_state(move) != FastBoard::EMPTY) {
+    if (move == FastBoard::NO_VERTEX ||
+        (move != FastBoard::PASS && move != FastBoard::RESIGN && board.get_state(move) != FastBoard::EMPTY)) {
         return false;
     }
 
