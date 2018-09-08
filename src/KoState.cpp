@@ -36,7 +36,7 @@ void KoState::init_game(int size, float komi) {
     m_ko_hash_history.emplace_back(board.get_ko_hash());
 }
 
-bool KoState::superko(void) const {
+bool KoState::superko() const {
     auto first = crbegin(m_ko_hash_history);
     auto last = crend(m_ko_hash_history);
 

@@ -465,10 +465,11 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
 template <typename net_t>
 void Tuner<net_t>::store_sgemm_tuners(const int m, const int n, const int k,
                                const int batch_size, std::string tuners) {
+    auto tuner_file = leelaz_file(TUNER_FILE_LOCAL);
     auto file_contents = std::vector<std::string>();
     {
         // Read the previous contents to string
-        auto file = std::ifstream{TUNER_FILE_LOCAL};
+        auto file = std::ifstream{tuner_file};
         if (file.good()) {
             auto line = std::string{};
             while (std::getline(file, line)) {
@@ -476,7 +477,7 @@ void Tuner<net_t>::store_sgemm_tuners(const int m, const int n, const int k,
             }
         }
     }
-    auto file = std::ofstream{TUNER_FILE_LOCAL};
+    auto file = std::ofstream{tuner_file};
 
     auto device_name = m_opencl.get_device_name();
     auto tuning_params = std::stringstream{};
@@ -501,7 +502,7 @@ void Tuner<net_t>::store_sgemm_tuners(const int m, const int n, const int k,
     if (file.fail()) {
         myprintf("Could not save the tuning result.\n");
         myprintf("Do I have write permissions on %s?\n",
-            TUNER_FILE_LOCAL.c_str());
+            tuner_file.c_str());
     }
 }
 
@@ -555,7 +556,8 @@ std::string Tuner<net_t>::sgemm_tuners_from_line(std::string line,
 template <typename net_t>
 std::string Tuner<net_t>::load_sgemm_tuners(const int m, const int n, const int k,
                                      const int batch_size) {
-    auto file = std::ifstream{TUNER_FILE_LOCAL};
+    auto tuner_file = leelaz_file(TUNER_FILE_LOCAL);
+    auto file = std::ifstream{tuner_file};
     if (!cfg_sgemm_exhaustive && file.good()) {
         auto line = std::string{};
         while (std::getline(file, line)) {

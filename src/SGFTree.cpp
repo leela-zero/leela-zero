@@ -39,7 +39,7 @@ using namespace Utils;
 
 const int SGFTree::EOT;
 
-void SGFTree::init_state(void) {
+void SGFTree::init_state() {
     m_initialized = true;
     // Initialize with defaults.
     // The SGF might be missing boardsize or komi
@@ -47,7 +47,7 @@ void SGFTree::init_state(void) {
     m_state.init_game(19, 7.5f);
 }
 
-KoState * SGFTree::get_state(void) {
+KoState * SGFTree::get_state() {
     assert(m_initialized);
     return &m_state;
 }
@@ -114,7 +114,7 @@ void SGFTree::load_from_file(const std::string& filename, int index) {
     load_from_string(gamebuff);
 }
 
-void SGFTree::populate_states(void) {
+void SGFTree::populate_states() {
     PropertyMap::iterator it;
     auto valid_size = false;
     auto has_handicap = false;
@@ -356,7 +356,7 @@ int SGFTree::get_move(int tomove) {
     return SGFTree::EOT;
 }
 
-std::pair<int, int> SGFTree::get_colored_move(void) const {
+std::pair<int, int> SGFTree::get_colored_move() const {
     for (const auto& prop : m_properties) {
         if (prop.first == "B") {
             return std::make_pair(FastBoard::BLACK,

@@ -622,7 +622,7 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
 }
 
 template <typename net_t>
-std::vector<size_t> OpenCL<net_t>::get_sgemm_tuners(void) {
+std::vector<size_t> OpenCL<net_t>::get_sgemm_tuners() {
     std::vector<size_t> tuners;
 
     tuners.emplace_back(m_sgemm_tuners.mwg);
