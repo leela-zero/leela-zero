@@ -20,6 +20,20 @@
 // literal). Comment-out this line for syntax-highlighting when developing.
 
 R"(
+__constant real Bt[WINOGRAD_ALPHA * WINOGRAD_ALPHA] = \
+                   {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
+                    0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
+                    0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
+                    0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
+                    0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
+                    0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
+
+__constant real At[WINOGRAD_M * WINOGRAD_ALPHA] = \
+                   {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
+                    0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
+                    0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
+                    0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
+
 void __in_transform_eq(real x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * restrict V, int offset, int CPpad) {
 
     const int W = BOARD_SIZE;
@@ -28,14 +42,6 @@ void __in_transform_eq(real x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * 
 
     real T1[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
     real T2[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
-
-    const real Bt[WINOGRAD_ALPHA * WINOGRAD_ALPHA] = \
-                       {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
-                        0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
-                        0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
-                        0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
-                        0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
-                        0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
 
     // Calculates transpose(B).x.B
     for (int i = 0; i < WINOGRAD_ALPHA; i++){
@@ -154,12 +160,6 @@ void __out_transform_eq(__global const net_t * restrict M, real o[WINOGRAD_M * W
             temp_m[xn][yn] = vload_net_t((yn * WINOGRAD_ALPHA + xn) * Kpad * Ppad + offset, M);
         }
     }
-
-    const real At[WINOGRAD_M * WINOGRAD_ALPHA] = \
-                      {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
-                       0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
-                       0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
-                       0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
 
     // Calculates transpose(A).temp_m.A
     for (int i = 0; i < WINOGRAD_M; i++){
