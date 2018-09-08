@@ -241,9 +241,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                     break;
                 }
                 else {
-                    // wait with pred does not work anymore, not sure why yet
                     m_cv.wait(lk);
-                    //m_cv.wait(lk, [this](){ return !m_running || !m_forward_queue.empty(); });
                 }
             }
         }
