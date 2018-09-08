@@ -649,12 +649,6 @@ bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
            || elapsed_centis >= time_for_move;
 }
 
-bool UCTSearch::predict_stop_thinking(int elapsed_centis, int time_for_move) const {
-    return m_playouts + cfg_num_threads >= m_maxplayouts
-           || m_root->get_visits() + cfg_num_threads >= m_maxvisits
-           || elapsed_centis >= time_for_move;
-}
-
 void UCTWorker::operator()() {
     do {
         auto currstate = std::make_unique<GameState>(m_rootstate);
@@ -673,18 +667,6 @@ void UCTSearch::increment_playouts() {
 extern std::atomic<size_t> batch_stats[];
 #endif
 
-void UCTSearch::timer(Time start, int time_for_move) {
-    using namespace std::chrono_literals;
-    Time elapsed;
-    int elapsed_centis = Time::timediff_centis(start, elapsed);
-    while(!predict_stop_thinking(elapsed_centis, time_for_move)) {
-        Time elapsed2;
-        elapsed_centis = Time::timediff_centis(start, elapsed2);
-        std::this_thread::sleep_for(200ms);
-    }
-    m_network.set_batching(false);
-}
-
 int UCTSearch::think(int color, passflag_t passflag) {
     // Start counting time for us
     m_rootstate.start_clock(color);
@@ -700,7 +682,6 @@ int UCTSearch::think(int color, passflag_t passflag) {
         m_rootstate.get_timecontrol().max_time_for_move(
             m_rootstate.board.get_boardsize(),
             color, m_rootstate.get_movenum());
-    m_timer_thread = std::thread(&UCTSearch::timer, this, start, time_for_move);
 
     myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
 
@@ -708,7 +689,10 @@ int UCTSearch::think(int color, passflag_t passflag) {
     // play something legal and decent even in time trouble)
     m_network.set_batching(false);
     m_root->prepare_root_node(m_network, color, m_nodes, m_rootstate);
-    m_network.set_batching(true);
+    if (m_root->get_children().size() >= cfg_batch_size) {
+        // Only enable batching when there is enough nodes to eval
+        m_network.set_batching(true);
+    }
 
     m_run = true;
     int cpus = cfg_num_threads;
@@ -748,10 +732,12 @@ int UCTSearch::think(int color, passflag_t passflag) {
         keeprunning &= have_alternate_moves(elapsed_centis, time_for_move);
     } while (keeprunning);
 
+    // Turn off batching to end other threads
+    m_network.set_batching(false);
+
     // stop the search
     m_run = false;
     tg.wait_all();
-    m_timer_thread.join();
 
     // reactivate all pruned root children
     for (const auto& node : m_root->get_children()) {
