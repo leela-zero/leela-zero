@@ -100,7 +100,7 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
         // starting next GPU, let's not dump full list of GPUs
         silent = true;
 
-        for(int i=0; i<2; i++) {
+        for (int i = 0; i < 2; i++) {
             auto t = std::thread(&OpenCLScheduler<net_t>::batch_worker, this, gnum);
             m_worker_threads.push_back(std::move(t));
         }
@@ -116,7 +116,7 @@ OpenCLScheduler<net_t>::~OpenCLScheduler() {
         m_running = false;
     }
     m_cv.notify_all();
-    for(auto & x : m_worker_threads) {
+    for (auto & x : m_worker_threads) {
         x.join();
     }
 }
@@ -227,20 +227,18 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         {
             std::unique_lock<std::mutex> lk(m_mutex);
             while (true) {
-                if(!m_running) return;
+                if (!m_running) return;
                 count = std::min(m_forward_queue.size(), size_t(cfg_batch_size));
                 if (count < cfg_batch_size && m_is_batching) {
                     count = 0;
                 }
                 if (count > 0) {
-                    auto begin = m_forward_queue.begin();
-                    auto end = begin;
+                    auto end = begin(m_forward_queue);
                     std::advance(end, count);
-                    std::move(begin, end, std::back_inserter(inputs));
-                    m_forward_queue.erase(begin, end);
+                    std::move(begin(m_forward_queue), end, std::back_inserter(inputs));
+                    m_forward_queue.erase(begin(m_forward_queue), end);
                     break;
-                }
-                else {
+                } else {
                     m_cv.wait(lk);
                 }
             }
@@ -254,9 +252,9 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
 
         {
             size_t index = 0;
-            for (auto it = inputs.begin(); it != inputs.end(); ++it) {
+            for (auto it = begin(inputs); it != end(inputs); ++it) {
                 std::unique_lock<std::mutex> lk((*it)->mutex);
-                std::copy((*it)->in.begin(), (*it)->in.end(), batch_input.begin() + Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * index);
+                std::copy(begin((*it)->in), end((*it)->in), begin(batch_input) + Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * index);
                 index++;
             }
         }
@@ -268,13 +266,13 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
 
         {
             size_t index = 0;
-            for (auto it = inputs.begin(); it != inputs.end(); ++it) {
-                std::copy(batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * index,
-                          batch_output_pol.begin() + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * (index + 1),
-                          (*it)->out_p.begin());
-                std::copy(batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * index,
-                          batch_output_val.begin() + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * (index + 1),
-                          (*it)->out_v.begin());
+            for (auto it = begin(inputs); it != end(inputs); ++it) {
+                std::copy(begin(batch_output_pol) + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * index,
+                          begin(batch_output_pol) + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * (index + 1),
+                          begin((*it)->out_p));
+                std::copy(begin(batch_output_val) + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * index,
+                          begin(batch_output_val) + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * (index + 1),
+                          begin((*it)->out_v));
                 (*it)->cv.notify_all();
                 index++;
             }
