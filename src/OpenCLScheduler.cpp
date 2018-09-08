@@ -209,8 +209,11 @@ std::atomic<size_t> batch_stats[2];
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::set_batching(bool is_batching) {
-    m_is_batching = is_batching;
-    m_cv.notify_one();
+    if (m_is_batching != is_batching) {
+        std::unique_lock<std::mutex> lk(m_mutex);
+        m_is_batching = is_batching;
+        m_cv.notify_one();
+    }
 }
 
 template <typename net_t>
