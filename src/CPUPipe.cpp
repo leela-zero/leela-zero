@@ -49,12 +49,23 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
 
     constexpr auto Wpad = 2 + WINOGRAD_M * WTILES;
 
-    std::array<std::array<float, Wpad>, Wpad> in_pad;
-    for (auto xin = size_t{0}; xin < Wpad; xin++) {
-        for (auto yin = size_t{0}; yin < Wpad; yin++) {
-            in_pad[yin][xin] = 0.0f;
-        }
-    }
+    constexpr auto buffersize = 32;
+
+    std::array<std::array<float, Wpad>, Wpad> in_pad{0.0f};
+
+    std::array<float, buffersize * WINOGRAD_ALPHA * WINOGRAD_ALPHA> buffer;
+    auto buffer_offset = 0;
+    auto buffer_entries = 0;
+
+    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA> T1;
+
+    const auto Bt = std::array<float, WINOGRAD_TILE>
+               {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
+                0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
+                0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
+                0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
+                0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
+                0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
 
     for (auto ch = 0; ch < C; ch++) {
         for (auto yin = 0; yin < H; yin++) {
@@ -67,18 +78,6 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
             const auto yin = WINOGRAD_M * block_y;
             for (auto block_x = 0; block_x < WTILES; block_x++) {
                 const auto xin = WINOGRAD_M * block_x;
-
-                using WinogradTile =
-                    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA>;
-                WinogradTile T1, T2;
-
-                const auto Bt = std::array<float, WINOGRAD_TILE>
-                           {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
-                            0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
-                            0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
-                            0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
-                            0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
-                            0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
 
                 // Calculates transpose(B).x.B
                 for (auto i = 0; i < WINOGRAD_ALPHA; i++){
@@ -98,15 +97,23 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                         for (auto k = 0; k < WINOGRAD_ALPHA; k++) {
                             acc += T1[i][k] * Bt[j * WINOGRAD_ALPHA + k];
                         }
-                        T2[i][j] = acc;
+                        buffer[buffersize * (i * WINOGRAD_ALPHA + j) + buffer_entries] = acc;
                     }
                 }
+                if (buffer_entries == 0) {
+                    buffer_offset = ch * P + block_y * WTILES + block_x;
+                }
+                buffer_entries++;
 
-                const auto offset = ch * P + block_y * WTILES + block_x;
-                for (auto i = 0; i < WINOGRAD_ALPHA; i++) {
-                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
-                        V[(i * WINOGRAD_ALPHA + j)*C*P + offset] = T2[i][j];
+                if (buffer_entries >= buffersize ||
+                    (ch == C - 1 && block_x == WTILES - 1 && block_y == WTILES - 1)) {
+
+                    for (auto i = 0; i < WINOGRAD_ALPHA * WINOGRAD_ALPHA; i++) {
+                        for (auto entry = 0; entry < buffer_entries; entry++) {
+                            V[i*C*P + buffer_offset + entry] = buffer[i*buffersize + entry];
+                        }
                     }
+                    buffer_entries = 0;
                 }
             }
         }
