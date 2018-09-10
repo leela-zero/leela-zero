@@ -19,6 +19,8 @@
 #include "FastBoard.h"
 
 #include <cassert>
+#include <cctype>
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <queue>
@@ -45,7 +47,7 @@ const std::array<FastBoard::vertex_t, 4> FastBoard::s_cinvert = {
     WHITE, BLACK, EMPTY, INVAL
 };
 
-int FastBoard::get_boardsize(void) const {
+int FastBoard::get_boardsize() const {
     return m_boardsize;
 }
 
@@ -428,6 +430,34 @@ std::string FastBoard::move_to_text(int move) const {
     }
 
     return result.str();
+}
+
+int FastBoard::text_to_move(std::string move) const {
+    transform(cbegin(move), cend(move), begin(move), tolower);
+
+    if (move == "pass") {
+        return PASS;
+    } else if (move == "resign") {
+        return RESIGN;
+    } else if (move.size() < 2 || !std::isalpha(move[0]) || !std::isdigit(move[1]) || move[0] == 'i') {
+        return NO_VERTEX;
+    }
+
+    auto column = move[0] - 'a';
+    if (move[0] > 'i') {
+        --column;
+    }
+
+    int row;
+    std::istringstream parsestream(move.substr(1));
+    parsestream >> row;
+    --row;
+
+    if (row >= m_boardsize || column >= m_boardsize) {
+        return NO_VERTEX;
+    }
+
+    return get_vertex(column, row);
 }
 
 std::string FastBoard::move_to_text_sgf(int move) const {

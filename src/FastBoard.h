@@ -62,7 +62,7 @@ public:
         BLACK = 0, WHITE = 1, EMPTY = 2, INVAL = 3
     };
 
-    int get_boardsize(void) const;
+    int get_boardsize() const;
     vertex_t get_state(int x, int y) const;
     vertex_t get_state(int vertex) const ;
     int get_vertex(int x, int y) const;
@@ -83,6 +83,7 @@ public:
     void set_to_move(int color);
 
     std::string move_to_text(int move) const;
+    int text_to_move(std::string move) const;
     std::string move_to_text_sgf(int move) const;
     std::string get_stone_list() const;
     std::string get_string(int vertex) const;

@@ -43,17 +43,16 @@ public:
     bool set_fixed_handicap(int stones);
     int set_fixed_handicap_2(int stones);
     void place_free_handicap(int stones, Network & network);
-    void anchor_game_history(void);
+    void anchor_game_history();
 
-    void rewind(void); /* undo infinite */
-    bool undo_move(void);
-    bool forward_move(void);
+    void rewind(); /* undo infinite */
+    bool undo_move();
+    bool forward_move();
     const FullBoard& get_past_board(int moves_ago) const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
-    bool play_textmove(const std::string& color,
-                       const std::string& vertex);
+    bool play_textmove(std::string color, const std::string& vertex);
 
     void start_clock(int color);
     void stop_clock(int color);

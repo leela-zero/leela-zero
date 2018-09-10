@@ -20,6 +20,7 @@
 
 #include <cstdint>
 #include <algorithm>
+#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 #include <cstdio>
@@ -68,7 +69,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("resignpct,r", po::value<int>()->default_value(cfg_resignpct),
                         "Resign when winrate is less than x%.\n"
                         "-1 uses 10% but scales for handicap.")
-        ("weights,w", po::value<std::string>(), "File with network weights.")
+        ("weights,w", po::value<std::string>()->default_value(cfg_weightsfile), "File with network weights.")
         ("logfile,l", po::value<std::string>(), "File to log input/output to.")
         ("quiet,q", "Disable all diagnostic output.")
         ("timemanage", po::value<std::string>()->default_value("auto"),
@@ -194,10 +195,10 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_logfile_handle = fopen(cfg_logfile.c_str(), "a");
     }
 
-    if (vm.count("weights")) {
-        cfg_weightsfile = vm["weights"].as<std::string>();
-    } else {
+    cfg_weightsfile = vm["weights"].as<std::string>();
+    if (vm["weights"].defaulted() && !boost::filesystem::exists(cfg_weightsfile)) {
         printf("A network weights file is required to use the program.\n");
+        printf("By default, Leela Zero looks for it in %s.\n", cfg_weightsfile.c_str());
         exit(EXIT_FAILURE);
     }
 

@@ -50,7 +50,7 @@ public:
     std::uint64_t randuint64(const std::uint64_t max);
 
     // return the thread local RNG
-    static Random& get_Rng(void);
+    static Random& get_Rng();
 
     // UniformRandomBitGenerator interface
     using result_type = std::uint64_t;
@@ -65,7 +65,7 @@ public:
     }
 
 private:
-    std::uint64_t gen(void);
+    std::uint64_t gen();
     std::uint64_t m_s[2];
 };
 

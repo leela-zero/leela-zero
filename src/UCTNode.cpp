@@ -276,7 +276,11 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
 
         auto winrate = fpu_eval;
-        if (child.get_visits() > 0) {
+        if (child.is_inflated() && child->m_is_expanding) {
+            // Someone else is expanding this node, never select it
+            // if we can avoid so, because we'd block on it.
+            winrate = -1.0f - fpu_reduction;
+        } else if (child.get_visits() > 0) {
             winrate = child.get_eval(color);
         }
         auto psa = child.get_policy();
