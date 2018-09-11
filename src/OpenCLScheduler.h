@@ -85,11 +85,13 @@ private:
 
     std::mutex m_mutex;
     std::condition_variable m_cv;
+
+    int waittime = 10;
+
     std::list<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
     std::list<std::thread> m_worker_threads;
 
     void batch_worker(const size_t gnum);
-    std::atomic<bool> m_is_batching;
 };
 
 #endif

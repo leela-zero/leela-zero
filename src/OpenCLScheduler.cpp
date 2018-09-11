@@ -214,16 +214,16 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
     auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
     OpenCLContext context;
 
+    bool is_batching = false;
     while (true) {
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
         size_t count = 0;
-
         {
             std::unique_lock<std::mutex> lk(m_mutex);
             while (true) {
                 if (!m_running) return;
                 count = std::min(m_forward_queue.size(), size_t(cfg_batch_size));
-                if (count < cfg_batch_size && m_is_batching) {
+                if (count < cfg_batch_size && is_batching) {
                     count = 0;
                 }
                 if (count > 0) {
@@ -231,9 +231,27 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                     std::advance(end, count);
                     std::move(begin(m_forward_queue), end, std::back_inserter(inputs));
                     m_forward_queue.erase(begin(m_forward_queue), end);
+
+                    is_batching = true;
                     break;
                 } else {
-                    m_cv.wait(lk);
+                    bool timeout = !m_cv.wait_for(
+                        lk, 
+                        std::chrono::milliseconds(waittime), 
+                        [this] () { return m_forward_queue.size() >= cfg_batch_size; }
+                    );
+    
+                    if (!m_forward_queue.empty()) {
+                        if (timeout) {
+//                            std::cout << "!!!!!!!!!!!!" << waittime << "!!!!!!!!!!!!" << std::endl;
+                            waittime++;
+                            is_batching = false;
+                        } else if(m_forward_queue.size() > cfg_batch_size) {
+                            if(waittime > 1) {
+                                waittime--;
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -64,7 +64,7 @@ bool cfg_dumbpass;
 std::vector<int> cfg_gpus;
 bool cfg_sgemm_exhaustive;
 bool cfg_tune_only;
-int cfg_batch_size;
+unsigned int cfg_batch_size;
 #ifdef USE_HALF
 precision_t cfg_precision;
 #endif

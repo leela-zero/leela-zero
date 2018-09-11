@@ -252,7 +252,7 @@ static void parse_commandline(int argc, char *argv[]) {
             num_threads = cfg_max_threads;
         }
 #ifdef USE_OPENCL
-        if (num_threads < cfg_batch_size) {
+        if (static_cast<unsigned int>(num_threads) < cfg_batch_size) {
             printf("Threads number = %d must be larger than batch size = %d\n", num_threads, cfg_batch_size);
             exit(EXIT_FAILURE);
         }
