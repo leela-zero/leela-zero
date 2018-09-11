@@ -208,15 +208,6 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
 std::atomic<size_t> batch_stats[2];
 
 template <typename net_t>
-void OpenCLScheduler<net_t>::set_batching(bool is_batching) {
-    if (m_is_batching != is_batching) {
-        std::unique_lock<std::mutex> lk(m_mutex);
-        m_is_batching = is_batching;
-        m_cv.notify_one();
-    }
-}
-
-template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
     auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
     auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);

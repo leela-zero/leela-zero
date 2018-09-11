@@ -78,8 +78,6 @@ public:
                                unsigned int outputs,
                                const std::vector<float>& weights);
 
-    virtual void set_batching(bool is_batching);
-
 private:
     bool m_running = true;
     std::vector<std::unique_ptr<OpenCL_Network<net_t>>> m_networks;
