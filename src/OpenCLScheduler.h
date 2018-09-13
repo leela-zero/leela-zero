@@ -42,29 +42,10 @@ public:
     virtual void forward(const std::vector<float>& input,
                          std::vector<float>& output_pol,
                          std::vector<float>& output_val);
-
-    virtual void push_input_convolution(unsigned int filter_size,
-                                        unsigned int channels,
-                                        unsigned int outputs,
-                                        const std::vector<float>& weights,
-                                        const std::vector<float>& means,
-                                        const std::vector<float>& variances);
-
-    virtual void push_residual(unsigned int filter_size,
-                               unsigned int channels,
-                               unsigned int outputs,
-                               const std::vector<float>& weights_1,
-                               const std::vector<float>& means_1,
-                               const std::vector<float>& variances_1,
-                               const std::vector<float>& weights_2,
-                               const std::vector<float>& means_2,
-                               const std::vector<float>& variances_2);
-
-    virtual void push_convolve(unsigned int filter_size,
-                               unsigned int channels,
-                               unsigned int outputs,
-                               const std::vector<float>& weights);
-
+    virtual void push_weights(unsigned int filter_size,
+                              unsigned int channels,
+                              unsigned int outputs,
+                              std::shared_ptr<const ForwardPipeWeights> weights);
 private:
     std::vector<std::unique_ptr<OpenCL_Network<net_t>>> m_networks;
     std::vector<std::unique_ptr<OpenCL<net_t>>> m_opencl;
@@ -73,6 +54,28 @@ private:
     std::vector<ContextPoolQueue> m_context_pool;
 
     SMP::Mutex m_context_pool_mutex;
+
+    void push_input_convolution(unsigned int filter_size,
+                                unsigned int channels,
+                                unsigned int outputs,
+                                const std::vector<float>& weights,
+                                const std::vector<float>& means,
+                                const std::vector<float>& variances);
+
+    void push_residual(unsigned int filter_size,
+                       unsigned int channels,
+                       unsigned int outputs,
+                       const std::vector<float>& weights_1,
+                       const std::vector<float>& means_1,
+                       const std::vector<float>& variances_1,
+                       const std::vector<float>& weights_2,
+                       const std::vector<float>& means_2,
+                       const std::vector<float>& variances_2);
+
+    void push_convolve(unsigned int filter_size,
+                       unsigned int channels,
+                       unsigned int outputs,
+                       const std::vector<float>& weights);
 };
 
 #endif
