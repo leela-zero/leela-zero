@@ -272,25 +272,25 @@ template <size_t spatial_size>
 void batchnorm(const size_t channels,
                std::vector<float>& data,
                const float* const means,
-               const float* const stddivs,
+               const float* const stddevs,
                const float* const eltwise = nullptr) {
     const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
                                                           val : 0.0f; };
     for (auto c = size_t{0}; c < channels; ++c) {
         const auto mean = means[c];
-        const auto scale_stddiv = stddivs[c];
+        const auto scale_stddev = stddevs[c];
         const auto arr = &data[c * spatial_size];
 
         if (eltwise == nullptr) {
             // Classical BN
             for (auto b = size_t{0}; b < spatial_size; b++) {
-                arr[b] = lambda_ReLU(scale_stddiv * (arr[b] - mean));
+                arr[b] = lambda_ReLU(scale_stddev * (arr[b] - mean));
             }
         } else {
             // BN + residual add
             const auto res = &eltwise[c * spatial_size];
             for (auto b = size_t{0}; b < spatial_size; b++) {
-                arr[b] = lambda_ReLU((scale_stddiv * (arr[b] - mean)) + res[b]);
+                arr[b] = lambda_ReLU((scale_stddev * (arr[b] - mean)) + res[b]);
             }
         }
     }
@@ -313,81 +313,47 @@ void CPUPipe::forward(const std::vector<float>& input,
     auto V = std::vector<float>(WINOGRAD_TILE * input_channels * P);
     auto M = std::vector<float>(WINOGRAD_TILE * output_channels * P);
 
-    winograd_convolve3(output_channels, input, m_conv_weights[0], V, M, conv_out);
+    winograd_convolve3(output_channels, input, m_weights->m_conv_weights[0], V, M, conv_out);
     batchnorm<NUM_INTERSECTIONS>(output_channels, conv_out,
-                                 m_batchnorm_means[0].data(),
-                                 m_batchnorm_stddivs[0].data());
+                                 m_weights->m_batchnorm_means[0].data(),
+                                 m_weights->m_batchnorm_stddevs[0].data());
 
     // Residual tower
     auto conv_in = std::vector<float>(output_channels * NUM_INTERSECTIONS);
     auto res = std::vector<float>(output_channels * NUM_INTERSECTIONS);
-    for (auto i = size_t{1}; i < m_conv_weights.size(); i += 2) {
+    for (auto i = size_t{1}; i < m_weights->m_conv_weights.size(); i += 2) {
         auto output_channels = m_input_channels;
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
-                           m_conv_weights[i], V, M, conv_out);
+                           m_weights->m_conv_weights[i], V, M, conv_out);
         batchnorm<NUM_INTERSECTIONS>(output_channels, conv_out,
-                                     m_batchnorm_means[i].data(),
-                                     m_batchnorm_stddivs[i].data());
+                                     m_weights->m_batchnorm_means[i].data(),
+                                     m_weights->m_batchnorm_stddevs[i].data());
 
         std::swap(conv_in, res);
         std::swap(conv_out, conv_in);
         winograd_convolve3(output_channels, conv_in,
-                           m_conv_weights[i + 1], V, M, conv_out);
+                           m_weights->m_conv_weights[i + 1], V, M, conv_out);
         batchnorm<NUM_INTERSECTIONS>(output_channels, conv_out,
-                                     m_batchnorm_means[i + 1].data(),
-                                     m_batchnorm_stddivs[i + 1].data(),
+                                     m_weights->m_batchnorm_means[i + 1].data(),
+                                     m_weights->m_batchnorm_stddevs[i + 1].data(),
                                      res.data());
     }
     convolve<1>(Network::OUTPUTS_POLICY, conv_out, m_conv_pol_w, m_conv_pol_b, output_pol);
     convolve<1>(Network::OUTPUTS_VALUE, conv_out, m_conv_val_w, m_conv_val_b, output_val);
 }
 
+void CPUPipe::push_weights(unsigned int /*filter_size*/,
+                           unsigned int /*channels*/,
+                           unsigned int outputs,
+                           std::shared_ptr<const ForwardPipeWeights> weights) {
 
-void CPUPipe::push_input_convolution(unsigned int /*filter_size*/,
-                                     unsigned int /*channels*/,
-                                     unsigned int /*outputs*/,
-                                     const std::vector<float>& weights,
-                                     const std::vector<float>& means,
-                                     const std::vector<float>& variances) {
-    m_conv_weights.push_back(weights);
-    m_batchnorm_means.push_back(means);
-    m_batchnorm_stddivs.push_back(variances);
+    m_weights = weights;
+
+    // Output head convolutions
+    m_conv_pol_w = weights->m_conv_pol_w;
+    m_conv_pol_b.resize(m_conv_pol_w.size() / outputs, 0.0f);
+    m_conv_val_w = weights->m_conv_val_w;
+    m_conv_val_b.resize(m_conv_val_w.size() / outputs, 0.0f);
 }
 
-void CPUPipe::push_residual(unsigned int /*filter_size*/,
-                            unsigned int /*channels*/,
-                            unsigned int /*outputs*/,
-                            const std::vector<float>& weights_1,
-                            const std::vector<float>& means_1,
-                            const std::vector<float>& variances_1,
-                            const std::vector<float>& weights_2,
-                            const std::vector<float>& means_2,
-                            const std::vector<float>& variances_2) {
-    m_conv_weights.push_back(weights_1);
-    m_batchnorm_means.push_back(means_1);
-    m_batchnorm_stddivs.push_back(variances_1);
-
-    m_conv_weights.push_back(weights_2);
-    m_batchnorm_means.push_back(means_2);
-    m_batchnorm_stddivs.push_back(variances_2);
-}
-
-void CPUPipe::push_convolve(unsigned int filter_size,
-                            unsigned int channels,
-                            unsigned int outputs,
-                            const std::vector<float>& weights) {
-    // currently we can only support the final convolve stages
-    (void)filter_size;
-    assert(filter_size == 1);
-
-    if (outputs == Network::OUTPUTS_POLICY) {
-        m_conv_pol_w = weights;
-        m_conv_pol_b.resize(m_conv_pol_w.size() / channels, 0.0f);
-    } else if (outputs == Network::OUTPUTS_VALUE) {
-        m_conv_val_w = weights;
-        m_conv_val_b.resize(m_conv_val_w.size() / channels, 0.0f);
-    } else {
-        assert(false);
-    }
-}
