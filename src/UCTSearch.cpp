@@ -155,7 +155,7 @@ void UCTSearch::update_root() {
     m_playouts = 0;
 
 #ifndef NDEBUG
-    auto start_nodes = m_root->count_nodes();
+    auto start_nodes = m_root->count_nodes_and_clear_expand_state();
 #endif
 
     if (!advance_to_new_rootstate() || !m_root) {
@@ -165,7 +165,7 @@ void UCTSearch::update_root() {
     m_last_rootstate.reset(nullptr);
 
     // Check how big our search tree (reused or new) is.
-    m_nodes = m_root->count_nodes();
+    m_nodes = m_root->count_nodes_and_clear_expand_state();
 
 #ifndef NDEBUG
     if (m_nodes > 0) {
