@@ -143,28 +143,47 @@ std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
 
     auto temp = std::array<float, 3 * WINOGRAD_ALPHA>{};
 
-    for (auto o = 0; o < outputs; o++) {
-        for (auto c = 0; c < channels; c++) {
-            for (auto i = 0; i < WINOGRAD_ALPHA; i++){
-                for (auto j = 0; j < 3; j++) {
-                    auto acc = 0.0f;
-                    for (auto k = 0; k < 3; k++) {
-                        acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j];
+    constexpr auto max_buffersize = 8;
+    auto buffersize = max_buffersize;
+
+    if (outputs % buffersize != 0) {
+        buffersize = 1;
+    }
+
+    std::array<float, max_buffersize * WINOGRAD_ALPHA * WINOGRAD_ALPHA> buffer;
+
+    for (auto c = 0; c < channels; c++) {
+        for (auto o_b = 0; o_b < outputs/buffersize; o_b++) {
+            for (auto bufferline = 0; bufferline < buffersize; bufferline++) {
+                const auto o = o_b * buffersize + bufferline;
+
+                for (auto i = 0; i < WINOGRAD_ALPHA; i++) {
+                    for (auto j = 0; j < 3; j++) {
+                        auto acc = 0.0f;
+                        for (auto k = 0; k < 3; k++) {
+                            acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j];
+                        }
+                        temp[i*3 + j] = acc;
                     }
-                    temp[i*3 + j] = acc;
+                }
+
+                for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++) {
+                    for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
+                        auto acc = 0.0f;
+                        for (auto k = 0; k < 3; k++) {
+                            acc += temp[xi*3 + k] * G[nu*3 + k];
+                        }
+                        buffer[(xi * WINOGRAD_ALPHA + nu) * buffersize + bufferline] = acc;
+                    }
                 }
             }
-
-            for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++) {
-                for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
-                    auto acc = 0.0f;
-                    for (auto k = 0; k < 3; k++) {
-                        acc += temp[xi*3 + k] * G[nu*3 + k];
-                    }
-                    U[xi * (WINOGRAD_ALPHA * outputs * channels)
-                      + nu * (outputs * channels)
+            for (auto i = 0; i < WINOGRAD_ALPHA * WINOGRAD_ALPHA; i++) {
+                for (auto entry = 0; entry < buffersize; entry++) {
+                    const auto o = o_b * buffersize + entry;
+                    U[i * outputs * channels
                       + c * outputs
-                      + o] = acc;
+                      + o] =
+                    buffer[buffersize * i + entry];
                 }
             }
         }
