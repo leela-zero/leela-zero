@@ -48,10 +48,12 @@ void __in_transform_eq(real x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * 
         for (int j = 0; j < WINOGRAD_ALPHA; j++) {
 #ifdef WINOGRAD_SIMD
             real2 acc = {ZERO, ZERO};
-            real2 *x1 = (real2 *)&Bt[i * WINOGRAD_ALPHA];
             real2 *x2 = (real2 *)&x[j][0];
             for (int k = 0; k < WINOGRAD_ALPHA/2; k++) {
-                acc += x1[k] * x2[k];
+                real2 x1;
+                x1.x = Bt[i * WINOGRAD_ALPHA + 2*k];
+                x1.y = Bt[i * WINOGRAD_ALPHA + 2*k + 1];
+                acc += x1 * x2[k];
             }
             T1[i][j] = acc.x + acc.y;
 #else
@@ -69,9 +71,11 @@ void __in_transform_eq(real x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * 
 #ifdef WINOGRAD_SIMD
             real2 acc = {ZERO, ZERO};
             real2 *x1 = (real2 *)&T1[i][0];
-            real2 *x2 = (real2 *)&Bt[j * WINOGRAD_ALPHA];
             for (int k = 0; k < WINOGRAD_ALPHA/2; k++) {
-                acc += x1[k] * x2[k];
+                real2 x2;
+                x2.x = Bt[j * WINOGRAD_ALPHA + 2*k];
+                x2.y = Bt[j * WINOGRAD_ALPHA + 2*k + 1];
+                acc += x1[k] * x2;
             }
             T2[i][j] = acc.x + acc.y;
 #else
@@ -166,10 +170,12 @@ void __out_transform_eq(__global const net_t * restrict M, real o[WINOGRAD_M * W
         for (int j = 0; j < WINOGRAD_ALPHA; j++) {
 #ifdef WINOGRAD_SIMD
             real2 acc = {ZERO, ZERO};
-            real2 *x1 = (real2 *)&At[i * WINOGRAD_ALPHA];
             real2 *x2 = (real2 *)&temp_m[j][0];
             for (int q = 0; q < WINOGRAD_ALPHA/2; q++) {
-                acc += x1[q] * x2[q];
+                real2 x1;
+                x1.x = At[i * WINOGRAD_ALPHA + 2*q];
+                x1.y = At[i * WINOGRAD_ALPHA + 2*q + 1];
+                acc += x1 * x2[q];
             }
             temp[i][j] = acc.x + acc.y;
 #else
@@ -187,9 +193,11 @@ void __out_transform_eq(__global const net_t * restrict M, real o[WINOGRAD_M * W
 #ifdef WINOGRAD_SIMD
             real2 acc = {ZERO, ZERO};
             real2 *x1 = (real2 *)&temp[i][0];
-            real2 *x2 = (real2 *)&At[j * WINOGRAD_ALPHA];
             for (int q = 0; q < WINOGRAD_ALPHA/2; q++) {
-                acc += x1[q] * x2[q];
+                real2 x2;
+                x2.x = At[j * WINOGRAD_ALPHA + 2*q];
+                x2.y = At[j * WINOGRAD_ALPHA + 2*q + 1];
+                acc += x1[q] * x2;
             }
             o[i * WINOGRAD_M + j] = acc.x + acc.y;
 #else
