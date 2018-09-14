@@ -53,6 +53,7 @@ constexpr auto WINOGRAD_P = WINOGRAD_WTILES * WINOGRAD_WTILES;
 constexpr auto SQ2 = 1.4142135623730951f; // Square root of 2
 
 class Network {
+    using ForwardPipeWeights = ForwardPipe::ForwardPipeWeights;
 public:
     static constexpr auto NUM_SYMMETRIES = 8;
     static constexpr auto IDENTITY_SYMMETRY = 0;
@@ -127,15 +128,8 @@ private:
 
     NNCache m_nncache;
 
-    // Input + residual block tower
-    std::vector<std::vector<float>> m_conv_weights;
-    std::vector<std::vector<float>> m_conv_biases;
-    std::vector<std::vector<float>> m_batchnorm_means;
-    std::vector<std::vector<float>> m_batchnorm_stddevs;
+    std::shared_ptr<ForwardPipeWeights> m_fwd_weights;
 
-    // Policy head
-    std::vector<float> m_conv_pol_w;
-    std::vector<float> m_conv_pol_b;
     std::array<float, OUTPUTS_POLICY> m_bn_pol_w1;
     std::array<float, OUTPUTS_POLICY> m_bn_pol_w2;
 
@@ -143,8 +137,6 @@ private:
     std::array<float, POTENTIAL_MOVES> m_ip_pol_b;
 
     // Value head
-    std::vector<float> m_conv_val_w;
-    std::vector<float> m_conv_val_b;
     std::array<float, OUTPUTS_VALUE> m_bn_val_w1;
     std::array<float, OUTPUTS_VALUE> m_bn_val_w2;
 

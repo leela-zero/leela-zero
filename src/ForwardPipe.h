@@ -19,12 +19,29 @@
 #ifndef FORWARDPIPE_H_INCLUDED
 #define FORWARDPIPE_H_INCLUDED
 
+#include <memory>
 #include <vector>
 
 #include "config.h"
 
 class ForwardPipe {
 public:
+    class ForwardPipeWeights {
+    public:
+        // Input + residual block tower
+        std::vector<std::vector<float>> m_conv_weights;
+        std::vector<std::vector<float>> m_conv_biases;
+        std::vector<std::vector<float>> m_batchnorm_means;
+        std::vector<std::vector<float>> m_batchnorm_stddevs;
+
+        // Policy head
+        std::vector<float> m_conv_pol_w;
+        std::vector<float> m_conv_pol_b;
+
+        std::vector<float> m_conv_val_w;
+        std::vector<float> m_conv_val_b;
+    };
+
     virtual ~ForwardPipe() = default;
 
     virtual void initialize(const int channels) = 0;
@@ -32,31 +49,12 @@ public:
                          std::vector<float>& output_pol,
                          std::vector<float>& output_val) = 0;
 
-    virtual void push_input_convolution(unsigned int filter_size,
-                                        unsigned int channels,
-                                        unsigned int outputs,
-                                        const std::vector<float>& weights,
-                                        const std::vector<float>& means,
-                                        const std::vector<float>& variances) = 0;
-
-    virtual void push_residual(unsigned int filter_size,
-                               unsigned int channels,
-                               unsigned int outputs,
-                               const std::vector<float>& weights_1,
-                               const std::vector<float>& means_1,
-                               const std::vector<float>& variances_1,
-                               const std::vector<float>& weights_2,
-                               const std::vector<float>& means_2,
-                               const std::vector<float>& variances_2) = 0;
-
-    virtual void push_convolve(unsigned int filter_size,
-                               unsigned int channels,
-                               unsigned int outputs,
-                               const std::vector<float>& weights) = 0;
+    virtual void push_weights(unsigned int filter_size,
+                              unsigned int channels,
+                              unsigned int outputs,
+                              std::shared_ptr<const ForwardPipeWeights> weights) = 0;
 
     virtual void set_batching(bool is_batching) = 0;
-
-
 };
 
 #endif

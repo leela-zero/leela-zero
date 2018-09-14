@@ -192,6 +192,40 @@ void OpenCLScheduler<net_t>::push_convolve(unsigned int filter_size,
 }
 
 template <typename net_t>
+void OpenCLScheduler<net_t>::push_weights(unsigned int filter_size,
+                                          unsigned int channels,
+                                          unsigned int outputs,
+                                          std::shared_ptr<const ForwardPipeWeights> weights) {
+    auto weight_index = size_t{0};
+
+    // Winograd filter transformation changes filter size to 4x4
+    push_input_convolution(filter_size, channels, outputs,
+                           weights->m_conv_weights[weight_index],
+                           weights->m_batchnorm_means[weight_index],
+                           weights->m_batchnorm_stddevs[weight_index]);
+    weight_index++;
+
+    // residual blocks : except the first entry,
+    // the second ~ last entry is all on residual topwer
+    for (auto i = size_t{0}; i < weights->m_conv_weights.size()/2; i++) {
+        push_residual(filter_size, outputs, outputs,
+                      weights->m_conv_weights[weight_index],
+                      weights->m_batchnorm_means[weight_index],
+                      weights->m_batchnorm_stddevs[weight_index],
+                      weights->m_conv_weights[weight_index + 1],
+                      weights->m_batchnorm_means[weight_index + 1],
+                      weights->m_batchnorm_stddevs[weight_index + 1]);
+        weight_index += 2;
+    }
+
+    // Output head convolutions
+    push_convolve(1, outputs, Network::OUTPUTS_POLICY, weights->m_conv_pol_w);
+    push_convolve(1, outputs, Network::OUTPUTS_VALUE, weights->m_conv_val_w);
+}
+
+
+
+template <typename net_t>
 void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
                                      std::vector<float>& output_pol,
                                      std::vector<float>& output_val) {

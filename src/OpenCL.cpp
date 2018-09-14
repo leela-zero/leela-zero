@@ -112,12 +112,16 @@ void OpenCL_Network<net_t>::add_weights(size_t layer,
     }
 
     auto weightSize = size * sizeof(net_t);
-    m_layers.back().weights.emplace_back(
+
+    auto queue = cl::CommandQueue(getOpenCL().m_context, getOpenCL().m_device);
+    auto buffer = cl::Buffer(
         m_opencl.m_context,
-        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+        CL_MEM_READ_ONLY,
         weightSize,
-        const_cast<net_t*>(weights)
+        nullptr
     );
+    queue.enqueueWriteBuffer(buffer, CL_TRUE, 0, weightSize, const_cast<net_t*>(weights));
+    m_layers.back().weights.push_back(std::move(buffer));
 }
 
 template <typename net_t>
