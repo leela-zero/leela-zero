@@ -423,7 +423,7 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         m_fwd_weights->m_conv_pol_b[i] = 0.0f;
     }
 
-    auto init_net = [this, channels, residual_blocks](auto&& p) {
+    auto init_net = [this, channels](auto&& p) {
         p->initialize(channels);
         p->push_weights(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, m_fwd_weights);
 
