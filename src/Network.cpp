@@ -456,6 +456,7 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
                     }
 
                     try {
+                        m_forward.reset();
                         m_forward = init_net(
                             std::make_unique<OpenCLScheduler<half_float::half>>());
                         score_fp16 = benchmark_time(100);
@@ -468,12 +469,14 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
                         throw std::runtime_error("Failed to initialize net");
                     } else if (score_fp16 < 0.0f) {
                         myprintf("Using OpenCL single precision (half precision failed to run)\n");
+                        m_forward.reset();
                         m_forward = init_net(
                             std::make_unique<OpenCLScheduler<float>>());
                     } else if (score_fp32 < 0.0f) {
                         myprintf("Using OpenCL half precision (single precision failed to run)\n");
                     } else if (score_fp32 * 1.05f > score_fp16) {
                         myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
+                        m_forward.reset();
                         m_forward = init_net(
                             std::make_unique<OpenCLScheduler<float>>());
                     } else {
