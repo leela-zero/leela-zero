@@ -90,8 +90,12 @@ private:
     static std::string get_life_list(const GameState & game, bool live);
     static const std::string s_commands[];
     static const std::string s_options[];
-    static std::pair<std::string, std::string> parse_option(std::istringstream& is);
-    static std::pair<bool, std::string> set_max_memory(size_t max_memory, int cache_size_ratio_percent);
+    static std::pair<std::string, std::string> parse_option(
+        std::istringstream& is);
+    static std::pair<bool, std::string> set_max_memory(
+        size_t max_memory, int cache_size_ratio_percent);
+
+    // Memory estimation helpers
     static size_t get_base_memory();
     static size_t add_overhead(size_t s) { return s * 11LL / 10LL; }
     static size_t remove_overhead(size_t s) { return s * 10LL / 11LL; }

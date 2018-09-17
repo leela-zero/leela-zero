@@ -30,14 +30,10 @@
 class NNCache {
 public:
 
-    /*
-    Maximum size of the cache in number of items.
-    */
+    // Maximum size of the cache in number of items.
     static constexpr int MAX_CACHE_COUNT = 150'000;
 
-    /*
-    Minimum size of the cache in number of items.
-    */
+    // Minimum size of the cache in number of items.
     static constexpr int MIN_CACHE_COUNT = 6'000;
 
     struct Netresult {
@@ -55,7 +51,10 @@ public:
         }
     };
 
-    static constexpr size_t ENTRY_SIZE = sizeof(Netresult) + sizeof(std::uint64_t) + sizeof(std::unique_ptr<Netresult>);
+    static constexpr size_t ENTRY_SIZE =
+          sizeof(Netresult)
+        + sizeof(std::uint64_t)
+        + sizeof(std::unique_ptr<Netresult>);
 
     NNCache(int size = MAX_CACHE_COUNT);  // ~ 208MiB
 
@@ -79,7 +78,7 @@ public:
 
     void dump_stats();
 
-    //return the estimated memory consumption of cache
+    // Return the estimated memory consumption of the cache.
     size_t get_estimated_size();
 private:
 

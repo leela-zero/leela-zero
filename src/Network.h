@@ -134,8 +134,10 @@ private:
 
     size_t estimated_size{0};
 
+    // Residual tower
     std::shared_ptr<ForwardPipeWeights> m_fwd_weights;
 
+    // Policy head
     std::array<float, OUTPUTS_POLICY> m_bn_pol_w1;
     std::array<float, OUTPUTS_POLICY> m_bn_pol_w2;
 

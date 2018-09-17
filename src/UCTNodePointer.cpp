@@ -53,7 +53,11 @@ UCTNodePointer::~UCTNodePointer() {
 UCTNodePointer::UCTNodePointer(UCTNodePointer&& n) {
     auto nv = std::atomic_exchange(&n.m_data, INVALID);
     auto v = std::atomic_exchange(&m_data, nv);
+#ifdef NDEBUG
+    (void)v;
+#else
     assert(v == INVALID);
+#endif
     increment_tree_size(sizeof(UCTNodePointer));
 }
 

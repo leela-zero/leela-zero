@@ -90,10 +90,13 @@ void GTP::initialize(std::unique_ptr<Network>&& net) {
 
     bool result;
     std::string message;
-    std::tie(result, message) = set_max_memory(cfg_max_memory, cfg_max_cache_ratio_percent);
+    std::tie(result, message) =
+        set_max_memory(cfg_max_memory, cfg_max_cache_ratio_percent);
     if (!result) {
-        //This should only ever happen with 60B networks at 32bit machine.
-        myprintf("LOW MEMORY SETTINGS! Couldn't set default memory limits. The network you are using might be too big for the deafult settings on your system.\n");
+        // This should only ever happen with 60 block networks on 32bit machine.
+        myprintf("LOW MEMORY SETTINGS! Couldn't set default memory limits.\n");
+        myprintf("The network you are using might be too big\n");
+        myprintf("for the default settings on your system.\n");
         throw std::runtime_error("Error setting memory requirements.");
     }
     myprintf(message.c_str());
@@ -115,7 +118,8 @@ void GTP::setup_default_parameters() {
     cfg_max_memory = UCTSearch::DEFAULT_MAX_MEMORY;
     cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
     cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
-    cfg_max_tree_size = UCTSearch::DEFAULT_MAX_MEMORY;  //this will be overwriiten in initialize() after network size is known
+    // This will be overwriiten in initialize() after network size is known.
+    cfg_max_tree_size = UCTSearch::DEFAULT_MAX_MEMORY;
     cfg_max_cache_ratio_percent = 10;
     cfg_timemanage = TimeManagement::AUTO;
     cfg_lagbuffer_cs = 100;
@@ -231,7 +235,7 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
     return result;
 }
 
-bool GTP::execute(GameState & game, const std::string & xinput) {
+bool GTP::execute(GameState & game, const std::string& xinput) {
     std::string input;
     static auto search = std::make_unique<UCTSearch>(game, *s_network);
 
@@ -348,7 +352,7 @@ bool GTP::execute(GameState & game, const std::string & xinput) {
         Training::clear_training();
         game.reset_game();
         search = std::make_unique<UCTSearch>(game, *s_network);
-        assert(UCTNodePointer::m_tree_size == 0);
+        assert(UCTNodePointer::get_tree_size() == 0);
         gtp_printf(id, "");
         return true;
     } else if (command.find("komi") == 0) {
@@ -389,7 +393,8 @@ bool GTP::execute(GameState & game, const std::string & xinput) {
             gtp_fail_printf(id, "syntax not understood");
         }
         return true;
-    } else if (command.find("genmove") == 0 || command.find("lz-genmove_analyze") == 0) {
+    } else if (command.find("genmove") == 0
+               || command.find("lz-genmove_analyze") == 0) {
         auto analysis_output = command.find("lz-genmove_analyze") == 0;
         auto interval = 0;
 
@@ -620,7 +625,8 @@ bool GTP::execute(GameState & game, const std::string & xinput) {
         if (cmdstream.fail()) {
             // Default = DIRECT with no symmetric change
             vec = s_network->get_output(
-                &game, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY, true);
+                &game, Network::Ensemble::DIRECT,
+                Network::IDENTITY_SYMMETRY, true);
         } else if (symmetry == "all") {
             for (auto s = 0; s < Network::NUM_SYMMETRIES; ++s) {
                 vec = s_network->get_output(
@@ -629,7 +635,8 @@ bool GTP::execute(GameState & game, const std::string & xinput) {
             }
         } else if (symmetry == "average" || symmetry == "avg") {
             vec = s_network->get_output(
-                &game, Network::Ensemble::AVERAGE, Network::NUM_SYMMETRIES, true);
+                &game, Network::Ensemble::AVERAGE,
+                Network::NUM_SYMMETRIES, true);
         } else {
             vec = s_network->get_output(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
@@ -908,7 +915,8 @@ bool GTP::execute(GameState & game, const std::string & xinput) {
         auto cache_size = add_overhead(s_network->get_estimated_cache_size());
 
         auto total = base_memory + tree_size + cache_size;
-        gtp_printf(id, "Estimated total memory consumption: %d MiB.\n"
+        gtp_printf(id,
+            "Estimated total memory consumption: %d MiB.\n"
             "Network with overhead: %d MiB / Search tree: %d MiB / Network cache: %d\n",
             total / MiB, base_memory / MiB, tree_size / MiB, cache_size / MiB);
         return true;
@@ -934,10 +942,11 @@ std::pair<std::string, std::string> GTP::parse_option(std::istringstream& is) {
 }
 
 size_t GTP::get_base_memory() {
-    //At the moment of writing the memory consumption on my machine was
-    // roughly network size + 85 for one GPU and + 160 for two GPUs
+    // At the moment of writing the memory consumption is
+    // roughly network size + 85 for one GPU and + 160 for two GPUs.
 #ifdef USE_OPENCL
-    return (size_t)(s_network->get_estimated_size() + 85 * MiB * cfg_gpus.size());
+    return (size_t)(s_network->get_estimated_size()
+                    + 85 * MiB * cfg_gpus.size());
 #else
     return s_network->get_estimated_size();
 #endif
@@ -965,7 +974,8 @@ std::pair<bool, std::string> GTP::set_max_memory(size_t max_memory,
     auto max_cache_size = max_memory_for_search *
         cache_size_ratio_percent / 100;
 
-    auto max_cache_count = (int)(remove_overhead(max_cache_size) / NNCache::ENTRY_SIZE);
+    auto max_cache_count =
+        (int)(remove_overhead(max_cache_size) / NNCache::ENTRY_SIZE);
 
     // Verify if the setting would not result in too little cache.
     if (max_cache_count < NNCache::MIN_CACHE_COUNT) {
@@ -977,28 +987,28 @@ std::pair<bool, std::string> GTP::set_max_memory(size_t max_memory,
         return std::make_pair(false, "Not enough memory for search tree.");
     }
 
-    //only if settings are ok we store the values in config
+    // Only if settings are ok we store the values in config.
     cfg_max_memory = max_memory;
     cfg_max_cache_ratio_percent = cache_size_ratio_percent;
-    // set max_tree_size
+    // Set max_tree_size.
     cfg_max_tree_size = remove_overhead(max_tree_size);
-    // resize cache
+    // Resize cache.
     s_network->nncache_resize(max_cache_count);
 
     return std::make_pair(true, "Setting max tree size to " +
         std::to_string(max_tree_size / MiB) + " MiB and cache size to " +
         std::to_string(max_cache_size / MiB) +
-        " MiB");
+        " MiB.");
 }
 
 bool GTP::execute_setoption(int id, const std::string &command) {
     std::istringstream cmdstream(command);
     std::string tmp, name_token;
 
-    //consume lz_setoption, name
+    // Consume lz_setoption, name.
     cmdstream >> tmp >> name_token;
 
-    //print available options if called without an argument
+    // Print available options if called without an argument.
     if (cmdstream.fail()) {
         std::string options_out_tmp("");
         for (int i = 0; s_options[i].size() > 0; i++) {
@@ -1008,8 +1018,7 @@ bool GTP::execute_setoption(int id, const std::string &command) {
         return true;
     }
 
-    if (name_token.find("name") != 0)
-    {
+    if (name_token.find("name") != 0) {
         gtp_fail_printf(id, "incorrect syntax for lz-setoption");
         return true;
     }
