@@ -29,6 +29,17 @@
 
 class NNCache {
 public:
+
+    /*
+    Maximum size of the cache in number of items.
+    */
+    static constexpr int MAX_CACHE_COUNT = 150'000;
+
+    /*
+    Minimum size of the cache in number of items.
+    */
+    static constexpr int MIN_CACHE_COUNT = 6'000;
+
     struct Netresult {
         // 19x19 board positions
         std::array<float, NUM_INTERSECTIONS> policy;
@@ -44,7 +55,9 @@ public:
         }
     };
 
-    NNCache(int size = 150000);  // ~ 208MiB
+    static constexpr size_t ENTRY_SIZE = sizeof(Netresult) + sizeof(std::uint64_t) + sizeof(std::unique_ptr<Netresult>);
+
+    NNCache(int size = MAX_CACHE_COUNT);  // ~ 208MiB
 
     // Set a reasonable size gives max number of playouts
     void set_size_from_playouts(int max_playouts);
@@ -65,6 +78,9 @@ public:
     }
 
     void dump_stats();
+
+    //return the estimated memory consumption of cache
+    size_t get_estimated_size();
 private:
 
     std::mutex m_mutex;

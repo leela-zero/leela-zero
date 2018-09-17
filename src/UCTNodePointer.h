@@ -47,6 +47,11 @@ private:
     static constexpr std::uint64_t INVALID = 2;
     static constexpr std::uint64_t POINTER = 1;
     static constexpr std::uint64_t UNINFLATED = 0;
+
+    static std::atomic<size_t> m_tree_size;
+    static void increment_tree_size(size_t sz);
+    static void decrement_tree_size(size_t sz);
+
     // the raw storage used here.
     // if bit [1:0] is 1, m_data is the actual pointer.
     // if bit [1:0] is 0, bit [31:16] is the vertex value, bit [63:32] is the policy
@@ -80,6 +85,8 @@ private:
     }
 
 public:
+    static size_t get_tree_size();
+
     ~UCTNodePointer();
     UCTNodePointer(UCTNodePointer&& n);
     UCTNodePointer(std::int16_t vertex, float policy);
@@ -101,10 +108,7 @@ public:
         return read_ptr(m_data.load());
     }
     UCTNodePointer& operator=(UCTNodePointer&& n);
-    UCTNode * release() {
-        auto v = std::atomic_exchange(&m_data, INVALID);
-        return read_ptr(v);
-    }
+    UCTNode * release();
 
     // construct UCTNode instance from the vertex/policy pair
     void inflate() const;
