@@ -26,6 +26,7 @@
 #include "GTP.h"
 
 const int NNCache::MAX_CACHE_COUNT;
+const int NNCache::MIN_CACHE_COUNT;
 const size_t NNCache::ENTRY_SIZE;
 
 NNCache::NNCache(int size) : m_size(size) {}

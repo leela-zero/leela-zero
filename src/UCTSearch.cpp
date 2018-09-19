@@ -527,6 +527,12 @@ std::string UCTSearch::get_pv(FastState & state, UCTNode& parent) {
         return std::string();
     }
 
+    if (parent.expandable()) {
+        // not fully expanded.  There may be race conditions so we won't
+        // go through the rabbit hole trying to print things from this node.
+        return std::string();
+    }
+
     auto& best_child = parent.get_best_root_child(state.get_to_move());
     if (best_child.first_visit()) {
         return std::string();
