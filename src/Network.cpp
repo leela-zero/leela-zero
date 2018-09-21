@@ -423,7 +423,7 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         m_fwd_weights->m_conv_pol_b[i] = 0.0f;
     }
 
-    auto init_net = [this, channels, residual_blocks](auto&& p) {
+    auto init_net = [this, channels](auto&& p) {
         p->initialize(channels);
         p->push_weights(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, m_fwd_weights);
 
@@ -456,6 +456,7 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
                     }
 
                     try {
+                        m_forward.reset();
                         m_forward = init_net(
                             std::make_unique<OpenCLScheduler<half_float::half>>());
                         score_fp16 = benchmark_time(100);
@@ -468,12 +469,14 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
                         throw std::runtime_error("Failed to initialize net");
                     } else if (score_fp16 < 0.0f) {
                         myprintf("Using OpenCL single precision (half precision failed to run)\n");
+                        m_forward.reset();
                         m_forward = init_net(
                             std::make_unique<OpenCLScheduler<float>>());
                     } else if (score_fp32 < 0.0f) {
                         myprintf("Using OpenCL half precision (single precision failed to run)\n");
                     } else if (score_fp32 * 1.05f > score_fp16) {
                         myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
+                        m_forward.reset();
                         m_forward = init_net(
                             std::make_unique<OpenCLScheduler<float>>());
                     } else {
@@ -511,7 +514,8 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 #else
     (void)use_selfcheck;
 #endif
-
+    // Need to estimate size before clearing up the pipe.
+    get_estimated_size();
     m_fwd_weights.reset();
 }
 
@@ -898,4 +902,56 @@ std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex,
     assert(y >= 0 && y < board_size);
     assert(symmetry != IDENTITY_SYMMETRY || vertex == std::make_pair(x, y));
     return {x, y};
+}
+
+size_t Network::get_estimated_size() {
+    if (estimated_size != 0) {
+        return estimated_size;
+    }
+    auto result = size_t{0};
+
+    const auto lambda_vector_size =  [](const std::vector<std::vector<float>> &v) {
+        auto result = size_t{0};
+        for (auto it = begin(v); it != end(v); ++it) {
+            result += it->size() * sizeof(float);
+        }
+        return result;
+    };
+
+    result += lambda_vector_size(m_fwd_weights->m_conv_weights);
+    result += lambda_vector_size(m_fwd_weights->m_conv_biases);
+    result += lambda_vector_size(m_fwd_weights->m_batchnorm_means);
+    result += lambda_vector_size(m_fwd_weights->m_batchnorm_stddevs);
+
+    result += m_fwd_weights->m_conv_pol_w.size() * sizeof(float);
+    result += m_fwd_weights->m_conv_pol_b.size() * sizeof(float);
+
+    // Policy head
+    result += OUTPUTS_POLICY * sizeof(float); // m_bn_pol_w1
+    result += OUTPUTS_POLICY * sizeof(float); // m_bn_pol_w2
+    result += OUTPUTS_POLICY * NUM_INTERSECTIONS
+                             * POTENTIAL_MOVES * sizeof(float); //m_ip_pol_w
+    result += POTENTIAL_MOVES * sizeof(float); // m_ip_pol_b
+
+    // Value head
+    result += m_fwd_weights->m_conv_val_w.size() * sizeof(float);
+    result += m_fwd_weights->m_conv_val_b.size() * sizeof(float);
+    result += OUTPUTS_VALUE * sizeof(float); // m_bn_val_w1
+    result += OUTPUTS_VALUE * sizeof(float); // m_bn_val_w2
+
+    result += OUTPUTS_VALUE * NUM_INTERSECTIONS
+                            * VALUE_LAYER * sizeof(float); // m_ip1_val_w
+    result += VALUE_LAYER * sizeof(float);  // m_ip1_val_b
+
+    result += VALUE_LAYER * sizeof(float); // m_ip2_val_w
+    result += sizeof(float); // m_ip2_val_b
+    return estimated_size = result;
+}
+
+size_t Network::get_estimated_cache_size() {
+    return m_nncache.get_estimated_size();
+}
+
+void Network::nncache_resize(int max_count) {
+    return m_nncache.resize(max_count);
 }

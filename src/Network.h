@@ -87,6 +87,11 @@ public:
     static std::pair<int, int> get_symmetry(const std::pair<int, int>& vertex,
                                             const int symmetry,
                                             const int board_size = BOARD_SIZE);
+
+    size_t get_estimated_size();
+    size_t get_estimated_cache_size();
+    void nncache_resize(int max_count);
+
 private:
     std::pair<int, int> load_v1_network(std::istream& wtfile);
     std::pair<int, int> load_network_file(const std::string& filename);
@@ -127,8 +132,12 @@ private:
 
     NNCache m_nncache;
 
+    size_t estimated_size{0};
+
+    // Residual tower
     std::shared_ptr<ForwardPipeWeights> m_fwd_weights;
 
+    // Policy head
     std::array<float, OUTPUTS_POLICY> m_bn_pol_w1;
     std::array<float, OUTPUTS_POLICY> m_bn_pol_w2;
 

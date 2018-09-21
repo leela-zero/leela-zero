@@ -176,7 +176,7 @@ void UCTSearch::update_root() {
 }
 
 float UCTSearch::get_min_psa_ratio() const {
-    const auto mem_full = m_nodes / static_cast<float>(MAX_TREE_SIZE);
+    const auto mem_full = UCTNodePointer::get_tree_size() / static_cast<float>(cfg_max_tree_size);
     // If we are halfway through our memory budget, start trimming
     // moves with very low policy priors.
     if (mem_full > 0.5f) {
@@ -200,7 +200,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
-        } else if (m_nodes < MAX_TREE_SIZE) {
+        } else if (UCTNodePointer::get_tree_size() < cfg_max_tree_size) {
             float eval;
             const auto had_children = node->has_children();
             const auto success =
@@ -558,7 +558,7 @@ void UCTSearch::dump_analysis(int playouts) {
 }
 
 bool UCTSearch::is_running() const {
-    return m_run && m_nodes < MAX_TREE_SIZE;
+    return m_run && UCTNodePointer::get_tree_size() < cfg_max_tree_size;
 }
 
 int UCTSearch::est_playouts_left(int elapsed_centis, int time_for_move) const {
@@ -818,3 +818,4 @@ void UCTSearch::set_visit_limit(int visits) {
     // Limit to type max / 2 to prevent overflow when multithreading.
     m_maxvisits = std::min(visits, UNLIMITED_PLAYOUTS);
 }
+

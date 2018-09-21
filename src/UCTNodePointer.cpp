@@ -25,19 +25,40 @@
 
 #include "UCTNode.h"
 
+std::atomic<size_t> UCTNodePointer::m_tree_size = {0};
+
+size_t UCTNodePointer::get_tree_size() {
+    return m_tree_size.load();
+}
+
+void UCTNodePointer::increment_tree_size(size_t sz) {
+    m_tree_size += sz;
+}
+
+void UCTNodePointer::decrement_tree_size(size_t sz) {
+    assert(UCTNodePointer::m_tree_size >= sz);
+    m_tree_size -= sz;
+}
+
 UCTNodePointer::~UCTNodePointer() {
+    auto sz = sizeof(UCTNodePointer);
     auto v = m_data.load();
     if (is_inflated(v)) {
         delete read_ptr(v);
+        sz += sizeof(UCTNode);
     }
+    decrement_tree_size(sz);
 }
 
 UCTNodePointer::UCTNodePointer(UCTNodePointer&& n) {
     auto nv = std::atomic_exchange(&n.m_data, INVALID);
     auto v = std::atomic_exchange(&m_data, nv);
-    if (is_inflated(v)) {
-        delete read_ptr(v);
-    }
+#ifdef NDEBUG
+    (void)v;
+#else
+    assert(v == INVALID);
+#endif
+    increment_tree_size(sizeof(UCTNodePointer));
 }
 
 UCTNodePointer::UCTNodePointer(std::int16_t vertex, float policy) {
@@ -47,6 +68,7 @@ UCTNodePointer::UCTNodePointer(std::int16_t vertex, float policy) {
 
     m_data =  (static_cast<std::uint64_t>(i_policy)  << 32)
             | (static_cast<std::uint64_t>(i_vertex) << 16);
+    increment_tree_size(sizeof(UCTNodePointer));
 }
 
 UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
@@ -54,9 +76,16 @@ UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
     auto v = std::atomic_exchange(&m_data, nv);
 
     if (is_inflated(v)) {
+        decrement_tree_size(sizeof(UCTNode));
         delete read_ptr(v);
     }
     return *this;
+}
+
+UCTNode * UCTNodePointer::release() {
+    auto v = std::atomic_exchange(&m_data, INVALID);
+    decrement_tree_size(sizeof(UCTNode));
+    return read_ptr(v);
 }
 
 void UCTNodePointer::inflate() const {
@@ -69,6 +98,7 @@ void UCTNodePointer::inflate() const {
         ) | POINTER;
         bool success = m_data.compare_exchange_strong(v, v2);
         if (success) {
+            increment_tree_size(sizeof(UCTNode));
             return;
         } else {
             // this means that somebody else also modified this instance.
