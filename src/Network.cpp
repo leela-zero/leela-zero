@@ -580,8 +580,8 @@ void batchnorm(const size_t channels,
 #endif
 
 #ifdef USE_OPENCL_SELFCHECK
-void Network::compare_net_outputs(Netresult& data,
-                                  Netresult& ref) {
+void Network::compare_net_outputs(const Netresult& data,
+                                  const Netresult& ref) {
     // Calculates L2-norm between data and ref.
     constexpr auto max_error = 0.2f;
 

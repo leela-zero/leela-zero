@@ -125,7 +125,7 @@ private:
     bool probe_cache(const GameState* const state, Network::Netresult& result);
     std::unique_ptr<ForwardPipe> m_forward;
 #ifdef USE_OPENCL_SELFCHECK
-    void compare_net_outputs(Netresult& data, Netresult& ref);
+    void compare_net_outputs(const Netresult& data, const Netresult& ref);
     std::unique_ptr<ForwardPipe> m_forward_cpu;
 
 #endif
