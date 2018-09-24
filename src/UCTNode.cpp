@@ -178,11 +178,13 @@ bool UCTNode::has_children() const {
 }
 
 bool UCTNode::expandable(const float min_psa_ratio) const {
-    if (m_min_psa_ratio_children == 0.0) {
-        // if we figured out that we are fully expandable
-        // it is impossible that we stay in INITIAL state
+#ifndef NDEBUG
+    if (m_min_psa_ratio_children == 0.0f) {
+        // If we figured out that we are fully expandable
+        // it is impossible that we stay in INITIAL state.
         assert(m_expand_state.load() != ExpandState::INITIAL);
     }
+#endif
     return min_psa_ratio < m_min_psa_ratio_children;
 }
 

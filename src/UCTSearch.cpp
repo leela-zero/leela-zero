@@ -528,8 +528,10 @@ std::string UCTSearch::get_pv(FastState & state, UCTNode& parent) {
     }
 
     if (parent.expandable()) {
-        // not fully expanded.  There may be race conditions so we won't
-        // go through the rabbit hole trying to print things from this node.
+        // Not fully expanded. This means someone could expand
+        // the node while we want to traverse the children.
+        // Avoid the race conditions and don't go through the rabbit hole
+        // of trying to print things from this node.
         return std::string();
     }
 
