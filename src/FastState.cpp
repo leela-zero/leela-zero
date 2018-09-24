@@ -61,7 +61,7 @@ void FastState::reset_board() {
     board.reset_board(board.get_boardsize());
 }
 
-bool FastState::is_move_legal(int color, int vertex) {
+bool FastState::is_move_legal(int color, int vertex) const {
     return vertex == FastBoard::PASS ||
            vertex == FastBoard::RESIGN ||
            (vertex != m_komove &&
