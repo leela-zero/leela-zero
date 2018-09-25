@@ -356,6 +356,7 @@ std::unique_ptr<ForwardPipe>&& Network::init_net(int channels,
     return std::move(pipe);
 }
 
+#ifdef USE_HALF
 void Network::select_precision(int channels) {
     if (cfg_precision == precision_t::AUTO) {
         auto score_fp16 = float{-1.0};
@@ -420,6 +421,7 @@ void Network::select_precision(int channels) {
         return;
     }
 }
+#endif
 
 void Network::initialize(int playouts, const std::string & weightsfile) {
 #ifdef USE_BLAS
