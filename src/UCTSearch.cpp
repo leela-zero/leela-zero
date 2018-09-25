@@ -737,7 +737,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(elapsed_centis, time_for_move);
         keeprunning &= have_alternate_moves(elapsed_centis, time_for_move);
-    } while (keeprunning);
+    } while (!Utils::input_pending() && keeprunning);
 
     // stop the search
     m_run = false;
