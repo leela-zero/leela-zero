@@ -28,12 +28,22 @@
 #include <cblas.h>
 #endif
 #ifndef USE_BLAS
-#error "No non-BLAS implementation"
+#include <Eigen/Dense>
 #endif
 
 #include "CPUPipe.h"
 #include "Network.h"
 #include "Im2Col.h"
+
+#ifndef USE_BLAS
+// Eigen helpers
+template <typename T>
+using EigenMatrixMap =
+    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using ConstEigenMatrixMap =
+    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>;
+#endif
 
 void CPUPipe::initialize(int channels) {
     m_input_channels = channels;
@@ -130,7 +140,7 @@ void CPUPipe::winograd_sgemm(const std::vector<float>& U,
         const auto offset_u = b * K * C;
         const auto offset_v = b * C * P;
         const auto offset_m = b * K * P;
-
+#ifdef USE_BLAS
         cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
                     K, P, C,
                     1.0f,
@@ -138,6 +148,12 @@ void CPUPipe::winograd_sgemm(const std::vector<float>& U,
                     &V[offset_v], P,
                     0.0f,
                     &M[offset_m], P);
+#else
+        auto C_mat = EigenMatrixMap<float>(M.data() + offset_m, P, K);
+        C_mat.noalias() =
+           ConstEigenMatrixMap<float>(V.data() + offset_v, P, C)
+            * ConstEigenMatrixMap<float>(U.data() + offset_u, K, C).transpose();
+#endif
     }
 }
 
@@ -253,13 +269,20 @@ void convolve(const size_t outputs,
     // passing a matrix A[m][n], the value should be m.
     //    cblas_sgemm(CblasRowMajor, TransA, TransB, M, N, K, alpha, A, lda, B,
     //                ldb, beta, C, N);
-
+#ifdef USE_BLAS
     cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 // M        N            K
                 outputs, num_intersections, filter_dim,
                 1.0f, &weights[0], filter_dim,
                 &col[0], num_intersections,
                 0.0f, &output[0], num_intersections);
+#else
+    auto C_mat = EigenMatrixMap<float>(output.data(),
+                                       num_intersections, outputs);
+    C_mat.noalias() =
+        ConstEigenMatrixMap<float>(col.data(), num_intersections, filter_dim)
+        * ConstEigenMatrixMap<float>(weights.data(), filter_dim, outputs);
+#endif
 
     for (unsigned int o = 0; o < outputs; o++) {
         for (unsigned int b = 0; b < num_intersections; b++) {

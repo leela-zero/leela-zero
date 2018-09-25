@@ -92,7 +92,7 @@ the line that says "#define USE_OPENCL".
     sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
     make
     cd ..
-    wget http://zero.sjeng.org/best-network
+    wget https://zero.sjeng.org/best-network
     src/leelaz --weights best-network
 
 ## Example of compiling and running - macOS
@@ -103,7 +103,7 @@ the line that says "#define USE_OPENCL".
     brew install boost
     make
     cd ..
-    curl -O http://zero.sjeng.org/best-network
+    curl -O https://zero.sjeng.org/best-network
     src/leelaz --weights best-network
 
 ## Example of compiling and running - Windows
@@ -131,7 +131,7 @@ the line that says "#define USE_OPENCL".
     make leelaz
     make tests
     ./tests
-    curl -O http://zero.sjeng.org/best-network
+    curl -O https://zero.sjeng.org/best-network
     ./leelaz --weights best-network
 
 
@@ -295,7 +295,6 @@ If interrupted, training can be resumed with:
 - [ ] Implement GPU batching.
 - [ ] Parameter setting over GTP.
 - More backends:
-- [ ] Eigen based BLAS backend.
 - [ ] MKL-DNN based backend.
 - [ ] CUDA specific version using cuDNN.
 - [ ] AMD specific version using MIOpen.
@@ -319,5 +318,4 @@ https://medium.com/applied-data-science/alphago-zero-explained-in-one-diagram-36
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp,
-half.hpp and the clblast_level3 subdirs, which have specific licenses (compatible with GPLv3) mentioned in those files.
+The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp, half.hpp and the eigen and clblast_level3 subdirs, which have specific licenses (compatible with GPLv3) mentioned in those files.

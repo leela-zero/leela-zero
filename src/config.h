@@ -35,7 +35,8 @@
    number due to winograd tiles
  */
 static constexpr auto BOARD_SIZE = 19;
-static_assert(BOARD_SIZE % 2 == 1, "Code assumes odd board size, remove at your own risk!");
+static_assert(BOARD_SIZE % 2 == 1,
+              "Code assumes odd board size, remove at your own risk!");
 
 static constexpr auto NUM_INTERSECTIONS = BOARD_SIZE * BOARD_SIZE;
 static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
@@ -43,19 +44,23 @@ static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
 /*
  * Features
  *
- * USE_BLAS: Use a basic linear algebra library.
- * We currently require this, as not all operations are performed on
- * the GPU - some operations won't get any speedup from it.
+ * USE_BLAS: Optionally use a basic linear algebra library.
+ * This is may perform faster than the included Eigen library,
+ * and some BLAS libraries can target multiple CPU models.
+ * Not all operations are performed on the GPU -
+ * some operations won't get any speedup from it.
  * Also used for OpenCL self-checks.
  */
-#define USE_BLAS
+//#define USE_BLAS
 
 /*
  * We use OpenBLAS by default, except on macOS, which has a fast BLAS
  * built-in. (Accelerate)
  */
 #if !defined(__APPLE__) && !defined(__MACOSX)
+#if defined(USE_BLAS)
 #define USE_OPENBLAS
+#endif
 #endif
 
 /*

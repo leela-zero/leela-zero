@@ -79,7 +79,7 @@ if(USE_HALF)
   add_definitions(-DUSE_HALF)
 endif()
 
-set(IncludePath "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(IncludePath "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/src/Eigen")
 set(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 include_directories(${IncludePath})

@@ -35,7 +35,20 @@
 #include "Utils.h"
 #include "Random.h"
 
+#ifndef USE_BLAS
+#include <Eigen/Dense>
+#endif
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
+
+#ifndef USE_BLAS
+// Eigen helpers
+template <typename T>
+using EigenMatrixMap =
+    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using ConstEigenMatrixMap =
+    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>;
+#endif
 
 template <typename net_t> static std::string getTunerKernel();
 template <typename net_t> static float getTunerMaxError();
@@ -78,16 +91,10 @@ static void sgemmBatched_ref(const std::vector<net_t>& a,
         auto offset_v = batch * n * k;
         auto offset_m = batch * m * n;
 
-        // Calculates transpose(tranpose(A) * B)
-        for (auto i = 0; i < m; i++) {
-            for (auto j = 0; j < n; j++) {
-                auto acc = 0.0f;
-                for (auto l = 0; l < k; l++) {
-                    acc += ar[l * m + i + offset_u] * br[l * n + j + offset_v];
-                }
-                cr[j * m + i + offset_m] = acc;
-            }
-        }
+        auto C = EigenMatrixMap<float>(cr.data() + offset_m, m, n);
+        auto A = ConstEigenMatrixMap<float>(ar.data() + offset_u, m, k);
+        auto B = ConstEigenMatrixMap<float>(br.data() + offset_v, n, k);
+        C.noalias() = (A * B.transpose());
     }
 
     std::copy(begin(cr), end(cr), begin(c));
@@ -134,8 +141,9 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
 }
 
 template <typename net_t>
-Parameters Tuner<net_t>::get_parameters_by_int(const std::vector<Configurations>& opts,
-                                        const int n) {
+Parameters Tuner<net_t>::get_parameters_by_int(
+    const std::vector<Configurations>& opts, const int n) {
+
     Parameters param;
     std::vector<size_t> choices(opts.size());
 
