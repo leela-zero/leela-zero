@@ -945,8 +945,8 @@ size_t GTP::get_base_memory() {
     // At the moment of writing the memory consumption is
     // roughly network size + 85 for one GPU and + 160 for two GPUs.
 #ifdef USE_OPENCL
-    return (size_t)(s_network->get_estimated_size()
-                    + 85 * MiB * cfg_gpus.size());
+    auto gpus = std::max(cfg_gpus.size(), size_t{1});
+    return s_network->get_estimated_size() + 85 * MiB * gpus;
 #else
     return s_network->get_estimated_size();
 #endif
