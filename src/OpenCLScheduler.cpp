@@ -77,8 +77,8 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     // multi-gpu?
     auto gpus = cfg_gpus;
 
-    // an empty GPU list from the command line represents autodetect.
-    // put a minus one GPU index here.
+    // An empty GPU list from the command line represents autodetect.
+    // Put a minus one GPU index here.
     if (gpus.empty()) {
         gpus = {-1};
     }
@@ -86,7 +86,8 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     auto silent{false};
     auto gnum = size_t{0};
 
-    // launch the worker thread.  round_up(cfg_num_threads / gpus.size()) threads
+    // Launch the worker thread.
+    // Round_up(cfg_num_threads / gpus.size()) threads
     // so that we only have enough contexts to achieve full parallelism.
     const auto num_threads = (cfg_num_threads + gpus.size() - 1) / gpus.size();
     m_context_pool.resize(num_threads);
@@ -98,23 +99,37 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
         m_opencl.push_back(std::move(opencl));
         m_networks.push_back(std::move(net));
 
-        // starting next GPU, let's not dump full list of GPUs
+        // Starting next GPU, let's not dump full list of GPUs.
         silent = true;
 
         for (auto i = size_t{0}; i < num_threads; i++) {
-            m_context_pool[i].emplace_back(std::make_shared<ContextPoolEntry>(gnum));
+            m_context_pool[i].emplace_back(
+                std::make_shared<ContextPoolEntry>(gnum));
         }
         gnum++;
     }
 }
 
+template<typename net_t>
+bool OpenCLScheduler<net_t>::needs_autodetect() {
+    for (auto& opencl : m_opencl) {
+        // If any card has no native fp16 compute, we'll have to benchmark.
+        if (!opencl->has_fp16_compute()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 template <typename net_t>
-void OpenCLScheduler<net_t>::push_input_convolution(unsigned int filter_size,
-                                                    unsigned int channels,
-                                                    unsigned int outputs,
-                                                    const std::vector<float>& weights,
-                                                    const std::vector<float>& means,
-                                                    const std::vector<float>& variances) {
+void OpenCLScheduler<net_t>::push_input_convolution(
+    unsigned int filter_size,
+    unsigned int channels,
+    unsigned int outputs,
+    const std::vector<float>& weights,
+    const std::vector<float>& means,
+    const std::vector<float>& variances) {
+
     for (const auto& opencl_net : m_networks) {
         const auto tuners = opencl_net->getOpenCL().get_sgemm_tuners();
 
@@ -174,15 +189,18 @@ void OpenCLScheduler<net_t>::push_convolve(unsigned int filter_size,
                                            unsigned int outputs,
                                            const std::vector<float>& weights) {
     for (const auto & opencl_net : m_networks) {
-        opencl_net->push_convolve(filter_size, channels, outputs, from_float(weights));
+        opencl_net->push_convolve(filter_size, channels, outputs,
+                                  from_float(weights));
     }
 }
 
 template <typename net_t>
-void OpenCLScheduler<net_t>::push_weights(unsigned int filter_size,
-                                          unsigned int channels,
-                                          unsigned int outputs,
-                                          std::shared_ptr<const ForwardPipeWeights> weights) {
+void OpenCLScheduler<net_t>::push_weights(
+    unsigned int filter_size,
+    unsigned int channels,
+    unsigned int outputs,
+    std::shared_ptr<const ForwardPipeWeights> weights) {
+
     auto weight_index = size_t{0};
 
     // Winograd filter transformation changes filter size to 4x4
@@ -210,8 +228,6 @@ void OpenCLScheduler<net_t>::push_weights(unsigned int filter_size,
     push_convolve(1, outputs, Network::OUTPUTS_VALUE, weights->m_conv_val_w);
 }
 
-
-
 template <typename net_t>
 void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
                                      std::vector<float>& output_pol,
@@ -228,12 +244,13 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
             }
             queue_num++;
         }
-        // if this failed, it means we ran out of contexts
-        // which should be more than or equal to the number of threads
+        // If this failed, it means we ran out of contexts
+        // which should be more than or equal to the number of threads.
         assert(ctx != nullptr);
     }
 
-    m_networks[ctx->net_index]->forward(input, output_pol, output_val, ctx->context);
+    m_networks[ctx->net_index]->forward(input, output_pol, output_val,
+                                        ctx->context);
 
     {
         LOCK(m_context_pool_mutex, lock);

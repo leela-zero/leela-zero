@@ -123,11 +123,15 @@ private:
                                       std::vector<float>::iterator white,
                                       const int symmetry);
     bool probe_cache(const GameState* const state, Network::Netresult& result);
+    std::unique_ptr<ForwardPipe>&& init_net(int channels,
+                                            std::unique_ptr<ForwardPipe>&& pipe);
+#ifdef USE_HALF
+    void select_precision(int channels);
+#endif
     std::unique_ptr<ForwardPipe> m_forward;
 #ifdef USE_OPENCL_SELFCHECK
     void compare_net_outputs(const Netresult& data, const Netresult& ref);
     std::unique_ptr<ForwardPipe> m_forward_cpu;
-
 #endif
 
     NNCache m_nncache;
@@ -141,14 +145,18 @@ private:
     std::array<float, OUTPUTS_POLICY> m_bn_pol_w1;
     std::array<float, OUTPUTS_POLICY> m_bn_pol_w2;
 
-    std::array<float, OUTPUTS_POLICY * NUM_INTERSECTIONS * POTENTIAL_MOVES> m_ip_pol_w;
+    std::array<float, OUTPUTS_POLICY
+                      * NUM_INTERSECTIONS
+                      * POTENTIAL_MOVES> m_ip_pol_w;
     std::array<float, POTENTIAL_MOVES> m_ip_pol_b;
 
     // Value head
     std::array<float, OUTPUTS_VALUE> m_bn_val_w1;
     std::array<float, OUTPUTS_VALUE> m_bn_val_w2;
 
-    std::array<float, OUTPUTS_VALUE * NUM_INTERSECTIONS * VALUE_LAYER> m_ip1_val_w;
+    std::array<float, OUTPUTS_VALUE
+                      * NUM_INTERSECTIONS
+                      * VALUE_LAYER> m_ip1_val_w;
     std::array<float, VALUE_LAYER> m_ip1_val_b;
 
     std::array<float, VALUE_LAYER> m_ip2_val_w;

@@ -347,6 +347,80 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
     return {0, 0};
 }
 
+std::unique_ptr<ForwardPipe>&& Network::init_net(int channels,
+    std::unique_ptr<ForwardPipe>&& pipe) {
+
+    pipe->initialize(channels);
+    pipe->push_weights(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, m_fwd_weights);
+
+    return std::move(pipe);
+}
+
+void Network::select_precision(int channels) {
+    if (cfg_precision == precision_t::AUTO) {
+        auto score_fp16 = float{-1.0};
+        auto score_fp32 = float{-1.0};
+
+        myprintf("Initializing OpenCL (autodetecting precision).\n");
+
+        // Start by setting up fp16.
+        try {
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<half_float::half>>());
+            // Do all devices have native fp16? If so we won't
+            // benchmark and return here.
+            if (!m_forward->needs_autodetect()) {
+                myprintf("OpenCL: using fp16/half compute support.\n");
+                return;
+            }
+            score_fp16 = benchmark_time(100);
+        } catch (...) {
+            // empty - if exception thrown just throw away fp16 net
+        }
+
+        // Now benchmark fp32.
+        try {
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+            score_fp32 = benchmark_time(100);
+        } catch (...) {
+            // empty - if exception thrown just throw away fp32 net
+        }
+
+        if (score_fp16 < 0.0f && score_fp32 < 0.0f) {
+            myprintf("Both single precision and half precision failed to run.\n");
+            throw std::runtime_error("Failed to initialize net.");
+        } else if (score_fp16 < 0.0f) {
+            myprintf("Using OpenCL single precision (half precision failed to run).\n");
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+        } else if (score_fp32 < 0.0f) {
+            myprintf("Using OpenCL half precision (single precision failed to run).\n");
+        } else if (score_fp32 * 1.05f > score_fp16) {
+            myprintf("Using OpenCL single precision (less than 5%% slower than half).\n");
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+        } else {
+            myprintf("Using OpenCL half precision (at least 5%% faster than single).\n");
+        }
+        return;
+    } else if (cfg_precision == precision_t::SINGLE) {
+        myprintf("Initializing OpenCL (single precision).\n");
+        m_forward = init_net(channels,
+            std::make_unique<OpenCLScheduler<float>>());
+        return;
+    } else if (cfg_precision == precision_t::HALF) {
+        myprintf("Initializing OpenCL (half precision).\n");
+        m_forward = init_net(channels,
+            std::make_unique<OpenCLScheduler<half_float::half>>());
+        return;
+    }
+}
+
 void Network::initialize(int playouts, const std::string & weightsfile) {
 #ifdef USE_BLAS
 #ifndef __APPLE__
@@ -406,8 +480,10 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     // still have non-zero biases.
     // Move biases to batchnorm means to make the output match without having
     // to separately add the biases.
-    for (auto i = size_t{0}; i < m_fwd_weights->m_conv_biases.size(); i++) {
-        for (auto j = size_t{0}; j < m_fwd_weights->m_batchnorm_means[i].size(); j++) {
+    auto bias_size = m_fwd_weights->m_conv_biases.size();
+    for (auto i = size_t{0}; i < bias_size; i++) {
+        auto means_size = m_fwd_weights->m_batchnorm_means[i].size();
+        for (auto j = size_t{0}; j < means_size; j++) {
             m_fwd_weights->m_batchnorm_means[i][j] -= m_fwd_weights->m_conv_biases[i][j];
             m_fwd_weights->m_conv_biases[i][j] = 0.0f;
         }
@@ -423,93 +499,34 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         m_fwd_weights->m_conv_pol_b[i] = 0.0f;
     }
 
-    auto init_net = [this, channels](auto&& p) {
-        p->initialize(channels);
-        p->push_weights(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, m_fwd_weights);
-
-        return std::move(p);
-    };
-
-
     bool use_selfcheck = true;
 #ifdef USE_OPENCL
     if (cfg_cpu_only) {
         myprintf("Initializing CPU-only evaluation.\n");
-        m_forward = init_net(std::make_unique<CPUPipe>());
+        m_forward = init_net(channels, std::make_unique<CPUPipe>());
 
         use_selfcheck = false;
     } else {
 #ifdef USE_HALF
-        switch (cfg_precision) {
-            case precision_t::AUTO:
-                {
-                    auto score_fp16 = float{-1.0};
-                    auto score_fp32 = float{-1.0};
-
-                    myprintf("Initializing OpenCL (autodetect precision).\n");
-                    try {
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<float>>());
-                        score_fp32 = benchmark_time(100);
-                    } catch (...) {
-                        // empty - if exception thrown just throw away fp32 net
-                    }
-
-                    try {
-                        m_forward.reset();
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<half_float::half>>());
-                        score_fp16 = benchmark_time(100);
-                    } catch (...) {
-                        // empty - if exception thrown just throw away fp16 net
-                    }
-
-                    if (score_fp16 < 0.0f && score_fp32 < 0.0f) {
-                        myprintf("Both single precision and half precision failed to run\n");
-                        throw std::runtime_error("Failed to initialize net");
-                    } else if (score_fp16 < 0.0f) {
-                        myprintf("Using OpenCL single precision (half precision failed to run)\n");
-                        m_forward.reset();
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<float>>());
-                    } else if (score_fp32 < 0.0f) {
-                        myprintf("Using OpenCL half precision (single precision failed to run)\n");
-                    } else if (score_fp32 * 1.05f > score_fp16) {
-                        myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
-                        m_forward.reset();
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<float>>());
-                    } else {
-                        myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
-                    }
-                }
-                break;
-            case precision_t::SINGLE:
-                myprintf("Initializing OpenCL (single precision).\n");
-                m_forward = init_net(
-                    std::make_unique<OpenCLScheduler<float>>());
-                break;
-            case precision_t::HALF:
-                myprintf("Initializing OpenCL (half precision).\n");
-                m_forward = init_net(
-                    std::make_unique<OpenCLScheduler<half_float::half>>());
-                break;
-        }
+        // HALF support is enabled, and we are using the GPU.
+        // Select the precision to use at runtime.
+        select_precision(channels);
 #else
         myprintf("Initializing OpenCL (single precision).\n");
-        m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
+        m_forward = init_net(channels,
+                             std::make_unique<OpenCLScheduler<float>>());
 #endif
     }
 
 #else //!USE_OPENCL
     myprintf("Initializing CPU-only evaluation.\n");
-    m_forward = init_net(std::make_unique<CPUPipe>());
+    m_forward = init_net(channels, std::make_unique<CPUPipe>());
     use_selfcheck = false;
 #endif
 
 #ifdef USE_OPENCL_SELFCHECK
     if (use_selfcheck) {
-        m_forward_cpu = init_net(std::make_unique<CPUPipe>());
+        m_forward_cpu = init_net(channels, std::make_unique<CPUPipe>());
     }
 #else
     (void)use_selfcheck;
