@@ -28,6 +28,9 @@
 #include <random>
 #include <cmath>
 #include <fstream>
+#ifndef USE_BLAS
+#include <Eigen/Dense>
+#endif
 
 #include "GTP.h"
 #include "OpenCL.h"
@@ -35,9 +38,6 @@
 #include "Utils.h"
 #include "Random.h"
 
-#ifndef USE_BLAS
-#include <Eigen/Dense>
-#endif
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
 
 #ifndef USE_BLAS
@@ -90,11 +90,24 @@ static void sgemmBatched_ref(const std::vector<net_t>& a,
         auto offset_u = batch * m * k;
         auto offset_v = batch * n * k;
         auto offset_m = batch * m * n;
-
+#ifdef USE_BLAS
+        // Calculates C = transpose(tranpose(A) * B) in row major, or
+        // C = A * transpose(B) in column major.
+        for (auto i = 0; i < m; i++) {
+            for (auto j = 0; j < n; j++) {
+                auto acc = 0.0f;
+                for (auto l = 0; l < k; l++) {
+                    acc += ar[l * m + i + offset_u] * br[l * n + j + offset_v];
+                }
+                cr[j * m + i + offset_m] = acc;
+            }
+        }
+#else
         auto C = EigenMatrixMap<float>(cr.data() + offset_m, m, n);
         auto A = ConstEigenMatrixMap<float>(ar.data() + offset_u, m, k);
         auto B = ConstEigenMatrixMap<float>(br.data() + offset_v, n, k);
         C.noalias() = (A * B.transpose());
+#endif
     }
 
     std::copy(begin(cr), end(cr), begin(c));

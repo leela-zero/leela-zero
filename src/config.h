@@ -111,7 +111,7 @@ static constexpr auto PROGRAM_VERSION = "0.15";
 #if defined(USE_BLAS) && defined(USE_OPENBLAS)
 static constexpr auto MAX_CPUS = 64;
 #else
-static constexpr auto MAX_CPUS = 128;
+static constexpr auto MAX_CPUS = 256;
 #endif
 
 #ifdef USE_HALF
