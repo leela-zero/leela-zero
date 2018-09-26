@@ -31,6 +31,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <boost/algorithm/string.hpp>
 
 #include "FastBoard.h"
 #include "FullBoard.h"
@@ -830,6 +831,9 @@ bool GTP::execute(GameState & game, const std::string& xinput) {
         cmdstream >> filename;
 
         auto sgf_text = SGFTree::state_to_string(game, 0);
+        // GTP says consecutive newlines terminate the output,
+        // so we must filter those.
+        boost::replace_all(sgf_text, "\n\n", "\n");
 
         if (cmdstream.fail()) {
             gtp_printf(id, "%s\n", sgf_text.c_str());
