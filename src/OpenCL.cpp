@@ -774,10 +774,11 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     myprintf("Half precision compute support: ");
     if (m_device.getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp16")
         != std::string::npos) {
-        myprintf("YES\n");
+        myprintf("Yes.\n");
+        m_fp16_compute = true;
         m_cl_args += " -DFP16_SUPPORT";
     } else {
-        myprintf("NO\n");
+        myprintf("No.\n");
     }
 
     auto t = Tuner<net_t>(*this, m_context, m_device);
@@ -828,6 +829,11 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     myprintf("\n");
 
     m_init_ok = true;
+}
+
+template <typename net_t>
+bool OpenCL<net_t>::has_fp16_compute() {
+    return m_fp16_compute;
 }
 
 template <typename net_t>
