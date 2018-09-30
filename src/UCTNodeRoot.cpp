@@ -186,7 +186,7 @@ void UCTNode::prepare_root_node(Network & network, int color,
         create_children(network, nodes, root_state, root_eval);
     }
     if (had_children) {
-        root_eval = get_eval(color);
+        root_eval = get_net_eval(color);
     } else {
         update(root_eval);
         root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);

@@ -26,7 +26,7 @@ LIBS =
 
 ifeq ($(THE_OS),Linux)
 # for Linux with OpenBLAS
-	CXXFLAGS += -I/usr/include/openblas
+	CXXFLAGS += -I/usr/include/openblas -I./Eigen
 	DYNAMIC_LIBS += -lopenblas
 	DYNAMIC_LIBS += -lOpenCL
 endif
@@ -34,6 +34,7 @@ ifeq ($(THE_OS),Darwin)
 # for macOS (comment out the Linux part)
 	LIBS += -framework Accelerate
 	LIBS += -framework OpenCL
+	CXXFLAGS += -I./Eigen
 	CXXFLAGS += -I/System/Library/Frameworks/Accelerate.framework/Versions/Current/Headers
 endif
 

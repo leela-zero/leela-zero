@@ -25,18 +25,40 @@
 
 #include "UCTNode.h"
 
+std::atomic<size_t> UCTNodePointer::m_tree_size = {0};
+
+size_t UCTNodePointer::get_tree_size() {
+    return m_tree_size.load();
+}
+
+void UCTNodePointer::increment_tree_size(size_t sz) {
+    m_tree_size += sz;
+}
+
+void UCTNodePointer::decrement_tree_size(size_t sz) {
+    assert(UCTNodePointer::m_tree_size >= sz);
+    m_tree_size -= sz;
+}
+
 UCTNodePointer::~UCTNodePointer() {
-    if (is_inflated()) {
-        delete read_ptr();
+    auto sz = sizeof(UCTNodePointer);
+    auto v = m_data.load();
+    if (is_inflated(v)) {
+        delete read_ptr(v);
+        sz += sizeof(UCTNode);
     }
+    decrement_tree_size(sz);
 }
 
 UCTNodePointer::UCTNodePointer(UCTNodePointer&& n) {
-    if (is_inflated()) {
-        delete read_ptr();
-    }
-    m_data = n.m_data;
-    n.m_data = 1; // non-inflated garbage
+    auto nv = std::atomic_exchange(&n.m_data, INVALID);
+    auto v = std::atomic_exchange(&m_data, nv);
+#ifdef NDEBUG
+    (void)v;
+#else
+    assert(v == INVALID);
+#endif
+    increment_tree_size(sizeof(UCTNodePointer));
 }
 
 UCTNodePointer::UCTNodePointer(std::int16_t vertex, float policy) {
@@ -45,52 +67,80 @@ UCTNodePointer::UCTNodePointer(std::int16_t vertex, float policy) {
     std::memcpy(&i_policy, &policy, sizeof(i_policy));
 
     m_data =  (static_cast<std::uint64_t>(i_policy)  << 32)
-            | (static_cast<std::uint64_t>(i_vertex) << 16) | 1ULL;
+            | (static_cast<std::uint64_t>(i_vertex) << 16);
+    increment_tree_size(sizeof(UCTNodePointer));
 }
 
 UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
-    if (is_inflated()) {
-        delete read_ptr();
-    }
-    m_data = n.m_data;
-    n.m_data = 1;
+    auto nv = std::atomic_exchange(&n.m_data, INVALID);
+    auto v = std::atomic_exchange(&m_data, nv);
 
+    if (is_inflated(v)) {
+        decrement_tree_size(sizeof(UCTNode));
+        delete read_ptr(v);
+    }
     return *this;
 }
 
+UCTNode * UCTNodePointer::release() {
+    auto v = std::atomic_exchange(&m_data, INVALID);
+    decrement_tree_size(sizeof(UCTNode));
+    return read_ptr(v);
+}
+
 void UCTNodePointer::inflate() const {
-    if (is_inflated()) return;
-    m_data = reinterpret_cast<std::uint64_t>(
-        new UCTNode(read_vertex(), read_policy()));
+    while (true) {
+        auto v = m_data.load();
+        if (is_inflated(v)) return;
+
+        auto v2 = reinterpret_cast<std::uint64_t>(
+            new UCTNode(read_vertex(v), read_policy(v))
+        ) | POINTER;
+        bool success = m_data.compare_exchange_strong(v, v2);
+        if (success) {
+            increment_tree_size(sizeof(UCTNode));
+            return;
+        } else {
+            // this means that somebody else also modified this instance.
+            // Try again next time
+            delete read_ptr(v2);
+        }
+    }
 }
 
 bool UCTNodePointer::valid() const {
-    if (is_inflated()) return read_ptr()->valid();
+    auto v = m_data.load();
+    if (is_inflated(v)) return read_ptr(v)->valid();
     return true;
 }
 
 int UCTNodePointer::get_visits() const {
-    if (is_inflated()) return read_ptr()->get_visits();
+    auto v = m_data.load();
+    if (is_inflated(v)) return read_ptr(v)->get_visits();
     return 0;
 }
 
 float UCTNodePointer::get_policy() const {
-    if (is_inflated()) return read_ptr()->get_policy();
-    return read_policy();
+    auto v = m_data.load();
+    if (is_inflated(v)) return read_ptr(v)->get_policy();
+    return read_policy(v);
 }
 
 bool UCTNodePointer::active() const {
-    if (is_inflated()) return read_ptr()->active();
+    auto v = m_data.load();
+    if (is_inflated(v)) return read_ptr(v)->active();
     return true;
 }
 
 float UCTNodePointer::get_eval(int tomove) const {
     // this can only be called if it is an inflated pointer
-    assert(is_inflated());
-    return read_ptr()->get_eval(tomove);
+    auto v = m_data.load();
+    assert(is_inflated(v));
+    return read_ptr(v)->get_eval(tomove);
 }
 
 int UCTNodePointer::get_move() const {
-    if (is_inflated()) return read_ptr()->get_move();
-    return read_vertex();
+    auto v = m_data.load();
+    if (is_inflated(v)) return read_ptr(v)->get_move();
+    return read_vertex(v);
 }

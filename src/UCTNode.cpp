@@ -47,36 +47,26 @@ bool UCTNode::first_visit() const {
     return m_visits == 0;
 }
 
-SMP::Mutex& UCTNode::get_mutex() {
-    return m_nodemutex;
-}
-
 bool UCTNode::create_children(Network & network,
                               std::atomic<int>& nodecount,
                               GameState& state,
                               float& eval,
                               float min_psa_ratio) {
-    // check whether somebody beat us to it (atomic)
-    if (!expandable(min_psa_ratio)) {
-        return false;
-    }
-    // acquire the lock
-    LOCK(get_mutex(), lock);
     // no successors in final state
     if (state.get_passes() >= 2) {
         return false;
     }
-    // check whether somebody beat us to it (after taking the lock)
+
+    // acquire the lock
+    if (!acquire_expanding()) {
+        return false;
+    }
+
+    // can we actually expand?
     if (!expandable(min_psa_ratio)) {
+        expand_done();
         return false;
     }
-    // Someone else is running the expansion
-    if (m_is_expanding) {
-        return false;
-    }
-    // We'll be the one queueing this node for expansion, stop others
-    m_is_expanding = true;
-    lock.unlock();
 
     const auto raw_netlist = network.get_output(
         &state, Network::Ensemble::RANDOM_SYMMETRY);
@@ -119,6 +109,7 @@ bool UCTNode::create_children(Network & network,
     }
 
     link_nodelist(nodecount, nodelist, min_psa_ratio);
+    expand_done();
     return true;
 }
 
@@ -133,8 +124,6 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
 
     // Use best to worst order, so highest go first
     std::stable_sort(rbegin(nodelist), rend(nodelist));
-
-    LOCK(get_mutex(), lock);
 
     const auto max_psa = nodelist[0].first;
     const auto old_min_psa = max_psa * m_min_psa_ratio_children;
@@ -160,7 +149,6 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
     }
 
     m_min_psa_ratio_children = skipped_children ? min_psa_ratio : 0.0f;
-    m_is_expanding = false;
 }
 
 const std::vector<UCTNodePointer>& UCTNode::get_children() const {
@@ -190,6 +178,13 @@ bool UCTNode::has_children() const {
 }
 
 bool UCTNode::expandable(const float min_psa_ratio) const {
+#ifndef NDEBUG
+    if (m_min_psa_ratio_children == 0.0f) {
+        // If we figured out that we are fully expandable
+        // it is impossible that we stay in INITIAL state.
+        assert(m_expand_state.load() != ExpandState::INITIAL);
+    }
+#endif
     return min_psa_ratio < m_min_psa_ratio_children;
 }
 
@@ -242,7 +237,7 @@ void UCTNode::accumulate_eval(float eval) {
 }
 
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
-    LOCK(get_mutex(), lock);
+    wait_expanded();
 
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
@@ -276,7 +271,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
 
         auto winrate = fpu_eval;
-        if (child.is_inflated() && child->m_is_expanding) {
+        if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
             // Someone else is expanding this node, never select it
             // if we can avoid so, because we'd block on it.
             winrate = -1.0f - fpu_reduction;
@@ -324,26 +319,30 @@ private:
 };
 
 void UCTNode::sort_children(int color) {
-    LOCK(get_mutex(), lock);
     std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color));
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
-    LOCK(get_mutex(), lock);
+    wait_expanded();
+
     assert(!m_children.empty());
 
     auto ret = std::max_element(begin(m_children), end(m_children),
                                 NodeComp(color));
     ret->inflate();
+
     return *(ret->get());
 }
 
-size_t UCTNode::count_nodes() const {
+size_t UCTNode::count_nodes_and_clear_expand_state() {
     auto nodecount = size_t{0};
     nodecount += m_children.size();
+    if (expandable()) {
+        m_expand_state = ExpandState::INITIAL;
+    }
     for (auto& child : m_children) {
-        if (child.get_visits() > 0) {
-            nodecount += child->count_nodes();
+        if (child.is_inflated()) {
+            nodecount += child->count_nodes_and_clear_expand_state();
         }
     }
     return nodecount;
@@ -366,3 +365,33 @@ bool UCTNode::valid() const {
 bool UCTNode::active() const {
     return m_status == ACTIVE;
 }
+
+bool UCTNode::acquire_expanding() {
+    auto expected = ExpandState::INITIAL;
+    auto newval = ExpandState::EXPANDING;
+    return m_expand_state.compare_exchange_strong(expected, newval);
+}
+
+void UCTNode::expand_done() {
+    auto v = m_expand_state.exchange(ExpandState::EXPANDED);
+#ifdef NDEBUG
+    (void)v;
+#endif
+    assert(v == ExpandState::EXPANDING);
+}
+void UCTNode::expand_cancel() {
+    auto v = m_expand_state.exchange(ExpandState::INITIAL);
+#ifdef NDEBUG
+    (void)v;
+#endif
+    assert(v == ExpandState::EXPANDING);
+}
+void UCTNode::wait_expanded() {
+    while (m_expand_state.load() == ExpandState::EXPANDING) {}
+    auto v = m_expand_state.load();
+#ifdef NDEBUG
+    (void)v;
+#endif
+    assert(v == ExpandState::EXPANDED);
+}
+

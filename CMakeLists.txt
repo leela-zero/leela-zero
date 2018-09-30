@@ -32,14 +32,20 @@ find_package(OpenCL REQUIRED)
 if(NOT APPLE)
   set(BLA_VENDOR OpenBLAS)
 endif()
-find_package(BLAS REQUIRED)
-find_path(BLAS_INCLUDE_DIRS openblas_config.h
-  /usr/include
-  /usr/local/include
-  /usr/include/openblas
-  /opt/OpenBLAS/include
-  /usr/include/x86_64-linux-gnu
-  $ENV{BLAS_HOME}/include)
+if(USE_BLAS)
+  message(STATUS "Looking for system BLAS/OpenBLAS library.")
+  find_package(BLAS REQUIRED)
+  find_path(BLAS_INCLUDE_DIRS openblas_config.h
+    /usr/include
+    /usr/local/include
+    /usr/include/openblas
+    /opt/OpenBLAS/include
+    /usr/include/x86_64-linux-gnu
+    $ENV{BLAS_HOME}/include)
+    add_definitions(-DUSE_BLAS)
+else()
+message(STATUS "Using built-in matrix library.")
+endif()
 find_package(Qt5Core)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -79,7 +85,7 @@ if(USE_HALF)
   add_definitions(-DUSE_HALF)
 endif()
 
-set(IncludePath "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(IncludePath "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/src/Eigen")
 set(SrcPath "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 include_directories(${IncludePath})

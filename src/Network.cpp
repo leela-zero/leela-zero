@@ -30,6 +30,9 @@
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/home/x3.hpp>
+#ifndef USE_BLAS
+#include <Eigen/Dense>
+#endif
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -61,6 +64,19 @@
 
 namespace x3 = boost::spirit::x3;
 using namespace Utils;
+
+#ifndef USE_BLAS
+// Eigen helpers
+template <typename T>
+using EigenVectorMap =
+    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>>;
+template <typename T>
+using ConstEigenVectorMap =
+    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>>;
+template <typename T>
+using ConstEigenMatrixMap =
+    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>;
+#endif
 
 // Symmetry helper
 static std::array<std::array<int, NUM_INTERSECTIONS>,
@@ -143,28 +159,47 @@ std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
 
     auto temp = std::array<float, 3 * WINOGRAD_ALPHA>{};
 
-    for (auto o = 0; o < outputs; o++) {
-        for (auto c = 0; c < channels; c++) {
-            for (auto i = 0; i < WINOGRAD_ALPHA; i++){
-                for (auto j = 0; j < 3; j++) {
-                    auto acc = 0.0f;
-                    for (auto k = 0; k < 3; k++) {
-                        acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j];
+    constexpr auto max_buffersize = 8;
+    auto buffersize = max_buffersize;
+
+    if (outputs % buffersize != 0) {
+        buffersize = 1;
+    }
+
+    std::array<float, max_buffersize * WINOGRAD_ALPHA * WINOGRAD_ALPHA> buffer;
+
+    for (auto c = 0; c < channels; c++) {
+        for (auto o_b = 0; o_b < outputs/buffersize; o_b++) {
+            for (auto bufferline = 0; bufferline < buffersize; bufferline++) {
+                const auto o = o_b * buffersize + bufferline;
+
+                for (auto i = 0; i < WINOGRAD_ALPHA; i++) {
+                    for (auto j = 0; j < 3; j++) {
+                        auto acc = 0.0f;
+                        for (auto k = 0; k < 3; k++) {
+                            acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j];
+                        }
+                        temp[i*3 + j] = acc;
                     }
-                    temp[i*3 + j] = acc;
+                }
+
+                for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++) {
+                    for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
+                        auto acc = 0.0f;
+                        for (auto k = 0; k < 3; k++) {
+                            acc += temp[xi*3 + k] * G[nu*3 + k];
+                        }
+                        buffer[(xi * WINOGRAD_ALPHA + nu) * buffersize + bufferline] = acc;
+                    }
                 }
             }
-
-            for (auto xi = 0; xi < WINOGRAD_ALPHA; xi++) {
-                for (auto nu = 0; nu < WINOGRAD_ALPHA; nu++) {
-                    auto acc = 0.0f;
-                    for (auto k = 0; k < 3; k++) {
-                        acc += temp[xi*3 + k] * G[nu*3 + k];
-                    }
-                    U[xi * (WINOGRAD_ALPHA * outputs * channels)
-                      + nu * (outputs * channels)
+            for (auto i = 0; i < WINOGRAD_ALPHA * WINOGRAD_ALPHA; i++) {
+                for (auto entry = 0; entry < buffersize; entry++) {
+                    const auto o = o_b * buffersize + entry;
+                    U[i * outputs * channels
                       + c * outputs
-                      + o] = acc;
+                      + o] =
+                    buffer[buffersize * i + entry];
                 }
             }
         }
@@ -231,21 +266,21 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
         }
         if (linecount < plain_conv_wts) {
             if (linecount % 4 == 0) {
-                m_conv_weights.emplace_back(weights);
+                m_fwd_weights->m_conv_weights.emplace_back(weights);
             } else if (linecount % 4 == 1) {
                 // Redundant in our model, but they encode the
                 // number of outputs so we have to read them in.
-                m_conv_biases.emplace_back(weights);
+                m_fwd_weights->m_conv_biases.emplace_back(weights);
             } else if (linecount % 4 == 2) {
-                m_batchnorm_means.emplace_back(weights);
+                m_fwd_weights->m_batchnorm_means.emplace_back(weights);
             } else if (linecount % 4 == 3) {
                 process_bn_var(weights);
-                m_batchnorm_stddevs.emplace_back(weights);
+                m_fwd_weights->m_batchnorm_stddevs.emplace_back(weights);
             }
         } else {
             switch (linecount - plain_conv_wts) {
-                case  0: m_conv_pol_w = std::move(weights); break;
-                case  1: m_conv_pol_b = std::move(weights); break;
+                case  0: m_fwd_weights->m_conv_pol_w = std::move(weights); break;
+                case  1: m_fwd_weights->m_conv_pol_b = std::move(weights); break;
                 case  2: std::copy(cbegin(weights), cend(weights),
                                    begin(m_bn_pol_w1)); break;
                 case  3: std::copy(cbegin(weights), cend(weights),
@@ -254,8 +289,8 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
                                    begin(m_ip_pol_w)); break;
                 case  5: std::copy(cbegin(weights), cend(weights),
                                    begin(m_ip_pol_b)); break;
-                case  6: m_conv_val_w = std::move(weights); break;
-                case  7: m_conv_val_b = std::move(weights); break;
+                case  6: m_fwd_weights->m_conv_val_w = std::move(weights); break;
+                case  7: m_fwd_weights->m_conv_val_b = std::move(weights); break;
                 case  8: std::copy(cbegin(weights), cend(weights),
                                    begin(m_bn_val_w1)); break;
                 case  9: std::copy(cbegin(weights), cend(weights),
@@ -328,6 +363,82 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
     return {0, 0};
 }
 
+std::unique_ptr<ForwardPipe>&& Network::init_net(int channels,
+    std::unique_ptr<ForwardPipe>&& pipe) {
+
+    pipe->initialize(channels);
+    pipe->push_weights(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, m_fwd_weights);
+
+    return std::move(pipe);
+}
+
+#ifdef USE_HALF
+void Network::select_precision(int channels) {
+    if (cfg_precision == precision_t::AUTO) {
+        auto score_fp16 = float{-1.0};
+        auto score_fp32 = float{-1.0};
+
+        myprintf("Initializing OpenCL (autodetecting precision).\n");
+
+        // Start by setting up fp16.
+        try {
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<half_float::half>>());
+            // Do all devices have native fp16? If so we won't
+            // benchmark and return here.
+            if (!m_forward->needs_autodetect()) {
+                myprintf("OpenCL: using fp16/half compute support.\n");
+                return;
+            }
+            score_fp16 = benchmark_time(100);
+        } catch (...) {
+            // empty - if exception thrown just throw away fp16 net
+        }
+
+        // Now benchmark fp32.
+        try {
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+            score_fp32 = benchmark_time(100);
+        } catch (...) {
+            // empty - if exception thrown just throw away fp32 net
+        }
+
+        if (score_fp16 < 0.0f && score_fp32 < 0.0f) {
+            myprintf("Both single precision and half precision failed to run.\n");
+            throw std::runtime_error("Failed to initialize net.");
+        } else if (score_fp16 < 0.0f) {
+            myprintf("Using OpenCL single precision (half precision failed to run).\n");
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+        } else if (score_fp32 < 0.0f) {
+            myprintf("Using OpenCL half precision (single precision failed to run).\n");
+        } else if (score_fp32 * 1.05f > score_fp16) {
+            myprintf("Using OpenCL single precision (less than 5%% slower than half).\n");
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+        } else {
+            myprintf("Using OpenCL half precision (at least 5%% faster than single).\n");
+        }
+        return;
+    } else if (cfg_precision == precision_t::SINGLE) {
+        myprintf("Initializing OpenCL (single precision).\n");
+        m_forward = init_net(channels,
+            std::make_unique<OpenCLScheduler<float>>());
+        return;
+    } else if (cfg_precision == precision_t::HALF) {
+        myprintf("Initializing OpenCL (half precision).\n");
+        m_forward = init_net(channels,
+            std::make_unique<OpenCLScheduler<half_float::half>>());
+        return;
+    }
+}
+#endif
+
 void Network::initialize(int playouts, const std::string & weightsfile) {
 #ifdef USE_BLAS
 #ifndef __APPLE__
@@ -343,7 +454,12 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     myprintf("BLAS core: MKL %s\n", Version.Processor);
 #endif
 #endif
+#else
+    myprintf("BLAS Core: built-in Eigen %d.%d.%d library.\n",
+             EIGEN_WORLD_VERSION, EIGEN_MAJOR_VERSION, EIGEN_MINOR_VERSION);
 #endif
+
+    m_fwd_weights = std::make_shared<ForwardPipeWeights>();
 
     m_nncache.set_size_from_playouts(playouts);
     // Prepare symmetry table
@@ -368,15 +484,15 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     auto weight_index = size_t{0};
     // Input convolution
     // Winograd transform convolution weights
-    m_conv_weights[weight_index] =
-        winograd_transform_f(m_conv_weights[weight_index],
+    m_fwd_weights->m_conv_weights[weight_index] =
+        winograd_transform_f(m_fwd_weights->m_conv_weights[weight_index],
                              channels, INPUT_CHANNELS);
     weight_index++;
 
     // Residual block convolutions
     for (auto i = size_t{0}; i < residual_blocks * 2; i++) {
-        m_conv_weights[weight_index] =
-            winograd_transform_f(m_conv_weights[weight_index],
+        m_fwd_weights->m_conv_weights[weight_index] =
+            winograd_transform_f(m_fwd_weights->m_conv_weights[weight_index],
                                  channels, channels);
         weight_index++;
     }
@@ -385,136 +501,61 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     // still have non-zero biases.
     // Move biases to batchnorm means to make the output match without having
     // to separately add the biases.
-    for (auto i = size_t{0}; i < m_conv_biases.size(); i++) {
-        for (auto j = size_t{0}; j < m_batchnorm_means[i].size(); j++) {
-            m_batchnorm_means[i][j] -= m_conv_biases[i][j];
-            m_conv_biases[i][j] = 0.0f;
+    auto bias_size = m_fwd_weights->m_conv_biases.size();
+    for (auto i = size_t{0}; i < bias_size; i++) {
+        auto means_size = m_fwd_weights->m_batchnorm_means[i].size();
+        for (auto j = size_t{0}; j < means_size; j++) {
+            m_fwd_weights->m_batchnorm_means[i][j] -= m_fwd_weights->m_conv_biases[i][j];
+            m_fwd_weights->m_conv_biases[i][j] = 0.0f;
         }
     }
 
     for (auto i = size_t{0}; i < m_bn_val_w1.size(); i++) {
-        m_bn_val_w1[i] -= m_conv_val_b[i];
-        m_conv_val_b[i] = 0.0f;
+        m_bn_val_w1[i] -= m_fwd_weights->m_conv_val_b[i];
+        m_fwd_weights->m_conv_val_b[i] = 0.0f;
     }
 
     for (auto i = size_t{0}; i < m_bn_pol_w1.size(); i++) {
-        m_bn_pol_w1[i] -= m_conv_pol_b[i];
-        m_conv_pol_b[i] = 0.0f;
+        m_bn_pol_w1[i] -= m_fwd_weights->m_conv_pol_b[i];
+        m_fwd_weights->m_conv_pol_b[i] = 0.0f;
     }
-
-    auto init_net = [this, channels, residual_blocks](auto&& p) {
-        p->initialize(channels);
-        auto weight_index = size_t{0};
-
-        // Winograd filter transformation changes filter size to 4x4
-        p->push_input_convolution(WINOGRAD_ALPHA, INPUT_CHANNELS,
-            channels, m_conv_weights[weight_index],
-            m_batchnorm_means[weight_index], m_batchnorm_stddevs[weight_index]);
-        weight_index++;
-
-        // residual blocks
-        for (auto i = size_t{0}; i < residual_blocks; i++) {
-            p->push_residual(WINOGRAD_ALPHA, channels, channels,
-                             m_conv_weights[weight_index],
-                             m_batchnorm_means[weight_index],
-                             m_batchnorm_stddevs[weight_index],
-                             m_conv_weights[weight_index + 1],
-                             m_batchnorm_means[weight_index + 1],
-                             m_batchnorm_stddevs[weight_index + 1]);
-            weight_index += 2;
-        }
-
-        // Output head convolutions
-        p->push_convolve(1, channels, OUTPUTS_POLICY, m_conv_pol_w);
-        p->push_convolve(1, channels, OUTPUTS_VALUE, m_conv_val_w);
-
-        return std::move(p);
-    };
-
 
     bool use_selfcheck = true;
 #ifdef USE_OPENCL
     if (cfg_cpu_only) {
         myprintf("Initializing CPU-only evaluation.\n");
-        m_forward = init_net(std::make_unique<CPUPipe>());
+        m_forward = init_net(channels, std::make_unique<CPUPipe>());
 
         use_selfcheck = false;
     } else {
 #ifdef USE_HALF
-        switch (cfg_precision) {
-            case precision_t::AUTO:
-                {
-                    auto score_fp16 = float{-1.0};
-                    auto score_fp32 = float{-1.0};
-
-                    myprintf("Initializing OpenCL (autodetect precision).\n");
-                    try {
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<float>>());
-                        score_fp32 = benchmark_time(100);
-                    } catch (...) {
-                        // empty - if exception thrown just throw away fp32 net
-                    }
-
-                    try {
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<half_float::half>>());
-                        score_fp16 = benchmark_time(100);
-                    } catch (...) {
-                        // empty - if exception thrown just throw away fp16 net
-                    }
-
-                    if (score_fp16 < 0.0f && score_fp32 < 0.0f) {
-                        myprintf("Both single precision and half precision failed to run\n");
-                        throw std::runtime_error("Failed to initialize net");
-                    } else if (score_fp16 < 0.0f) {
-                        myprintf("Using OpenCL single precision (half precision failed to run)\n");
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<float>>());
-                    } else if (score_fp32 < 0.0f) {
-                        myprintf("Using OpenCL half precision (single precision failed to run)\n");
-                    } else if (score_fp32 * 1.05f > score_fp16) {
-                        myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<float>>());
-                    } else {
-                        myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
-                    }
-                }
-                break;
-            case precision_t::SINGLE:
-                myprintf("Initializing OpenCL (single precision).\n");
-                m_forward = init_net(
-                    std::make_unique<OpenCLScheduler<float>>());
-                break;
-            case precision_t::HALF:
-                myprintf("Initializing OpenCL (half precision).\n");
-                m_forward = init_net(
-                    std::make_unique<OpenCLScheduler<half_float::half>>());
-                break;
-        }
+        // HALF support is enabled, and we are using the GPU.
+        // Select the precision to use at runtime.
+        select_precision(channels);
 #else
         myprintf("Initializing OpenCL (single precision).\n");
-        m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
+        m_forward = init_net(channels,
+                             std::make_unique<OpenCLScheduler<float>>());
 #endif
     }
 
 #else //!USE_OPENCL
     myprintf("Initializing CPU-only evaluation.\n");
-    m_forward = init_net(std::make_unique<CPUPipe>());
+    m_forward = init_net(channels, std::make_unique<CPUPipe>());
     use_selfcheck = false;
 #endif
 
 #ifdef USE_OPENCL_SELFCHECK
     if (use_selfcheck) {
-        m_forward_cpu = init_net(std::make_unique<CPUPipe>());
+        m_forward_cpu = init_net(channels, std::make_unique<CPUPipe>());
     }
 #else
     (void)use_selfcheck;
 #endif
+    // Need to estimate size before clearing up the pipe.
+    get_estimated_size();
+    m_fwd_weights.reset();
 }
-
-#ifdef USE_BLAS
 
 template<unsigned int inputs,
          unsigned int outputs,
@@ -525,13 +566,21 @@ std::vector<float> innerproduct(const std::vector<float>& input,
                                 const std::array<float, outputs>& biases) {
     std::vector<float> output(outputs);
 
+#ifdef USE_BLAS
     cblas_sgemv(CblasRowMajor, CblasNoTrans,
                 // M     K
                 outputs, inputs,
                 1.0f, &weights[0], inputs,
                 &input[0], 1,
                 0.0f, &output[0], 1);
-
+#else
+    EigenVectorMap<float> y(output.data(), outputs);
+    y.noalias() =
+        ConstEigenMatrixMap<float>(weights.data(),
+                                   inputs,
+                                   outputs).transpose()
+        * ConstEigenVectorMap<float>(input.data(), inputs);
+#endif
     const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
                                                           val : 0.0f; };
     for (unsigned int o = 0; o < outputs; o++) {
@@ -572,11 +621,10 @@ void batchnorm(const size_t channels,
         }
     }
 }
-#endif
 
 #ifdef USE_OPENCL_SELFCHECK
-void Network::compare_net_outputs(Netresult& data,
-                                  Netresult& ref) {
+void Network::compare_net_outputs(const Netresult& data,
+                                  const Netresult& ref) {
     // Calculates L2-norm between data and ref.
     constexpr auto max_error = 0.2f;
 
@@ -897,4 +945,56 @@ std::pair<int, int> Network::get_symmetry(const std::pair<int, int>& vertex,
     assert(y >= 0 && y < board_size);
     assert(symmetry != IDENTITY_SYMMETRY || vertex == std::make_pair(x, y));
     return {x, y};
+}
+
+size_t Network::get_estimated_size() {
+    if (estimated_size != 0) {
+        return estimated_size;
+    }
+    auto result = size_t{0};
+
+    const auto lambda_vector_size =  [](const std::vector<std::vector<float>> &v) {
+        auto result = size_t{0};
+        for (auto it = begin(v); it != end(v); ++it) {
+            result += it->size() * sizeof(float);
+        }
+        return result;
+    };
+
+    result += lambda_vector_size(m_fwd_weights->m_conv_weights);
+    result += lambda_vector_size(m_fwd_weights->m_conv_biases);
+    result += lambda_vector_size(m_fwd_weights->m_batchnorm_means);
+    result += lambda_vector_size(m_fwd_weights->m_batchnorm_stddevs);
+
+    result += m_fwd_weights->m_conv_pol_w.size() * sizeof(float);
+    result += m_fwd_weights->m_conv_pol_b.size() * sizeof(float);
+
+    // Policy head
+    result += OUTPUTS_POLICY * sizeof(float); // m_bn_pol_w1
+    result += OUTPUTS_POLICY * sizeof(float); // m_bn_pol_w2
+    result += OUTPUTS_POLICY * NUM_INTERSECTIONS
+                             * POTENTIAL_MOVES * sizeof(float); //m_ip_pol_w
+    result += POTENTIAL_MOVES * sizeof(float); // m_ip_pol_b
+
+    // Value head
+    result += m_fwd_weights->m_conv_val_w.size() * sizeof(float);
+    result += m_fwd_weights->m_conv_val_b.size() * sizeof(float);
+    result += OUTPUTS_VALUE * sizeof(float); // m_bn_val_w1
+    result += OUTPUTS_VALUE * sizeof(float); // m_bn_val_w2
+
+    result += OUTPUTS_VALUE * NUM_INTERSECTIONS
+                            * VALUE_LAYER * sizeof(float); // m_ip1_val_w
+    result += VALUE_LAYER * sizeof(float);  // m_ip1_val_b
+
+    result += VALUE_LAYER * sizeof(float); // m_ip2_val_w
+    result += sizeof(float); // m_ip2_val_b
+    return estimated_size = result;
+}
+
+size_t Network::get_estimated_cache_size() {
+    return m_nncache.get_estimated_size();
+}
+
+void Network::nncache_resize(int max_count) {
+    return m_nncache.resize(max_count);
 }

@@ -186,6 +186,7 @@ public:
     void initialize(const int channels, int gpu, bool silent = false, int batch_size = 1);
     void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
+    bool has_fp16_compute();
 
     std::vector<size_t> get_sgemm_tuners();
 
@@ -208,6 +209,7 @@ private:
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};
     std::vector<size_t> m_max_workgroup_dims;
+    bool m_fp16_compute{false};
     bool m_init_ok{false};
 };
 

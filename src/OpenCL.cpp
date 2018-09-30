@@ -112,12 +112,16 @@ void OpenCL_Network<net_t>::add_weights(size_t layer,
     }
 
     auto weightSize = size * sizeof(net_t);
-    m_layers.back().weights.emplace_back(
+
+    auto queue = cl::CommandQueue(getOpenCL().m_context, getOpenCL().m_device);
+    auto buffer = cl::Buffer(
         m_opencl.m_context,
-        CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+        CL_MEM_READ_ONLY,
         weightSize,
-        const_cast<net_t*>(weights)
+        nullptr
     );
+    queue.enqueueWriteBuffer(buffer, CL_TRUE, 0, weightSize, const_cast<net_t*>(weights));
+    m_layers.back().weights.push_back(std::move(buffer));
 }
 
 template <typename net_t>
@@ -771,10 +775,11 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent, int bat
     myprintf("Half precision compute support: ");
     if (m_device.getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp16")
         != std::string::npos) {
-        myprintf("YES\n");
+        myprintf("Yes.\n");
+        m_fp16_compute = true;
         m_cl_args += " -DFP16_SUPPORT";
     } else {
-        myprintf("NO\n");
+        myprintf("No.\n");
     }
 
     auto t = Tuner<net_t>(*this, m_context, m_device);
@@ -825,6 +830,11 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent, int bat
     myprintf("\n");
 
     m_init_ok = true;
+}
+
+template <typename net_t>
+bool OpenCL<net_t>::has_fp16_compute() {
+    return m_fp16_compute;
 }
 
 template <typename net_t>

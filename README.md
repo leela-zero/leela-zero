@@ -58,7 +58,7 @@ launch autogtp.
 
 # I just want to play right now
 
-Download the best known network weights file from: http://zero.sjeng.org/best-network
+Download the best known network weights file from: https://zero.sjeng.org/best-network
 
 And head to the [Usage](#usage) section of this README.
 
@@ -70,7 +70,6 @@ If you prefer a more human style, a network trained from human games is availabl
 
 * GCC, Clang or MSVC, any C++14 compiler
 * Boost 1.58.x or later, headers and program_options, filesystem and system libraries (libboost-dev, libboost-program-options-dev and libboost-filesystem-dev on Debian/Ubuntu)
-* BLAS Library: OpenBLAS (libopenblas-dev) or (optionally) Intel MKL
 * zlib library (zlib1g & zlib1g-dev on Debian/Ubuntu)
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
 https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
@@ -79,61 +78,60 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 drivers is strongly recommended (OpenCL 1.1 support is enough).
 If you do not have a GPU, modify config.h in the source and remove
 the line that says "#define USE_OPENCL".
+* Optional: BLAS Library: OpenBLAS (libopenblas-dev) or Intel MKL
 * The program has been tested on Windows, Linux and macOS.
 
-## Example of compiling and running - Ubuntu
+## Example of compiling and running - Ubuntu & similar
 
     # Test for OpenCL support & compatibility
     sudo apt install clinfo && clinfo
 
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
-    cd leela-zero/src
-    sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
-    make
-    cd ..
-    wget http://zero.sjeng.org/best-network
-    src/leelaz --weights best-network
+    cd leela-zero
+    git submodule update --init --recursive
+
+    # Install build depedencies
+    sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+
+    # Use stand alone directory to keep source dir clean
+    mkdir build && cd build
+    cmake ..
+    cmake --build .
+    ./tests
+    curl -O https://zero.sjeng.org/best-network
+    ./leelaz --weights best-network
 
 ## Example of compiling and running - macOS
-
-    # Clone github repo
-    git clone https://github.com/gcp/leela-zero
-    cd leela-zero/src
-    brew install boost
-    make
-    cd ..
-    curl -O http://zero.sjeng.org/best-network
-    src/leelaz --weights best-network
-
-## Example of compiling and running - Windows
-
-    # Clone github repo
-    git clone https://github.com/gcp/leela-zero
-    cd leela-zero
-    cd msvc
-    Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
-    to the Visual Studio version you have.
-    # Build from Visual Studio 2015 or 2017
-    # Download <http://zero.sjeng.org/best-network> to msvc\x64\Release
-    msvc\x64\Release\leelaz.exe --weights best-network
-
-## Example of compiling and running - CMake (macOS/Ubuntu)
 
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
+    # Install build depedencies
+    brew install boost cmake
+
     # Use stand alone directory to keep source dir clean
     mkdir build && cd build
     cmake ..
-    make leelaz
-    make tests
+    cmake --build .
     ./tests
-    curl -O http://zero.sjeng.org/best-network
+    curl -O https://zero.sjeng.org/best-network
     ./leelaz --weights best-network
 
+## Example of compiling and running - Windows
+
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero
+    git submodule update --init --recursive
+    cd msvc
+    Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
+    to the Visual Studio version you have.
+    # Build from Visual Studio 2015 or 2017
+    # Download <https://zero.sjeng.org/best-network> to msvc\x64\Release
+    msvc\x64\Release\leelaz.exe --weights best-network
 
 # Usage
 
@@ -295,7 +293,6 @@ If interrupted, training can be resumed with:
 - [ ] Implement GPU batching.
 - [ ] Parameter setting over GTP.
 - More backends:
-- [ ] Eigen based BLAS backend.
 - [ ] MKL-DNN based backend.
 - [ ] CUDA specific version using cuDNN.
 - [ ] AMD specific version using MIOpen.
@@ -319,5 +316,4 @@ https://medium.com/applied-data-science/alphago-zero-explained-in-one-diagram-36
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp,
-half.hpp and the clblast_level3 subdirs, which have specific licenses (compatible with GPLv3) mentioned in those files.
+The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp, half.hpp and the eigen and clblast_level3 subdirs, which have specific licenses (compatible with GPLv3) mentioned in those files.

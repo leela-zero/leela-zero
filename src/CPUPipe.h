@@ -32,27 +32,10 @@ public:
                          std::vector<float>& output_pol,
                          std::vector<float>& output_val);
 
-    virtual void push_input_convolution(unsigned int filter_size,
-                                        unsigned int channels,
-                                        unsigned int outputs,
-                                        const std::vector<float>& weights,
-                                        const std::vector<float>& means,
-                                        const std::vector<float>& variances);
-
-    virtual void push_residual(unsigned int filter_size,
-                               unsigned int channels,
-                               unsigned int outputs,
-                               const std::vector<float>& weights_1,
-                               const std::vector<float>& means_1,
-                               const std::vector<float>& variances_1,
-                               const std::vector<float>& weights_2,
-                               const std::vector<float>& means_2,
-                               const std::vector<float>& variances_2);
-
-    virtual void push_convolve(unsigned int filter_size,
-                               unsigned int channels,
-                               unsigned int outputs,
-                               const std::vector<float>& weights);
+    virtual void push_weights(unsigned int filter_size,
+                              unsigned int channels,
+                              unsigned int outputs,
+                              std::shared_ptr<const ForwardPipeWeights> weights);
 private:
     void winograd_transform_in(const std::vector<float>& in,
                                std::vector<float>& V,
@@ -78,9 +61,7 @@ private:
     int m_input_channels;
 
     // Input + residual block tower
-    std::vector<std::vector<float>> m_conv_weights;
-    std::vector<std::vector<float>> m_batchnorm_means;
-    std::vector<std::vector<float>> m_batchnorm_stddivs;
+    std::shared_ptr<const ForwardPipeWeights> m_weights;
 
     std::vector<float> m_conv_pol_w;
     std::vector<float> m_conv_val_w;
