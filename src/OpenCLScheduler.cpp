@@ -88,6 +88,8 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     auto silent{false};
     auto gnum = size_t{0};
 
+    auto num_worker_threads = cfg_num_threads / cfg_batch_size / (gpus.size() + 1) + 1;
+
     for (auto gpu : gpus) {
         {
             auto opencl = std::make_unique<OpenCL<net_t>>();
@@ -100,7 +102,7 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
         // Starting next GPU, let's not dump full list of GPUs.
         silent = true;
 
-        for (int i = 0; i < 2; i++) {
+        for (auto i = unsigned{0}; i < num_worker_threads; i++) {
             auto t = std::thread(&OpenCLScheduler<net_t>::batch_worker, this, gnum);
             m_worker_threads.push_back(std::move(t));
         }
@@ -269,10 +271,24 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             std::unique_lock<std::mutex> lk(m_mutex);
             while (true) {
                 if (!m_running) return;
-                count = std::min(m_forward_queue.size(), size_t(cfg_batch_size));
-                if (count < cfg_batch_size && is_batching) {
-                    count = 0;
+                count = m_forward_queue.size();
+
+                if (is_batching) {
+                    if (count < cfg_batch_size) {
+                        count = 0;
+                    } else {
+                        count = cfg_batch_size;
+                    }
+                } else {
+                    if (count == 0) {
+                        // empty, leave it as zero
+                    } else if (count < cfg_batch_size) {
+                        count = 1;
+                    } else {
+                        count = cfg_batch_size;
+                    }
                 }
+
                 if (count > 0) {
                     auto end = begin(m_forward_queue);
                     std::advance(end, count);
@@ -284,18 +300,18 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                 } else {
                     bool timeout = !m_cv.wait_for(
                         lk, 
-                        std::chrono::milliseconds(waittime), 
+                        std::chrono::milliseconds(m_waittime), 
                         [this] () { return m_forward_queue.size() >= cfg_batch_size; }
                     );
     
-                    if (!m_forward_queue.empty()) {
+                    // we do this only using GPU 0.  All other GPUs will have batch capability only
+                    if (gnum == 0 && !m_forward_queue.empty()) {
                         if (timeout) {
-//                            std::cout << "!!!!!!!!!!!!" << waittime << "!!!!!!!!!!!!" << std::endl;
-                            waittime++;
+                            m_waittime++;
                             is_batching = false;
                         } else if(m_forward_queue.size() > cfg_batch_size) {
-                            if(waittime > 1) {
-                                waittime--;
+                            if(m_waittime > 1) {
+                                m_waittime--;
                             }
                         }
                     }

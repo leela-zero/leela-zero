@@ -207,6 +207,16 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_gtp_mode = true;
     }
 
+    if (!vm["threads"].defaulted()) {
+        auto num_threads = vm["threads"].as<int>();
+        if (num_threads > cfg_max_threads) {
+            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
+            num_threads = cfg_max_threads;
+        }
+        cfg_num_threads = num_threads;
+    }
+    myprintf("Using %d thread(s).\n", cfg_num_threads);
+
 #ifdef USE_OPENCL
     if (vm.count("gpu")) {
         cfg_gpus = vm["gpu"].as<std::vector<int> >();
@@ -226,8 +236,18 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("batchsize")) {
         cfg_batch_size = vm["batchsize"].as<int>();
+    } else {
+        if(cfg_gpus.size() < 1) {
+            cfg_batch_size = cfg_num_threads;
+        } else {
+            cfg_batch_size = cfg_num_threads / cfg_gpus.size();
+        }
     }
 
+    if (static_cast<unsigned int>(cfg_num_threads) < cfg_batch_size) {
+        printf("Threads number = %d must be larger than batch size = %d\n", cfg_num_threads, cfg_batch_size);
+        exit(EXIT_FAILURE);
+    }
 #ifdef USE_HALF
     if (vm.count("precision")) {
         auto precision = vm["precision"].as<std::string>();
@@ -244,22 +264,6 @@ static void parse_commandline(int argc, char *argv[]) {
     }
 #endif
 #endif
-
-    if (!vm["threads"].defaulted()) {
-        auto num_threads = vm["threads"].as<int>();
-        if (num_threads > cfg_max_threads) {
-            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
-            num_threads = cfg_max_threads;
-        }
-#ifdef USE_OPENCL
-        if (static_cast<unsigned int>(num_threads) < cfg_batch_size) {
-            printf("Threads number = %d must be larger than batch size = %d\n", num_threads, cfg_batch_size);
-            exit(EXIT_FAILURE);
-        }
-#endif
-        cfg_num_threads = num_threads;
-    }
-    myprintf("Using %d thread(s).\n", cfg_num_threads);
 
     if (vm.count("seed")) {
         cfg_rng_seed = vm["seed"].as<std::uint64_t>();
