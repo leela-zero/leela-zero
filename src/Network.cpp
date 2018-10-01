@@ -380,7 +380,17 @@ void Network::select_precision(int channels) {
 
         myprintf("Initializing OpenCL (autodetecting precision).\n");
 
-        // Start by setting up fp16.
+        // Start by setting up fp32.
+        try {
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+            score_fp32 = benchmark_time(100);
+        } catch (...) {
+            // empty - if exception thrown just throw away fp32 net
+        }
+
+        // Now benchmark fp16.
         try {
             m_forward.reset();
             m_forward = init_net(channels,
@@ -394,16 +404,6 @@ void Network::select_precision(int channels) {
             score_fp16 = benchmark_time(100);
         } catch (...) {
             // empty - if exception thrown just throw away fp16 net
-        }
-
-        // Now benchmark fp32.
-        try {
-            m_forward.reset();
-            m_forward = init_net(channels,
-                std::make_unique<OpenCLScheduler<float>>());
-            score_fp32 = benchmark_time(100);
-        } catch (...) {
-            // empty - if exception thrown just throw away fp32 net
         }
 
         if (score_fp16 < 0.0f && score_fp32 < 0.0f) {
