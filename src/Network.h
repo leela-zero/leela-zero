@@ -124,8 +124,7 @@ private:
                                       const int symmetry);
     bool probe_cache(const GameState* const state, Network::Netresult& result);
     std::unique_ptr<ForwardPipe>&& init_net(int channels,
-                                            std::unique_ptr<ForwardPipe>&& pipe,
-                                            bool exit_if_no_need_autodetect = false);
+                                            std::unique_ptr<ForwardPipe>&& pipe);
 #ifdef USE_HALF
     void select_precision(int channels);
 #endif

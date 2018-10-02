@@ -364,19 +364,11 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
 }
 
 std::unique_ptr<ForwardPipe>&& Network::init_net(int channels,
-    std::unique_ptr<ForwardPipe>&& pipe,
-    bool exit_if_no_need_autodetect) {
+    std::unique_ptr<ForwardPipe>&& pipe) {
 
     pipe->initialize(channels);
-
-    if (exit_if_no_need_autodetect) {
-        if (!pipe->needs_autodetect()) {
-            pipe.reset(nullptr);
-            return std::move(pipe);
-        }
-    }
-
     pipe->push_weights(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, m_fwd_weights);
+
     return std::move(pipe);
 }
 
@@ -388,22 +380,12 @@ void Network::select_precision(int channels) {
 
         myprintf("Initializing OpenCL (autodetecting precision).\n");
 
-        // Start by setting up fp32.  If we figured out that we have
-        // fp16 compute support while initializing, give up initialization here.
+        // Start by setting up fp32.
         try {
             m_forward.reset();
             m_forward = init_net(channels,
-                std::make_unique<OpenCLScheduler<float>>(),
-                true
-            );
-            if(m_forward == nullptr) {
-                myprintf("OpenCL: using fp16/half compute support.\n");
-                m_forward = init_net(channels,
-                    std::make_unique<OpenCLScheduler<half_float::half>>());
-                return;
-            } else {
-                score_fp32 = benchmark_time(100);
-            }
+                std::make_unique<OpenCLScheduler<float>>());
+            score_fp32 = benchmark_time(100);
         } catch (...) {
             // empty - if exception thrown just throw away fp32 net
         }
@@ -413,6 +395,12 @@ void Network::select_precision(int channels) {
             m_forward.reset();
             m_forward = init_net(channels,
                 std::make_unique<OpenCLScheduler<half_float::half>>());
+            // Do all devices have native fp16? If so we won't
+            // benchmark and return here.
+            if (!m_forward->needs_autodetect()) {
+                myprintf("OpenCL: using fp16/half compute support.\n");
+                return;
+            }
             score_fp16 = benchmark_time(100);
         } catch (...) {
             // empty - if exception thrown just throw away fp16 net
