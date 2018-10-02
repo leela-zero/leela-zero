@@ -380,6 +380,14 @@ void Network::select_precision(int channels) {
 
         myprintf("Initializing OpenCL (autodetecting precision).\n");
 
+        // Setup fp16 here so that we can see if we can skip autodetect
+        auto fp16_net = std::make_unique<OpenCLScheduler<half_float::half>>();
+        if (!fp16_net->needs_autodetect()) {
+            myprintf("OpenCL: using fp16/half compute support.\n");
+            m_forward = init_net(channels, std::move(fp16_net));
+            return;
+        }
+
         // Start by setting up fp32.
         try {
             m_forward.reset();
@@ -393,14 +401,7 @@ void Network::select_precision(int channels) {
         // Now benchmark fp16.
         try {
             m_forward.reset();
-            m_forward = init_net(channels,
-                std::make_unique<OpenCLScheduler<half_float::half>>());
-            // Do all devices have native fp16? If so we won't
-            // benchmark and return here.
-            if (!m_forward->needs_autodetect()) {
-                myprintf("OpenCL: using fp16/half compute support.\n");
-                return;
-            }
+            m_forward = init_net(channels, std::move(fp16_net));
             score_fp16 = benchmark_time(100);
         } catch (...) {
             // empty - if exception thrown just throw away fp16 net
