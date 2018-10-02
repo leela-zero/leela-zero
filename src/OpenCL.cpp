@@ -641,7 +641,7 @@ std::vector<size_t> OpenCL<net_t>::get_sgemm_tuners() {
 }
 
 template <typename net_t>
-void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
+OpenCL<net_t>::OpenCL(int gpu, bool silent) {
     std::vector<cl::Platform> platforms;
     try {
         cl::Platform::get(&platforms);
@@ -756,6 +756,21 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     m_context = context;
     m_device = best_device;
 
+    m_cl_args = getClArgs<net_t>();
+
+    myprintf("Half precision compute support: ");
+    if (m_device.getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp16")
+        != std::string::npos) {
+        myprintf("Yes.\n");
+        m_fp16_compute = true;
+        m_cl_args += " -DFP16_SUPPORT";
+    } else {
+        myprintf("No.\n");
+    }
+}
+
+template <typename net_t>
+void OpenCL<net_t>::initialize(const int channels) {
     // Make program of the source code in the context
     try {
         m_program = cl::Program(m_context,
@@ -767,18 +782,6 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     } catch (const cl::Error &e) {
         myprintf("Error getting kernels: %s: %d", e.what(), e.err());
         throw std::runtime_error("Error getting OpenCL kernels.");
-    }
-
-    m_cl_args = getClArgs<net_t>();
-
-    myprintf("Half precision compute support: ");
-    if (m_device.getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp16")
-        != std::string::npos) {
-        myprintf("Yes.\n");
-        m_fp16_compute = true;
-        m_cl_args += " -DFP16_SUPPORT";
-    } else {
-        myprintf("No.\n");
     }
 
     auto t = Tuner<net_t>(*this, m_context, m_device);
@@ -815,11 +818,11 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
 
     m_wavefront_size =
         tdata.m_sgemm_kernel.getWorkGroupInfo<
-            CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(best_device);
+            CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(m_device);
     myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
 
-    m_max_workgroup_size = best_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-    m_max_workgroup_dims = best_device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
+    m_max_workgroup_size = m_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    m_max_workgroup_dims = m_device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
 
     myprintf("Max workgroup size: %d\n", m_max_workgroup_size);
     myprintf("Max workgroup dimensions: ");

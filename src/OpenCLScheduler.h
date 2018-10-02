@@ -38,6 +38,7 @@ class OpenCLScheduler : public ForwardPipe {
         ContextPoolEntry(size_t index) : net_index(index) {}
     };
 public:
+    OpenCLScheduler();
     virtual void initialize(const int channels);
     virtual void forward(const std::vector<float>& input,
                          std::vector<float>& output_pol,

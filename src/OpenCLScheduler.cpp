@@ -73,7 +73,7 @@ static std::vector<T> zeropad_U(const std::vector<float>& U,
 }
 
 template <typename net_t>
-void OpenCLScheduler<net_t>::initialize(const int channels) {
+OpenCLScheduler<net_t>::OpenCLScheduler() {
     // multi-gpu?
     auto gpus = cfg_gpus;
 
@@ -84,23 +84,28 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     }
 
     auto silent{false};
-    auto gnum = size_t{0};
-
-    // Launch the worker thread.
-    // Round_up(cfg_num_threads / gpus.size()) threads
-    // so that we only have enough contexts to achieve full parallelism.
-    const auto num_threads = (cfg_num_threads + gpus.size() - 1) / gpus.size();
-    m_context_pool.resize(num_threads);
 
     for (auto gpu : gpus) {
-        auto opencl = std::make_unique<OpenCL<net_t>>();
+        auto opencl = std::make_unique<OpenCL<net_t>>(gpu, silent);
         auto net = std::make_unique<OpenCL_Network<net_t>>(*opencl);
-        opencl->initialize(channels, gpu, silent);
         m_opencl.push_back(std::move(opencl));
         m_networks.push_back(std::move(net));
 
         // Starting next GPU, let's not dump full list of GPUs.
         silent = true;
+    }
+}
+
+template <typename net_t>
+void OpenCLScheduler<net_t>::initialize(const int channels) {
+    // Launch the worker thread.
+    // Round_up(cfg_num_threads / gpus.size()) threads
+    // so that we only have enough contexts to achieve full parallelism.
+    const auto num_threads = (cfg_num_threads + m_opencl.size() - 1) / m_opencl.size();
+    m_context_pool.resize(num_threads);
+    auto gnum = 0;
+    for (auto & opencl : m_opencl) {
+        opencl->initialize(channels);
 
         for (auto i = size_t{0}; i < num_threads; i++) {
             m_context_pool[i].emplace_back(
