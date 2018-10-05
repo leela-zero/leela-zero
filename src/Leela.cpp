@@ -57,8 +57,8 @@ static void parse_commandline(int argc, char *argv[]) {
     gen_desc.add_options()
         ("help,h", "Show commandline options.")
         ("gtp,g", "Enable GTP mode.")
-        ("threads,t", po::value<int>()->default_value(cfg_num_threads),
-                      "Number of threads to use.")
+        ("threads,t", po::value<int>(),
+                      "Number of threads to use.  Defaults to max number of threads on system.")
         ("playouts,p", po::value<int>(),
                        "Weaken engine by limiting the number of playouts. "
                        "Requires --noponder.")
@@ -207,16 +207,6 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_gtp_mode = true;
     }
 
-    if (!vm["threads"].defaulted()) {
-        auto num_threads = vm["threads"].as<int>();
-        if (num_threads > cfg_max_threads) {
-            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
-            num_threads = cfg_max_threads;
-        }
-        cfg_num_threads = num_threads;
-    }
-    myprintf("Using %d thread(s).\n", cfg_num_threads);
-
 #ifdef USE_OPENCL
     if (vm.count("gpu")) {
         cfg_gpus = vm["gpu"].as<std::vector<int> >();
@@ -234,20 +224,50 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_tune_only = true;
     }
 
-    if (vm.count("batchsize")) {
-        cfg_batch_size = vm["batchsize"].as<int>();
-    } else {
-        if(cfg_gpus.size() < 1) {
-            cfg_batch_size = cfg_num_threads;
-        } else {
-            cfg_batch_size = cfg_num_threads / cfg_gpus.size();
-        }
+    // Default thread count : GPU case
+    // 1) if no args are given, use batch size of 5 and thread count of (batch size) * (number of gpus)
+    // 2) if number of threads are given, use batch size of (thread count) / (number of gpus)
+    // 3) if number of batches are given, use thread count of (batch size) * (number of gpus)
+    auto gpu_count = static_cast<int>(cfg_gpus.size());
+    if (gpu_count == 0) {
+        // size of zero if autodetect GPU : default to 1
+        gpu_count = 1;
     }
 
-    if (static_cast<unsigned int>(cfg_num_threads) < cfg_batch_size) {
+    if (vm.count("threads")) {
+        auto num_threads = vm["threads"].as<int>();
+        if (num_threads > cfg_max_threads) {
+            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
+            num_threads = cfg_max_threads;
+        }
+        cfg_num_threads = num_threads;
+
+        if (vm.count("batchsize")) {
+            cfg_batch_size = vm["batchsize"].as<int>();
+        } else {
+            cfg_batch_size = cfg_num_threads / gpu_count;
+
+            // no idea why somebody wants to use threads less than the number of GPUs
+            // but should at least prevent crashing
+            if (cfg_batch_size == 0) {
+                cfg_batch_size = 1;
+            }
+        }
+    } else {
+        if (vm.count("batchsize")) {
+            cfg_batch_size = vm["batchsize"].as<int>();
+        } else {
+            cfg_batch_size = 5;
+        }
+
+        cfg_num_threads = std::min(cfg_max_threads, cfg_batch_size * gpu_count);
+    }
+
+    if (cfg_num_threads < cfg_batch_size) {
         printf("Threads number = %d must be larger than batch size = %d\n", cfg_num_threads, cfg_batch_size);
         exit(EXIT_FAILURE);
     }
+
 #ifdef USE_HALF
     if (vm.count("precision")) {
         auto precision = vm["precision"].as<std::string>();
@@ -263,7 +283,20 @@ static void parse_commandline(int argc, char *argv[]) {
         }
     }
 #endif
+#else
+    // CPU-only : default to max threads
+    if (!vm["threads"].defaulted()) {
+        auto num_threads = vm["threads"].as<int>();
+        if (num_threads > cfg_max_threads) {
+            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
+            num_threads = cfg_max_threads;
+        }
+        cfg_num_threads = num_threads;
+    } else {
+        cfg_num_threads = cfg_max_threads;
+    }
 #endif
+    myprintf("Using %d thread(s).\n", cfg_num_threads);
 
     if (vm.count("seed")) {
         cfg_rng_seed = vm["seed"].as<std::uint64_t>();

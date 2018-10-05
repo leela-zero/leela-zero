@@ -68,7 +68,7 @@ bool cfg_dumbpass;
 std::vector<int> cfg_gpus;
 bool cfg_sgemm_exhaustive;
 bool cfg_tune_only;
-unsigned int cfg_batch_size;
+int cfg_batch_size;
 #ifdef USE_HALF
 precision_t cfg_precision;
 #endif
@@ -108,15 +108,19 @@ void GTP::initialize(std::unique_ptr<Network>&& net) {
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
     cfg_allow_pondering = true;
-    cfg_max_threads = std::max(1, MAX_CPUS);
 #ifdef USE_OPENCL
-    // If we will be GPU limited, using many threads won't help much.
-    // Multi-GPU is a different story, but we will assume that those people
-    // who do those stuff will know what they are doing.
-    cfg_num_threads = std::min(2, cfg_max_threads);
+    // If we will be GPU limited, the optimal number of threads varies quite differently
+    // due to the batching behavior - we need threads that are sufficient enough to flood
+    // all the GPUs.
+    cfg_max_threads = MAX_CPUS;
 #else
-    cfg_num_threads = cfg_max_threads;
+    // if we are CPU-based, there is no point using more than the number of CPUs
+    cfg_max_threads = std::min(SMP::get_num_cpus(), MAX_CPUS);
 #endif
+
+    // we will re-calculate this on Leela.cpp
+    cfg_num_threads = 0;
+
     cfg_max_memory = UCTSearch::DEFAULT_MAX_MEMORY;
     cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
     cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
@@ -130,7 +134,9 @@ void GTP::setup_default_parameters() {
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;
     cfg_tune_only = false;
-    cfg_batch_size = 4;
+
+    // we will re-calculate this on Leela.cpp
+    cfg_batch_size = 0;
 #ifdef USE_HALF
     cfg_precision = precision_t::AUTO;
 #endif

@@ -265,22 +265,22 @@ std::atomic<size_t> batch_stats[2];
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
-    constexpr auto IN_SIZE = Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE;
-    constexpr auto OUT_POL_SIZE = Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE;
-    constexpr auto OUT_VAL_SIZE = Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE;
+    constexpr auto in_size = Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE;
+    constexpr auto out_pol_size = Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE;
+    constexpr auto out_val_size = Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE;
 
     OpenCLContext context;
 
-    auto pickup_task = [this] () {
+    auto pickup_task = [this, gnum] () {
         bool is_batching = true;
 
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
-        size_t count = 0;
+        int count = 0;
 
         std::unique_lock<std::mutex> lk(m_mutex);
         while (true) {
             if (!m_running) return inputs;
-            count = m_forward_queue.size();
+            count = static_cast<int>(m_forward_queue.size());
 
             if (is_batching) {
                 if (count < cfg_batch_size) {
@@ -309,7 +309,9 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                 bool timeout = !m_cv.wait_for(
                     lk,
                     std::chrono::milliseconds(m_waittime),
-                    [this] () { return m_forward_queue.size() >= cfg_batch_size; }
+                    [this] () {
+                        return static_cast<int>(m_forward_queue.size()) >= cfg_batch_size;
+                    }
                 );
 
                 // we do this only using GPU 0.  All other GPUs will have batch capability only
@@ -317,7 +319,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                     if (timeout) {
                         m_waittime++;
                         is_batching = false;
-                    } else if(m_forward_queue.size() > cfg_batch_size) {
+                    } else if(static_cast<int>(m_forward_queue.size()) > cfg_batch_size) {
                         if(m_waittime > 1) {
                             m_waittime--;
                         }
@@ -343,14 +345,14 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         batch_stats[count == cfg_batch_size ? 1 : 0]++;
 #endif
 
-        batch_input.resize(IN_SIZE * count);
-        batch_output_pol.resize(OUT_POL_SIZE * count);
-        batch_output_val.resize(OUT_VAL_SIZE * count);
+        batch_input.resize(in_size * count);
+        batch_output_pol.resize(out_pol_size * count);
+        batch_output_val.resize(out_val_size * count);
         {
             size_t index = 0;
             for (auto it = begin(inputs); it != end(inputs); ++it) {
                 std::unique_lock<std::mutex> lk((*it)->mutex);
-                std::copy(begin((*it)->in), end((*it)->in), begin(batch_input) + IN_SIZE * index);
+                std::copy(begin((*it)->in), end((*it)->in), begin(batch_input) + in_size * index);
                 index++;
             }
         }
@@ -363,11 +365,11 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         {
             size_t index = 0;
             for (auto it = begin(inputs); it != end(inputs); ++it) {
-                std::copy(begin(batch_output_pol) + OUT_POL_SIZE * index,
-                          begin(batch_output_pol) + OUT_POL_SIZE * (index + 1),
+                std::copy(begin(batch_output_pol) + out_pol_size * index,
+                          begin(batch_output_pol) + out_pol_size * (index + 1),
                           begin((*it)->out_p));
-                std::copy(begin(batch_output_val) + OUT_VAL_SIZE * index,
-                          begin(batch_output_val) + OUT_VAL_SIZE * (index + 1),
+                std::copy(begin(batch_output_val) + out_val_size * index,
+                          begin(batch_output_val) + out_val_size * (index + 1),
                           begin((*it)->out_v));
                 (*it)->cv.notify_all();
                 index++;
