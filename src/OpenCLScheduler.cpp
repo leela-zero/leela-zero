@@ -259,7 +259,9 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
     entry->cv.wait(lk);
 }
 
+#ifndef NDEBUG
 std::atomic<size_t> batch_stats[2];
+#endif
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
@@ -337,7 +339,9 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             return;
         }
 
+#ifndef NDEBUG
         batch_stats[count == cfg_batch_size ? 1 : 0]++;
+#endif
 
         batch_input.resize(IN_SIZE * count);
         batch_output_pol.resize(OUT_POL_SIZE * count);
