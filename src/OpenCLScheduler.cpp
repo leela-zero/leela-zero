@@ -75,7 +75,7 @@ static std::vector<T> zeropad_U(const std::vector<float>& U,
 }
 
 template <typename net_t>
-void OpenCLScheduler<net_t>::initialize(const int channels) {
+OpenCLScheduler<net_t>::OpenCLScheduler() {
     // multi-gpu?
     auto gpus = cfg_gpus;
 
@@ -86,21 +86,26 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     }
 
     auto silent{false};
-    auto gnum = size_t{0};
-
-    auto num_worker_threads = cfg_num_threads / cfg_batch_size / (gpus.size() + 1) + 1;
 
     for (auto gpu : gpus) {
-        {
-            auto opencl = std::make_unique<OpenCL<net_t>>();
-            auto net = std::make_unique<OpenCL_Network<net_t>>(*opencl);
-            opencl->initialize(channels, gpu, silent, cfg_batch_size);
-            m_opencl.push_back(std::move(opencl));
-            m_networks.push_back(std::move(net));
-        }
+        auto opencl = std::make_unique<OpenCL<net_t>>(gpu, silent);
+        auto net = std::make_unique<OpenCL_Network<net_t>>(*opencl);
+        m_opencl.push_back(std::move(opencl));
+        m_networks.push_back(std::move(net));
 
         // Starting next GPU, let's not dump full list of GPUs.
         silent = true;
+    }
+}
+
+template <typename net_t>
+void OpenCLScheduler<net_t>::initialize(const int channels) {
+    // Launch the worker threads.  Minimum 1 worker per GPU, but use enough threads
+    // so that we can at least concurrently schedule something to the GPU.
+    auto num_worker_threads = cfg_num_threads / cfg_batch_size / (m_opencl.size() + 1) + 1;
+    auto gnum = 0;
+    for (auto & opencl : m_opencl) {
+        opencl->initialize(channels, cfg_batch_size);
 
         for (auto i = unsigned{0}; i < num_worker_threads; i++) {
             auto t = std::thread(&OpenCLScheduler<net_t>::batch_worker, this, gnum);

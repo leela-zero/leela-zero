@@ -51,6 +51,8 @@ class OpenCLScheduler : public ForwardPipe {
     };
 public:
     virtual ~OpenCLScheduler();
+    OpenCLScheduler();
+
     virtual void initialize(const int channels);
     virtual void forward(const std::vector<float>& input,
                          std::vector<float>& output_pol,

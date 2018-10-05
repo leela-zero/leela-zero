@@ -183,7 +183,9 @@ class OpenCL {
     friend class OpenCL_Network<net_t>;
     friend class Tuner<net_t>;
 public:
-    void initialize(const int channels, int gpu, bool silent = false, int batch_size = 1);
+    OpenCL(int gpu, bool silent = false);
+
+    void initialize(const int channels, int batch_size = 1);
     void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
     bool has_fp16_compute();
