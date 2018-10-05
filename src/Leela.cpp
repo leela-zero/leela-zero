@@ -91,7 +91,7 @@ static void parse_commandline(int argc, char *argv[]) {
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
         ("tune-only", "Tune OpenCL only and then exit.")
-        ("batchsize", po::value<int>(), "Max batch size. Default 4.")
+        ("batchsize", po::value<int>(), "Max batch size. Default is the number of threads divided by the number of GPUs")
 #ifdef USE_HALF
         ("precision", po::value<std::string>(), "Floating-point precision (single/half/auto).\n"
                                                 "Default is to auto which automatically determines which one to use.")

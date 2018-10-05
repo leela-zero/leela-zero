@@ -163,7 +163,7 @@ void OpenCLScheduler<net_t>::push_input_convolution(
         opencl_net->push_input_convolution(
             filter_size, channels, outputs,
             Upad, from_float(means), from_float(variances)
-            );
+        );
     }
 }
 
@@ -263,77 +263,90 @@ std::atomic<size_t> batch_stats[2];
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
-    auto batch_input = std::vector<float>(Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
-    auto batch_output_pol = std::vector<float>(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
-    auto batch_output_val = std::vector<float>(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * cfg_batch_size);
+    constexpr auto IN_SIZE = Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE;
+    constexpr auto OUT_POL_SIZE = Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE;
+    constexpr auto OUT_VAL_SIZE = Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE;
+
     OpenCLContext context;
 
-    bool is_batching = false;
-    while (true) {
+    auto pickup_task = [this] () {
+        bool is_batching = true;
+
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
         size_t count = 0;
-        {
-            std::unique_lock<std::mutex> lk(m_mutex);
-            while (true) {
-                if (!m_running) return;
-                count = m_forward_queue.size();
 
-                if (is_batching) {
-                    if (count < cfg_batch_size) {
-                        count = 0;
-                    } else {
-                        count = cfg_batch_size;
-                    }
+        std::unique_lock<std::mutex> lk(m_mutex);
+        while (true) {
+            if (!m_running) return inputs;
+            count = m_forward_queue.size();
+
+            if (is_batching) {
+                if (count < cfg_batch_size) {
+                    count = 0;
                 } else {
-                    if (count == 0) {
-                        // empty, leave it as zero
-                    } else if (count < cfg_batch_size) {
-                        count = 1;
-                    } else {
-                        count = cfg_batch_size;
-                    }
+                    count = cfg_batch_size;
                 }
-
-                if (count > 0) {
-                    auto end = begin(m_forward_queue);
-                    std::advance(end, count);
-                    std::move(begin(m_forward_queue), end, std::back_inserter(inputs));
-                    m_forward_queue.erase(begin(m_forward_queue), end);
-
-                    is_batching = true;
-                    break;
+            } else {
+                if (count == 0) {
+                    // empty, leave it as zero
+                } else if (count < cfg_batch_size) {
+                    count = 1;
                 } else {
-                    bool timeout = !m_cv.wait_for(
-                        lk, 
-                        std::chrono::milliseconds(m_waittime), 
-                        [this] () { return m_forward_queue.size() >= cfg_batch_size; }
-                    );
-    
-                    // we do this only using GPU 0.  All other GPUs will have batch capability only
-                    if (gnum == 0 && !m_forward_queue.empty()) {
-                        if (timeout) {
-                            m_waittime++;
-                            is_batching = false;
-                        } else if(m_forward_queue.size() > cfg_batch_size) {
-                            if(m_waittime > 1) {
-                                m_waittime--;
-                            }
+                    count = cfg_batch_size;
+                }
+            }
+
+            if (count > 0) {
+                auto end = begin(m_forward_queue);
+                std::advance(end, count);
+                std::move(begin(m_forward_queue), end, std::back_inserter(inputs));
+                m_forward_queue.erase(begin(m_forward_queue), end);
+
+                return inputs;
+            } else {
+                bool timeout = !m_cv.wait_for(
+                    lk,
+                    std::chrono::milliseconds(m_waittime),
+                    [this] () { return m_forward_queue.size() >= cfg_batch_size; }
+                );
+
+                // we do this only using GPU 0.  All other GPUs will have batch capability only
+                if (gnum == 0 && !m_forward_queue.empty()) {
+                    if (timeout) {
+                        m_waittime++;
+                        is_batching = false;
+                    } else if(m_forward_queue.size() > cfg_batch_size) {
+                        if(m_waittime > 1) {
+                            m_waittime--;
                         }
                     }
                 }
             }
         }
+    };
 
-        batch_input.resize(Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * count);
-        batch_output_pol.resize(Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * count);
-        batch_output_val.resize(Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * count);
+    auto batch_input = std::vector<float>();
+    auto batch_output_pol = std::vector<float>();
+    auto batch_output_val = std::vector<float>();
+
+    while (true) {
+        auto inputs = pickup_task();
+        auto count = inputs.size();
+
+        if (!m_running) {
+            return;
+        }
 
         batch_stats[count == cfg_batch_size ? 1 : 0]++;
+
+        batch_input.resize(IN_SIZE * count);
+        batch_output_pol.resize(OUT_POL_SIZE * count);
+        batch_output_val.resize(OUT_VAL_SIZE * count);
         {
             size_t index = 0;
             for (auto it = begin(inputs); it != end(inputs); ++it) {
                 std::unique_lock<std::mutex> lk((*it)->mutex);
-                std::copy(begin((*it)->in), end((*it)->in), begin(batch_input) + Network::INPUT_CHANNELS * BOARD_SIZE * BOARD_SIZE * index);
+                std::copy(begin((*it)->in), end((*it)->in), begin(batch_input) + IN_SIZE * index);
                 index++;
             }
         }
@@ -346,11 +359,11 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         {
             size_t index = 0;
             for (auto it = begin(inputs); it != end(inputs); ++it) {
-                std::copy(begin(batch_output_pol) + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * index,
-                          begin(batch_output_pol) + Network::OUTPUTS_POLICY * BOARD_SIZE * BOARD_SIZE * (index + 1),
+                std::copy(begin(batch_output_pol) + OUT_POL_SIZE * index,
+                          begin(batch_output_pol) + OUT_POL_SIZE * (index + 1),
                           begin((*it)->out_p));
-                std::copy(begin(batch_output_val) + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * index,
-                          begin(batch_output_val) + Network::OUTPUTS_VALUE * BOARD_SIZE * BOARD_SIZE * (index + 1),
+                std::copy(begin(batch_output_val) + OUT_VAL_SIZE * index,
+                          begin(batch_output_val) + OUT_VAL_SIZE * (index + 1),
                           begin((*it)->out_v));
                 (*it)->cv.notify_all();
                 index++;
