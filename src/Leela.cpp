@@ -285,7 +285,7 @@ static void parse_commandline(int argc, char *argv[]) {
 #endif
 #else
     // CPU-only : default to max threads
-    if (!vm["threads"].defaulted()) {
+    if (vm.count("threads")) {
         auto num_threads = vm["threads"].as<int>();
         if (num_threads > cfg_max_threads) {
             myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
@@ -296,6 +296,17 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_num_threads = cfg_max_threads;
     }
 #endif
+    if (vm.count("cpu-only")) {
+        cfg_cpu_only = true;
+
+        // if we are forced CPU only and have no default threads,
+        // default to max threads instead of whatever formula
+        // we used for the GPU computation
+        if (vm.count("threads")) {
+            cfg_num_threads = cfg_max_threads;
+        }
+    }
+
     myprintf("Using %d thread(s).\n", cfg_num_threads);
 
     if (vm.count("seed")) {
@@ -317,10 +328,6 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("dumbpass")) {
         cfg_dumbpass = true;
-    }
-
-    if (vm.count("cpu-only")) {
-        cfg_cpu_only = true;
     }
 
     if (vm.count("playouts")) {
@@ -400,14 +407,11 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_random_cnt = 0;
         cfg_rng_seed = 1;
         cfg_timemanage = TimeManagement::OFF;  // Reliable number of playouts.
-        if (vm["threads"].defaulted()) {
-            cfg_num_threads = 1;
-        }
+
         if (!vm.count("playouts") && !vm.count("visits")) {
             cfg_max_visits = 3200; // Default to self-play and match values.
         }
     }
-
 
     auto out = std::stringstream{};
     for (auto i = 1; i < argc; i++) {
