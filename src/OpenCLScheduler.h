@@ -70,15 +70,16 @@ private:
     std::mutex m_mutex;
     std::condition_variable m_cv;
 
-    // start with 10 milliseconds
-    int m_waittime = 10;
+    // start with 10 milliseconds : lock protected
+    int m_waittime{10};
+    
+    // set to true when single (non-batch) eval is in progress
+    std::atomic<bool> m_single_eval_in_progress{false};
 
     std::list<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
     std::list<std::thread> m_worker_threads;
 
     void batch_worker(const size_t gnum);
-    SMP::Mutex m_context_pool_mutex;
-
     void push_input_convolution(unsigned int filter_size,
                                 unsigned int channels,
                                 unsigned int outputs,

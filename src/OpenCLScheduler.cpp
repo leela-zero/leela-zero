@@ -254,6 +254,10 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
     {
         std::unique_lock<std::mutex> lk(m_mutex);
         m_forward_queue.push_back(entry);
+
+        if (m_single_eval_in_progress.load()) {
+            m_waittime += 2;
+        }
     }
     m_cv.notify_one();
     entry->cv.wait(lk);
@@ -271,62 +275,61 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
 
     OpenCLContext context;
 
-    auto pickup_task = [this, gnum] () {
-        bool is_batching = true;
+    // batch scheduling heuristic.
+    // Returns the batch picked up from the queue (m_forward_queue)
+    // 1) Wait for m_waittime milliseconds for full batch
+    // 2) if we don't have a full batch then just do a single eval
+    //
+    // The purpose of m_waittime is to prevent the system from deadlocking
+    // because we were waiting for a job too long, while the job is never
+    // going to come due to a control dependency (e.g., evals stuck on a
+    // critical path).  To do so:
+    //
+    // 1) if we picked up a single eval, and ended up that there were no
+    // new incoming requests while handling the single eval, it means that
+    // we hit the critical path.  Wait 1ms shorter next time
+    // 2) if we picked up a single eval, but were getting additional evals
+    // while that single eval was being processed, it means that we made
+    // the wrong decision.  Wait 2ms longer next time
 
+    auto pickup_task = [this, gnum] () {
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
         int count = 0;
 
         std::unique_lock<std::mutex> lk(m_mutex);
         while (true) {
             if (!m_running) return inputs;
-            count = static_cast<int>(m_forward_queue.size());
 
-            if (is_batching) {
-                if (count < cfg_batch_size) {
-                    count = 0;
-                } else {
-                    count = cfg_batch_size;
-                }
-            } else {
-                if (count == 0) {
-                    // empty, leave it as zero
-                } else if (count < cfg_batch_size) {
-                    count = 1;
-                } else {
-                    count = cfg_batch_size;
-                }
+            count = static_cast<int>(m_forward_queue.size());
+            if (count >= cfg_batch_size) {
+                count = cfg_batch_size;
+                break;
             }
 
-            if (count > 0) {
-                auto end = begin(m_forward_queue);
-                std::advance(end, count);
-                std::move(begin(m_forward_queue), end, std::back_inserter(inputs));
-                m_forward_queue.erase(begin(m_forward_queue), end);
+            bool timeout = !m_cv.wait_for(
+                lk,
+                std::chrono::milliseconds(m_waittime),
+                [this] () {
+                    return !m_running || static_cast<int>(m_forward_queue.size()) >= cfg_batch_size;
+                }
+            );
 
-                return inputs;
-            } else {
-                bool timeout = !m_cv.wait_for(
-                    lk,
-                    std::chrono::milliseconds(m_waittime),
-                    [this] () {
-                        return static_cast<int>(m_forward_queue.size()) >= cfg_batch_size;
+            if (!m_forward_queue.empty()) {
+                if (timeout && m_single_eval_in_progress.exchange(true) == false) {
+                    if (m_waittime > 1) {
+                        m_waittime--;
                     }
-                );
-
-                // we do this only using GPU 0.  All other GPUs will have batch capability only
-                if (gnum == 0 && !m_forward_queue.empty()) {
-                    if (timeout) {
-                        m_waittime++;
-                        is_batching = false;
-                    } else if(static_cast<int>(m_forward_queue.size()) > cfg_batch_size) {
-                        if(m_waittime > 1) {
-                            m_waittime--;
-                        }
-                    }
+                    count = 1;
+                    break;
                 }
             }
         }
+        auto end = begin(m_forward_queue);
+        std::advance(end, count);
+        std::move(begin(m_forward_queue), end, std::back_inserter(inputs));
+        m_forward_queue.erase(begin(m_forward_queue), end);
+
+        return inputs;
     };
 
     auto batch_input = std::vector<float>();
@@ -342,7 +345,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         }
 
 #ifndef NDEBUG
-        batch_stats[count == cfg_batch_size ? 1 : 0]++;
+        batch_stats[static_cast<int>(count) == cfg_batch_size ? 1 : 0]++;
 #endif
 
         batch_input.resize(in_size * count);
@@ -374,6 +377,10 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                 (*it)->cv.notify_all();
                 index++;
             }
+        }
+
+        if (count == 1) {
+            m_single_eval_in_progress = false;
         }
     }
 }
