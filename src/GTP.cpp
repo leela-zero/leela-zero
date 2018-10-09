@@ -49,7 +49,6 @@ using namespace Utils;
 bool cfg_gtp_mode;
 bool cfg_allow_pondering;
 int cfg_num_threads;
-int cfg_max_threads;
 int cfg_max_playouts;
 int cfg_max_visits;
 size_t cfg_max_memory;
@@ -108,16 +107,6 @@ void GTP::initialize(std::unique_ptr<Network>&& net) {
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
     cfg_allow_pondering = true;
-#ifdef USE_OPENCL
-    // If we will be GPU limited, the optimal number of threads varies quite differently
-    // due to the batching behavior - we need threads that are sufficient enough to flood
-    // all the GPUs.
-    cfg_max_threads = MAX_CPUS;
-#else
-    // if we are CPU-based, there is no point using more than the number of CPUs
-    cfg_max_threads = std::min(SMP::get_num_cpus(), MAX_CPUS);
-#endif
-
     // we will re-calculate this on Leela.cpp
     cfg_num_threads = 0;
 

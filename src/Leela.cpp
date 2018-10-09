@@ -50,6 +50,74 @@ static void license_blurb() {
         PROGRAM_VERSION);
 }
 
+static void calculate_thread_count_cpu(boost::program_options::variables_map & vm) {
+    // if we are CPU-based, there is no point using more than the number of CPUs
+    auto cfg_max_threads = std::min(SMP::get_num_cpus(), MAX_CPUS);
+
+    if (vm.count("threads")) {
+        auto num_threads = vm["threads"].as<int>();
+        if (num_threads > cfg_max_threads) {
+            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
+            num_threads = cfg_max_threads;
+        }
+        cfg_num_threads = num_threads;
+    } else {
+        cfg_num_threads = cfg_max_threads;
+    }
+}
+
+#ifdef USE_OPENGL
+static void calculate_thread_count_gpu(boost::program_options::variables_map & vm) {
+    auto cfg_max_threads = MAX_CPUS;
+
+    // Default thread count : GPU case
+    // 1) if no args are given, use batch size of 5 and thread count of (batch size) * (number of gpus)
+    // 2) if number of threads are given, use batch size of (thread count) / (number of gpus)
+    // 3) if number of batches are given, use thread count of (batch size) * (number of gpus)
+    auto gpu_count = static_cast<int>(cfg_gpus.size());
+    if (gpu_count == 0) {
+        // size of zero if autodetect GPU : default to 1
+        gpu_count = 1;
+    }
+
+    if (vm.count("threads")) {
+        auto num_threads = vm["threads"].as<int>();
+        if (num_threads > cfg_max_threads) {
+            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
+            num_threads = cfg_max_threads;
+        }
+        cfg_num_threads = num_threads;
+
+        if (vm.count("batchsize")) {
+            cfg_batch_size = vm["batchsize"].as<int>();
+        } else {
+            cfg_batch_size = cfg_num_threads / gpu_count;
+
+            // no idea why somebody wants to use threads less than the number of GPUs
+            // but should at least prevent crashing
+            if (cfg_batch_size == 0) {
+                cfg_batch_size = 1;
+            }
+        }
+    } else {
+        if (vm.count("batchsize")) {
+            cfg_batch_size = vm["batchsize"].as<int>();
+        } else {
+            cfg_batch_size = 5;
+        }
+
+        cfg_num_threads = std::min(cfg_max_threads, cfg_batch_size * gpu_count);
+    }
+
+    if (cfg_num_threads < cfg_batch_size) {
+        printf("Threads number = %d must be larger than batch size = %d\n", cfg_num_threads, cfg_batch_size);
+        exit(EXIT_FAILURE);
+    }
+
+
+}
+#endif
+
 static void parse_commandline(int argc, char *argv[]) {
     namespace po = boost::program_options;
     // Declare the supported options.
@@ -208,12 +276,16 @@ static void parse_commandline(int argc, char *argv[]) {
     }
 
 #ifdef USE_OPENCL
+    // If we will be GPU limited, the optimal number of threads varies quite differently
+    // due to the batching behavior - we need threads that are sufficient enough to flood
+    // all the GPUs.
+#else
+#endif
+
+
+#ifdef USE_OPENCL
     if (vm.count("gpu")) {
         cfg_gpus = vm["gpu"].as<std::vector<int> >();
-        // if we use OpenCL, we probably need more threads for the max so that we can saturate the GPU.
-        cfg_max_threads *= cfg_gpus.size();
-        // we can't exceed MAX_CPUS
-        cfg_max_threads = std::min(cfg_max_threads, MAX_CPUS);
     }
 
     if (vm.count("full-tuner")) {
@@ -223,51 +295,6 @@ static void parse_commandline(int argc, char *argv[]) {
     if (vm.count("tune-only")) {
         cfg_tune_only = true;
     }
-
-    // Default thread count : GPU case
-    // 1) if no args are given, use batch size of 5 and thread count of (batch size) * (number of gpus)
-    // 2) if number of threads are given, use batch size of (thread count) / (number of gpus)
-    // 3) if number of batches are given, use thread count of (batch size) * (number of gpus)
-    auto gpu_count = static_cast<int>(cfg_gpus.size());
-    if (gpu_count == 0) {
-        // size of zero if autodetect GPU : default to 1
-        gpu_count = 1;
-    }
-
-    if (vm.count("threads")) {
-        auto num_threads = vm["threads"].as<int>();
-        if (num_threads > cfg_max_threads) {
-            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
-            num_threads = cfg_max_threads;
-        }
-        cfg_num_threads = num_threads;
-
-        if (vm.count("batchsize")) {
-            cfg_batch_size = vm["batchsize"].as<int>();
-        } else {
-            cfg_batch_size = cfg_num_threads / gpu_count;
-
-            // no idea why somebody wants to use threads less than the number of GPUs
-            // but should at least prevent crashing
-            if (cfg_batch_size == 0) {
-                cfg_batch_size = 1;
-            }
-        }
-    } else {
-        if (vm.count("batchsize")) {
-            cfg_batch_size = vm["batchsize"].as<int>();
-        } else {
-            cfg_batch_size = 5;
-        }
-
-        cfg_num_threads = std::min(cfg_max_threads, cfg_batch_size * gpu_count);
-    }
-
-    if (cfg_num_threads < cfg_batch_size) {
-        printf("Threads number = %d must be larger than batch size = %d\n", cfg_num_threads, cfg_batch_size);
-        exit(EXIT_FAILURE);
-    }
-
 #ifdef USE_HALF
     if (vm.count("precision")) {
         auto precision = vm["precision"].as<std::string>();
@@ -284,29 +311,19 @@ static void parse_commandline(int argc, char *argv[]) {
     }
 #endif
 #else
-    // CPU-only : default to max threads
-    if (vm.count("threads")) {
-        auto num_threads = vm["threads"].as<int>();
-        if (num_threads > cfg_max_threads) {
-            myprintf("Clamping threads to maximum = %d\n", cfg_max_threads);
-            num_threads = cfg_max_threads;
-        }
-        cfg_num_threads = num_threads;
-    } else {
-        cfg_num_threads = cfg_max_threads;
-    }
+    cfg_cpu_only = true;
 #endif
     if (vm.count("cpu-only")) {
         cfg_cpu_only = true;
-
-        // if we are forced CPU only and have no default threads,
-        // default to max threads instead of whatever formula
-        // we used for the GPU computation
-        if (vm.count("threads")) {
-            cfg_num_threads = cfg_max_threads;
-        }
     }
 
+    if (cfg_cpu_only) {
+        calculate_thread_count_cpu(vm);
+    } else {
+#ifdef USE_OPENGL
+        calculate_thread_count_gpu(vm);
+#endif
+    }
     myprintf("Using %d thread(s).\n", cfg_num_threads);
 
     if (vm.count("seed")) {
