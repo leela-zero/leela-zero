@@ -232,9 +232,9 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
 
     // remove multiple mentions of the same string
     // unique reorders and returns new iterator, erase actually deletes
-    std::sort(stringlist.begin(), stringlist.end());
-    stringlist.erase(std::unique(stringlist.begin(), stringlist.end()),
-                     stringlist.end());
+    std::sort(begin(stringlist), end(stringlist));
+    stringlist.erase(std::unique(begin(stringlist), end(stringlist)),
+                     end(stringlist));
 
     for (size_t i = 0; i < stringlist.size(); i++) {
         result += (i == 0 ? "" : "\n") + stringlist[i];
