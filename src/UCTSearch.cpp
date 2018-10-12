@@ -40,6 +40,7 @@
 using namespace Utils;
 
 constexpr int UCTSearch::UNLIMITED_PLAYOUTS;
+
 class OutputAnalysisData {
 public:
     OutputAnalysisData(const std::string& move, int visits,
