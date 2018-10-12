@@ -76,8 +76,8 @@ https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
 * OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
 * An OpenCL capable device, preferably a very, very fast GPU, with recent
 drivers is strongly recommended (OpenCL 1.1 support is enough).
-If you do not have a GPU, modify config.h in the source and remove
-the line that says "#define USE_OPENCL".
+If you do not have a GPU, add the define "USE_CPU_ONLY", for example
+by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 * Optional: BLAS Library: OpenBLAS (libopenblas-dev) or Intel MKL
 * The program has been tested on Windows, Linux and macOS.
 
@@ -289,9 +289,9 @@ If interrupted, training can be resumed with:
 
 # Todo
 
-- [ ] Optimize Winograd transformations.
+- [ ] Further optimize Winograd transformations.
 - [ ] Implement GPU batching.
-- [ ] Parameter setting over GTP.
+- [ ] Allow setting more parameters over GTP.
 - More backends:
 - [ ] MKL-DNN based backend.
 - [ ] CUDA specific version using cuDNN.
@@ -300,7 +300,7 @@ If interrupted, training can be resumed with:
 # Related links
 
 * Status page of the distributed effort:
-http://zero.sjeng.org
+https://zero.sjeng.org
 * Watch Leela Zero's training games live in a GUI:
 https://github.com/fsparv/LeelaWatcher
 * GUI and study tool for Leela Zero:
