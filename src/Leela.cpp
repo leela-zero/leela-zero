@@ -66,7 +66,7 @@ static void calculate_thread_count_cpu(boost::program_options::variables_map & v
     }
 }
 
-#ifdef USE_OPENGL
+#ifdef USE_OPENCL
 static void calculate_thread_count_gpu(boost::program_options::variables_map & vm) {
     auto cfg_max_threads = MAX_CPUS;
 
@@ -320,7 +320,7 @@ static void parse_commandline(int argc, char *argv[]) {
     if (cfg_cpu_only) {
         calculate_thread_count_cpu(vm);
     } else {
-#ifdef USE_OPENGL
+#ifdef USE_OPENCL
         calculate_thread_count_gpu(vm);
 #endif
     }
