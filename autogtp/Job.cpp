@@ -48,17 +48,21 @@ void Job::init(const Order &o) {
 }
 
 ProductionJob::ProductionJob(QString gpu, Management *parent) :
-Job(gpu, parent)
+    Job(gpu, parent),
+    m_engine(Engine(QString(), QString()))
 {
 }
 
 ValidationJob::ValidationJob(QString gpu, Management *parent) :
-Job(gpu, parent)
+    Job(gpu, parent)
 {
+    for (auto engine : m_engines) {
+        engine = Engine(QString(), QString());
+    }
 }
 
 WaitJob::WaitJob(QString gpu, Management *parent) :
-Job(gpu, parent)
+    Job(gpu, parent)
 {
 }
 
