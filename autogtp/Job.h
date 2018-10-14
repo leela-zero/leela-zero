@@ -19,6 +19,7 @@
 #ifndef JOB_H
 #define JOB_H
 
+#include "Game.h"
 #include "Result.h"
 #include "Order.h"
 #include <QObject>
@@ -50,7 +51,6 @@ public:
 
 protected:
     QAtomicInt m_state;
-    QString m_option;
     QString m_gpu;
     int m_moves;
     VersionTuple m_leelazMinVersion;
@@ -66,7 +66,7 @@ public:
     void init(const Order &o);
     Result execute();
 private:
-    QString m_network;
+    Engine m_engine;
     QString m_sgf;
     bool m_debug;
 };
@@ -79,8 +79,7 @@ public:
     void init(const Order &o);
     Result execute();
 private:
-    QString m_firstNet;
-    QString m_secondNet;
+    Engine m_engines[2];
     QString m_sgfFirst;
     QString m_sgfSecond;
 };
