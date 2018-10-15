@@ -462,7 +462,10 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 
     m_fwd_weights = std::make_shared<ForwardPipeWeights>();
 
+    // Make a guess at a good size as long as the user doesn't
+    // explicitly set a maximum memory usage.
     m_nncache.set_size_from_playouts(playouts);
+
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
         for (auto v = 0; v < NUM_INTERSECTIONS; ++v) {

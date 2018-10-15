@@ -81,8 +81,7 @@ class GTP {
 public:
     static std::unique_ptr<Network> s_network;
     static void initialize(std::unique_ptr<Network>&& network);
-    static bool execute(GameState & game, const std::string& xinput);
-    static bool execute_setoption(int id, const std::string& command);
+    static void execute(GameState & game, const std::string& xinput);
     static void setup_default_parameters();
 private:
     static constexpr int GTP_VERSION = 2;
@@ -94,6 +93,8 @@ private:
         std::istringstream& is);
     static std::pair<bool, std::string> set_max_memory(
         size_t max_memory, int cache_size_ratio_percent);
+    static void execute_setoption(UCTSearch& search,
+                                  int id, const std::string& command);
 
     // Memory estimation helpers
     static size_t get_base_memory();
