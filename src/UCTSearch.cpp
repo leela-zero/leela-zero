@@ -190,6 +190,10 @@ float UCTSearch::get_min_psa_ratio() const {
     if (mem_full > 0.5f) {
         // Memory is almost exhausted, trim more aggressively.
         if (mem_full > 0.95f) {
+            // if completely full just stop expansion by returning an impossible number
+            if (mem_full >= 1.0f) {
+                return 2.0f;
+            }
             return 0.01f;
         }
         return 0.001f;
@@ -208,7 +212,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
-        } else if (UCTNodePointer::get_tree_size() < cfg_max_tree_size) {
+        } else {
             float eval;
             const auto had_children = node->has_children();
             const auto success =
