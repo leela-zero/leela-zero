@@ -84,13 +84,19 @@ static std::array<std::array<int, NUM_INTERSECTIONS>,
 
 float Network::benchmark_time(int centiseconds) {
     const auto cpus = cfg_num_threads;
-    const Time start;
 
     ThreadGroup tg(thread_pool);
     std::atomic<int> runcount{0};
 
     GameState state;
     state.init_game(BOARD_SIZE, 7.5);
+
+    // As a sanity run, try one run with self check.
+    // Isn't enough to guarantee correctness but better than nothing,
+    // plus for large nets self-check takes a while (1~3 eval per second)
+    get_output(&state, Ensemble::RANDOM_SYMMETRY, -1, true, true);
+
+    const Time start;
     for (auto i = 0; i < cpus; i++) {
         tg.add_task([this, &runcount, start, centiseconds, state]() {
             while (true) {
@@ -534,14 +540,16 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         m_fwd_weights->m_conv_pol_b[i] = 0.0f;
     }
 
-    bool use_selfcheck = true;
 #ifdef USE_OPENCL
     if (cfg_cpu_only) {
         myprintf("Initializing CPU-only evaluation.\n");
         m_forward = init_net(channels, std::make_unique<CPUPipe>());
-
-        use_selfcheck = false;
     } else {
+#ifdef USE_OPENCL_SELFCHECK
+        // initialize CPU reference first, so that we can self-check
+        // when doing fp16 vs. fp32 detections
+        m_forward_cpu = init_net(channels, std::make_unique<CPUPipe>());
+#endif
 #ifdef USE_HALF
         // HALF support is enabled, and we are using the GPU.
         // Select the precision to use at runtime.
@@ -556,16 +564,8 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
 #else //!USE_OPENCL
     myprintf("Initializing CPU-only evaluation.\n");
     m_forward = init_net(channels, std::make_unique<CPUPipe>());
-    use_selfcheck = false;
 #endif
 
-#ifdef USE_OPENCL_SELFCHECK
-    if (use_selfcheck) {
-        m_forward_cpu = init_net(channels, std::make_unique<CPUPipe>());
-    }
-#else
-    (void)use_selfcheck;
-#endif
     // Need to estimate size before clearing up the pipe.
     get_estimated_size();
     m_fwd_weights.reset();
@@ -716,7 +716,7 @@ bool Network::probe_cache(const GameState* const state,
 
 Network::Netresult Network::get_output(
     const GameState* const state, const Ensemble ensemble,
-    const int symmetry, const bool skip_cache) {
+    const int symmetry, const bool skip_cache, const bool force_selfcheck) {
     Netresult result;
     if (state->board.get_boardsize() != BOARD_SIZE) {
         return result;
@@ -756,10 +756,13 @@ Network::Netresult Network::get_output(
         // selfcheck is done here because this is the only place NN
         // evaluation is done on actual gameplay.
         if (m_forward_cpu != nullptr
-            && Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
+            && (force_selfcheck || Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0)
+        ) {
             auto result_ref = get_output_internal(state, rand_sym, true);
             compare_net_outputs(result, result_ref);
         }
+#else
+        (void)force_selfcheck;
 #endif
     }
 
