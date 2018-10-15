@@ -380,11 +380,21 @@ void Network::select_precision(int channels) {
 
         myprintf("Initializing OpenCL (autodetecting precision).\n");
 
-        // Setup fp16 here so that we can see if we can skip autodetect
+        // Setup fp16 here so that we can see if we can skip autodetect.
+        // However, if fp16 sanity check fails we will return a fp32 and pray it works.
         auto fp16_net = std::make_unique<OpenCLScheduler<half_float::half>>();
         if (!fp16_net->needs_autodetect()) {
-            myprintf("OpenCL: using fp16/half compute support.\n");
-            m_forward = init_net(channels, std::move(fp16_net));
+            try {
+                myprintf("OpenCL: using fp16/half compute support.\n");
+                m_forward = init_net(channels, std::move(fp16_net));
+                benchmark_time(1); // a sanity check run
+            } catch (...) {
+                myprintf("OpenCL: fp16/half failed despite driver claiming support.\n");
+                myprintf("Falling back to single precision\n");
+                m_forward.reset();
+                m_forward = init_net(channels,
+                    std::make_unique<OpenCLScheduler<float>>());
+            }
             return;
         }
 
