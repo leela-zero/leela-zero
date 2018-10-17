@@ -301,3 +301,22 @@ const FullBoard& GameState::get_past_board(int moves_ago) const {
     assert(m_movenum + 1 <= game_history.size());
     return game_history[m_movenum - moves_ago]->board;
 }
+
+int GameState::get_past_move(int moves_ago) const {
+    return game_history[m_movenum - moves_ago]->get_last_move();
+}
+
+bool GameState::is_ladder(int ladder_len) const {
+    // bogus ladder detector that detects any repeated patterns actually
+    const auto PERIOD = 4;
+    if (ladder_len < 2 || m_movenum < (unsigned) ladder_len + PERIOD) {
+        return false;
+    }
+    const auto delta = get_past_move(0) - get_past_move(PERIOD);
+    for (auto i = 1; i < ladder_len; i++) {
+        if (get_past_move(i) - get_past_move(i + PERIOD) != delta) {
+            return false;
+        }
+    }
+    return true;
+}

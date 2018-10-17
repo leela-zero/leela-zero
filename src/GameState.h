@@ -65,8 +65,11 @@ public:
     bool has_resigned() const;
     int who_resigned() const;
 
+    bool is_ladder(int ladder_len) const;
+
 private:
     bool valid_handicap(int stones);
+    int get_past_move(int moves_ago) const;
 
     std::vector<std::shared_ptr<const KoState>> game_history;
     TimeControl m_timecontrol;
