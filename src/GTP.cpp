@@ -58,6 +58,7 @@ int cfg_max_cache_ratio_percent;
 TimeManagement::enabled_t cfg_timemanage;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
+int cfg_ladder_len;
 int cfg_noise;
 int cfg_random_cnt;
 int cfg_random_min_visits;
@@ -138,6 +139,7 @@ void GTP::setup_default_parameters() {
     cfg_fpu_reduction = 0.25f;
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
+    cfg_ladder_len = 0;
     cfg_noise = false;
     cfg_random_cnt = 0;
     cfg_random_min_visits = 1;
@@ -1160,6 +1162,12 @@ void GTP::execute_setoption(UCTSearch & search,
         int resignpct;
         valuestream >> resignpct;
         cfg_resignpct = resignpct;
+    } else if (name == "ladder detection length") {
+        std::istringstream valuestream(value);
+        int ladder_len;
+        valuestream >> ladder_len;
+        cfg_ladder_len = ladder_len;
+        gtp_printf(id, "");
     } else {
         gtp_fail_printf(id, "Unknown option");
     }

@@ -219,7 +219,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                 node->create_children(m_network, m_nodes, currstate, eval,
                                       get_min_psa_ratio());
             if (!had_children && success &&
-                !currstate.is_ladder(3)) {
+                !currstate.is_ladder(cfg_ladder_len)) {
                 result = SearchResult::from_eval(eval);
             }
         }

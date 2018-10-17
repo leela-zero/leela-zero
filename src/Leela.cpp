@@ -83,6 +83,8 @@ static void parse_commandline(int argc, char *argv[]) {
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
         ("cpu-only", "Use CPU-only implementation and do not use GPU.")
+        ("ladderlen", po::value<int>()->default_value(cfg_ladder_len),
+                      "Length of repeated moves for ladder detection. (0 = off)")
         ;
 #ifdef USE_OPENCL
     po::options_description gpu_desc("GPU options");
@@ -302,6 +304,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("resignpct")) {
         cfg_resignpct = vm["resignpct"].as<int>();
+    }
+
+    if (vm.count("ladderlen")) {
+        cfg_ladder_len = vm["ladderlen"].as<int>();
     }
 
     if (vm.count("randomcnt")) {
