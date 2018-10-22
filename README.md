@@ -72,7 +72,7 @@ If you prefer a more human style, a network trained from human games is availabl
 * Boost 1.58.x or later, headers and program_options, filesystem and system libraries (libboost-dev, libboost-program-options-dev and libboost-filesystem-dev on Debian/Ubuntu)
 * zlib library (zlib1g & zlib1g-dev on Debian/Ubuntu)
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
-https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
+https://github.com/KhronosGroup/OpenCL-Headers/tree/master/CL)
 * OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
 * An OpenCL capable device, preferably a very, very fast GPU, with recent
 drivers is strongly recommended (OpenCL 1.1 support is enough).
