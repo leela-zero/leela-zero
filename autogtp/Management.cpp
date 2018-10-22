@@ -324,7 +324,7 @@ Order Management::getWorkInternal(bool tuning) {
     prog_cmdline.append(".exe");
 #endif
     prog_cmdline.append(" -s -J");
-    prog_cmdline.append(" http://zero.sjeng.org/get-task/");
+    prog_cmdline.append(" https://zero.sjeng.org/get-task/");
     if (tuning) {
         prog_cmdline.append("0");
     } else {
@@ -533,7 +533,7 @@ void Management::fetchNetwork(const QString &net, const QString &hash) {
     // Use the filename from the server.
     prog_cmdline.append(" -s -J -o " + name + " ");
     prog_cmdline.append(" -w %{filename_effective}");
-    prog_cmdline.append(" http://zero.sjeng.org/" + name);
+    prog_cmdline.append(" https://zero.sjeng.org/" + name);
 
     QProcess curl;
     curl.start(prog_cmdline);
@@ -720,7 +720,7 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
     prog_cmdline.append("-F options_hash="+ l["optHash"]);
     prog_cmdline.append("-F random_seed="+ l["rndSeed"]);
     prog_cmdline.append("-F sgf=@"+ r["file"] + ".sgf.gz");
-    prog_cmdline.append("http://zero.sjeng.org/submit-match");
+    prog_cmdline.append("https://zero.sjeng.org/submit-match");
 
     bool sent = false;
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
@@ -772,7 +772,7 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
     prog_cmdline.append("-F random_seed="+ l["rndSeed"]);
     prog_cmdline.append("-F sgf=@" + r["file"] + ".sgf.gz");
     prog_cmdline.append("-F trainingdata=@" + r["file"] + ".txt.0.gz");
-    prog_cmdline.append("http://zero.sjeng.org/submit");
+    prog_cmdline.append("https://zero.sjeng.org/submit");
 
     bool sent = false;
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
