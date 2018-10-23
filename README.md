@@ -30,7 +30,15 @@ distributed effort to repeat the work. Working together, and especially
 when starting on a smaller scale, it will take less than 1700 years to get
 a good network (which you can feed into this program, suddenly making it strong).
 
-# I want to help
+# I want to help without using my own hardware
+
+There can be many reasons why you may not want to use your own hardware, yet you want to contribute to leela-zero (not powerful enough, used for other tasks, too hot, etc.)
+Fortunately, many cloud companies offer free trials (or paid solutions, not covered here) that can significantly help leela-zero project with powerful GPU (Tesla V100).
+Please note that this doesn't prevent you from using it in combination with another contribution with your own hardware, if you want.
+
+[Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial, Microsoft Azure, Oracle cloud, etc)](CLOUD.md)
+
+# I want to help with my own hardware
 
 You need a PC with a GPU, i.e. a discrete graphics card made by NVIDIA or AMD,
 preferably not too old, and with the most recent drivers installed.
@@ -40,7 +48,7 @@ lower. If your CPU is not *very* recent (Haswell or newer, Ryzen or newer),
 performance will be outright bad, and it's probably of no use trying to join
 the distributed effort. But you can still play, especially if you are patient.
 
-[Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial, Microsoft Azure, Oracle cloud, etc)](CLOUD.md)
+
 
 ## Windows
 
