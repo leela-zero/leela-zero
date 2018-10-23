@@ -291,28 +291,33 @@ If interrupted, training can be resumed with:
 
 - [ ] Further optimize Winograd transformations.
 - [ ] Implement GPU batching.
-- [ ] Allow setting more parameters over GTP.
+- [ ] GTP extention to exclude moves from analysis.
+- [ ] Root filtering for handicap play.
 - More backends:
 - [ ] MKL-DNN based backend.
-- [ ] CUDA specific version using cuDNN.
-- [ ] AMD specific version using MIOpen.
+- [ ] CUDA specific version using cuDNN or cuBLAS.
+- [ ] AMD specific version using MIOpen/ROCm.
 
 # Related links
 
 * Status page of the distributed effort:
 https://zero.sjeng.org
+* GUI and study tool for Leela Zero:
+https://github.com/featurecat/lizzie
 * Watch Leela Zero's training games live in a GUI:
 https://github.com/fsparv/LeelaWatcher
-* GUI and study tool for Leela Zero:
-https://github.com/CamWagner/lizzie
-* Stockfish chess engine ported to Leela Zero framework:
-https://github.com/glinscott/leela-chess
 * Original Alpha Go (Lee Sedol) paper:
 https://storage.googleapis.com/deepmind-media/alphago/AlphaGoNaturePaper.pdf
-* Newer Alpha Zero (Go, Chess, Shogi) paper:
+* Alpha Go Zero paper:
+https://deepmind.com/documents/119/agz_unformatted_nature.pdf
+* Alpha Zero (Go, Chess, Shogi) paper:
 https://arxiv.org/pdf/1712.01815.pdf
 * AlphaGo Zero Explained In One Diagram:
 https://medium.com/applied-data-science/alphago-zero-explained-in-one-diagram-365f5abf67e0
+* Stockfish chess engine ported to Leela Zero framework:
+https://github.com/LeelaChessZero/lczero
+* Leela Chess Zero (chess optimized client)
+https://github.com/LeelaChessZero/lc0
 
 # License
 
