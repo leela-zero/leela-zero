@@ -409,8 +409,6 @@ void benchmark(GameState& game) {
 }
 
 int main(int argc, char *argv[]) {
-    auto input = std::string{};
-
     // Set up engine parameters
     GTP::setup_default_parameters();
     parse_commandline(argc, argv);
@@ -450,6 +448,7 @@ int main(int argc, char *argv[]) {
             std::cout << "Leela: ";
         }
 
+        auto input = std::string{};
         if (std::getline(std::cin, input)) {
             Utils::log_input(input);
             GTP::execute(*maingame, input);
