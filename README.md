@@ -35,9 +35,11 @@ a good network (which you can feed into this program, suddenly making it strong)
 There can be many reasons why you may not want to use your own hardware, 
 yet you want to contribute to leela-zero (not powerful enough, used for 
 other tasks, too hot, etc.).
+
 Fortunately, many cloud companies offer free trials (or paid solutions, 
 not covered here) that can significantly help leela-zero project with 
 powerful GPU (Tesla V100).
+
 Please note that this doesn't prevent you from using it in combination 
 with another contribution with your own hardware, if you want.
 
