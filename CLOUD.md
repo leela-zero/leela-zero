@@ -9,9 +9,13 @@ https://imgur.com/a/AeoKUYa
 - These instructions will create an entirely automated leela-zero autogtp VM instance thanks to a startup-script in metadata : after setting it up correctly, it will not require any operation and will install all needed packages, compile and run leela-zero with autogtp, and will produce games automatically
 - The instance uses cloud ressource, not your personal machine
 - The instance is running on a server : it will stay online independently from you (even if your computer is powered off)
-- This instance will be Preemptible : it uses cloud ressource that are not always available, causing it to be much cheaper but it will be terminated moderately every while (max : 24 hours on a row before termination).
-- The Preemptiible terminations will not be a problem though, because the instance will be in a managed instances group 
-- This managed instances group will automatically create a new preemtible VM instance for the first time. Then, this managed instances group will automatically recreate and restart the instance every time it is terminated by preemptible use or manually deleted, but NOT for scheduled maintainance (rare, but it will require a manual restart).
+- This instance will be Preemptible : it uses cloud ressource that are not always available, causing it to be much cheaper but the instance is ephemere : after 24 hours max it cannot "live" anymore and will be terminated by preemptible use rules
+- The Preemptiible terminations will not be a problem though, because our instance will be in a managed instance group 
+- Our managed instance group will automatically create our first instance, install all needed packages on it, then automatically reboot it and automatically starting to produce games with autogtp
+- Everytime our instance "dies" (max 24 hours because of preemptibility, or if you manually delete it), our managed instance group will automatically delete our "dead" instance and automatically recreate a new "child" preemtible instance (a new one, does not contain old data of the "parent" instance)
+- Then, our managed instance group will automatically restart our new "child" instance, install all needed packages including leela-zero (takes exactly 10 minutes), then auto reboot, and then at reboot automatically start to produce games with autogtp, until the "child" instance dies, giving birth by the group to a new "child of the child" instance, etc.
+- The exception to this automated recreation+autostart by the instance group is for scheduled maintainance by Google (rare, once every few weeks) which will require you to manual restart the instance (it takes 1 minute), then the auto-start script will handle everything again.
+
 
 
 
