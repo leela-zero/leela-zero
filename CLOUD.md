@@ -1,3 +1,6 @@
+i dont know how to embbed images here, but you can find all pictures at :
+https://imgur.com/a/AeoKUYa
+
 # Quick facts before starting :
 
 - This free trial is entirely and totally free of charge, without any post free credit condition (for Google Cloud, i don't know about the other services)
