@@ -3,7 +3,7 @@ https://imgur.com/a/AeoKUYa
 
 # Quick facts before starting :
 
-- This free trial is entirely and totally free of charge, without any post free credit condition (for Google Cloud, i don't know about the other services)
+- This free trial is entirely and totally free of charge, without any obligatory end of free credit condition (this is the case for Google Cloud, i don't know about the other services)
 - With powerful GPU like the Tesla V100, you will be able to produce 16 games per hour (all 5% resign) for leela-zero 40 blocksx256, which is much more than what a public card like a GTX 1080 Ti can do.
 - To prevent abuse, spam, robots, etc, an id check will be performed with a valid credit card, but you will not be charged at all during the free trial
 - These instructions will create an entirely automated leela-zero autogtp VM instance thanks to a startup-script in metadata : after setting it up correctly, it will not require any operation and will install all needed packages, compile and run leela-zero with autogtp, and will produce games automatically
@@ -18,6 +18,7 @@ https://imgur.com/a/AeoKUYa
 # Cloud Companies :
 
 We are not affiliated with any cloud company, and we provide these instructions as they are a free of charge way to help public  contributing to leela-zero project.
+
 We are thankful to these cloud companies for giving us these free trial opportunities.
 
 The instructions below are for Google Cloud Free Trial as Google is a widespread company, but much of the documentation here can be used if slightly modified for other cloud companies offering similar cloud free trials that include a GPU (Microsft Azure, Oracle Cloud, etc.)
@@ -36,7 +37,9 @@ You'll first need to start your google cloud free trial here :
 https://console.cloud.google.com/
 
 The cloud public ressource available being limitied, especially when it comes to powerful GPU like V100, in order to prevent abuse, spam, robots, multi accounts, etc, Google will ask to check your id with a valid credit card, but you will not be charged anything at all, even when your free trial credit ends.
+
 And this free trial does not force you to susbcribe to anything at all. It is indeed entirely free of charge.
+
 Also, just like for Google Colab, please do NOT try to use multiple accounts in any way, as Google won't hesitate to ban you, as it happened for google Colab users. If you want to help leela-zero, please rather try to spread these instructions so that more people join us in this contributed effort.
 
 # Getting Started
@@ -50,7 +53,9 @@ To navigate in Google Cloud menus, click on the sandwich bar in the top left.
 # Free credit consumption estimation : 
 
 You can check your remaining free credit, in the billing menu of the sandwich bar.
+
 Or, you can alternately use this link :
+
 https://console.cloud.google.com/billing
 
 At start, a free 300$ (or 257€) free trial credit is given to you, free of charge.
@@ -106,9 +111,13 @@ in the script : replace `mygooglename` (twice) with either your real gmail accou
 
 note 2 : in `nvidia-driver-410` , replace `410` version number by whatever latest version number you find here :
 https://launchpad.net/~graphics-drivers/+archive/ubuntu/ppa
+
 note 3 : an instance template cannot be modified/updated, if you want for example to change nvidia-driver-410 in the script, change username, or modify anything in the instance template, you will have to create a new instance template, then delete your current instance group, and create a new instance group with your latest instance template.
+
 note 4 : i chose ./autogtp -g 2 in the script as it is 25% faster from my extensive long time tests
+
 note 5 : this script includes NEXT BRANCH as it is much faster and includes all new improvements, but if you want the MASTER BRANCH startup-script, please see : -----add----link----
+
 note 6 : credits for the script go to (i modified it) : https://stackoverflow.com/a/10439058
 
 After instance template finishes creating, you will get a screen like that
@@ -191,7 +200,9 @@ img 41
 # In case of system package corruption : Delete the instance
 
 The first boot installation takes exactly 10 minutes.
+
 But if, very unfortunately, your instance gets stopped by preemptible use in these first 10 minutes, there is a high probability of package corruption, so i suggest you either run the journal as explained below in # to see if instance is runing fine, or you delete the instance (no need to create a new one, the managed group instance will automatically take care of this).
+
 If you want to delete an instance, it is in Compute engine-> VM instances, at the right of your instance click on the 3 dots, choose "Delete", and confirm the message, as shown below : 
 
 delete1
@@ -202,11 +213,13 @@ delete1
 How to manually restart an instance after it has been stopped due to scheduled maintainance :
 
 As explained earlier, Preemptible instances are much cheaper but can't last more than 24 hours, and can be stopped sooner (frequent).
+
 This case is not at all a problem though, because, every time the instance is stopped by preemtpible use or deleted by yourself, the managed instance group will immediately and continuously automatically keep trying to recreate and restart our instance in any of the subregions(zones) we selected earlier that have a Tesla V100 available,, until it succeeds.
 You don't have to do anything at all for that.
 
 
 However, sometimes both preemptible and non premptible instances will get stopped by Google Cloud due to scheduled maintainance events.
+
 This case is rare (maybe once every few weeks), but Preemptible instances can't be automatically restarted after that, unlike non Preemptible instances.
 In that case, the user (you) will have to manually restart it.
 To do that, go on "VM instances" page in Compute engine (https://console.cloud.google.com/compute/instances) :
@@ -241,6 +254,7 @@ skip this step if you're okay with using your real gmail account name publicly.
 If you chose to have custom name (for privacy, etc.), you need to do this step only once, and all new instances will have the name you chose.
 
 In Compute engine -> "VM instances" (https://console.cloud.google.com/compute/instances)
+
 If your instance has started (green circle), click on SSH button.
 
 A new black window will open which is a linux terminal (ubuntu here).
@@ -326,6 +340,7 @@ In the SSH window, do :
 test1
 
 glances tells us many noticeable information :
+
 for example, in this instance glances tells us that this instance has been running for almost 13 hours now,
 and journal tells us 111 games have been produced in 767 minutes
 
@@ -348,7 +363,9 @@ if for some reason you dont want to go to the ppa website, you can run this comm
 ## Optionnal : Save all SGF produced and export them to download them on your personnal computer :
 
 Steps described in this github comment, with pictures : https://github.com/gcp/leela-zero/issues/1943#issuecomment-430977929
+
 I added this paragraph to answer @kwccoin on the github issue linked above.
+
 It may also be useful for different yet similar purposes :
 
 first,
