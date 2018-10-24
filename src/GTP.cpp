@@ -58,6 +58,7 @@ int cfg_max_cache_ratio_percent;
 TimeManagement::enabled_t cfg_timemanage;
 int cfg_lagbuffer_cs;
 int cfg_resignpct;
+int cfg_starting_root_child_visits;
 int cfg_noise;
 int cfg_random_cnt;
 int cfg_random_min_visits;
@@ -139,6 +140,7 @@ void GTP::setup_default_parameters() {
     cfg_fpu_reduction = 0.25f;
     // see UCTSearch::should_resign
     cfg_resignpct = -1;
+    cfg_starting_root_child_visits = 0;
     cfg_noise = false;
     cfg_fpu_root_reduction = cfg_fpu_reduction;
     cfg_random_cnt = 0;
@@ -1168,6 +1170,12 @@ void GTP::execute_setoption(UCTSearch & search,
         int resignpct;
         valuestream >> resignpct;
         cfg_resignpct = resignpct;
+        gtp_printf(id, "");
+    } else if (name == "starting visits for each root move") {
+        std::istringstream valuestream(value);
+        int starting_root_child_visits;
+        valuestream >> starting_root_child_visits;
+        cfg_starting_root_child_visits = starting_root_child_visits;
         gtp_printf(id, "");
     } else {
         gtp_fail_printf(id, "Unknown option");

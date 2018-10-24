@@ -264,18 +264,22 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
             continue;
         }
 
+        const auto visits = child.get_visits();
         auto winrate = fpu_eval;
         if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
             // Someone else is expanding this node, never select it
             // if we can avoid so, because we'd block on it.
             winrate = -1.0f - fpu_reduction;
-        } else if (child.get_visits() > 0) {
+        } else if (visits > 0) {
             winrate = child.get_eval(color);
         }
         const auto psa = child.get_policy();
-        const auto denom = 1.0 + child.get_visits();
+        const auto denom = 1.0 + visits;
         const auto puct = cfg_puct * psa * (numerator / denom);
-        const auto value = winrate + puct;
+        auto value = winrate + puct;
+        if (is_root && visits < cfg_starting_root_child_visits) {
+            value += (cfg_starting_root_child_visits - visits) * (1.0f + cfg_puct * numerator);
+        }
         assert(value > std::numeric_limits<double>::lowest());
 
         if (value > best_value) {
