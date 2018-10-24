@@ -118,7 +118,6 @@ static void parse_commandline(int argc, char *argv[]) {
         ("puct", po::value<float>())
         ("softmax_temp", po::value<float>())
         ("fpu_reduction", po::value<float>())
-        ("fpu_root_reduction", po::value<float>())
         ;
 #endif
     // These won't be shown, we use them to catch incorrect usage of the
@@ -366,11 +365,6 @@ static void parse_commandline(int argc, char *argv[]) {
     // Do not lower the expected eval for root moves that are likely not
     // the best if we have introduced noise there exactly to explore more.
     cfg_fpu_root_reduction = cfg_noise ? 0.0f : cfg_fpu_reduction;
-#ifdef USE_TUNER
-    if (vm.count("fpu_root_reduction")) {
-        cfg_fpu_root_reduction = vm["fpu_root_reduction"].as<float>();
-    }
-#endif
 
     auto out = std::stringstream{};
     for (auto i = 1; i < argc; i++) {
