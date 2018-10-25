@@ -237,16 +237,9 @@ If the instance is stopped, you will see a grey square (STOPPED) instead of the 
 When all VM instances are stopped, the free credit stops being consumed, so you don't have to worry about failing to restart a stopped instance, you can do it anytime later.
 Also, you can willingly chose to stop contributing for some time and stop your instance, then whenever you want start contributing again.
 
-To restart a stopped instance, click on the 3 dots at the right of your instance, and click on "start", as shown below :
+To restart a stopped instance, click on the 3 dots at the right of your instance, and click on "start".
 
-
-
-
-![screenshot](?raw=true)
-![screenshot](?raw=true)
-![screenshot](?raw=true)
-
-
+![screenshot](https://i.imgur.com/i2MZXGg.png?raw=true)
 
 note : starting the isntance will start the free trial credits consumption, as explained in the pre-start message
 
@@ -279,7 +272,7 @@ In this SSH window, on the top right click on the wheel settings, then change li
 
 ![screenshot](https://i.imgur.com/wUQlNJi.png?raw=true)
 ![screenshot](https://i.imgur.com/WXzyMbC.png?raw=true)
-![screenshot](https://i.imgur.com/76HTCqW.png?raw=true)
+![screenshot](https://i.imgur.com/6Cxi6PN.png?raw=true)
 
 
 Since your ubuntu username is now different from the current username of in the running instance, we will need to delete this instance (that had your default google account name for linux username), as explained earlier in  "In case of system package corruption : Delete the instance", so that the automated startup-script will work correctly with the custom name you set earlier in instance template
@@ -349,7 +342,7 @@ note : you don't see moves generated until one game ends, because all the moves 
 After some time, you can get something like this :
 note : as said earlier, no resign games are much slower to produce, so game production speed may vary depending on the number of no resign games you have
 
-![screenshot](https://i.imgur.com/6Cxi6PN.png?raw=true)
+![screenshot](https://i.imgur.com/76HTCqW.png?raw=true)
 
 
 ## Optionnal : see hardware usage (cpu,gpu,ram etc.) with glances
@@ -378,6 +371,7 @@ another useful command you can run to check gpu usage is :
 ## Optionnal : Why we don't run upgrade and dist-upgrade maintainance
 
 Because the instance will live less than 24 hours.
+
 The child instance will get newest packages at the time it's running.
 
 ## Optionnal : Manually check latest nvidia-driver version available
@@ -412,6 +406,8 @@ since instance templates are not modfiable, you need to create a new instance te
 then delete current instance group
 then create a new instance group with this new template
 
+What follows below is only manual instructions.
+An automated shutdown-script has yet to be made (but google cloud doesn't allow to send mails, see : https://cloud.google.com/compute/docs/tutorials/sending-mail/)
 
 secondly,
 then, click on SSH button in google cloud console again to open a 2nd command line window
