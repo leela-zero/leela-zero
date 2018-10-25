@@ -86,6 +86,7 @@ Then, choose these settings :
 
 As you can see in the 3 screenshots below :
 
+![screenshot](https://i.imgur.com/1HOkntO.png?raw=true)
 img05
 img1
 img2
