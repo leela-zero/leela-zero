@@ -10,7 +10,7 @@
 - The Preemptible terminations will not be a problem though, because our instance will be in a managed instance group 
 - Our managed instance group will automatically create our first instance, install all needed packages on it (which takes exactly 10 minutes), then automatically reboot it and automatically starting to produce games with autogtp
 - Everytime our instance "dies" (max 24 hours because of preemptibility, or if you manually delete it), our managed instance group will automatically delete our "dead" instance and automatically recreate a new "child" preemptible instance (a new one, does not contain old data of the "parent" instance)
-- Then, our managed instance group will automatically restart our new "child" instance, install all needed packages including leela-zero (takes exactly 10 minutes), then auto reboot, and then at reboot automatically start to produce games with autogtp, until the "child" instance "dies", giving birth by the group to a new "child of the child" instance, etc.
+- Then, our managed instance group will automatically restart our new "child" instance, install all needed packages including leela-zero (takes exactly 10 minutes), then auto reboot, and then at reboot automatically start to produce games with autogtp, until the "child" instance "dies", giving "birth" by the group to a new "child of the child" instance, etc.
 - The exception to this automated recreation+autostart by the instance group is for scheduled maintainance by Google (rare, once every few weeks) which will require you to manual restart the instance (it takes 1 minute), then the auto-start script will handle everything again.
 
 
@@ -37,7 +37,7 @@ You'll first need to start your google cloud free trial here :
 
 https://console.cloud.google.com/
 
-The cloud public ressource available being limitied, especially when it comes to powerful GPU like V100, in order to prevent abuse, spam, robots, multi accounts, etc, Google will ask to check your id with a valid credit card, but you will not be charged anything at all, even when your free trial credit ends.
+The cloud public ressource available being limitied, especially when it comes to powerful GPU like the Tesla V100, in order to prevent abuse, spam, robots, multi accounts, etc, Google will ask to check your id with a valid credit card, but you will not be charged anything at all, even when your free trial credit ends.
 
 You can check by yourself here : 
 
@@ -67,6 +67,7 @@ At start, a free 300$ (or 257€) free trial credit is given to you, free of cha
 With the settings later explained, our instance will consume 0,774$/hour with a Tesla V100
 
 This will allow us to use it for arround 390 hours, which would produce arround 6000 games leela-zero 40 blocks (5% resign only, as 0% resign games take much more time) entirely free of charge !
+
 These 300$ can be used for arround 16,1 days for a h24 7/7 use of a Tesla V100, entirely free of charge !
 
 # Create an instance template
@@ -151,13 +152,13 @@ Repeat this step for every subregion inside a region and similarly for every oth
 At the time of these instructions, these are the regions and subregions that can provide a Tesla V100 :
 
 
-us-central1 (iowa) (has v100 in 3 subregions : a f b)
+us-central1 (iowa) (has Tesla V100 in 3 subregions : a f b)
 
-us-west1 (oregon) (has v100 in 2 subregions : b a)
+us-west1 (oregon) (has Tesla V100 in 2 subregions : b a)
 
-europe-west4 (netherlands) (has v100 in 1 subregion : a)
+europe-west4 (netherlands) (has Tesla V100 in 1 subregion : a)
 
-asia-east1 (Taiwan) (has v100 in 1 subregion : c)
+asia-east1 (Taiwan) (has Tesla V100 in 1 subregion : c)
 
 
 But please remember that these can change in the future for the better or the worse, this is why all the methodology is described here.
