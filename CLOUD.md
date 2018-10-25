@@ -86,7 +86,7 @@ Then, choose these settings :
 As you can see in the 4 screenshots below :
 
 
-![screenshot](https://i.imgur.com/66Q8J5r.png?raw=true)
+![screenshot](https://i.imgur.com/BGgT7r4.png?raw=true)
 ![screenshot](https://i.imgur.com/APov702.png?raw=true)
 ![screenshot](https://i.imgur.com/HD9j1sy.png?raw=true)
 ![screenshot](https://i.imgur.com/8KNYH68.png?raw=true)
@@ -131,7 +131,7 @@ note 6 : credits for the script go to (i modified it) : https://stackoverflow.co
 
 After instance template finishes creating, you will get a screen like that
 
-![screenshot](https://i.imgur.com/U6nqR9B.png?raw=true)
+![screenshot](https://i.imgur.com/HwEnnxf.png?raw=true)
 
 # Check the regions and subregions that can provide a Tesla V100 :
 
@@ -177,15 +177,15 @@ Then, choose these settings :
 
 As you can see in the screenshots below : 
 
-![screenshot](https://i.imgur.com/7XBTWqj.png?raw=true)
-![screenshot](https://i.imgur.com/K4PeQG7.png?raw=true)
+![screenshot](https://i.imgur.com/NHZ1g9C.png?raw=true)
+![screenshot](https://i.imgur.com/bo2lP69.png?raw=true)
 
 - group name : any name you want
 - location : multi-zone, then click on more
 As explained earlier choose only one of the regions that can provide a Tesla V100 in at least one of its subregions (zones).
 The instance group that we are creating will continuously be in charge of trying to recreate and restart the instance in any of the subregions (zones) that we will choose until it finds one where hardware is providable on the cloud.
 This is why it is preferred to choose a region that can provide a Tesla V100 in many of its subregions.
-In the video tutorial, i chose us-central1 (iowa).
+In the video tutorial, i chose us-central1 (iowa) in this example.
 Then click on "configure zones"
 - zone (subregion) : tick only the subregions (zones) that can provide a Tesla V100
 In this example i ticked subregions a f and b, and unticked all other subregions.
@@ -199,14 +199,14 @@ As free trial accounts have a GPU quota of 1, we will not be able to create anym
 Click on blue button "create".
 After some time, we get a screen like this :
 
-![screenshot](https://i.imgur.com/Grk8Vz2.png?raw=true)
+![screenshot](https://i.imgur.com/4rPfdd9.png?raw=true)
 
 if you go back to "VM instances" (https://console.cloud.google.com/compute/instances) :
 
 You can see that a new instance has been created by the managed instance group
 This instance will automatically update, upgrade and install all system packages then compile leela-zero and reboot, and then automatically run autogtp.
 
-![screenshot](https://i.imgur.com/tXxMtzX.png?raw=true)
+![screenshot](https://i.imgur.com/C0K8s4K.png?raw=true)
 
 
 # The last obligatory thing you need to know :
