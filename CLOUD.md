@@ -1,6 +1,3 @@
-i dont know how to embbed images here, but you can find all pictures at :
-https://imgur.com/a/AeoKUYa
-
 # Quick facts before starting :
 
 - This free trial is entirely and totally free of charge, without any obligatory end of free credit condition (this is the case for Google Cloud, i don't know about the other services)
@@ -84,13 +81,14 @@ Click on blue button "Create instance template" :
 
 Then, choose these settings :
 
-As you can see in the 3 screenshots below :
+As you can see in the 4 screenshots below :
 
-![screenshot](https://i.imgur.com/1HOkntO.png?raw=true)
-img05
-img1
-img2
-img3
+
+![screenshot](https://i.imgur.com/66Q8J5r.png?raw=true)
+![screenshot](https://i.imgur.com/APov702.png?raw=true)
+![screenshot](https://i.imgur.com/HD9j1sy.png?raw=true)
+![screenshot](https://i.imgur.com/8KNYH68.png?raw=true)
+
 
 - template name : any name you want
 - on machine type, click "customize"
@@ -131,7 +129,7 @@ note 6 : credits for the script go to (i modified it) : https://stackoverflow.co
 
 After instance template finishes creating, you will get a screen like that
 
-img4
+![screenshot](https://i.imgur.com/U6nqR9B.png?raw=true)
 
 # Check the regions and subregions that can provide a Tesla V100 :
 
@@ -144,7 +142,7 @@ To know which regions and subregions have a Tesla V100, click on "create instanc
 Then click on "custom" machine.
 And for every region, if you can add a GPU, add 1 GPU, and check if among these GPU a Tesla V100 is providable, as shown in the screenshot below : 
 
-img12
+![screenshot](https://i.imgur.com/JIHSPF5.png?raw=true)
 
 Repeat this step for every subregion inside a region and similarly for every other regions : 
 At the time of these instructions, these are the regions and subregions that can provide a Tesla V100 :
@@ -175,8 +173,8 @@ Then, choose these settings :
 
 As you can see in the screenshots below : 
 
-img11
-img21
+![screenshot](https://i.imgur.com/7XBTWqj.png?raw=true)
+![screenshot](https://i.imgur.com/K4PeQG7.png?raw=true)
 
 - group name : any name you want
 - location : multi-zone, then click on more
@@ -197,14 +195,15 @@ As free trial accounts have a GPU quota of 1, we will not be able to create anym
 Click on blue button "create".
 After some time, we get a screen like this :
 
-img31
+![screenshot](https://i.imgur.com/Grk8Vz2.png?raw=true)
 
 if you go back to "VM instances" (https://console.cloud.google.com/compute/instances) :
 
 You can see that a new instance has been created by the managed instance group
 This instance will automatically update, upgrade and install all system packages then compile leela-zero and reboot, and then automatically run autogtp.
 
-img 41
+![screenshot](https://i.imgur.com/tXxMtzX.png?raw=true)
+
 
 # In case of system package corruption : Delete the instance
 
@@ -212,9 +211,7 @@ The first boot installation takes exactly 10 minutes.
 
 But if, very unfortunately, your instance gets stopped by preemptible use in these first 10 minutes, there is a high probability of package corruption, so i suggest you either run the journal as explained below in # to see if instance is runing fine, or you delete the instance (no need to create a new one, the managed group instance will automatically take care of this).
 
-If you want to delete an instance, it is in Compute engine-> VM instances, at the right of your instance click on the 3 dots, choose "Delete", and confirm the message, as shown below : 
-
-delete1
+If you want to delete an instance, it is in Compute engine-> VM instances, at the right of your instance click on the 3 dots, choose "Delete", and confirm the message.
 
 
 # The last obligatory thing you need to know :
@@ -235,14 +232,19 @@ To do that, go on "VM instances" page in Compute engine (https://console.cloud.g
 
 If the instance is stopped, you will see a grey square (STOPPED) instead of the usual green circle (STARTED), as you can see here : 
 
-stop1
+![screenshot](https://i.imgur.com/3k2fC2N.png?raw=true)
 
 When all VM instances are stopped, the free credit stops being consumed, so you don't have to worry about failing to restart a stopped instance, you can do it anytime later.
 Also, you can willingly chose to stop contributing for some time and stop your instance, then whenever you want start contributing again.
 
 To restart a stopped instance, click on the 3 dots at the right of your instance, and click on "start", as shown below :
 
-start1
+
+
+![screenshot](?raw=true)
+![screenshot](?raw=true)
+![screenshot](?raw=true)
+![screenshot](?raw=true)
 start2
 
 note : starting the isntance will start the free trial credits consumption, as explained in the pre-start message
