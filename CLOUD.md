@@ -241,11 +241,12 @@ To restart a stopped instance, click on the 3 dots at the right of your instance
 
 
 
+
 ![screenshot](?raw=true)
 ![screenshot](?raw=true)
 ![screenshot](?raw=true)
-![screenshot](?raw=true)
-start2
+
+
 
 note : starting the isntance will start the free trial credits consumption, as explained in the pre-start message
 
@@ -262,6 +263,8 @@ If you chose a custom linux username, there is one last step for you :
 NOTE : again, do this step only if you chose a custom linux name instead of your default gmail account name
 skip this step if you're okay with using your real gmail account name publicly.
 
+NOTE 2 : This name change needs to be done only once to take effect on ALL new instances that will be created (and name can be changed again as many times as you want)
+
 If you chose to have custom name (for privacy, etc.), you need to do this step only once, and all new instances will have the name you chose.
 
 In Compute engine -> "VM instances" (https://console.cloud.google.com/compute/instances)
@@ -273,11 +276,14 @@ If the SSH connection fails, click on retry button until succeeds (it will event
 
 In this SSH window, on the top right click on the wheel settings, then change linux username, as shown below :
 
-ssh name1
-ssh name2
-ssh name3
 
-Since your ubuntu username is now different, for the startup-script to work, we will need to delete this instance as explained earlier in # In case of system package corruption : Delete the instance
+![screenshot](https://i.imgur.com/wUQlNJi.png?raw=true)
+![screenshot](https://i.imgur.com/WXzyMbC.png?raw=true)
+![screenshot](https://i.imgur.com/76HTCqW.png?raw=true)
+
+
+Since your ubuntu username is now different from the current username of in the running instance, we will need to delete this instance (that had your default google account name for linux username), as explained earlier in  "In case of system package corruption : Delete the instance", so that the automated startup-script will work correctly with the custom name you set earlier in instance template
+
 A new instance will automatically be created and started by the instance group.
 
 You are now a leela-zero Tesla V100 custom name contributor !
@@ -300,6 +306,8 @@ This command line will allow us to do many operations, and see what is going on 
 
 a) In this SSH window, on the top right click on the wheel settings.
 Then on Copy Settings -> tick this : "Copy/Paste with Ctrl+Shift + C/V"
+
+![screenshot](https://i.imgur.com/OPhzttF.png?raw=true)
 
 Now, just like in ubuntu terminal, you can paste into the terminal, or copy from the terminal to your computer, with :
 ctrl+shift+c or ctrl+shift+v
@@ -327,19 +335,22 @@ To see what the startup-script is running, (commands, autogtp games, etc.), do :
 
 For example, at the first boot we can see that the script starts to install all packages :
 
-journal1
+
+![screenshot](https://i.imgur.com/dqDktBJ.png?raw=true)
 
 Then, at 2nd reboot, autogtp starts its tuning because it is the first run (but on next run game production will start directly) :
 
 note : you don't see moves generated until one game ends, because all the moves are part of the same line in journal, so you will not see it until the line ends (aka. until the game ends).
 
-journal2
-journal3
+![screenshot](https://i.imgur.com/z4yNKpi.png?raw=true)
+![screenshot](https://i.imgur.com/WPEmHt2.png?raw=true)
+
 
 After some time, you can get something like this :
 note : as said earlier, no resign games are much slower to produce, so game production speed may vary depending on the number of no resign games you have
 
-test2
+![screenshot](https://i.imgur.com/6Cxi6PN.png?raw=true)
+
 
 ## Optionnal : see hardware usage (cpu,gpu,ram etc.) with glances
 
@@ -348,12 +359,15 @@ In the SSH window, do :
 
 `glances`
 
-test1
+![screenshot](https://i.imgur.com/XenQaeW.png?raw=true)
 
 glances tells us many noticeable information :
 
 for example, in this instance glances tells us that this instance has been running for almost 13 hours now,
 and journal tells us 111 games have been produced in 767 minutes
+
+
+
 
 to break the journal live mode refresh, do : ctrl+c in the SSH window
 
