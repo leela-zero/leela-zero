@@ -42,6 +42,10 @@ struct MoveToAvoid {
     size_t from_move, to_move;
     int vertex;
 
+    MoveToAvoid(int color, size_t from_move, size_t to_move, int vertex)
+        : color(color), from_move(from_move), to_move(to_move), vertex(vertex)
+    {}
+
     bool operator==(const MoveToAvoid other) const {
         return color == other.color && from_move == other.from_move &&
             to_move == other.to_move && vertex == other.vertex;
@@ -68,6 +72,7 @@ public:
     void set_passes(int val);
     void increment_passes();
     void add_move_to_avoid(int color, int vertex, size_t from_move, size_t to_move);
+    void clear_moves_to_avoid();
 
     float final_score() const;
     std::uint64_t get_symmetry_hash(int symmetry) const;

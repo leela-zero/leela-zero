@@ -86,8 +86,9 @@ bool FastState::is_to_avoid(int color, int vertex, size_t movenum) const {
         if (color == move.color &&
                 vertex == move.vertex &&
                 movenum >= move.from_move &&
-                movenum <= move.to_move)
+                movenum <= move.to_move) {
             return true;
+        }
     }
     return false;
 }
@@ -145,12 +146,11 @@ void FastState::increment_passes() {
 }
 
 void FastState::add_move_to_avoid(int color, int vertex, size_t from_move, size_t to_move) {
-    MoveToAvoid item;
-    item.color = color;
-    item.vertex = vertex;
-    item.from_move = from_move;
-    item.to_move = to_move;
-    m_moves_to_avoid.push_back(item);
+    m_moves_to_avoid.emplace_back(color, from_move, to_move, vertex);
+}
+
+void FastState::clear_moves_to_avoid() {
+    m_moves_to_avoid.clear();
 }
 
 int FastState::get_to_move() const {

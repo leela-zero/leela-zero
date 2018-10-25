@@ -213,7 +213,7 @@ const std::string GTP::s_commands[] = {
     "lz-genmove_analyze",
     "lz-memory_report",
     "lz-setoption",
-    "avoid",
+    "lz-avoid",
     ""
 };
 
@@ -969,12 +969,16 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             "Network with overhead: %d MiB / Search tree: %d MiB / Network cache: %d\n",
             total / MiB, base_memory / MiB, tree_size / MiB, cache_size / MiB);
         return;
-    } else if (command.find("avoid") == 0) {
+    } else if (command.find("lz-avoid clear") == 0) {
+        game.clear_moves_to_avoid();
+        gtp_printf(id, "cleared the list of moves to avoid");
+        return;
+    } else if (command.find("lz-avoid") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
         std::string textcolor, textmove, text_to_movenum;
 
-        cmdstream >> tmp;   // eat avoid
+        cmdstream >> tmp;   // eat lz-avoid
         cmdstream >> textcolor;
         cmdstream >> textmove;
         cmdstream >> text_to_movenum;
@@ -999,12 +1003,13 @@ void GTP::execute(GameState & game, const std::string& xinput) {
 
         std::stringstream movenumstream(text_to_movenum);
         movenumstream >> to_movenum;
-        if (text_to_movenum[0] == '+')
+        if (text_to_movenum[0] == '+') {
             to_movenum += game.get_movenum();
+        }
 
         game.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
 
-        gtp_printf(id, "added to lists of moves to avoid");
+        gtp_printf(id, "added to list of moves to avoid");
         return;
     } else if (command.find("lz-setoption") == 0) {
         return execute_setoption(*search.get(), id, command);
