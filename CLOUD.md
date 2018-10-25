@@ -185,10 +185,10 @@ As you can see in the screenshots below :
 As explained earlier choose only one of the regions that can provide a Tesla V100 in at least one of its subregions (zones).
 The instance group that we are creating will continuously be in charge of trying to recreate and restart the instance in any of the subregions (zones) that we will choose until it finds one where hardware is providable on the cloud.
 This is why it is preferred to choose a region that can provide a Tesla V100 in many of its subregions.
-In this example, i chose the region us-west1 (oregon)
+In the video tutorial, i chose us-central1 (iowa).
 Then click on "configure zones"
 - zone (subregion) : tick only the subregions (zones) that can provide a Tesla V100
-In this example i ticked subregions a and b, and unticked subregion c.
+In this example i ticked subregions a f and b, and unticked all other subregions.
 - instance template : choose the template that we created earlier.
 This template will tell what the group what hardware to use, and also include a startup-script that will automatically install all packages needed, then install leela-zero, and then at every boot will start autogtp. It is entirely automated
 - autoscaling : off
