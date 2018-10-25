@@ -205,15 +205,6 @@ This instance will automatically update, upgrade and install all system packages
 ![screenshot](https://i.imgur.com/tXxMtzX.png?raw=true)
 
 
-# In case of system package corruption : Delete the instance
-
-The first boot installation takes exactly 10 minutes.
-
-But if, very unfortunately, your instance gets stopped by preemptible use in these first 10 minutes, there is a high probability of package corruption, so i suggest you either run the journal as explained below in # to see if instance is runing fine, or you delete the instance (no need to create a new one, the managed group instance will automatically take care of this).
-
-If you want to delete an instance, it is in Compute engine-> VM instances, at the right of your instance click on the 3 dots, choose "Delete", and confirm the message.
-
-
 # The last obligatory thing you need to know :
 
 How to manually restart an instance after it has been stopped due to scheduled maintainance :
@@ -461,6 +452,17 @@ This pastebin contains :
 - hardware needs calculation for leela-zero autogtp : in part 5e
 
 Remember : as everything is automated with the stratup-script, you should NOT run autogtp manually, or it will run twice, causing it to be less efficient, hardware bottlenecked, unstable, and slower !
+
+## Extra : If you are manually creating your instances (without using managed instance group), in case of system package corruption : Delete the instance
+
+note : What is said in the section below only applies to manually created VM instances (if you're not using managed instance groups)
+If you followed the main tutorial's instructions, you don't need what to do what is below, as the managed instance group will automatically create a new instance and autostart it even if it is terminated after only 1 minute of life.
+
+The first boot installation takes exactly 10 minutes.
+
+But if, very unfortunately, your instance gets stopped by preemptible use in these first 10 minutes, there is a high probability of package corruption, so i suggest you either run the journal as explained below in # to see if instance is runing fine, or you delete the instance (no need to create a new one, the managed group instance will automatically take care of this).
+
+If you want to delete an instance, it is in Compute engine-> VM instances, at the right of your instance click on the 3 dots, choose "Delete", and confirm the message.
 
 ## Extra : Documentation, useful links
 
