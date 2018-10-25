@@ -6,11 +6,11 @@
 - These instructions will create an entirely automated leela-zero autogtp VM instance thanks to a startup-script in metadata : after setting it up correctly, it will not require any operation and will install all needed packages, compile and run leela-zero with autogtp, and will produce games automatically
 - The instance uses cloud ressource, not your personal machine
 - The instance is running on a server : it will stay online independently from you (even if your computer is powered off)
-- This instance will be Preemptible : it uses cloud ressource that are not always available, causing it to be much cheaper (aka. to consume the free trial credit much slower) but the instance is ephemere : after 24 hours max it cannot "live" anymore and will be terminated by preemptible use rules
-- The Preemptiible terminations will not be a problem though, because our instance will be in a managed instance group 
+- This instance will be Preemptible : it uses cloud ressource that are not always available, causing it to be 60% cheaper (aka. to consume the free trial credit much slower) but the instance is ephemere : after 24 hours max it cannot "live" anymore and will be terminated by preemptible use rules
+- The Preemptible terminations will not be a problem though, because our instance will be in a managed instance group 
 - Our managed instance group will automatically create our first instance, install all needed packages on it (which takes exactly 10 minutes), then automatically reboot it and automatically starting to produce games with autogtp
 - Everytime our instance "dies" (max 24 hours because of preemptibility, or if you manually delete it), our managed instance group will automatically delete our "dead" instance and automatically recreate a new "child" preemptible instance (a new one, does not contain old data of the "parent" instance)
-- Then, our managed instance group will automatically restart our new "child" instance, install all needed packages including leela-zero (takes exactly 10 minutes), then auto reboot, and then at reboot automatically start to produce games with autogtp, until the "child" instance dies, giving birth by the group to a new "child of the child" instance, etc.
+- Then, our managed instance group will automatically restart our new "child" instance, install all needed packages including leela-zero (takes exactly 10 minutes), then auto reboot, and then at reboot automatically start to produce games with autogtp, until the "child" instance "dies", giving birth by the group to a new "child of the child" instance, etc.
 - The exception to this automated recreation+autostart by the instance group is for scheduled maintainance by Google (rare, once every few weeks) which will require you to manual restart the instance (it takes 1 minute), then the auto-start script will handle everything again.
 
 
@@ -73,6 +73,7 @@ These 300$ can be used for arround 16,1 days for a h24 7/7 use of a Tesla V100, 
 
 In google cloud console, go to the sandwich bar on top left, and click on :
 Compute Engine -> Instance templates
+
 Alternatively, you can use this link :
 https://console.cloud.google.com/compute/instanceTemplates/
 
@@ -135,11 +136,13 @@ After instance template finishes creating, you will get a screen like that
 
 This step will be fast, but important in order to create a group in the correct regions.
 In another browser tab, if you're still in Compute engine (else use the top left sandiwich bar), on the left panel you will see "instance groups", click on it.
+
 Alternatively, you can use this link : 
 https://console.cloud.google.com/compute/instances
 
 To know which regions and subregions have a Tesla V100, click on "create instance" (we will not actually create an instance, but just scroll through regions and subregions, then exit it)
 Then click on "custom" machine.
+
 And for every region, if you can add a GPU, add 1 GPU, and check if among these GPU a Tesla V100 is providable, as shown in the screenshot below : 
 
 ![screenshot](https://i.imgur.com/JIHSPF5.png?raw=true)
@@ -209,7 +212,7 @@ This instance will automatically update, upgrade and install all system packages
 
 How to manually restart an instance after it has been stopped due to scheduled maintainance :
 
-As explained earlier, Preemptible instances are much cheaper but can't last more than 24 hours, and can be stopped sooner (frequent).
+As explained earlier, Preemptible instances are much cheaper (60% less) but can't last more than 24 hours, and can be stopped sooner (frequent).
 
 This case is not at all a problem though, because, every time the instance is stopped by preemtpible use or deleted by yourself, the managed instance group will immediately and continuously automatically keep trying to recreate and restart our instance in any of the subregions(zones) we selected earlier that have a Tesla V100 available,, until it succeeds.
 You don't have to do anything at all for that.
@@ -266,12 +269,15 @@ In this SSH window, on the top right click on the wheel settings, then change li
 ![screenshot](https://i.imgur.com/6Cxi6PN.png?raw=true)
 
 
-Since your ubuntu username is now different from the current username of in the running instance, we will need to delete this instance (that had your default google account name for linux username), as explained earlier in  "In case of system package corruption : Delete the instance", so that the automated startup-script will work correctly with the custom name you set earlier in instance template
+Since your ubuntu username is now different from the current username of in the running instance, we will need to delete this instance (that had your default google account name for linux username).
+
+Still in VM instances, click on the 3 dot menu at the right of your instance, and click on "Delete", then confirm yes, so that the automated startup-script will work correctly with the custom name you set chose in instance template.
 
 A new instance will automatically be created and started by the instance group.
 
 You are now a leela-zero Tesla V100 custom name contributor !
-The following optionnal instructions may interest you
+You don't need to do anything anymore !
+The following instructions are optionnal, but they may interest you.
 
 
 # Optionnal extra steps
@@ -350,7 +356,7 @@ glances tells us many noticeable information :
 for example, in this instance glances tells us that this instance has been running for almost 13 hours now,
 and journal tells us 111 games have been produced in 767 minutes
 
-
+![screenshot](https://i.imgur.com/owzvJWK.png?raw=true)
 
 
 to break the journal live mode refresh, do : ctrl+c in the SSH window
