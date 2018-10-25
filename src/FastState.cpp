@@ -73,12 +73,12 @@ void FastState::reset_board() {
 }
 
 bool FastState::is_move_legal(int color, int vertex) const {
-    return vertex == FastBoard::PASS ||
-           vertex == FastBoard::RESIGN ||
-           (vertex != m_komove &&
-                board.get_state(vertex) == FastBoard::EMPTY &&
-                !is_to_avoid(color, vertex, m_movenum) &&
-                !board.is_suicide(vertex, color));
+    return !is_to_avoid(color, vertex, m_movenum) && (
+              vertex == FastBoard::PASS ||
+                 vertex == FastBoard::RESIGN ||
+                 (vertex != m_komove &&
+                      board.get_state(vertex) == FastBoard::EMPTY &&
+                      !board.is_suicide(vertex, color)));
 }
 
 bool FastState::is_to_avoid(int color, int vertex, size_t movenum) const {
