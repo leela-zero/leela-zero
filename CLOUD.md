@@ -460,7 +460,7 @@ If you followed the main tutorial's instructions, you don't need what to do what
 
 The first boot installation takes exactly 10 minutes.
 
-But if, very unfortunately, your instance gets stopped by preemptible use in these first 10 minutes, there is a high probability of package corruption, so i suggest you either run the journal as explained below in # to see if instance is runing fine, or you delete the instance.
+But if, very unfortunately, your instance gets stopped by preemptible use in these first 10 minutes, there is a high probability of package corruption, so i suggest you either run the journal as explained above to see if instance is running fine, or you delete the instance.
 
 If you want to delete an instance, it is in Compute engine-> VM instances, at the right of your instance click on the 3 dots, choose "Delete", and confirm the message.
 
