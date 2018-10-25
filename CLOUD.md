@@ -94,7 +94,7 @@ As you can see in the 4 screenshots below :
 
 - template name : any name you want
 - on machine type, click "customize"
-- 4 vcpu / 5,5 GB ram
+- 4 vcpu / 5.25 GB ram
 - 1 GPU : Tesla V100
 - untick "Extend memory"
 - Boot Disk : click on "change" and choose Ubuntu 18.04 LTS with 10GB HDD (standard persistent disk)
