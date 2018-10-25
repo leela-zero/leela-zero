@@ -42,6 +42,10 @@ https://console.cloud.google.com/
 
 The cloud public ressource available being limitied, especially when it comes to powerful GPU like V100, in order to prevent abuse, spam, robots, multi accounts, etc, Google will ask to check your id with a valid credit card, but you will not be charged anything at all, even when your free trial credit ends.
 
+You can check by yourself here : 
+
+https://cloud.google.com/free/docs/frequently-asked-questions
+
 And this free trial does not force you to susbcribe to anything at all. It is indeed entirely free of charge.
 
 Also, just like for Google Colab, please do NOT try to use multiple accounts in any way, as Google won't hesitate to ban you, as it happened for google Colab users. If you want to help leela-zero, please rather try to spread these instructions so that more people join us in this contributed effort.
@@ -444,3 +448,24 @@ This pastebin contains :
 - hardware needs calculation for leela-zero autogtp : in part 5e
 
 Remember : as everything is automated with the stratup-script, you should NOT run autogtp manually, or it will run twice, causing it to be less efficient, hardware bottlenecked, unstable, and slower !
+
+## Extra : Documentation, useful links
+
+A bunch of links you may find useful to read : 
+
+https://cloud.google.com/free/docs/frequently-asked-questions
+
+https://cloud.google.com/compute/docs/instances/preemptible
+
+https://cloud.google.com/compute/docs/startupscript
+
+https://cloud.google.com/compute/docs/shutdownscript
+
+https://cloud.google.com/compute/docs/instance-templates/
+
+https://cloud.google.com/compute/docs/instance-groups/
+
+https://cloud.google.com/compute/docs/instances/setting-instance-scheduling-options#testingpolicies
+
+https://cloud.google.com/compute/docs/tutorials/sending-mail/
+
