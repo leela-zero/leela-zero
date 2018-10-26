@@ -40,10 +40,14 @@ Fortunately, many cloud companies offer free trials (or paid solutions,
 not covered here) that can significantly help leela-zero project with 
 powerful GPU (Tesla V100).
 
+The Cloud instance is a different computer running leela-zero independently from your personal computer.
+This means it will be running and producing games even if you computer is powered off.
+
 Please note that this doesn't prevent you from using it in combination 
 with another contribution with your own hardware, if you want.
 
-[Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial, Microsoft Azure, Oracle cloud, etc)](CLOUD.md)
+[Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial, Microsoft Azure, Oracle cloud, etc)](https://docs.google.com/document/d/1P_c-RbeLKjv1umc4rMEgvIVrUUZSeY0WAtYHjaxjD64/edit?usp=sharing)
+
 
 # I want to help with my own hardware
 
