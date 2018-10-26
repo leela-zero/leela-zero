@@ -66,9 +66,9 @@ https://console.cloud.google.com/billing
 At start, a free 300$ (or 257€) free trial credit is given to you, free of charge.
 With the settings later explained, our instance will consume 0,773$/hour with a Tesla V100
 
-This will allow us to use it for arround 390 hours, which would produce arround 6000 games leela-zero 40 blocks per free trial (5% resign only, as 0% resign games take much more time), and arround 4000 games per free trial if you include a mix of -r5 and -r0 games, all this entirely free of charge !
+This will allow us to use it for around 390 hours, which would produce around 6000 games leela-zero 40 blocks per free trial (5% resign only, as 0% resign games take much more time), and around 4000 games per free trial if you include a mix of -r5 and -r0 games, all this entirely free of charge !
 
-These 300$ can be used for arround 16,1 days for a h24 7/7 use of a Tesla V100, entirely free of charge !
+These 300$ can be used for around 16,1 days for a h24 7/7 use of a Tesla V100, entirely free of charge !
 
 # Create an instance template
 
