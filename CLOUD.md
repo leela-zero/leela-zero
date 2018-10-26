@@ -88,8 +88,8 @@ As you can see in the 4 screenshots below :
 
 ![screenshot](https://i.imgur.com/BGgT7r4.png?raw=true)
 ![screenshot](https://i.imgur.com/APov702.png?raw=true)
-![screenshot](https://i.imgur.com/HD9j1sy.png?raw=true)
-![screenshot](https://i.imgur.com/8KNYH68.png?raw=true)
+![screenshot](https://i.imgur.com/9hrEF49.png?raw=true)
+![screenshot](https://i.imgur.com/Ce9eONC.png?raw=true)
 
 
 - template name : any name you want
