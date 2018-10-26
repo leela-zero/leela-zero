@@ -88,7 +88,7 @@ As you can see in the 4 screenshots below :
 
 ![screenshot](https://i.imgur.com/BGgT7r4.png?raw=true)
 ![screenshot](https://i.imgur.com/APov702.png?raw=true)
-![screenshot](https://i.imgur.com/9hrEF49.png?raw=true)
+![screenshot](https://i.imgur.com/bO1bDJn.png?raw=true)
 ![screenshot](https://i.imgur.com/Uw7HA57.png?raw=true)
 
 
