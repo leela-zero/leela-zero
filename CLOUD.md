@@ -66,7 +66,7 @@ https://console.cloud.google.com/billing
 At start, a free 300$ (or 257€) free trial credit is given to you, free of charge.
 With the settings later explained, our instance will consume 0,773$/hour with a Tesla V100
 
-This will allow us to use it for arround 390 hours, which would produce arround 6000 games leela-zero 40 blocks (5% resign only, as 0% resign games take much more time) entirely free of charge !
+This will allow us to use it for arround 390 hours, which would produce arround 6000 games leela-zero 40 blocks per free trial (5% resign only, as 0% resign games take much more time), and arround 4000 games per free trial if you include a mix of -r5 and -r0 games, all this entirely free of charge !
 
 These 300$ can be used for arround 16,1 days for a h24 7/7 use of a Tesla V100, entirely free of charge !
 
@@ -108,26 +108,24 @@ PKG_OK=$(dpkg-query -W --showformat='${Status}\n' glances|grep "install ok insta
 echo Checking for glanceslib: $PKG_OK
 if [ "" == "$PKG_OK" ]; then
   echo "No glanceslib. Setting up glanceslib and all other leela-zero packages."
-  sudo apt-get update && sudo apt-get -y upgrade && sudo apt-get -y dist-upgrade && sudo add-apt-repository -y ppa:graphics-drivers/ppa && sudo apt-get update && sudo apt-get -y install nvidia-driver-410 linux-headers-generic nvidia-opencl-dev && sudo apt-get -y install clinfo cmake git libboost-all-dev libopenblas-dev zlib1g-dev build-essential qtbase5-dev qttools5-dev qttools5-dev-tools libboost-dev libboost-program-options-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev qt5-default qt5-qmake curl && git clone https://github.com/gcp/leela-zero && cd leela-zero && git checkout next && git pull && git clone https://github.com/gcp/leela-zero && git submodule update --init --recursive && mkdir build && cd build && cmake .. && cmake --build . && cd ../autogtp && cp ../build/autogtp/autogtp . && cp ../build/leelaz . && cd ../.. && cp -r leela-zero /home/mygooglename/ && rm -r leela-zero && sudo apt-get -y install glances zip && sudo reboot
+  sudo apt-get update && sudo apt-get -y upgrade && sudo apt-get -y dist-upgrade && sudo add-apt-repository -y ppa:graphics-drivers/ppa && sudo apt-get update && sudo apt-get -y install nvidia-driver-410 linux-headers-generic nvidia-opencl-dev && sudo apt-get -y install clinfo cmake git libboost-all-dev libopenblas-dev zlib1g-dev build-essential qtbase5-dev qttools5-dev qttools5-dev-tools libboost-dev libboost-program-options-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev qt5-default qt5-qmake curl && git clone https://github.com/gcp/leela-zero && cd leela-zero && git checkout next && git pull && git clone https://github.com/gcp/leela-zero && git submodule update --init --recursive && mkdir build && cd build && cmake .. && cmake --build . && cd ../autogtp && cp ../build/autogtp/autogtp . && cp ../build/leelaz . && sudo apt-get -y install glances zip && sudo apt-get clean && sudo reboot
 else 
-  sudo apt-get clean && cd home/mygooglename/leela-zero/autogtp/ && ./autogtp -g 2
+  sudo -i && cd /leela-zero/autogtp && ./autogtp -g 2
 fi
 ```
 - Availability Policy : Preemptibility ON
 
-IMPORTANT NOTE : 
-in the script : replace `mygooglename` (twice) with either your real gmail account name (without the @gmail.com), or a custom linux username (for privacy, etc.) that you will choose immediately and overwrite mygooglename with (example : trololhahaxd in the video tutorial).
 
-note 2 : in `nvidia-driver-410` , replace `410` version number by whatever latest version number you find here :
+note  : in `nvidia-driver-410` , replace `410` version number by whatever latest version number you find here :
 https://launchpad.net/~graphics-drivers/+archive/ubuntu/ppa
 
-note 3 : an instance template cannot be modified/updated, if you want for example to change nvidia-driver-410 in the script, change username, or modify anything in the instance template, you will have to create a new instance template, then delete your current instance group, and create a new instance group with your latest instance template.
+note 2 : an instance template cannot be modified/updated, if you want for example to change nvidia-driver-410 in the script, change username, or modify anything in the instance template, you will have to create a new instance template, then delete your current instance group, and create a new instance group with your latest instance template.
 
-note 4 : i chose ./autogtp -g 2 in the script as it is 25% faster from my extensive long time tests
+note 3 : i chose ./autogtp -g 2 in the script as it is 25% faster from my extensive long time tests
 
-note 5 : this script includes NEXT BRANCH as it is much faster and includes all new improvements, but if you want the MASTER BRANCH startup-script, please see : -----add----link----
+note 4 : this script includes NEXT BRANCH as it is much faster and includes all new improvements, but if you want the MASTER BRANCH startup-script, please see : -----add----link----
 
-note 6 : credits for the script go to (i modified it) : https://stackoverflow.com/a/10439058
+note 5 : credits for the script go to (i modified it) : https://stackoverflow.com/a/10439058
 
 After instance template finishes creating, you will get a screen like that
 
@@ -238,50 +236,15 @@ To restart a stopped instance, click on the 3 dots at the right of your instance
 
 note : starting the isntance will start the free trial credits consumption, as explained in the pre-start message
 
-If you put your real gmail account name (without the @gmail.com), this concludes the obligatory steps !
+This concludes the obligatory steps !
 You are now a Tesla V100 leela-zero contributor !
-You can exit chrome, power off your computer, you don't have to do anything ! It is entirely automatic (except for scheduled maintainance events requiring a manual restart)
+You can exit chrome, power off your computer, you don't have to do anything ! It is entirely automatic (except for scheduled maintainance events requiring a manual restart as explained earlier).
 
-
-If you chose a custom linux username, there is one last step for you :
-
-
-# Change linux username :
-
-NOTE : again, do this step only if you chose a custom linux name instead of your default gmail account name
-skip this step if you're okay with using your real gmail account name publicly.
-
-NOTE 2 : This name change needs to be done only once to take effect on ALL new instances that will be created (and name can be changed again as many times as you want)
-
-If you chose to have custom name (for privacy, etc.), you need to do this step only once, and all new instances will have the name you chose.
-
-In Compute engine -> "VM instances" (https://console.cloud.google.com/compute/instances)
-
-If your instance has started (green circle), click on SSH button.
-
-A new black window will open which is a linux terminal (ubuntu here).
-If the SSH connection fails, click on retry button until succeeds (it will eventually succeed as long as your instance is on "started" (green circle status))
-
-In this SSH window, on the top right click on the wheel settings, then change linux username, as shown below :
-
-
-![screenshot](https://i.imgur.com/wUQlNJi.png?raw=true)
-![screenshot](https://i.imgur.com/WXzyMbC.png?raw=true)
-![screenshot](https://i.imgur.com/6Cxi6PN.png?raw=true)
-
-
-Since your ubuntu username is now different from the current username of in the running instance, we will need to delete this instance (that had your default google account name for linux username).
-
-Still in VM instances, click on the 3 dot menu at the right of your instance, and click on "Delete", then confirm yes, so that the automated startup-script will work correctly with the custom name you set chose in instance template.
-
-A new instance will automatically be created and started by the instance group.
-
-You are now a leela-zero Tesla V100 custom name contributor !
-You don't need to do anything anymore !
-The following instructions are optionnal, but they may interest you.
 
 
 # Optionnal extra steps
+
+The following instructions are optionnal, but they may interest you :
 
 ## Optionnal : How to connect to your instance with the SSH button
 
@@ -365,6 +328,29 @@ to break the journal live mode refresh, do : ctrl+c in the SSH window
 another useful command you can run to check gpu usage is :
 `nvidia-smi`
 
+## Optionnal : Change linux username :
+
+NOTE : again, do this step only if you want to use a custom linux name instead of your default gmail account name. Skip this step if you're okay with using your real gmail account name publicly.
+
+NOTE 2 : This name change needs to be done only once to take effect on ALL new instances that will be created (and name can be changed again as many times as you want)
+
+
+In Compute engine -> "VM instances" (https://console.cloud.google.com/compute/instances)
+
+If your instance has started (green circle), click on SSH button.
+
+A new black window will open which is a linux terminal (ubuntu here).
+If the SSH connection fails, click on retry button until succeeds (it will eventually succeed as long as your instance is on "started" (green circle status))
+
+In this SSH window, on the top right click on the wheel settings, then change linux username, as shown below :
+
+
+![screenshot](https://i.imgur.com/wUQlNJi.png?raw=true)
+![screenshot](https://i.imgur.com/WXzyMbC.png?raw=true)
+![screenshot](https://i.imgur.com/6Cxi6PN.png?raw=true)
+
+
+
 
 ## Optionnal : Why we don't run upgrade and dist-upgrade maintainance
 
@@ -394,9 +380,9 @@ PKG_OK=$(dpkg-query -W --showformat='${Status}\n' glances|grep "install ok insta
 echo Checking for glanceslib: $PKG_OK
 if [ "" == "$PKG_OK" ]; then
   echo "No glanceslib. Setting up glanceslib and all other leela-zero packages."
-  sudo apt-get update && sudo apt-get -y upgrade && sudo apt-get -y dist-upgrade && sudo add-apt-repository -y ppa:graphics-drivers/ppa && sudo apt-get update && sudo apt-get -y install nvidia-driver-410 linux-headers-generic nvidia-opencl-dev && sudo apt-get -y install clinfo cmake git libboost-all-dev libopenblas-dev zlib1g-dev build-essential qtbase5-dev qttools5-dev qttools5-dev-tools libboost-dev libboost-program-options-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev qt5-default qt5-qmake curl && git clone https://github.com/gcp/leela-zero && cd leela-zero && git checkout next && git pull && git clone https://github.com/gcp/leela-zero && git submodule update --init --recursive && mkdir build && cd build && cmake .. && cmake --build . && cd ../autogtp && cp ../build/autogtp/autogtp . && cp ../build/leelaz . && cd ../.. && cp -r leela-zero /home/mygooglename/ && rm -r leela-zero && sudo apt-get -y install glances zip && sudo reboot
+  sudo apt-get update && sudo apt-get -y upgrade && sudo apt-get -y dist-upgrade && sudo add-apt-repository -y ppa:graphics-drivers/ppa && sudo apt-get update && sudo apt-get -y install nvidia-driver-410 linux-headers-generic nvidia-opencl-dev && sudo apt-get -y install clinfo cmake git libboost-all-dev libopenblas-dev zlib1g-dev build-essential qtbase5-dev qttools5-dev qttools5-dev-tools libboost-dev libboost-program-options-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev qt5-default qt5-qmake curl && git clone https://github.com/gcp/leela-zero && cd leela-zero && git checkout next && git pull && git clone https://github.com/gcp/leela-zero && git submodule update --init --recursive && mkdir build && cd build && cmake .. && cmake --build . && cd ../autogtp && cp ../build/autogtp/autogtp . && cp ../build/leelaz . && sudo apt-get -y install glances zip && sudo apt-get clean && sudo reboot
 else 
-  sudo apt-get clean && cd home/mygooglename/leela-zero/autogtp/ && ./autogtp -g 2 -k allsgf
+  sudo -i && cd /leela-zero/autogtp && ./autogtp -g 2 -k allsgf
 fi
 ```
 
@@ -462,7 +448,7 @@ Remember : as everything is automated with the stratup-script, you should NOT ru
 
 ## Extra : If you are manually creating your instances (without using managed instance group), in case of system package corruption : Delete the instance
 
-note : What is said in the section below only applies to manually created VM instances (if you're not using managed instance groups)
+Note : What is said in the section below only applies to manually created VM instances (if you're not using managed instance groups).
 If you followed the main tutorial's instructions, you don't need what to do what is below, as the managed instance group will automatically create a new instance and autostart it even if it is terminated after only 1 minute of life.
 
 The first boot installation takes exactly 10 minutes.
