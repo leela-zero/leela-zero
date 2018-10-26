@@ -77,7 +77,19 @@ bool FastState::is_move_legal(int color, int vertex) const {
            vertex == FastBoard::RESIGN ||
            (vertex != m_komove &&
                 board.get_state(vertex) == FastBoard::EMPTY &&
+                !is_to_avoid(color, vertex, m_movenum) &&
                 !board.is_suicide(vertex, color));
+}
+
+bool FastState::is_to_avoid(int color, int vertex, size_t movenum) const {
+    for (auto& move : m_moves_to_avoid) {
+        if (color == move.color &&
+                vertex == move.vertex &&
+                movenum >= move.from_move &&
+                movenum <= move.to_move)
+            return true;
+    }
+    return false;
 }
 
 void FastState::play_move(int vertex) {
@@ -130,6 +142,15 @@ void FastState::set_passes(int val) {
 void FastState::increment_passes() {
     m_passes++;
     if (m_passes > 4) m_passes = 4;
+}
+
+void FastState::add_move_to_avoid(int color, int vertex, size_t from_move, size_t to_move) {
+    MoveToAvoid item;
+    item.color = color;
+    item.vertex = vertex;
+    item.from_move = from_move;
+    item.to_move = to_move;
+    m_moves_to_avoid.push_back(item);
 }
 
 int FastState::get_to_move() const {

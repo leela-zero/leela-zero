@@ -37,6 +37,17 @@
 
 #include "FullBoard.h"
 
+struct MoveToAvoid {
+    int color;
+    size_t from_move, to_move;
+    int vertex;
+
+    bool operator==(const MoveToAvoid other) const {
+        return color == other.color && from_move == other.from_move &&
+            to_move == other.to_move && vertex == other.vertex;
+    }
+};
+
 class FastState {
 public:
     void init_game(int size, float komi);
@@ -45,6 +56,7 @@ public:
 
     void play_move(int vertex);
     bool is_move_legal(int color, int vertex) const;
+    bool is_to_avoid(int color, int vertex, size_t movenum) const;
 
     void set_komi(float komi);
     float get_komi() const;
@@ -55,6 +67,7 @@ public:
     void set_to_move(int tomove);
     void set_passes(int val);
     void increment_passes();
+    void add_move_to_avoid(int color, int vertex, size_t from_move, size_t to_move);
 
     float final_score() const;
     std::uint64_t get_symmetry_hash(int symmetry) const;
@@ -72,6 +85,7 @@ public:
     int m_komove;
     size_t m_movenum;
     int m_lastmove;
+    std::vector<MoveToAvoid> m_moves_to_avoid;
 
 protected:
     void play_move(int color, int vertex);

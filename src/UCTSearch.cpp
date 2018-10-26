@@ -108,6 +108,10 @@ bool UCTSearch::advance_to_new_rootstate() {
         return false;
     }
 
+    if (m_rootstate.m_moves_to_avoid != m_last_rootstate->m_moves_to_avoid) {
+        return false;
+    }
+
     auto depth =
         int(m_rootstate.get_movenum() - m_last_rootstate->get_movenum());
 
