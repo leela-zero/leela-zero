@@ -40,7 +40,7 @@ Fortunately, many cloud companies offer free trials (or paid solutions,
 not covered here) that can significantly help leela-zero project with 
 powerful GPU (Tesla V100).
 
-The Cloud instance is a different computer, connected to a different internetnetwork, running leela-zero independently from your personal computer.
+The Cloud instance is a different computer, with its own internet access, running leela-zero independently from your personal computer.
 This means it will be running and producing games even if you computer is powered off.
 
 Please note that this doesn't prevent you from using it in combination 
