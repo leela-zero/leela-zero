@@ -32,6 +32,8 @@ a good network (which you can feed into this program, suddenly making it strong)
 
 # I want to help
 
+## Using your own hardware
+
 You need a PC with a GPU, i.e. a discrete graphics card made by NVIDIA or AMD,
 preferably not too old, and with the most recent drivers installed.
 
@@ -40,19 +42,28 @@ lower. If your CPU is not *very* recent (Haswell or newer, Ryzen or newer),
 performance will be outright bad, and it's probably of no use trying to join
 the distributed effort. But you can still play, especially if you are patient.
 
-## Windows
+### Windows
 
 Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
 download the latest release, unzip, and launch autogtp.exe. It will connect to
 the server automatically and do its work in the background, uploading results
 after each game. You can just close the autogtp window to stop it.
 
-## macOS and Linux
+### macOS and Linux
 
 Follow the instructions below to compile the leelaz binary, then go into
 the autogtp subdirectory and follow [the instructions there](autogtp/README.md)
 to build the autogtp binary. Copy the leelaz binary into the autogtp dir, and
 launch autogtp.
+
+## Using a Cloud provider
+
+Many cloud companies offer free trials (or paid solutions, not discussed here)
+that are usable for helping the leela-zero project.
+
+There are community maintained instructions available here:
+[Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial, Microsoft Azure, Oracle cloud, etc)](https://docs.google.com/document/d/1P_c-RbeLKjv1umc4rMEgvIVrUUZSeY0WAtYHjaxjD64/edit?usp=sharing)
+
 
 # I just want to play right now
 
