@@ -362,6 +362,9 @@ static void parse_commandline(int argc, char *argv[]) {
         }
     }
 
+    // Do not lower the expected eval for root moves that are likely not
+    // the best if we have introduced noise there exactly to explore more.
+    cfg_fpu_root_reduction = cfg_noise ? 0.0f : cfg_fpu_reduction;
 
     auto out = std::stringstream{};
     for (auto i = 1; i < argc; i++) {
