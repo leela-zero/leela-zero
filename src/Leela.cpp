@@ -423,7 +423,7 @@ int main(int argc, char *argv[]) {
 
     setbuf(stdout, nullptr);
     setbuf(stderr, nullptr);
-#ifndef WIN32
+#ifndef _WIN32
     setbuf(stdin, nullptr);
 #endif
 
