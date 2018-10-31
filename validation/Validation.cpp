@@ -23,7 +23,7 @@
 
 using VersionTuple = std::tuple<int, int, int>;
 // Minimal Leela Zero version we expect to see
-const VersionTuple min_leelaz_version{0, 10, 0};
+const VersionTuple min_leelaz_version{0, 16, 0};
 
 
 void ValidationWorker::run() {

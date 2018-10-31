@@ -30,7 +30,7 @@
 #include <stdexcept>
 #include "Worker.h"
 
-constexpr int AUTOGTP_VERSION = 16;
+constexpr int AUTOGTP_VERSION = 17;
 
 class Management : public QObject {
     Q_OBJECT
