@@ -53,12 +53,11 @@ after each game. You can just close the autogtp window to stop it.
 
 ### macOS and Linux
 
-Follow the instructions below to compile the leelaz and autogtp binaries .
+Follow the instructions below to compile the leelaz and autogtp binaries in build subdirectory.
 
-Then, if you want to contribute, don't run leelaz, but instead copy and run autogtp and leelaz into the autogtp subdirectory as shown in the commands below.
-You can read [AutoGTP information there](autogtp/README.md).
+Then, if you want to contribute, don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as shown in the commands below.
 
-Then, contributing will start when you run autogtp.
+You can read [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
 
 Else, if you want to play only, run instead leelaz as shown below .
 
