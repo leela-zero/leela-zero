@@ -51,11 +51,11 @@ after each game. You can just close the autogtp window to stop it.
 
 ### macOS and Linux
 
-Follow the instructions below to compile the leelaz and autogtp binaries in build subdirectory.
+Follow the main instructions below to compile the leelaz and autogtp binaries in build subdirectory.
 
 Then, if you want to contribute, don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as shown in the commands below.
 
-You can read [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
+You can also read these [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
 
 Else, if you want to play only, run instead leelaz as shown below .
 
@@ -69,16 +69,19 @@ There are community maintained instructions available here:
 [Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial, Microsoft Azure, Oracle cloud, etc)](https://docs.google.com/document/d/1P_c-RbeLKjv1umc4rMEgvIVrUUZSeY0WAtYHjaxjD64/edit?usp=sharing)
 
 
-# I just want to play right now
+# I just want to run leela-zero right now
 
-Download the best known network weights file from: https://zero.sjeng.org/best-network
 To play, only leelaz is needed (and not AutoGTP).
 
+Download the best known network weights file from: https://zero.sjeng.org/best-network
 And head to the [Usage](#usage) section of this README.
 
 If you prefer a more human style, a network trained from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
 
-# Compiling
+To contribute, you need to run autogtp instead.
+
+
+# Compiling autogtp and/or leelaz
 
 ## Requirements
 
@@ -119,13 +122,13 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Optionnal : if you want to test if your build has no issue
     ./tests
 
-### Then, if you want to play only (not contribute), run leelaz :
+### Then, if you just want to play right now (not contribute), run leelaz :
 
     # Use the command below to download leelaz and run leelaz in play mode
     curl -O https://zero.sjeng.org/best-network
     ./leelaz --weights best-network
     
-### Else, if you want to contribute, run instead AutoGTP (to contribute) :
+### Else, if you want to help (to contribute), run autogtp :
 
     # Copy autogtp and leelaz binaries from build subdirectory to autogtp subdirectory
     cd ../autogtp
@@ -155,13 +158,13 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Optionnal : if you want to test if your build has no issue
     ./tests
 
-### Then, if you want to play only (not contribute), run leelaz :
+### Then, if you just want to play right now (not contribute), run leelaz :
 
     # Use the command below to download leelaz and run leelaz in play mode
     curl -O https://zero.sjeng.org/best-network
     ./leelaz --weights best-network
     
-### Else, if you want to contribute, run instead AutoGTP (to contribute) :
+### Else, if you want to help (to contribute), run autogtp :
 
     # Copy autogtp and leelaz binaries from build subdirectory to autogtp subdirectory
     cd ../autogtp
