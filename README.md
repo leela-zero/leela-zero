@@ -42,6 +42,8 @@ lower. If your CPU is not *very* recent (Haswell or newer, Ryzen or newer),
 performance will be outright bad, and it's probably of no use trying to join
 the distributed effort. But you can still play, especially if you are patient.
 
+To contribute, you need to run AutoGTP.
+
 ### Windows
 
 Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
@@ -51,10 +53,14 @@ after each game. You can just close the autogtp window to stop it.
 
 ### macOS and Linux
 
-Follow the instructions below to compile the leelaz binary, then go into
-the autogtp subdirectory and follow [the instructions there](autogtp/README.md)
-to build the autogtp binary. Copy the leelaz binary into the autogtp dir, and
-launch autogtp.
+Follow the instructions below to compile the leelaz and autogtp binaries .
+
+Then, if you want to contribute, don't run leelaz, but instead copy and run autogtp and leelaz into the autogtp subdirectory as shown in the commands below.
+You can read [AutoGTP information there](autogtp/README.md)
+Then, contributing will start when you run autogtp.
+
+Else, if you want to play only, run instead leelaz as shown below .
+
 
 ## Using a Cloud provider
 
@@ -68,6 +74,7 @@ There are community maintained instructions available here:
 # I just want to play right now
 
 Download the best known network weights file from: https://zero.sjeng.org/best-network
+To play, only leelaz is needed (and not AutoGTP).
 
 And head to the [Usage](#usage) section of this README.
 
@@ -90,7 +97,8 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 * Optional: BLAS Library: OpenBLAS (libopenblas-dev) or Intel MKL
 * The program has been tested on Windows, Linux and macOS.
 
-## Example of compiling and running - Ubuntu & similar
+## How to compile and run AutoGTP and/or leelaz - Ubuntu & similar
+
 
     # Test for OpenCL support & compatibility
     sudo apt install clinfo && clinfo
@@ -103,15 +111,33 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install build depedencies
     sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
 
-    # Use stand alone directory to keep source dir clean
+    # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
+    # Compile leelaz and autogtp in build subdirectory with cmake
     cmake ..
     cmake --build .
+    
+    # Optionnal : if you want to test if your build has no issue
     ./tests
+
+### Then, if you want to play only (not contribute), run leelaz :
+
+    # Use the command below to download leelaz and run leelaz in play mode
     curl -O https://zero.sjeng.org/best-network
     ./leelaz --weights best-network
+    
+### Else, if you want to contribute, run instead AutoGTP (to contribute) :
 
-## Example of compiling and running - macOS
+    # Copy AutoGTP and leelaz binaries from build subdirectory to autogtp subdirectory
+    cd ../autogtp
+    cp ../build/autogtp/autogtp .
+    cp ../build/leelaz .
+    
+    # Run AutoGTP to start contributing : 
+    ./autogtp
+
+
+## How to compile and run AutoGTP and/or leelaz - macOS
 
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
@@ -121,13 +147,31 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install build depedencies
     brew install boost cmake
 
-    # Use stand alone directory to keep source dir clean
+    # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
+    # Compile leelaz and autogtp in build subdirectory with cmake
     cmake ..
     cmake --build .
+
+    # Optionnal : if you want to test if your build has no issue
     ./tests
+
+### Then, if you want to play only (not contribute), run leelaz :
+
+    # Use the command below to download leelaz and run leelaz in play mode
     curl -O https://zero.sjeng.org/best-network
     ./leelaz --weights best-network
+    
+### Else, if you want to contribute, run instead AutoGTP (to contribute) :
+
+    # Copy AutoGTP and leelaz binaries from build subdirectory to autogtp subdirectory
+    cd ../autogtp
+    cp ../build/autogtp/autogtp .
+    cp ../build/leelaz .
+    
+    # Run AutoGTP to start contributing : 
+    ./autogtp
+
 
 ## Example of compiling and running - Windows
 
