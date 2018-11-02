@@ -114,6 +114,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
+    
     # Compile leelaz and autogtp in build subdirectory with cmake
     cmake ..
     cmake --build .
@@ -129,7 +130,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     
 ### Else, if you want to contribute, run instead AutoGTP (to contribute) :
 
-    # Copy AutoGTP and leelaz binaries from build subdirectory to autogtp subdirectory
+    # Copy autogtp and leelaz binaries from build subdirectory to autogtp subdirectory
     cd ../autogtp
     cp ../build/autogtp/autogtp .
     cp ../build/leelaz .
@@ -165,7 +166,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     
 ### Else, if you want to contribute, run instead AutoGTP (to contribute) :
 
-    # Copy AutoGTP and leelaz binaries from build subdirectory to autogtp subdirectory
+    # Copy autogtp and leelaz binaries from build subdirectory to autogtp subdirectory
     cd ../autogtp
     cp ../build/autogtp/autogtp .
     cp ../build/leelaz .
@@ -186,6 +187,8 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Build from Visual Studio 2015 or 2017
     # Download <https://zero.sjeng.org/best-network> to msvc\x64\Release
     msvc\x64\Release\leelaz.exe --weights best-network
+    
+For AutoGTP compile details, see AutoGTP information page : [AutoGTP information there](autogtp/README.md).    
 
 # Usage
 
