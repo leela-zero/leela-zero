@@ -6,18 +6,19 @@ the SGF and training data at the end of the game.
 
 # Requirements
 
-* Qt 5.3 or later with qmake
+* cmake
 * C++14 capable compiler
 * curl
 * gzip and gunzip
 
-## Example of compiling - Ubuntu
+## How to compile AutoGTP - Ubuntu and macOS
 
-    sudo apt install qt5-default qt5-qmake curl
-    qmake -qt5
-    make
+Just follow main instructions : cmake will compile both autogtp and leelaz binaries in build subdirectory.
 
-## Compiling under Visual Studio - Windows
+You don't need to do anything else.
+
+
+## How to compile AutoGTP using Visual Studio - Windows
 
 You have to download and install Qt and Qt VS Tools. You only need QtCore to
 run. Locate a copy of curl.exe and gzip.exe (a previous Leela release package
@@ -28,12 +29,10 @@ and should compile. The two exes (curl.exe and gzip.exe) will also be copied to
 the output folder after the build, making it possible to run autogtp.exe
 directly.
 
-# Running
+# Running AutoGTP (to start contributing)
 
-Copy the compiled leelaz binary into the autogtp directory, and run
-autogtp.
+As explained in main page instructions, copy compiled leelaz and autogtp binaries (with cmake) from build subdirectory to autogtp subdirectory, then run autogtp to start contributing.
 
-    cp ../src/leelaz .
     ./autogtp
 
 While autogtp is running, typing q+Enter will save the processed data and exit. When autogtp runs next, autogtp will continue the game.
