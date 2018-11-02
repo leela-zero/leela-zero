@@ -33,7 +33,7 @@ directly.
 Copy the compiled leelaz binary into the autogtp directory, and run
 autogtp.
 
-    cp ../src/leelaz .
+    cp ../build/leelaz .
     ./autogtp
 
 While autogtp is running, typing q+Enter will save the processed data and exit. When autogtp runs next, autogtp will continue the game.
