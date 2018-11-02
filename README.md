@@ -42,7 +42,6 @@ lower. If your CPU is not *very* recent (Haswell or newer, Ryzen or newer),
 performance will be outright bad, and it's probably of no use trying to join
 the distributed effort. But you can still play, especially if you are patient.
 
-To contribute, you need to run AutoGTP.
 
 ### Windows
 
