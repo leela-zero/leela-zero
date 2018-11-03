@@ -792,7 +792,10 @@ void OpenCL<net_t>::initialize(const int channels) {
     // and will fail to compile the rest of the kernels after a tuning
     // run. See #729.
     if (cfg_tune_only) {
-        exit(EXIT_SUCCESS);
+        // Originally this was an exit() but this will make the tuner
+        // only tune the first GPU.  Return instead.  The exit will be called
+        // after all GPUs are created.
+        return;
     }
 
     // Build program for these specific devices
