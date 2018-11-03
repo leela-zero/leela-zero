@@ -1137,7 +1137,7 @@ void GTP::execute_setoption(UCTSearch & search,
         // Note that if the playouts are changed but no
         // explicit command to set memory usage is given,
         // we will stick with the initial guess we made on startup.
-        search.set_playout_limit(cfg_max_visits);
+        search.set_playout_limit(cfg_max_playouts);
 
         gtp_printf(id, "");
     } else if (name == "lagbuffer") {
