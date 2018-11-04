@@ -244,9 +244,8 @@ static void parse_commandline(int argc, char *argv[]) {
         }
     }
     if (cfg_precision == precision_t::AUTO) {
-        // Auto precision is not supported for tune only cases.
-        // Since full tuner implies tune only, check that too.  #1973
-        if (cfg_sgemm_exhaustive || cfg_tune_only) {
+        // Auto precision is not supported for tune only cases. #1973
+        if (cfg_tune_only) {
             printf("Automatic precision not supported when tuning only\n");
             printf("Please add '--precision single' or '--precision half'\n");
             exit(EXIT_FAILURE);
