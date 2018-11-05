@@ -719,7 +719,9 @@ OpenCL<net_t>::OpenCL(int gpu, bool silent) {
 
             bool preferred = (gpu == id);
 
-            if ((this_score > best_score) || preferred) {
+            if (((this_score > best_score)
+                 && (d.getInfo<CL_DEVICE_TYPE>() != CL_DEVICE_TYPE_CPU))
+                || preferred) {
                 best_version = opencl_version;
                 best_platform = p;
                 best_device = d;
