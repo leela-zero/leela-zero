@@ -44,7 +44,7 @@ void SGFTree::init_state() {
     // Initialize with defaults.
     // The SGF might be missing boardsize or komi
     // which means we'll never initialize properly.
-    m_state.init_game(19, 7.5f);
+    m_state.init_game(std::min(BOARD_SIZE, 19), 7.5f);
 }
 
 KoState * SGFTree::get_state() {
