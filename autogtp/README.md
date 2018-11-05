@@ -33,6 +33,12 @@ directly.
 
 As explained in main page instructions, copy compiled leelaz and autogtp binaries (with cmake) from build subdirectory to autogtp subdirectory, then run autogtp to start contributing.
 
+## How to run AutoGTP - Ubuntu and macOS 
+
+In leela-zero/autogtp subdirectory :
+
     ./autogtp
 
-While autogtp is running, typing q+Enter will save the processed data and exit. When autogtp runs next, autogtp will continue the game.
+## How to run AutoGTP - Windows
+
+Double click on autogtp.exe (or use command line)
