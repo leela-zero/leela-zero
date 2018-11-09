@@ -41,7 +41,7 @@
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
 
 template <typename net_t>
-std::list<std::string> Tuner<net_t>::tuned_devices;
+std::vector<std::string> Tuner<net_t>::tuned_devices;
 
 #ifndef USE_BLAS
 // Eigen helpers
@@ -585,10 +585,10 @@ std::string Tuner<net_t>::load_sgemm_tuners(const int m, const int n, const int 
 
     auto try_prior_tuning = file.good();
 
-    // if we want full tuning, don't reuse previously tuned results
-    // except if the tuning was created from this run from a different GPU instance
-    // with the same name.  This prevents the tuner running for multiple times if
-    // the system has multiple same GPUs.
+    // If we want full tuning, don't reuse previously tuned results
+    // except if the tuning was created from this run from a different
+    // GPU instance with the same name.  This prevents the tuner running
+    // for multiple times if the system has multiple same GPUs.
     if (try_prior_tuning && cfg_sgemm_exhaustive) {
         auto dev = m_opencl.get_device_name();
         try_prior_tuning = std::any_of(

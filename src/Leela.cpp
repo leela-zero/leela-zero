@@ -221,7 +221,7 @@ static void parse_commandline(int argc, char *argv[]) {
 
         // --full-tuner auto-implies --tune-only.  The full tuner is so slow
         // that nobody will wait for it to finish befure running a game.
-        // this simply prevents some edge cases from confusing other people. #1973
+        // this simply prevents some edge cases from confusing other people.
         cfg_tune_only = true;
     }
 
@@ -244,9 +244,9 @@ static void parse_commandline(int argc, char *argv[]) {
         }
     }
     if (cfg_precision == precision_t::AUTO) {
-        // Auto precision is not supported for tune only cases. #1973
-        if (cfg_tune_only) {
-            printf("Automatic precision not supported when tuning only\n");
+        // Auto precision is not supported for full tuner cases.
+        if (cfg_sgemm_exhaustive) {
+            printf("Automatic precision not supported when doing exhaustive tuning\n");
             printf("Please add '--precision single' or '--precision half'\n");
             exit(EXIT_FAILURE);
         }

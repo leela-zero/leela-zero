@@ -42,7 +42,7 @@ public:
 
     // list of device types that was tuned in this run.
     // This is to prevent the same device from being tuned multiple times.
-    static std::list<std::string> tuned_devices;
+    static std::vector<std::string> tuned_devices;
 
     static constexpr auto TUNER_VERSION = 0;
     Tuner(OpenCL<net_t> & opencl, cl::Context context, cl::Device device) :
