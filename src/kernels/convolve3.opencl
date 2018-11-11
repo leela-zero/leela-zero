@@ -265,8 +265,8 @@ __kernel void out_transform_fused_bn_in(
                                      const int K,
                                      const int Kpad, const int Ppad, const int Cpad,
                                      __global const net_t * restrict residual,
-                                     __global __constant net_t * restrict means,
-                                     __global __constant net_t * restrict stddivs) {
+                                     __constant const net_t * restrict means,
+                                     __constant const net_t * restrict stddivs) {
 
     const int W = BOARD_SIZE;
     const int H = BOARD_SIZE;
@@ -280,43 +280,89 @@ __kernel void out_transform_fused_bn_in(
     const int block_x = block % WTILES;
     const int block_y = block / WTILES;
 
-    const int yin = WINOGRAD_M * block_y - 1;
-    const int xin = WINOGRAD_M * block_x - 1;
-
     const int x = WINOGRAD_M * block_x;
     const int y = WINOGRAD_M * block_y;
 
-	__local real ybuf[OUTIN_KWG * NUM_INTERSECTIONS];
+    const int kHW = batch * K * NUM_INTERSECTIONS + k * NUM_INTERSECTIONS;
+
+    __local real ybuf[OUTIN_KWG * NUM_INTERSECTIONS];
 
     if (k < K && block < P) {
-        const int kHW = batch * K * NUM_INTERSECTIONS + k * NUM_INTERSECTIONS;
-
-        real o[WINOGRAD_M * WINOGRAD_M];
-        __out_transform_eq(M, o, Kpad, Ppad, block + P * batch);
 
         const real mean = vload_net_t(k, means);
         const real scale_stddiv = vload_net_t(k, stddivs);
 
+        real temp_m[WINOGRAD_ALPHA][WINOGRAD_ALPHA];
+        real Atp[WINOGRAD_M * WINOGRAD_ALPHA];
+        real temp[WINOGRAD_ALPHA];
+
+        // M dimensions are [36, outputs, batch_size * tiles].
+        // Plus zero padding from SGEMM.
+
+        const int offset = block * Kpad + k;
+
+        for (int i = 0; i < WINOGRAD_M * WINOGRAD_ALPHA; i++) {
+            Atp[i] = At[i];
+        }
+
+        for (int yn = 0; yn < WINOGRAD_ALPHA; yn++) {
+            for (int xn = 0; xn < WINOGRAD_ALPHA; xn++) {
+                temp_m[xn][yn] = vload_net_t((yn * WINOGRAD_ALPHA + xn) * Kpad * Ppad + offset, M);
+            }
+        }
+
+        // Calculates transpose(A).temp_m.A
         for (int i = 0; i < WINOGRAD_M; i++) {
+            for (int j = 0; j < WINOGRAD_ALPHA; j++) {
+                real acc = ZERO;
+                for (int q = 0; q < WINOGRAD_ALPHA; q++) {
+                    acc += Atp[i * WINOGRAD_ALPHA + q] * temp_m[j][q];
+                }
+                temp[j] = acc;
+            }
+
             for (int j = 0; j < WINOGRAD_M; j++) {
-                const int in_idx = i * WINOGRAD_M + j;
+                real acc = ZERO;
+                for (int q = 0; q < WINOGRAD_ALPHA; q++) {
+                    acc += temp[q] * Atp[j * WINOGRAD_ALPHA + q];
+                }
+
                 const int out_idx = (y + i) * W + (x + j);
+                acc = scale_stddiv * (acc - mean);
                 if (y + i < H && x + j < W) {
-                    o[in_idx] = scale_stddiv * (o[in_idx] - mean);
-                    if (residual) {
-                        o[in_idx] += vload_net_t(kHW + out_idx, residual);
-                    }
-                    o[in_idx] = o[in_idx] > 0 ? o[in_idx] : ZERO;
-                    ybuf[kg * NUM_INTERSECTIONS + out_idx] = o[in_idx];
-                    if (Y) {
-                        vstore_net_t(o[in_idx], kHW + out_idx, Y);
-                    }
+                    ybuf[kg * NUM_INTERSECTIONS + out_idx] = acc;
                 }
             }
         }
     }
 
     barrier(CLK_LOCAL_MEM_FENCE);
+
+    const int ks = get_local_size(0);
+    const int k0 = get_group_id(0) * get_local_size(0);
+
+    for (int x = get_local_id(0) + ks * get_local_id(1); x < ks * NUM_INTERSECTIONS; x += get_local_size(1) * get_local_size(0)) {
+        const int kx = x / NUM_INTERSECTIONS;
+        const int idx = x - kx * NUM_INTERSECTIONS;
+
+        const int kHWx = batch * K * NUM_INTERSECTIONS + (k0 + kx) * NUM_INTERSECTIONS;
+
+        real acc = ybuf[kx * NUM_INTERSECTIONS + idx];
+        if (residual) {
+            acc += vload_net_t(kHWx + idx, residual);
+        }
+        acc = max(acc, ZERO);
+
+        if (Y) {
+            vstore_net_t(acc, kHWx + idx, Y);
+        }
+        ybuf[kx * NUM_INTERSECTIONS + idx] = acc;
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    const int yin = WINOGRAD_M * block_y - 1;
+    const int xin = WINOGRAD_M * block_x - 1;
 
     if (block < P && k < K) {
         const int CPpad = Ppad * Cpad;
@@ -339,3 +385,4 @@ __kernel void out_transform_fused_bn_in(
         __in_transform_eq(xx, V, offset, CPpad);
     }
 }
+
