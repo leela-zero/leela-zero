@@ -16,11 +16,9 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Enables loading of this file using the C++ pre-processor's #include (C++11 standard raw string
-// literal). Comment-out this line for syntax-highlighting when developing.
+//TODO: __constant define
 
-R"(
-__constant real Bt[WINOGRAD_ALPHA * WINOGRAD_ALPHA] = \
+__device__ real Bt[WINOGRAD_ALPHA * WINOGRAD_ALPHA] = \
                    {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
                     0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
                     0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
@@ -28,13 +26,13 @@ __constant real Bt[WINOGRAD_ALPHA * WINOGRAD_ALPHA] = \
                     0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
                     0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
 
-__constant real At[WINOGRAD_M * WINOGRAD_ALPHA] = \
+__device__ real At[WINOGRAD_M * WINOGRAD_ALPHA] = \
                    {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
                     0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
                     0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
                     0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
 
-void __in_transform_eq(real x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * restrict V, int offset, int CPpad) {
+__device__ void __in_transform_eq(real x[WINOGRAD_ALPHA][WINOGRAD_ALPHA], __global net_t * restrict V, int offset, int CPpad) {
 
     const int W = BOARD_SIZE;
     const int H = BOARD_SIZE;
@@ -141,7 +139,7 @@ __kernel void in_transform(__global net_t * restrict in, __global net_t * restri
     }
 }
 
-void __out_transform_eq(__global const net_t * restrict M, real o[WINOGRAD_M * WINOGRAD_M],
+__device__ void __out_transform_eq(__global const net_t * restrict M, real o[WINOGRAD_M * WINOGRAD_M],
                         int Kpad, int Ppad, int block)
 {
 
@@ -217,8 +215,8 @@ __kernel void out_transform_fused_bn(__global const net_t * restrict M,
                                      const int Kpad, const int Ppad,
                                      const int batch_size,
                                      __global const net_t * restrict residual,
-                                     __constant const net_t * restrict means,
-                                     __constant const net_t * restrict stddivs) {
+                                     __global __constant net_t * restrict means,
+                                     __global __constant net_t * restrict stddivs) {
 
     const int W = BOARD_SIZE;
     const int H = BOARD_SIZE;
@@ -267,9 +265,8 @@ __kernel void out_transform_fused_bn_in(
                                      const int K,
                                      const int Kpad, const int Ppad, const int Cpad,
                                      __global const net_t * restrict residual,
-                                     __constant const net_t * restrict means,
-                                     __constant const net_t * restrict stddivs,
-                                     __local real * ybuf) {
+                                     __global __constant net_t * restrict means,
+                                     __global __constant net_t * restrict stddivs) {
 
     const int W = BOARD_SIZE;
     const int H = BOARD_SIZE;
@@ -288,6 +285,8 @@ __kernel void out_transform_fused_bn_in(
 
     const int x = WINOGRAD_M * block_x;
     const int y = WINOGRAD_M * block_y;
+
+	__local real ybuf[OUTIN_KWG * NUM_INTERSECTIONS];
 
     if (k < K && block < P) {
         const int kHW = batch * K * NUM_INTERSECTIONS + k * NUM_INTERSECTIONS;
@@ -340,6 +339,3 @@ __kernel void out_transform_fused_bn_in(
         __in_transform_eq(xx, V, offset, CPpad);
     }
 }
-
-// End of the C++11 raw string literal
-)"

@@ -18,15 +18,16 @@
 
 // Enables loading of this file using the C++ pre-processor's #include (C++11 standard raw string
 // literal). Comment-out this line for syntax-highlighting when developing.
-R"(
     __kernel
     __attribute__((work_group_size_hint(8, 16, 1)))
     void convolve1(
                    __global const net_t * restrict in,
                    __global net_t * restrict merge,
-                   __global const net_t * restrict weights,
-                   __local real * channel_buff,
-                   __local real * row_buff) {
+                   __global const net_t * restrict weights) {
+
+		extern __shared__ real channel_buff[];
+
+		real *row_buff = &channel_buff[BOARD_SIZE * get_local_size(0) * get_local_size(2)];
 
         // cl::NDRange global(channels, outputs, row);
         const int c   = get_global_id(0);  // channel
@@ -69,7 +70,7 @@ R"(
                 ly + input_offset, in);
         }
         // Copy the filter we are applying locally
-        __private real filter_buff = vload_net_t((o * channels + c), weights);
+        real filter_buff = vload_net_t((o * channels + c), weights);
         barrier(CLK_LOCAL_MEM_FENCE);
         int out_lane = 0;
         int out_cw   = 0;
@@ -104,7 +105,7 @@ R"(
 __kernel void merge(
                         __global const net_t * restrict in,
                         __global net_t * restrict out,
-                        __private const int channels) {
+                        const int channels) {
         // cl::NDRange global(outputs, NUM_INTERSECTIONS);
         const int gx = get_global_id(0);
         const int gy = get_global_id(1);
@@ -122,6 +123,3 @@ __kernel void merge(
         }
         vstore_net_t(sum, batch * outputs * NUM_INTERSECTIONS + o * NUM_INTERSECTIONS + b, out);
     }
-
-// End of the C++11 raw string literal
-)"

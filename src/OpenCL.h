@@ -21,18 +21,15 @@
 
 #include "config.h"
 
-#define CL_HPP_MINIMUM_OPENCL_VERSION   110
-#define CL_HPP_TARGET_OPENCL_VERSION    120
-#define CL_HPP_ENABLE_EXCEPTIONS
-#include <CL/cl2.hpp>
+#include <cuda_runtime_api.h>
+#include <cuda.h>
+#include <cublas_v2.h>
 #include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
 #include <mutex>
 #include <cassert>
-
-#include "Tuner.h"
 
 template <typename net_t> class OpenCL;
 template <typename net_t> class OpenCL_Network;
@@ -46,7 +43,7 @@ private:
     bool is_input_convolution{false};
     bool is_residual_block{false};
     bool is_convolve1{false};
-    std::vector<cl::Buffer> weights;
+    std::vector<void*> weights;
 };
 
 class OpenCLContext {
@@ -54,19 +51,14 @@ class OpenCLContext {
     template <typename> friend class OpenCL_Network;
 private:
     bool m_is_initialized{false};
-    cl::CommandQueue m_commandqueue;
-    cl::Kernel m_convolve1_kernel;
-    cl::Kernel m_merge_kernel;
-    cl::Kernel m_in_transform_kernel;
-    cl::Kernel m_sgemm_kernel;
-    cl::Kernel m_out_transform_bn_kernel;
-    cl::Kernel m_out_transform_bn_in_kernel;
-    cl::Buffer m_inBuffer;
-    cl::Buffer m_inBuffer2;
-    cl::Buffer m_VBuffer;
-    cl::Buffer m_MBuffer;
-    cl::Buffer m_pinnedOutBuffer_pol;
-    cl::Buffer m_pinnedOutBuffer_val;
+    CUstream m_commandqueue;
+    cublasHandle_t m_cublas;
+    void* m_inBuffer;
+    void* m_inBuffer2;
+    void* m_VBuffer;
+    void* m_MBuffer;
+    void* m_pinnedOutBuffer_pol;
+    void* m_pinnedOutBuffer_val;
     bool m_buffers_allocated{false};
 };
 
@@ -137,11 +129,11 @@ public:
     void forward(const std::vector<float>& input,
             std::vector<float>& output_pol,
             std::vector<float>& output_val,
-            OpenCLContext & opencl_context,
+            OpenCLContext& opencl_context,
             const int batch_size = 1);
 
 private:
-    using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
+    using weight_slice_t = std::vector<void*>::const_iterator;
 
     void push_weights(size_t layer, const std::vector<net_t>& weights) {
         add_weights(layer, weights.size(), weights.data());
@@ -150,11 +142,11 @@ private:
 
     void convolve3(OpenCLContext & opencl_context,
                     int channels, int outputs,
-                    cl::Buffer& bufferIn,
-                    cl::Buffer& bufferOut,
-                    cl::Buffer& bufferV,
-                    cl::Buffer& bufferM, weight_slice_t weights,
-                    cl::Buffer* bufferResidual,
+                    void* bufferIn,
+                    void* bufferOut,
+                    void* bufferV,
+                    void* bufferM, weight_slice_t weights,
+                    void** bufferResidual,
                     weight_slice_t bn_weights,
                     bool skip_in_transform,
                     bool fuse_in_transform, bool store_inout,
@@ -162,9 +154,9 @@ private:
 
     void convolve1(OpenCLContext & opencl_context,
                   int channels, int outputs,
-                  cl::Buffer& bufferInput,
-                  cl::Buffer& bufferOutput,
-                  cl::Buffer& bufferMerge,
+                  void* bufferInput,
+                  void* bufferOutput,
+                  void* bufferMerge,
                   weight_slice_t weights,
                   int batch_size);
 
@@ -181,7 +173,6 @@ private:
 template <typename net_t>
 class OpenCL {
     friend class OpenCL_Network<net_t>;
-    friend class Tuner<net_t>;
 public:
     OpenCL(int gpu, bool silent = false);
     void initialize(const int channels);
@@ -191,15 +182,10 @@ public:
 
     std::vector<size_t> get_sgemm_tuners();
 
-    cl::Device m_device;
-    cl::Context m_context;
+    CUdevice m_device;
+    OpenCLContext m_context;
 private:
-    void tune_sgemm();
     void process_tuners(std::string tuners);
-
-    cl::Program m_program;
-    std::string m_cl_args;
-
     struct sgemm_tuners {
         size_t mwg, nwg, kwg;
         size_t vwm, vwn;
@@ -212,8 +198,5 @@ private:
     bool m_fp16_compute{false};
     bool m_init_ok{false};
 };
-
-extern const std::string sourceCode_sgemm;
-extern const std::string sourceCode_common;
 
 #endif

@@ -11,20 +11,16 @@
 //
 // =================================================================================================
 
-// Enables loading of this file using the C++ pre-processor's #include (C++11 standard raw string
-// literal). Comment-out this line for syntax-highlighting when developing.
-R"(
-// =================================================================================================
-
 #define ROUTINE_GEMMBATCHED
 
-#ifdef USE_HALF
-    #ifdef FP16_SUPPORT
-        #define FP16_COMPUTE
-    #else
-        #define FP16_STORAGE
-    #endif
-#endif
+//TODO: USE_HALF from config.h overrides USE_HALF in kernel defines
+//#ifdef USE_HALF
+//    #ifdef FP16_SUPPORT
+//        #define FP16_COMPUTE
+//    #else
+//        #define FP16_STORAGE
+//    #endif
+//#endif
 
 #ifndef PRECISION
     #ifdef FP16_COMPUTE
@@ -184,13 +180,10 @@ R"(
     return ((GetGroupIDFlat() / get_num_groups(1)) + GetGroupID1()) % get_num_groups(0);
   }
 #else
-  INLINE_FUNC int GetGroupID1() { return get_group_id(1); }
-  INLINE_FUNC int GetGroupID0() { return get_group_id(0); }
+  //INLINE_FUNC int GetGroupID1() { return get_group_id(1); }
+  //INLINE_FUNC int GetGroupID0() { return get_group_id(0); }
 #endif
 
 // =================================================================================================
-
-// End of the C++11 raw string literal
-)"
 
 // =================================================================================================

@@ -26,9 +26,10 @@ LIBS =
 
 ifeq ($(THE_OS),Linux)
 # for Linux with OpenBLAS
-	CXXFLAGS += -I/usr/include/openblas -I./Eigen
+	CXXFLAGS += -I/usr/include/openblas -I./Eigen -I/usr/local/cuda/include
+	DYNAMIC_LIBS += -L/usr/local/cuda/lib64 -lcudart -lcuda -lcublas
 	DYNAMIC_LIBS += -lopenblas
-	DYNAMIC_LIBS += -lOpenCL
+	#DYNAMIC_LIBS += -lOpenCL
 endif
 ifeq ($(THE_OS),Darwin)
 # for macOS (comment out the Linux part)
@@ -51,15 +52,23 @@ sources = Network.cpp FullBoard.cpp KoState.cpp Training.cpp \
 	  SGFParser.cpp Timing.cpp Utils.cpp FastBoard.cpp \
 	  SGFTree.cpp Zobrist.cpp FastState.cpp GTP.cpp Random.cpp \
 	  SMP.cpp UCTNode.cpp UCTNodePointer.cpp UCTNodeRoot.cpp \
-	  OpenCL.cpp OpenCLScheduler.cpp NNCache.cpp Tuner.cpp CPUPipe.cpp
+	  OpenCL.cpp OpenCLScheduler.cpp NNCache.cpp CPUPipe.cpp
+
+cuda_sources = cuda_kernels.cu
 
 objects = $(sources:.cpp=.o)
+objects += $(cuda_sources:.cu=.o)
+
 deps = $(sources:%.cpp=%.d)
+deps += $(cuda_sources:%.cu=%.d)
 
 -include $(deps)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+%.o: %.cu
+	nvcc -std=c++11 -lineinfo -c -o $@ $<
 
 leelaz: $(objects)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) $(DYNAMIC_LIBS)
