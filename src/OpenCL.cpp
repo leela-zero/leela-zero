@@ -400,10 +400,6 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
 	//}
 	//myprintf("\n\n");
 
-    if (!skip_in_transform) {
-		in_transform_host(bufferIn, bufferV, channels, k_ceil, n_ceil, batch_size);
-    }
-
 	if (fuse_in_transform) {
 		// k_ceil of the next convolution
         auto k_ceil2 = int(ceilMultiple(ceilMultiple(outputs, kwg), vwm));
