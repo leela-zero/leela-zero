@@ -68,7 +68,7 @@ deps += $(cuda_sources:%.cu=%.d)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 %.o: %.cu
-	nvcc -std=c++11 -lineinfo -c -o $@ $<
+	nvcc -std=c++11 --use_fast_math -lineinfo -c -o $@ $<
 
 leelaz: $(objects)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) $(DYNAMIC_LIBS)
