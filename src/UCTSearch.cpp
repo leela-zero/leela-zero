@@ -108,10 +108,6 @@ bool UCTSearch::advance_to_new_rootstate() {
         return false;
     }
 
-    if (m_rootstate.m_moves_to_avoid != m_last_rootstate->m_moves_to_avoid) {
-        return false;
-    }
-
     auto depth =
         int(m_rootstate.get_movenum() - m_last_rootstate->get_movenum());
 
@@ -804,6 +800,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
 }
 
 void UCTSearch::ponder() {
+    bool disable_reuse = !cfg_analyze_tags.m_moves_to_avoid.empty();
+    if (disable_reuse) {
+        m_last_rootstate.reset(nullptr);
+    }
+
     update_root();
 
     m_root->prepare_root_node(m_network, m_rootstate.board.get_to_move(),
@@ -851,7 +852,9 @@ void UCTSearch::ponder() {
     myprintf("\n%d visits, %d nodes\n\n", m_root->get_visits(), m_nodes.load());
 
     // Copy the root state. Use to check for tree re-use in future calls.
-    m_last_rootstate = std::make_unique<GameState>(m_rootstate);
+    if (!disable_reuse) {
+        m_last_rootstate = std::make_unique<GameState>(m_rootstate);
+    }
 }
 
 void UCTSearch::set_playout_limit(int playouts) {

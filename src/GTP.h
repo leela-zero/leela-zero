@@ -40,6 +40,36 @@
 #include "GameState.h"
 #include "UCTSearch.h"
 
+struct MoveToAvoid {
+    int color;
+    size_t from_move, to_move;
+    int vertex;
+
+    MoveToAvoid(int color, size_t from_move, size_t to_move, int vertex)
+        : color(color), from_move(from_move), to_move(to_move), vertex(vertex)
+    {}
+
+    bool operator==(const MoveToAvoid other) const {
+        return color == other.color && from_move == other.from_move &&
+            to_move == other.to_move && vertex == other.vertex;
+    }
+};
+
+class AnalyzeTags {
+public:
+    std::vector<MoveToAvoid> m_moves_to_avoid;
+
+    AnalyzeTags() {}
+
+    void clear() {
+        m_moves_to_avoid.clear();
+    }
+
+    void add_move_to_avoid(int color, int vertex, size_t from_move, size_t to_move) {
+        m_moves_to_avoid.emplace_back(color, from_move, to_move, vertex);
+    }
+};
+
 extern bool cfg_gtp_mode;
 extern bool cfg_allow_pondering;
 extern int cfg_num_threads;
@@ -83,6 +113,7 @@ extern std::string cfg_options_str;
 extern bool cfg_benchmark;
 extern bool cfg_cpu_only;
 extern int cfg_analyze_interval_centis;
+extern AnalyzeTags cfg_analyze_tags;
 
 static constexpr size_t MiB = 1024LL * 1024LL;
 
@@ -100,6 +131,7 @@ public:
 private:
     static constexpr int GTP_VERSION = 2;
 
+    static bool process_analyze_tags(int id, std::istringstream & cmdstream, const GameState & game);
     static std::string get_life_list(const GameState & game, bool live);
     static const std::string s_commands[];
     static const std::string s_options[];

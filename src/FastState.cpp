@@ -37,6 +37,7 @@
 #include "FastBoard.h"
 #include "Utils.h"
 #include "Zobrist.h"
+#include "GTP.h"
 
 using namespace Utils;
 
@@ -82,7 +83,7 @@ bool FastState::is_move_legal(int color, int vertex) const {
 }
 
 bool FastState::is_to_avoid(int color, int vertex, size_t movenum) const {
-    for (auto& move : m_moves_to_avoid) {
+    for (auto& move : cfg_analyze_tags.m_moves_to_avoid) {
         if (color == move.color &&
                 vertex == move.vertex &&
                 movenum >= move.from_move &&
@@ -143,14 +144,6 @@ void FastState::set_passes(int val) {
 void FastState::increment_passes() {
     m_passes++;
     if (m_passes > 4) m_passes = 4;
-}
-
-void FastState::add_move_to_avoid(int color, int vertex, size_t from_move, size_t to_move) {
-    m_moves_to_avoid.emplace_back(color, from_move, to_move, vertex);
-}
-
-void FastState::clear_moves_to_avoid() {
-    m_moves_to_avoid.clear();
 }
 
 int FastState::get_to_move() const {

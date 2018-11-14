@@ -97,6 +97,7 @@ std::string cfg_options_str;
 bool cfg_benchmark;
 bool cfg_cpu_only;
 int cfg_analyze_interval_centis;
+AnalyzeTags cfg_analyze_tags;
 
 std::unique_ptr<Network> GTP::s_network;
 
@@ -169,6 +170,7 @@ void GTP::setup_default_parameters() {
 #endif
 
     cfg_analyze_interval_centis = 0;
+    cfg_analyze_tags = AnalyzeTags();
 
     // C++11 doesn't guarantee *anything* about how random this is,
     // and in MinGW it isn't random at all. But we can mix it in, which
@@ -213,7 +215,6 @@ const std::string GTP::s_commands[] = {
     "lz-genmove_analyze",
     "lz-memory_report",
     "lz-setoption",
-    "lz-avoid",
     ""
 };
 
@@ -258,6 +259,56 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
     }
 
     return result;
+}
+
+bool GTP::process_analyze_tags(int id, std::istringstream & cmdstream, const GameState & game) {
+    std::string tag;
+
+    while (true) {
+        cmdstream >> tag;
+        if (cmdstream.fail()) {
+            /* No more tags */
+            return true;
+        }
+
+        if (tag == "avoid") {
+            std::string textcolor, textmove, text_to_movenum;
+            cmdstream >> textcolor;
+            cmdstream >> textmove;
+            cmdstream >> text_to_movenum;
+
+            const auto move = game.board.text_to_move(textmove);
+            int color;
+            size_t to_movenum;
+
+            if (move == FastBoard::NO_VERTEX) {
+                break;
+            }
+
+            if (textcolor == "w" || textcolor == "white") {
+                color = FastBoard::WHITE;
+            } else if (textcolor == "b" || textcolor == "black") {
+                color = FastBoard::BLACK;
+            } else {
+                break;
+            }
+
+            std::istringstream movenumstream(text_to_movenum);
+            movenumstream >> to_movenum;
+            if (to_movenum < 1) {
+                break;
+            }
+            to_movenum += game.get_movenum() - 1;
+
+            cfg_analyze_tags.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
+        } else {
+            break;
+        }
+    }
+
+    gtp_fail_printf(id, "cannot parse analyze tags");
+    cfg_analyze_tags.clear();
+    return false;
 }
 
 void GTP::execute(GameState & game, const std::string& xinput) {
@@ -443,6 +494,9 @@ void GTP::execute(GameState & game, const std::string& xinput) {
                 return;
             }
             if (analysis_output) {
+                if (!process_analyze_tags(id, cmdstream, game)) {
+                    return;
+                }
                 // Start of multi-line response
                 cfg_analyze_interval_centis = interval;
                 if (id != -1) gtp_printf_raw("=%d\n", id);
@@ -477,6 +531,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             gtp_fail_printf(id, "syntax not understood");
         }
         analysis_output = false;
+        cfg_analyze_tags.clear();
         return;
     } else if (command.find("lz-analyze") == 0) {
         std::istringstream cmdstream(command);
@@ -511,6 +566,10 @@ void GTP::execute(GameState & game, const std::string& xinput) {
                 }
             }
         }
+        if (!process_analyze_tags(id, cmdstream, game)) {
+            cfg_analyze_interval_centis = 0;
+            return;
+        }
         // Start multi-line response.
         if (id != -1) gtp_printf_raw("=%d\n", id);
         else gtp_printf_raw("=\n");
@@ -521,6 +580,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             search->ponder();
         }
         cfg_analyze_interval_centis = 0;
+        cfg_analyze_tags.clear();
         // Terminate multi-line response
         gtp_printf_raw("\n");
         return;
@@ -968,48 +1028,6 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             "Estimated total memory consumption: %d MiB.\n"
             "Network with overhead: %d MiB / Search tree: %d MiB / Network cache: %d\n",
             total / MiB, base_memory / MiB, tree_size / MiB, cache_size / MiB);
-        return;
-    } else if (command.find("lz-avoid clear") == 0) {
-        game.clear_moves_to_avoid();
-        gtp_printf(id, "cleared the list of moves to avoid");
-        return;
-    } else if (command.find("lz-avoid") == 0) {
-        std::istringstream cmdstream(command);
-        std::string tmp;
-        std::string textcolor, textmove, text_to_movenum;
-
-        cmdstream >> tmp;   // eat lz-avoid
-        cmdstream >> textcolor;
-        cmdstream >> textmove;
-        cmdstream >> text_to_movenum;
-
-        const auto move = game.board.text_to_move(textmove);
-        int color;
-        size_t to_movenum;
-
-        if (move == FastBoard::NO_VERTEX) {
-            gtp_fail_printf(id, "cannot parse move");
-            return;
-        }
-
-        if (textcolor == "w" || textcolor == "white") {
-            color = FastBoard::WHITE;
-        } else if (textcolor == "b" || textcolor == "black") {
-            color = FastBoard::BLACK;
-        } else {
-            gtp_fail_printf(id, "cannot parse color");
-            return;
-        }
-
-        std::stringstream movenumstream(text_to_movenum);
-        movenumstream >> to_movenum;
-        if (text_to_movenum[0] == '+') {
-            to_movenum += game.get_movenum();
-        }
-
-        game.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
-
-        gtp_printf(id, "added to list of moves to avoid");
         return;
     } else if (command.find("lz-setoption") == 0) {
         return execute_setoption(*search.get(), id, command);
