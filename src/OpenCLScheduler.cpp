@@ -113,6 +113,12 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
         }
         gnum++;
     }
+
+    // Exit immediately after tuning.  We should exit here because we skipped
+    // initializing rest of the kernels due to some NVIDIA drivers crashing.
+    if (cfg_tune_only) {
+        exit(EXIT_SUCCESS);
+    }
 }
 
 template<typename net_t>

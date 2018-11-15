@@ -40,6 +40,9 @@
 
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
 
+template <typename net_t>
+std::vector<std::string> Tuner<net_t>::tuned_devices;
+
 #ifndef USE_BLAS
 // Eigen helpers
 template <typename T>
@@ -579,7 +582,24 @@ std::string Tuner<net_t>::load_sgemm_tuners(const int m, const int n, const int 
                                      const int batch_size) {
     auto tuner_file = leelaz_file(TUNER_FILE_LOCAL);
     auto file = std::ifstream{tuner_file};
-    if (!cfg_sgemm_exhaustive && file.good()) {
+
+    auto try_prior_tuning = file.good();
+
+    // If we want full tuning, don't reuse previously tuned results
+    // except if the tuning was created from this run from a different
+    // GPU instance with the same name.  This prevents the tuner running
+    // for multiple times if the system has multiple same GPUs.
+    if (try_prior_tuning && cfg_sgemm_exhaustive) {
+        auto dev = m_opencl.get_device_name();
+        try_prior_tuning = std::any_of(
+            begin(tuned_devices),
+            end(tuned_devices),
+            [&dev](const std::string & x) { return dev == x; }
+        );
+    }
+    tuned_devices.emplace_back(m_opencl.get_device_name());
+
+    if (try_prior_tuning) {
         auto line = std::string{};
         while (std::getline(file, line)) {
             auto tuners = sgemm_tuners_from_line(line, m, n, k, batch_size);
