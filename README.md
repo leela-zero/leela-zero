@@ -54,9 +54,7 @@ More complicated way : but if you want to manually compile your own leela-zero v
 
 Read [the main instructions below](https://github.com/wonderingabout/leela-zero#i-just-want-to-run-leela-zero-right-now), then follow [the macOS instructions to compile](https://github.com/wonderingabout/leela-zero#how-to-compile-and-run-autogtp-andor-leelaz---macos) leelaz and autogtp binaries in build subdirectory.
 
-Then, [if you want to contribute](https://github.com/wonderingabout/leela-zero#else-if-you-want-to-help-to-contribute-run-autogtp--1), don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as explained in the main instructions below.
-
-You can also read these [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
+Then, [if you want to contribute](https://github.com/wonderingabout/leela-zero#else-if-you-want-to-help-to-contribute-run-autogtp--1), don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as explained in the main instructions below. You can also read these [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
 
 Else, [if you want to play only](https://github.com/wonderingabout/leela-zero#then-if-you-just-want-to-play-right-now-not-contribute-run-leelaz-), run instead leelaz as explained in the main instructions below .
 
@@ -65,9 +63,7 @@ Else, [if you want to play only](https://github.com/wonderingabout/leela-zero#th
 
 Read [the main instructions below](https://github.com/wonderingabout/leela-zero#i-just-want-to-run-leela-zero-right-now), then follow [the linux instructions to compile](https://github.com/wonderingabout/leela-zero#how-to-compile-and-run-autogtp-andor-leelaz---macos) leelaz and autogtp binaries in build subdirectory.
 
-Then, [if you want to contribute](https://github.com/wonderingabout/leela-zero#else-if-you-want-to-help-to-contribute-run-autogtp--1), don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as explained in the main instructions below.
-
-You can also read these [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
+Then, [if you want to contribute](https://github.com/wonderingabout/leela-zero#else-if-you-want-to-help-to-contribute-run-autogtp--1), don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as explained in the main instructions below. You can also read these [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
 
 Else, [if you want to play only](https://github.com/wonderingabout/leela-zero#then-if-you-just-want-to-play-right-now-not-contribute-run-leelaz-), run instead leelaz as explained in the main instructions below .
 
