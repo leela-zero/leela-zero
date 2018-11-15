@@ -44,20 +44,21 @@ the distributed effort. But you can still play, especially if you are patient.
 
 ### Windows
 
-Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
-download the latest release, unzip, and launch autogtp.exe. It will connect to
-the server automatically and do its work in the background, uploading results
+Easiest way : If you want to run the latest stable version ("master" branch), head to the Github releases page at https://github.com/gcp/leela-zero/releases, download the latest release, unzip, and launch autogtp.exe.
+It will connect to the server automatically and do its work in the background, uploading results
 after each game. You can just close the autogtp window to stop it.
+
+More complicated way : but if you want to manually compile your own leela-zero version, either stable "master" branch or test branch "next", read [the main instructions there](https://github.com/wonderingabout/leela-zero#i-just-want-to-run-leela-zero-right-now), then follow [the instructions for windows](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---windows) there . You can also read these [AutoGTP details there](autogtp/README.md)
 
 ### macOS and Linux
 
-Follow the main instructions below to compile the leelaz and autogtp binaries in build subdirectory.
+Follow [the main instructions below](https://github.com/wonderingabout/leela-zero#else-if-you-want-to-help-to-contribute-run-autogtp-) to compile the leelaz and autogtp binaries in build subdirectory.
 
-Then, if you want to contribute, don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as shown in the commands below.
+Then, if you want to contribute, don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as explained in the main instructions below.
 
 You can also read these [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
 
-Else, if you want to play only, run instead leelaz as shown below .
+Else, if you want to play only, run instead leelaz as explained in the main instructions below .
 
 
 ## Using a Cloud provider
@@ -69,7 +70,7 @@ There are community maintained instructions available here:
 [Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial, Microsoft Azure, Oracle cloud, etc)](https://docs.google.com/document/d/1P_c-RbeLKjv1umc4rMEgvIVrUUZSeY0WAtYHjaxjD64/edit?usp=sharing)
 
 
-# I just want to run leela-zero right now
+# I just want to run leela-zero right now (main instructions)
 
 To play, only leelaz is needed (and not AutoGTP).
 
