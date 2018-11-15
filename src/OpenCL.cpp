@@ -195,6 +195,11 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, net_t_input.data());
 
+    // Fused in_out transformation kernel is slower with big batch_sizes than
+    // calling out and in transformations separately.
+    // This condition could be tunable in future.
+    auto use_inout = (batch_size == 1);
+
     auto skip_in_trans = false;
     for (auto iter = cbegin(m_layers); iter != cend(m_layers); iter++) {
         const auto& layer = *iter;
@@ -206,7 +211,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
             auto bn_weights = begin(layer.weights) + 1;
             auto skip_next_in_trans = false;
             if (niter->is_residual_block) {
-                skip_next_in_trans = true;
+                skip_next_in_trans = use_inout;
             }
 
             convolve3(opencl_context,
@@ -240,12 +245,12 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                       conv1_weights,
                       nullptr,
                       bn1_weights,
-                      skip_in_trans, true, false,
+                      skip_in_trans, use_inout, false,
                       batch_size);
 
             auto skip_next_in_trans = false;
             if (niter->is_residual_block) {
-                skip_next_in_trans = true;
+                skip_next_in_trans = use_inout;
             }
             convolve3(opencl_context,
                       layer.channels,
@@ -257,7 +262,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                       conv2_weights,
                       &inBuffer,
                       bn2_weights,
-                      true, skip_next_in_trans, true,
+                      use_inout, skip_next_in_trans, true,
                       batch_size);
             skip_in_trans = skip_next_in_trans;
         } else {
@@ -347,8 +352,6 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
     assert(wavefront_size != 0);
 
     constexpr auto tiles = WINOGRAD_P;
-    constexpr auto width = BOARD_SIZE;
-    constexpr auto height = BOARD_SIZE;
 
     auto wgs = ceilMultiple(batch_size * tiles, wavefront_size);
     auto wgs_single = ceilMultiple(tiles, wavefront_size);
@@ -371,7 +374,7 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
             queue.enqueueNDRangeKernel(in_transform_kernel, cl::NullRange,
                                        cl::NDRange(wgs, channels));
         } catch (const cl::Error &e) {
-            std::cerr << "Error in convolve3: " << e.what() << ": "
+            std::cerr << "Error in convolve3/in: " << e.what() << ": "
                 << e.err() << std::endl;
             throw;
         }
@@ -394,7 +397,7 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
         queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
                                    size_sgemm, local_sgemm);
     } catch (const cl::Error &e) {
-        std::cerr << "Error in convolve3: " << e.what() << ": "
+        std::cerr << "Error in convolve3/sgemm: " << e.what() << ": "
             << e.err() << std::endl;
         throw;
     }
@@ -402,6 +405,7 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
     try {
         if (fuse_in_transform) {
             // TODO : Eventually this might also be something tuneable?
+            // Needs to match OUTIN_KWG in kernel
             constexpr auto dim_size = 2;
             out_transform_bn_in_kernel.setArg(0, bufferM);
             if (store_inout) {
@@ -423,8 +427,6 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
             }
             out_transform_bn_in_kernel.setArg(8, bn_weights[0]);
             out_transform_bn_in_kernel.setArg(9, bn_weights[1]);
-            out_transform_bn_in_kernel.setArg(10,
-                cl::Local(dim_size * width * height * sizeof(float)));
 
             queue.enqueueNDRangeKernel(out_transform_bn_in_kernel,
                                        cl::NullRange,
@@ -445,11 +447,19 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
             out_transform_bn_kernel.setArg(7, bn_weights[0]);
             out_transform_bn_kernel.setArg(8, bn_weights[1]);
 
+            // Needs to match OUT_KWG, OUT_BWG in the kernel.
+            // This could be tuned.
+            cl::NDRange local_out = {32, 2};
+
+            cl::NDRange global_out = {ceilMultiple(outputs, local_out[0]),
+                                      ceilMultiple(tiles * batch_size, local_out[1])};
+
             queue.enqueueNDRangeKernel(out_transform_bn_kernel, cl::NullRange,
-                                       cl::NDRange(outputs, wgs));
+                                       global_out,
+                                       local_out);
         }
     } catch (const cl::Error &e) {
-        std::cerr << "Error in convolve3: " << e.what() << ": "
+        std::cerr << "Error in convolve3/out: " << e.what() << ": "
             << e.err() << std::endl;
         throw;
     }
