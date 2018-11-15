@@ -151,6 +151,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
+    
     # Compile leelaz and autogtp in build subdirectory with cmake
     cmake ..
     cmake --build .
