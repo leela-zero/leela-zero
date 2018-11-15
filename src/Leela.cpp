@@ -90,7 +90,9 @@ static void parse_commandline(int argc, char *argv[]) {
         ("gpu",  po::value<std::vector<int> >(),
                 "ID of the OpenCL device(s) to use (disables autodetection).")
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
-        ("tune-only", "Tune OpenCL only and then exit.")
+        ("tune-only", po::value<std::string>()->default_value("auto")->implicit_value("yes"),
+                      "[auto|yes|no] Tune OpenCL only and then exit.\n"
+                      "auto = yes when using full-tuner.")
 #ifdef USE_HALF
         ("precision", po::value<std::string>(),
             "Floating-point precision (single/half/auto).\n"
@@ -219,15 +221,24 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("full-tuner")) {
         cfg_sgemm_exhaustive = true;
-
-        // --full-tuner auto-implies --tune-only.  The full tuner is so slow
-        // that nobody will wait for it to finish befure running a game.
-        // This simply prevents some edge cases from confusing other people.
-        cfg_tune_only = true;
     }
 
     if (vm.count("tune-only")) {
-        cfg_tune_only = true;
+        const auto to = vm["tune-only"].as<std::string>();
+        if (to == "auto") {
+            // By default --full-tuner implies --tune-only. The full tuner is
+            // so slow that nobody will normally wait for it to finish before
+            // running a game. This simply prevents some edge cases from
+            // confusing other people.
+            cfg_tune_only = cfg_sgemm_exhaustive;
+        } else if (to == "yes") {
+            cfg_tune_only = true;
+        } else if (to == "no") {
+            cfg_tune_only = false;
+        } else {
+            printf("Invalid tune-only value.\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
 #ifdef USE_HALF
