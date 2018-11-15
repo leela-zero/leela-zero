@@ -63,7 +63,7 @@ Else, [if you want to play only](https://github.com/wonderingabout/leela-zero#th
 
 ### Linux (Ubuntu and similar, etc)
 
-Read [the main instructions below](https://github.com/wonderingabout/leela-zero#i-just-want-to-run-leela-zero-right-now) for linux, then follow [the linux instructions to compile](https://github.com/wonderingabout/leela-zero#how-to-compile-and-run-autogtp-andor-leelaz---macos) leelaz and autogtp binaries in build subdirectory.
+Read [the main instructions below](https://github.com/wonderingabout/leela-zero#i-just-want-to-run-leela-zero-right-now), then follow [the linux instructions to compile](https://github.com/wonderingabout/leela-zero#how-to-compile-and-run-autogtp-andor-leelaz---macos) leelaz and autogtp binaries in build subdirectory.
 
 Then, [if you want to contribute](https://github.com/wonderingabout/leela-zero#else-if-you-want-to-help-to-contribute-run-autogtp--1), don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as explained in the main instructions below.
 
