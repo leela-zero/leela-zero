@@ -13,12 +13,14 @@ the SGF and training data at the end of the game.
 
 ## How to compile AutoGTP - Ubuntu and macOS
 
-Just follow main instructions : cmake will compile both autogtp and leelaz binaries in build subdirectory.
+Just follow [main instructions](https://github.com/wonderingabout/leela-zero#i-just-want-to-run-leela-zero-right-now-main-instructions) : cmake will compile both autogtp and leelaz binaries in build subdirectory.
 
 You don't need to do anything else.
 
 
 ## How to compile AutoGTP using Visual Studio - Windows
+
+--- NOTE FOR GCP : these instructions for windows may be outdated, i am not familiar with windows compile so i didnt modify them----
 
 You have to download and install Qt and Qt VS Tools. You only need QtCore to
 run. Locate a copy of curl.exe and gzip.exe (a previous Leela release package
