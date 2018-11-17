@@ -67,8 +67,8 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
     auto buffer_offset = 0;
     auto buffer_entries = 0;
 
-    std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA> T1;
 
+#if 0
     const auto Bt = std::array<float, WINOGRAD_TILE>
                {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
                 0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
@@ -76,6 +76,26 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                 0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
                 0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
                 0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
+#endif
+    auto multiply_bt = [](
+        float & o0, float & o1, float & o2, float & o3, float & o4, float & o5,
+        float i0, float i1, float i2, float i3, float i4, float i5
+    ) {
+        auto i3m1 = i1 * -SQ2 + i3 * (SQ2 / 2.0f);
+        auto i4m2 = i2 * -2.0f + i4 * 1.0f;
+
+        o0 = i0 + i2 * (-5.0f/2.0f) + i4;
+        o1 = i3m1 + i4m2;
+        o2 = -i3m1 + i4m2;
+
+        auto i3m1_2 = i3 * (SQ2) + i1 * (-SQ2/2.0f);
+        auto i4m2_2 = i2 * (-1.0f/2.0f) + i4;
+
+        o3 = i3m1_2 + i4m2_2;
+        o4 = -i3m1_2 + i4m2_2;
+
+        o5 = i1 + i3 * (-5.0f/2.0f) + i5;
+    };
 
     for (auto ch = 0; ch < C; ch++) {
         for (auto yin = 0; yin < H; yin++) {
@@ -88,28 +108,33 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
             const auto yin = WINOGRAD_M * block_y;
             for (auto block_x = 0; block_x < WTILES; block_x++) {
                 const auto xin = WINOGRAD_M * block_x;
+                std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA> T1;
 
                 // Calculates transpose(B).x.B
-                for (auto i = 0; i < WINOGRAD_ALPHA; i++){
-                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
-                        auto acc = 0.0f;
-                        for (auto k = 0; k < WINOGRAD_ALPHA; k++) {
-                            acc += Bt[i * WINOGRAD_ALPHA + k] * \
-                                   in_pad[yin + k][xin + j];
-                        }
-                        T1[i][j] = acc;
-                    }
+                for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
+                    multiply_bt(
+                        T1[0][j], T1[1][j], T1[2][j], T1[3][j], T1[4][j], T1[5][j],
+                        in_pad[yin + 0][xin + j],
+                        in_pad[yin + 1][xin + j],
+                        in_pad[yin + 2][xin + j],
+                        in_pad[yin + 3][xin + j],
+                        in_pad[yin + 4][xin + j],
+                        in_pad[yin + 5][xin + j]
+                    );
                 }
 
                 for (auto i = 0; i < WINOGRAD_ALPHA; i++){
-                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
-                        auto acc = 0.0f;
-                        for (auto k = 0; k < WINOGRAD_ALPHA; k++) {
-                            acc += T1[i][k] * Bt[j * WINOGRAD_ALPHA + k];
-                        }
-                        buffer[buffersize * (i * WINOGRAD_ALPHA + j) + buffer_entries] = acc;
-                    }
+                    multiply_bt(
+                        buffer[buffersize * (i * WINOGRAD_ALPHA + 0) + buffer_entries],
+                        buffer[buffersize * (i * WINOGRAD_ALPHA + 1) + buffer_entries],
+                        buffer[buffersize * (i * WINOGRAD_ALPHA + 2) + buffer_entries],
+                        buffer[buffersize * (i * WINOGRAD_ALPHA + 3) + buffer_entries],
+                        buffer[buffersize * (i * WINOGRAD_ALPHA + 4) + buffer_entries],
+                        buffer[buffersize * (i * WINOGRAD_ALPHA + 5) + buffer_entries],
+                        T1[i][0], T1[i][1], T1[i][2], T1[i][3], T1[i][4], T1[i][5]
+                    );
                 }
+
                 if (buffer_entries == 0) {
                     buffer_offset = ch * P + block_y * WTILES + block_x;
                 }
@@ -164,6 +189,27 @@ void CPUPipe::winograd_transform_out(const std::vector<float>& M,
     constexpr auto H = BOARD_SIZE;
     constexpr auto WTILES = WINOGRAD_WTILES;
     constexpr auto P = WINOGRAD_P;
+#if 0
+    const auto At = std::array<float, WINOGRAD_ALPHA * WINOGRAD_M>
+          {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
+           0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
+           0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
+           0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
+#endif
+    auto multiply_at = [](
+        float & o0, float & o1, float & o2, float & o3,
+        float i0, float i1, float i2, float i3, float i4, float i5
+    ) {
+        auto t1p2 = (i1 + i2) * (1.0f / 2.0f);
+        auto t1m2 = (i1 - i2) * (SQ2/4.0f);
+        auto t3p4 = i3 + i4;
+        auto t3m4 = (i3 - i4) * (SQ2);
+
+        o0 = i0 + t1p2 + t1p2 + t3p4;
+        o1 = t1m2 + t1m2 + t3m4;
+        o2 = t1p2 + t3p4 + t3p4;
+        o3 = t1m2 + t3m4 + t3m4 + i5;
+    };
 
     for (auto k = 0; k < K; k++) {
         for (auto block_x = 0; block_x < WTILES; block_x++) {
@@ -181,35 +227,22 @@ void CPUPipe::winograd_transform_out(const std::vector<float>& M,
                             M[(xi*WINOGRAD_ALPHA + nu)*K*P + k*P + b];
                     }
                 }
-
-                const auto At = std::array<float, WINOGRAD_ALPHA * WINOGRAD_M>
-                      {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
-                       0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
-                       0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
-                       0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
-
                 std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_M> temp;
                 std::array<std::array<float, WINOGRAD_M>, WINOGRAD_M> o;
 
                 // Calculates transpose(A).temp_m.A
-                for (auto i = 0; i < WINOGRAD_M; i++){
-                    for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
-                        auto acc = 0.0f;
-                        for (auto q = 0; q < WINOGRAD_ALPHA; q++) {
-                            acc += At[i * WINOGRAD_ALPHA + q] * temp_m[q][j];
-                        }
-                        temp[i][j] = acc;
-                    }
+                for (auto j = 0; j < WINOGRAD_ALPHA; j++){
+                    multiply_at(
+                        temp[0][j], temp[1][j], temp[2][j], temp[3][j],
+                        temp_m[0][j], temp_m[1][j], temp_m[2][j], temp_m[3][j], temp_m[4][j], temp_m[5][j]
+                    );
                 }
 
                 for (auto i = 0; i < WINOGRAD_M; i++){
-                    for (auto j = 0; j < WINOGRAD_M; j++) {
-                        auto acc = 0.0f;
-                        for (auto q = 0; q < WINOGRAD_ALPHA; q++) {
-                            acc += temp[i][q] * At[j * WINOGRAD_ALPHA + q];
-                        }
-                        o[i][j] = acc;
-                    }
+                    multiply_at(
+                        o[i][0], o[i][1], o[i][2], o[i][3],
+                        temp[i][0], temp[i][1], temp[i][2], temp[i][3], temp[i][4], temp[i][5]
+                    );
                 }
 
                 const auto y_ind = k * H * W + y * W + x;
