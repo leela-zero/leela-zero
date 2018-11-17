@@ -744,8 +744,8 @@ int UCTSearch::think(int color, passflag_t passflag) {
         Time elapsed;
         int elapsed_centis = Time::timediff_centis(start, elapsed);
 
-        if (cfg_analyze_interval_centis &&
-            elapsed_centis - last_output > cfg_analyze_interval_centis) {
+        if (cfg_analyze_tags.m_interval_centis &&
+            elapsed_centis - last_output > cfg_analyze_tags.m_interval_centis) {
             last_output = elapsed_centis;
             output_analysis(m_rootstate, *m_root);
         }
@@ -800,7 +800,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 }
 
 void UCTSearch::ponder() {
-    bool disable_reuse = !cfg_analyze_tags.m_moves_to_avoid.empty();
+    auto disable_reuse = !cfg_analyze_tags.m_moves_to_avoid.empty();
     if (disable_reuse) {
         m_last_rootstate.reset(nullptr);
     }
@@ -824,10 +824,10 @@ void UCTSearch::ponder() {
         if (result.valid()) {
             increment_playouts();
         }
-        if (cfg_analyze_interval_centis) {
+        if (cfg_analyze_tags.m_interval_centis) {
             Time elapsed;
             int elapsed_centis = Time::timediff_centis(start, elapsed);
-            if (elapsed_centis - last_output > cfg_analyze_interval_centis) {
+            if (elapsed_centis - last_output > cfg_analyze_tags.m_interval_centis) {
                 last_output = elapsed_centis;
                 output_analysis(m_rootstate, *m_root);
             }

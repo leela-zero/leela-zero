@@ -96,7 +96,6 @@ bool cfg_quiet;
 std::string cfg_options_str;
 bool cfg_benchmark;
 bool cfg_cpu_only;
-int cfg_analyze_interval_centis;
 AnalyzeTags cfg_analyze_tags;
 
 std::unique_ptr<Network> GTP::s_network;
@@ -169,7 +168,6 @@ void GTP::setup_default_parameters() {
     cfg_cpu_only = false;
 #endif
 
-    cfg_analyze_interval_centis = 0;
     cfg_analyze_tags = AnalyzeTags();
 
     // C++11 doesn't guarantee *anything* about how random this is,
@@ -261,30 +259,42 @@ std::string GTP::get_life_list(const GameState & game, bool live) {
     return result;
 }
 
-bool GTP::process_analyze_tags(int id, std::istringstream & cmdstream, const GameState & game) {
+AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameState & game) {
     std::string tag;
+    AnalyzeTags tags;
+
+    /* Default color is the current one */
+    tags.m_who = game.board.get_to_move();
 
     while (true) {
-        cmdstream >> tag;
-        if (cmdstream.fail()) {
-            /* No more tags */
-            return true;
+        cmdstream >> std::ws;
+        if (isdigit(cmdstream.peek())) {
+            tag = "interval";
+        } else {
+            cmdstream >> tag;
+            if (cmdstream.fail() && cmdstream.eof()) {
+                /* Parsing complete */
+                tags.m_invalid = false;
+                break;
+            }
         }
 
         if (tag == "avoid") {
-            std::string textcolor, textmove, text_to_movenum;
+            std::string textcolor, textmove;
+            size_t to_movenum;
             cmdstream >> textcolor;
             cmdstream >> textmove;
-            cmdstream >> text_to_movenum;
+            cmdstream >> to_movenum;
+            if (cmdstream.fail()) {
+                break;
+            }
 
             const auto move = game.board.text_to_move(textmove);
-            int color;
-            size_t to_movenum;
-
             if (move == FastBoard::NO_VERTEX) {
                 break;
             }
 
+            int color;
             if (textcolor == "w" || textcolor == "white") {
                 color = FastBoard::WHITE;
             } else if (textcolor == "b" || textcolor == "black") {
@@ -293,22 +303,27 @@ bool GTP::process_analyze_tags(int id, std::istringstream & cmdstream, const Gam
                 break;
             }
 
-            std::istringstream movenumstream(text_to_movenum);
-            movenumstream >> to_movenum;
             if (to_movenum < 1) {
                 break;
             }
             to_movenum += game.get_movenum() - 1;
 
-            cfg_analyze_tags.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
+            tags.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
+        } else if (tag == "w" || tag == "white") {
+            tags.m_who = FastBoard::WHITE;
+        } else if (tag == "b" || tag == "black") {
+            tags.m_who = FastBoard::BLACK;
+        } else if (tag == "interval") {
+            cmdstream >> tags.m_interval_centis;
+            if (cmdstream.fail()) {
+                break;
+            }
         } else {
             break;
         }
     }
 
-    gtp_fail_printf(id, "cannot parse analyze tags");
-    cfg_analyze_tags.clear();
-    return false;
+    return tags;
 }
 
 void GTP::execute(GameState & game, const std::string& xinput) {
@@ -472,19 +487,24 @@ void GTP::execute(GameState & game, const std::string& xinput) {
     } else if (command.find("genmove") == 0
                || command.find("lz-genmove_analyze") == 0) {
         auto analysis_output = command.find("lz-genmove_analyze") == 0;
-        auto interval = 0;
 
         std::istringstream cmdstream(command);
         std::string tmp;
-
         cmdstream >> tmp;  // eat genmove
-        cmdstream >> tmp;
-        if (analysis_output) {
-            cmdstream >> interval;
-        }
 
-        if (!cmdstream.fail()) {
-            int who;
+        int who;
+        AnalyzeTags tags;
+
+        if (analysis_output) {
+            tags = parse_analyze_tags(cmdstream, game);
+            if (tags.m_invalid) {
+                gtp_fail_printf(id, "cannot parse analyze tags");
+                return;
+            }
+            who = tags.m_who;
+        } else {
+            /* genmove command */
+            cmdstream >> tmp;
             if (tmp == "w" || tmp == "white") {
                 who = FastBoard::WHITE;
             } else if (tmp == "b" || tmp == "black") {
@@ -493,81 +513,50 @@ void GTP::execute(GameState & game, const std::string& xinput) {
                 gtp_fail_printf(id, "syntax error");
                 return;
             }
-            if (analysis_output) {
-                if (!process_analyze_tags(id, cmdstream, game)) {
-                    return;
-                }
-                // Start of multi-line response
-                cfg_analyze_interval_centis = interval;
-                if (id != -1) gtp_printf_raw("=%d\n", id);
-                else gtp_printf_raw("=\n");
-            }
-            // start thinking
-            {
-                game.set_to_move(who);
-                // Outputs winrate and pvs for lz-genmove_analyze
-                int move = search->think(who);
-                game.play_move(move);
-
-                std::string vertex = game.move_to_text(move);
-                if (!analysis_output) {
-                    gtp_printf(id, "%s", vertex.c_str());
-                } else {
-                    gtp_printf_raw("play %s\n", vertex.c_str());
-                }
-            }
-            if (cfg_allow_pondering) {
-                // now start pondering
-                if (!game.has_resigned()) {
-                    // Outputs winrate and pvs through gtp for lz-genmove_analyze
-                    search->ponder();
-                }
-            }
-            if (analysis_output) {
-                // Terminate multi-line response
-                gtp_printf_raw("\n");
-            }
-        } else {
-            gtp_fail_printf(id, "syntax not understood");
         }
-        analysis_output = false;
+
+        if (analysis_output) {
+            // Start of multi-line response
+            cfg_analyze_tags = tags;
+            if (id != -1) gtp_printf_raw("=%d\n", id);
+            else gtp_printf_raw("=\n");
+        }
+        // start thinking
+        {
+            game.set_to_move(who);
+            // Outputs winrate and pvs for lz-genmove_analyze
+            int move = search->think(who);
+            game.play_move(move);
+
+            std::string vertex = game.move_to_text(move);
+            if (!analysis_output) {
+                gtp_printf(id, "%s", vertex.c_str());
+            } else {
+                gtp_printf_raw("play %s\n", vertex.c_str());
+            }
+        }
+
+        if (cfg_allow_pondering) {
+            // now start pondering
+            if (!game.has_resigned()) {
+                // Outputs winrate and pvs through gtp for lz-genmove_analyze
+                search->ponder();
+            }
+        }
+        if (analysis_output) {
+            // Terminate multi-line response
+            gtp_printf_raw("\n");
+        }
         cfg_analyze_tags.clear();
         return;
     } else if (command.find("lz-analyze") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        auto who = game.board.get_to_move();
 
         cmdstream >> tmp; // eat lz-analyze
-        cmdstream >> tmp; // eat side to move or interval
-        if (!cmdstream.fail()) {
-            if (tmp == "w" || tmp == "white") {
-                who = FastBoard::WHITE;
-            } else if (tmp == "b" || tmp == "black") {
-                who = FastBoard::BLACK;
-            } else {
-                // Not side to move, must be interval
-                try {
-                    cfg_analyze_interval_centis = std::stoi(tmp);
-                } catch(...) {
-                    gtp_fail_printf(id, "syntax not understood");
-                    return;
-                }
-            }
-            if (tmp == "w" || tmp == "b" || tmp == "white" || tmp == "black") {
-                // We got a color, so the interval must come now.
-                int interval;
-                cmdstream >> interval;
-                if (!cmdstream.fail()) {
-                    cfg_analyze_interval_centis = interval;
-                } else {
-                    gtp_fail_printf(id, "syntax not understood");
-                    return;
-                }
-            }
-        }
-        if (!process_analyze_tags(id, cmdstream, game)) {
-            cfg_analyze_interval_centis = 0;
+        auto tags = parse_analyze_tags(cmdstream, game);
+        if (tags.m_invalid) {
+            gtp_fail_printf(id, "cannot parse analyze tags");
             return;
         }
         // Start multi-line response.
@@ -575,11 +564,11 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         else gtp_printf_raw("=\n");
         // Now start pondering.
         if (!game.has_resigned()) {
+            cfg_analyze_tags = tags;
             // Outputs winrate and pvs through gtp
-            game.set_to_move(who);
+            game.set_to_move(tags.m_who);
             search->ponder();
         }
-        cfg_analyze_interval_centis = 0;
         cfg_analyze_tags.clear();
         // Terminate multi-line response
         gtp_printf_raw("\n");

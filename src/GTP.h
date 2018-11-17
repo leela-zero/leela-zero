@@ -57,12 +57,20 @@ struct MoveToAvoid {
 
 class AnalyzeTags {
 public:
+    bool m_invalid;
     std::vector<MoveToAvoid> m_moves_to_avoid;
+    int m_interval_centis;
+    int m_who;
 
-    AnalyzeTags() {}
+    AnalyzeTags() {
+        clear();
+    }
 
     void clear() {
+        m_invalid = true;
         m_moves_to_avoid.clear();
+        m_interval_centis = 0;
+        m_who = FastBoard::INVAL;
     }
 
     void add_move_to_avoid(int color, int vertex, size_t from_move, size_t to_move) {
@@ -112,7 +120,6 @@ extern bool cfg_quiet;
 extern std::string cfg_options_str;
 extern bool cfg_benchmark;
 extern bool cfg_cpu_only;
-extern int cfg_analyze_interval_centis;
 extern AnalyzeTags cfg_analyze_tags;
 
 static constexpr size_t MiB = 1024LL * 1024LL;
@@ -128,10 +135,10 @@ public:
     static void initialize(std::unique_ptr<Network>&& network);
     static void execute(GameState & game, const std::string& xinput);
     static void setup_default_parameters();
+    static AnalyzeTags parse_analyze_tags(std::istringstream & cmdstream, const GameState & game);
 private:
     static constexpr int GTP_VERSION = 2;
 
-    static bool process_analyze_tags(int id, std::istringstream & cmdstream, const GameState & game);
     static std::string get_life_list(const GameState & game, bool live);
     static const std::string s_commands[];
     static const std::string s_options[];
