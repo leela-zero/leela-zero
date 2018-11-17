@@ -108,32 +108,51 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
             const auto yin = WINOGRAD_M * block_y;
             for (auto block_x = 0; block_x < WTILES; block_x++) {
                 const auto xin = WINOGRAD_M * block_x;
-                std::array<std::array<float, WINOGRAD_ALPHA>, WINOGRAD_ALPHA> T1;
+#define DECL_T1(XX) \
+                float T1_##XX##_0, T1_##XX##_1, T1_##XX##_2, T1_##XX##_3, T1_##XX##_4, T1_##XX##_5;
+
+                DECL_T1(0)
+                DECL_T1(1)
+                DECL_T1(2)
+                DECL_T1(3)
+                DECL_T1(4)
+                DECL_T1(5)
 
                 // Calculates transpose(B).x.B
-                for (auto j = 0; j < WINOGRAD_ALPHA; j++) {
-                    multiply_bt(
-                        T1[0][j], T1[1][j], T1[2][j], T1[3][j], T1[4][j], T1[5][j],
-                        in_pad[yin + 0][xin + j],
-                        in_pad[yin + 1][xin + j],
-                        in_pad[yin + 2][xin + j],
-                        in_pad[yin + 3][xin + j],
-                        in_pad[yin + 4][xin + j],
-                        in_pad[yin + 5][xin + j]
-                    );
-                }
+#define MULTIPLY_BT(XX) \
+                multiply_bt( \
+                    T1_0_##XX, T1_1_##XX, T1_2_##XX, T1_3_##XX, T1_4_##XX, T1_5_##XX, \
+                    in_pad[yin + 0][xin + XX], \
+                    in_pad[yin + 1][xin + XX], \
+                    in_pad[yin + 2][xin + XX], \
+                    in_pad[yin + 3][xin + XX], \
+                    in_pad[yin + 4][xin + XX], \
+                    in_pad[yin + 5][xin + XX] \
+                );
 
-                for (auto i = 0; i < WINOGRAD_ALPHA; i++){
-                    multiply_bt(
-                        buffer[buffersize * (i * WINOGRAD_ALPHA + 0) + buffer_entries],
-                        buffer[buffersize * (i * WINOGRAD_ALPHA + 1) + buffer_entries],
-                        buffer[buffersize * (i * WINOGRAD_ALPHA + 2) + buffer_entries],
-                        buffer[buffersize * (i * WINOGRAD_ALPHA + 3) + buffer_entries],
-                        buffer[buffersize * (i * WINOGRAD_ALPHA + 4) + buffer_entries],
-                        buffer[buffersize * (i * WINOGRAD_ALPHA + 5) + buffer_entries],
-                        T1[i][0], T1[i][1], T1[i][2], T1[i][3], T1[i][4], T1[i][5]
-                    );
-                }
+                MULTIPLY_BT(0)
+                MULTIPLY_BT(1)
+                MULTIPLY_BT(2)
+                MULTIPLY_BT(3)
+                MULTIPLY_BT(4)
+                MULTIPLY_BT(5)
+
+#define MULTIPLY_B(XX) \
+                multiply_bt( \
+                    buffer[buffersize * (XX * WINOGRAD_ALPHA + 0) + buffer_entries], \
+                    buffer[buffersize * (XX * WINOGRAD_ALPHA + 1) + buffer_entries], \
+                    buffer[buffersize * (XX * WINOGRAD_ALPHA + 2) + buffer_entries], \
+                    buffer[buffersize * (XX * WINOGRAD_ALPHA + 3) + buffer_entries], \
+                    buffer[buffersize * (XX * WINOGRAD_ALPHA + 4) + buffer_entries], \
+                    buffer[buffersize * (XX * WINOGRAD_ALPHA + 5) + buffer_entries], \
+                    T1_##XX##_0, T1_##XX##_1, T1_##XX##_2, T1_##XX##_3, T1_##XX##_4, T1_##XX##_5 \
+                );
+                MULTIPLY_B(0)
+                MULTIPLY_B(1)
+                MULTIPLY_B(2)
+                MULTIPLY_B(3)
+                MULTIPLY_B(4)
+                MULTIPLY_B(5)
 
                 if (buffer_entries == 0) {
                     buffer_offset = ch * P + block_y * WTILES + block_x;
