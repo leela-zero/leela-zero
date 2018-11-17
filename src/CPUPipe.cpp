@@ -68,15 +68,14 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
     auto buffer_entries = 0;
 
 
-#if 0
-    const auto Bt = std::array<float, WINOGRAD_TILE>
-               {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
-                0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
-                0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
-                0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
-                0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
-                0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
-#endif
+    // multiple vector [i0..i5] by Bt and produce [o0..o5]
+    // const auto Bt = std::array<float, WINOGRAD_TILE>
+    //           {1.0f,  0.0f,     -5.0f/2.0f,  0.0f,      1.0f, 0.0f,
+    //            0.0f, -SQ2,      -2.0f,       SQ2/2.0f,  1.0f, 0.0f,
+    //            0.0f,  SQ2,      -2.0f,      -SQ2/2.0f,  1.0f, 0.0f,
+    //            0.0f, -SQ2/2.0f, -1.0f/2.0f,  SQ2,       1.0f, 0.0f,
+    //            0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
+    //            0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
     auto multiply_bt = [](
         float & o0, float & o1, float & o2, float & o3, float & o4, float & o5,
         float i0, float i1, float i2, float i3, float i4, float i5
@@ -110,7 +109,6 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                 const auto xin = WINOGRAD_M * block_x;
 #define DECL_T1(XX) \
                 float T1_##XX##_0, T1_##XX##_1, T1_##XX##_2, T1_##XX##_3, T1_##XX##_4, T1_##XX##_5;
-
                 DECL_T1(0)
                 DECL_T1(1)
                 DECL_T1(2)
@@ -129,7 +127,6 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
                     in_pad[yin + 4][xin + XX], \
                     in_pad[yin + 5][xin + XX] \
                 );
-
                 MULTIPLY_BT(0)
                 MULTIPLY_BT(1)
                 MULTIPLY_BT(2)
@@ -208,13 +205,13 @@ void CPUPipe::winograd_transform_out(const std::vector<float>& M,
     constexpr auto H = BOARD_SIZE;
     constexpr auto WTILES = WINOGRAD_WTILES;
     constexpr auto P = WINOGRAD_P;
-#if 0
-    const auto At = std::array<float, WINOGRAD_ALPHA * WINOGRAD_M>
-          {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
-           0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
-           0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
-           0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
-#endif
+
+    // multiple vector [i0..i5] by At and produce [o0..o3]
+    // const auto At = std::array<float, WINOGRAD_ALPHA * WINOGRAD_M>
+    //       {1.0f, 1.0f,      1.0f,       1.0f,      1.0f,     0.0f,
+    //        0.0f, SQ2/2.0f, -SQ2/2.0f,   SQ2,      -SQ2,      0.0f,
+    //        0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
+    //        0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
     auto multiply_at = [](
         float & o0, float & o1, float & o2, float & o3,
         float i0, float i1, float i2, float i3, float i4, float i5
