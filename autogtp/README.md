@@ -13,7 +13,7 @@ the SGF and training data at the end of the game.
 
 ## How to compile AutoGTP - Ubuntu and macOS
 
-Just follow [main instructions](https://github.com/wonderingabout/leela-zero#i-just-want-to-run-leela-zero-right-now-main-instructions) : cmake will compile both autogtp and leelaz binaries in build subdirectory.
+Just follow [main instructions](https://github.com/wonderingabout/leela-zero#i-want-to-run-leela-zero-now-main-instructions) : cmake will compile both autogtp and leelaz binaries in build subdirectory.
 
 You don't need to do anything else.
 
@@ -40,7 +40,7 @@ directly.
 
 # Running AutoGTP (to start contributing)
 
-As explained in main page instructions, copy compiled leelaz and autogtp binaries (with cmake) from build subdirectory to autogtp subdirectory, then run autogtp to start contributing.
+As explained in [the i want to help instructions](https://github.com/wonderingabout/leela-zero#using-your-own-hardware), copy compiled leelaz and autogtp binaries (with cmake) from build subdirectory to autogtp subdirectory, then run autogtp to start contributing.
 
 While autogtp is running, typing q+Enter will save the processed data and exit. When autogtp runs next, autogtp will continue the game.
 
