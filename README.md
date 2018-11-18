@@ -32,7 +32,7 @@ a good network (which you can feed into this program, suddenly making it strong)
 
 # I want to help
 
-To help, you need to run autogtp binary.
+To contribute to leela-zero, you need to run autogtp binary.
 
 ## Using your own hardware
 
