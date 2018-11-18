@@ -32,6 +32,8 @@ a good network (which you can feed into this program, suddenly making it strong)
 
 # I want to help
 
+To help, you need to run autogtp binary.
+
 ## Using your own hardware
 
 You need a PC with a GPU, i.e. a discrete graphics card made by NVIDIA or AMD,
@@ -50,17 +52,17 @@ It will connect to the server automatically and do its work in the background, u
 after each game. You can just close the autogtp window to stop it.
 
 - More complicated way (not recommended, if you know what you're doing) :
-but if you want to manually compile your own leela-zero version, read [the main instructions there](https://github.com/wonderingabout/leela-zero#i-want-to-run-leela-zero-now-main-instructions), then follow [the instructions for windows to compile](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---windows) there. You can also read these [AutoGTP details there](autogtp/README.md)
+but if you want to manually compile your own leela-zero version, read [the main instructions there](https://github.com/wonderingabout/leela-zero#i-want-to-run-leela-zero-now-main-instructions), then follow [the instructions for windows to compile](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---windows) there.
 
 ### macOS and Linux (Ubuntu and similar, etc)
 
 Read [the main instructions below](https://github.com/wonderingabout/leela-zero#i-want-to-run-leela-zero-now-main-instructions), then follow instructions to compile leelaz and autogtp binaries in build subdirectory, [for macOS](https://github.com/wonderingabout/leela-zero#how-to-compile-and-run-autogtp-andor-leelaz---macos), or [for linux (Ubuntu and similar, etc)](https://github.com/wonderingabout/leela-zero#how-to-compile-and-run-autogtp-andor-leelaz---linux-ubuntu-and-similar-etc).
 
-Then, if you want to contribute, don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as explained in the main instructions below. You can also read these [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
+Then, 
 
-Else, if you want to play only, run instead leelaz as explained in the main instructions below for macOS or linux.
+- if you want to contribute, don't run leelaz, but instead copy autogtp and leelaz binaries from the build subdirectory to the autogtp subdirectory, then run autogtp as explained in the main instructions below. You can also read these [AutoGTP details there](autogtp/README.md). Contributing will start when you run autogtp.
 
-The steps to compile leelaz and autogtp are [below](https://github.com/wonderingabout/leela-zero#compiling-autogtp-andor-leelaz)
+- Else, if you want to play only, run instead leelaz as explained in the main instructions below for macOS or linux.
 
 
 ## Using a Cloud provider
@@ -74,7 +76,7 @@ There are community maintained instructions available here:
 
 # I want to run leela-zero now (main instructions)
 
-As said earlier, to use leela-zero, you have to run autogtp and/or leelaz. The easiest way is to download an official tested release (for windows only) [as explained here](https://github.com/gcp/leela-zero/releases) which avoids to manually compile your own build of leela-zero.
+As said earlier, to use leela-zero, you have to run autogtp and/or leelaz. The easiest way is to download an official tested release (for windows only) [as explained here](https://github.com/wonderingabout/leela-zero/blob/master/README.md#windows) which avoids to manually compile your own build of leela-zero.
 
 Else, you need to compile leelaz and autogtp binaries from leela-zero sources. The steps to compile leelaz and autogtp are explained [below](https://github.com/wonderingabout/leela-zero#compiling-autogtp-andor-leelaz).
 
