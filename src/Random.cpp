@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include "GTP.h"
 #include "Utils.h"
 
-Random& Random::get_Rng(void) {
+Random& Random::get_Rng() {
     static thread_local Random s_rng{0};
     return s_rng;
 }
@@ -45,7 +45,7 @@ Random::Random(std::uint64_t seed) {
 // This is xoroshiro128+.
 // Note that the last bit isn't entirely random, so don't use it,
 // if possible.
-std::uint64_t Random::gen(void) {
+std::uint64_t Random::gen() {
     const std::uint64_t s0 = m_s[0];
     std::uint64_t s1 = m_s[1];
     const std::uint64_t result = s0 + s1;

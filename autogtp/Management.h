@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include <stdexcept>
 #include "Worker.h"
 
-constexpr int AUTOGTP_VERSION = 15;
+constexpr int AUTOGTP_VERSION = 17;
 
 class Management : public QObject {
     Q_OBJECT
@@ -82,6 +82,7 @@ private:
     int m_threadsLeft;
     bool m_delNetworks;
     QLockFile *m_lockFile;
+    QString m_leelaversion;
 
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);
@@ -92,8 +93,8 @@ private:
     void sendAllGames();
     void checkStoredGames();
     QFileInfo getNextStored();
-    bool networkExists(const QString &name);
-    void fetchNetwork(const QString &net);
+    bool networkExists(const QString &name, const QString &gzipHash);
+    void fetchNetwork(const QString &net, const QString &hash);
     void printTimingInfo(float duration);
     void runTuningProcess(const QString &tuneCmdLine);
     void gzipFile(const QString &fileName);

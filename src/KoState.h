@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 class KoState : public FastState {
 public:
     void init_game(int size, float komi);
-    bool superko(void) const;
+    bool superko() const;
     void reset_game();
 
     void play_move(int color, int vertex);

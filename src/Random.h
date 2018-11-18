@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ public:
     std::uint64_t randuint64(const std::uint64_t max);
 
     // return the thread local RNG
-    static Random& get_Rng(void);
+    static Random& get_Rng();
 
     // UniformRandomBitGenerator interface
     using result_type = std::uint64_t;
@@ -65,7 +65,7 @@ public:
     }
 
 private:
-    std::uint64_t gen(void);
+    std::uint64_t gen();
     std::uint64_t m_s[2];
 };
 

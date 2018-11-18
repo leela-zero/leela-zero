@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ std::vector<std::string> SGFParser::chop_stream(std::istream& ins,
                 // eat ; too
                 do {
                     ins >> c;
-                } while(std::isspace(c) && c != ';');
+                } while (std::isspace(c) && c != ';');
                 gamebuff.clear();
             }
             nesting++;

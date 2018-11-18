@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Marco Calignano
     originally taken from Cute Chess (http://github.com/cutechess)
     Copyright (C) 2016 Ilari Pihlajisto
 
@@ -28,34 +28,34 @@ class SprtProbability;
 
 class BayesElo
 {
-    public:
-        BayesElo(double bayesElo, double drawElo);
-        BayesElo(const SprtProbability& p);
+public:
+    BayesElo(double bayesElo, double drawElo);
+    BayesElo(const SprtProbability& p);
 
-        double bayesElo() const;
-        double drawElo() const;
-        double scale() const;
+    double bayesElo() const;
+    double drawElo() const;
+    double scale() const;
 
-    private:
-        double m_bayesElo;
-        double m_drawElo;
+private:
+    double m_bayesElo;
+    double m_drawElo;
 };
 
 class SprtProbability
 {
-    public:
-        SprtProbability(int wins, int losses, int draws);
-        SprtProbability(const BayesElo& b);
+public:
+    SprtProbability(int wins, int losses, int draws);
+    SprtProbability(const BayesElo& b);
 
-        bool isValid() const;
-        double pWin() const;
-        double pLoss() const;
-        double pDraw() const;
+    bool isValid() const;
+    double pWin() const;
+    double pLoss() const;
+    double pDraw() const;
 
-    private:
-        double m_pWin;
-        double m_pLoss;
-        double m_pDraw;
+private:
+    double m_pWin;
+    double m_pLoss;
+    double m_pDraw;
 };
 
 
@@ -132,7 +132,7 @@ double SprtProbability::pDraw() const
 }
 
 
-Sprt::Sprt(): 
+Sprt::Sprt():
     m_elo0(0),
     m_elo1(0),
     m_alpha(0),

@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,10 +27,11 @@
 using Configurations = std::pair<std::string, std::vector<size_t>>;
 using Parameters = std::map<std::string, size_t>;
 
-class OpenCL;
+template <typename net_t> class OpenCL;
 
+template <typename net_t>
 class Tuner {
-    OpenCL & m_opencl;
+    OpenCL<net_t> & m_opencl;
     cl::Context m_context;
     cl::Device m_device;
 public:
@@ -39,8 +40,12 @@ public:
     std::string load_sgemm_tuners(const int m, const int n, const int k,
                                   const int batch_size);
 
+    // list of device types that was tuned in this run.
+    // This is to prevent the same device from being tuned multiple times.
+    static std::vector<std::string> tuned_devices;
+
     static constexpr auto TUNER_VERSION = 0;
-    Tuner(OpenCL & opencl, cl::Context context, cl::Device device) :
+    Tuner(OpenCL<net_t> & opencl, cl::Context context, cl::Device device) :
         m_opencl(opencl), m_context(context), m_device(device) {}
 private:
     void store_sgemm_tuners(const int m, const int n, const int k,

@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,8 +33,7 @@ public:
     void reset_board();
 
     void play_move(int vertex);
-
-    bool is_move_legal(int color, int vertex);
+    bool is_move_legal(int color, int vertex) const;
 
     void set_komi(float komi);
     float get_komi() const;
@@ -47,6 +46,7 @@ public:
     void increment_passes();
 
     float final_score() const;
+    std::uint64_t get_symmetry_hash(int symmetry) const;
 
     size_t get_movenum() const;
     int get_last_move() const;

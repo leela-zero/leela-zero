@@ -32,6 +32,8 @@
 #include "KoState.h"
 #include "Random.h"
 #include "UCTNode.h"
+#include "Utils.h"
+#include "GTP.h"
 
 /*
  * These functions belong to UCTNode but should only be called on the root node
@@ -86,28 +88,42 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
         return;
     }
 
-    for (auto& v: dirichlet_vector) {
+    for (auto& v : dirichlet_vector) {
         v /= sample_sum;
     }
 
     child_cnt = 0;
     for (auto& child : m_children) {
-        auto score = child->get_score();
+        auto policy = child->get_policy();
         auto eta_a = dirichlet_vector[child_cnt++];
-        score = score * (1 - epsilon) + epsilon * eta_a;
-        child->set_score(score);
+        policy = policy * (1 - epsilon) + epsilon * eta_a;
+        child->set_policy(policy);
     }
 }
 
 void UCTNode::randomize_first_proportionally() {
-    auto accum = std::uint64_t{0};
-    auto accum_vector = std::vector<decltype(accum)>{};
+    auto accum = 0.0;
+    auto norm_factor = 0.0;
+    auto accum_vector = std::vector<double>{};
+
     for (const auto& child : m_children) {
-        accum += child->get_visits();
-        accum_vector.emplace_back(accum);
+        auto visits = child->get_visits();
+        if (norm_factor == 0.0) {
+            norm_factor = visits;
+            // Nonsensical options? End of game?
+            if (visits <= cfg_random_min_visits) {
+                return;
+            }
+        }
+        if (visits > cfg_random_min_visits) {
+            accum += std::pow(visits / norm_factor,
+                              1.0 / cfg_random_temp);
+            accum_vector.emplace_back(accum);
+        }
     }
 
-    auto pick = Random::get_Rng().randuint64(accum);
+    auto distribution = std::uniform_real_distribution<double>{0.0, accum};
+    auto pick = distribution(Random::get_Rng());
     auto index = size_t{0};
     for (size_t i = 0; i < accum_vector.size(); i++) {
         if (pick < accum_vector[i]) {
@@ -121,7 +137,7 @@ void UCTNode::randomize_first_proportionally() {
         return;
     }
 
-    assert(m_children.size() >= index);
+    assert(m_children.size() > index);
 
     // Now swap the child at index with the first child
     std::iter_swap(begin(m_children), begin(m_children) + index);
@@ -143,13 +159,11 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
 
 // Used to find new root in UCTSearch.
 std::unique_ptr<UCTNode> UCTNode::find_child(const int move) {
-    if (m_has_children) {
-        for (auto& child : m_children) {
-            if (child.get_move() == move) {
-                 // no guarantee that this is a non-inflated node
-                child.inflate();
-                return std::unique_ptr<UCTNode>(child.release());
-            }
+    for (auto& child : m_children) {
+        if (child.get_move() == move) {
+             // no guarantee that this is a non-inflated node
+            child.inflate();
+            return std::unique_ptr<UCTNode>(child.release());
         }
     }
 
@@ -160,5 +174,36 @@ std::unique_ptr<UCTNode> UCTNode::find_child(const int move) {
 void UCTNode::inflate_all_children() {
     for (const auto& node : get_children()) {
         node.inflate();
+    }
+}
+
+void UCTNode::prepare_root_node(Network & network, int color,
+                                std::atomic<int>& nodes,
+                                GameState& root_state) {
+    float root_eval;
+    const auto had_children = has_children();
+    if (expandable()) {
+        create_children(network, nodes, root_state, root_eval);
+    }
+    if (had_children) {
+        root_eval = get_net_eval(color);
+    } else {
+        update(root_eval);
+        root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
+    }
+    Utils::myprintf("NN eval=%f\n", root_eval);
+
+    // There are a lot of special cases where code assumes
+    // all children of the root are inflated, so do that.
+    inflate_all_children();
+
+    // Remove illegal moves, so the root move list is correct.
+    // This also removes a lot of special cases.
+    kill_superkos(root_state);
+
+    if (cfg_noise) {
+        // Adjust the Dirichlet noise's alpha constant to the board size
+        auto alpha = 0.03f * 361.0f / NUM_INTERSECTIONS;
+        dirichlet_noise(0.25f, alpha);
     }
 }

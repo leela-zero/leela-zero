@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,13 +20,15 @@
 #include <QFile>
 #include <QTextStream>
 #include <QRegularExpression>
+#include <QFileInfo>
 #include "Game.h"
 
-Game::Game(const QString& weights, const QString& opt, const QString& binary) :
+Game::Game(const QString& weights, const QString& opt, const QString& binary,
+           const QStringList& commands) :
     QProcess(),
     m_cmdLine(""),
     m_binary(binary),
-    m_timeSettings("time_settings 0 1 0"),
+    m_commands(commands),
     m_resignation(false),
     m_blackToMove(true),
     m_blackResigned(false),
@@ -36,6 +38,9 @@ Game::Game(const QString& weights, const QString& opt, const QString& binary) :
 #ifdef WIN32
     m_binary.append(".exe");
 #endif
+    if (!QFileInfo::exists(m_binary)) {
+        m_binary.remove(0, 2); // ./leelaz -> leelaz
+    }
     m_cmdLine = m_binary + " " + opt + " " + weights;
     m_fileName = QUuid::createUuid().toRfc4122().toHex();
 }
@@ -48,7 +53,7 @@ bool Game::checkGameEnd() {
 
 void Game::error(int errnum) {
     QTextStream(stdout) << "*ERROR*: ";
-    switch(errnum) {
+    switch (errnum) {
         case Game::NO_LEELAZ:
             QTextStream(stdout)
                 << "No 'leelaz' binary found." << endl;
@@ -80,7 +85,7 @@ bool Game::eatNewLine() {
         return false;
     }
     auto readCount = readLine(readBuffer, 256);
-    if(readCount < 0) {
+    if (readCount < 0) {
         error(Game::WRONG_GTP);
         return false;
     }
@@ -175,8 +180,15 @@ bool Game::gameStart(const VersionTuple &min_version) {
     // check any return values.
     checkVersion(min_version);
     QTextStream(stdout) << "Engine has started." << endl;
-    sendGtpCommand(m_timeSettings);
-    QTextStream(stdout) << "Infinite thinking time set." << endl;
+    for (auto command : m_commands) {
+        QTextStream(stdout) << command << endl;
+        if (!sendGtpCommand(command))
+        {
+            QTextStream(stdout) << "GTP failed on: " << command << endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+    QTextStream(stdout) << "Thinking time set." << endl;
     return true;
 }
 
@@ -226,7 +238,7 @@ bool Game::readMove() {
         error(Game::PROCESS_DIED);
         return false;
     }
-    if(readCount == 0) {
+    if (readCount == 0) {
         error(Game::WRONG_GTP);
     }
     QTextStream(stdout) << m_moveNum << " (";
@@ -266,7 +278,7 @@ bool Game::setMove(const QString& m) {
 }
 
 bool Game::nextMove() {
-    if(checkGameEnd()) {
+    if (checkGameEnd()) {
         return false;
     }
     m_blackToMove = !m_blackToMove;
@@ -274,7 +286,7 @@ bool Game::nextMove() {
 }
 
 bool Game::getScore() {
-    if(m_resignation) {
+    if (m_resignation) {
         if (m_blackResigned) {
             m_winner = QString(QStringLiteral("white"));
             m_result = "W+Resign ";
@@ -315,7 +327,7 @@ bool Game::getScore() {
 }
 
 int Game::getWinner() {
-    if(m_winner.compare(QStringLiteral("white"), Qt::CaseInsensitive) == 0)
+    if (m_winner.compare(QStringLiteral("white"), Qt::CaseInsensitive) == 0)
         return Game::WHITE;
     else
         return Game::BLACK;
@@ -360,11 +372,11 @@ bool Game::fixSgf(QString& weightFile, bool resignation) {
     playerName += "]";
     sgfData.replace(re, playerName);
 
-    if(resignation) {
+    if (resignation) {
         QRegularExpression oldResult("RE\\[B\\+.*\\]");
         QString newResult("RE[B+Resign] ");
         sgfData.replace(oldResult, newResult);
-        if(!sgfData.contains(newResult, Qt::CaseInsensitive)) {
+        if (!sgfData.contains(newResult, Qt::CaseInsensitive)) {
             QRegularExpression oldwResult("RE\\[W\\+.*\\]");
             sgfData.replace(oldwResult, newResult);
         }
@@ -374,7 +386,7 @@ bool Game::fixSgf(QString& weightFile, bool resignation) {
     }
 
     sgfFile.close();
-    if(sgfFile.open(QFile::WriteOnly | QFile::Truncate)) {
+    if (sgfFile.open(QFile::WriteOnly | QFile::Truncate)) {
         QTextStream out(&sgfFile);
         out << sgfData;
     }

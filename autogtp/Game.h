@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,8 @@ class Game : QProcess {
 public:
     Game(const QString& weights,
          const QString& opt,
-         const QString& binary = QString("./leelaz"));
+         const QString& binary = QString("./leelaz"),
+         const QStringList& commands = QStringList("time_settings 0 1 0"));
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version);
     void move();
@@ -69,7 +70,7 @@ private:
     };
     QString m_cmdLine;
     QString m_binary;
-    QString m_timeSettings;
+    QStringList m_commands;
     QString m_winner;
     QString m_fileName;
     QString m_moveDone;

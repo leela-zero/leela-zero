@@ -19,14 +19,14 @@ R"(
 
 // Main body of the matrix-multiplication algorithm. It calls various (inlined) functions.
 INLINE_FUNC void XgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
-                           const __global realM* restrict agm, const __global realN* restrict bgm,
-                           __global realM* cgm
+                           const __global memM* restrict agm, const __global memN* restrict bgm,
+                           __global memM* cgm
                            #if SA == 1 && SB == 1
-                             , LOCAL_PTR realM* alm, LOCAL_PTR realN* blm
+                             , LOCAL_PTR memM* alm, LOCAL_PTR memN* blm
                            #elif SA == 1
-                             , LOCAL_PTR realM* alm
+                             , LOCAL_PTR memM* alm
                            #elif SB == 1
-                             , LOCAL_PTR realN* blm
+                             , LOCAL_PTR memN* blm
                            #endif
                            ) {
 

@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,17 +23,22 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include <boost/filesystem.hpp>
+
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/select.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 #endif
 
 #include "GTP.h"
 
 Utils::ThreadPool thread_pool;
 
-bool Utils::input_pending(void) {
+bool Utils::input_pending() {
 #ifdef HAVE_SELECT
     fd_set read_fds;
     FD_ZERO(&read_fds);
@@ -77,21 +82,35 @@ bool Utils::input_pending(void) {
 
 static std::mutex IOmutex;
 
+static void myprintf_base(const char *fmt, va_list ap) {
+    va_list ap2;
+    va_copy(ap2, ap);
+
+    vfprintf(stderr, fmt, ap);
+
+    if (cfg_logfile_handle) {
+        std::lock_guard<std::mutex> lock(IOmutex);
+        vfprintf(cfg_logfile_handle, fmt, ap2);
+    }
+    va_end(ap2);
+}
+
 void Utils::myprintf(const char *fmt, ...) {
     if (cfg_quiet) {
         return;
     }
+
     va_list ap;
     va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
+    myprintf_base(fmt, ap);
     va_end(ap);
+}
 
-    if (cfg_logfile_handle) {
-        std::lock_guard<std::mutex> lock(IOmutex);
-        va_start(ap, fmt);
-        vfprintf(cfg_logfile_handle, fmt, ap);
-        va_end(ap);
-    }
+void Utils::myprintf_error(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    myprintf_base(fmt, ap);
+    va_end(ap);
 }
 
 static void gtp_fprintf(FILE* file, const std::string& prefix,
@@ -106,9 +125,7 @@ static void gtp_base_printf(int id, std::string prefix,
     if (id != -1) {
         prefix += std::to_string(id);
     }
-
     gtp_fprintf(stdout, prefix, fmt, ap);
-
     if (cfg_logfile_handle) {
         std::lock_guard<std::mutex> lock(IOmutex);
         gtp_fprintf(cfg_logfile_handle, prefix, fmt, ap);
@@ -120,6 +137,20 @@ void Utils::gtp_printf(int id, const char *fmt, ...) {
     va_start(ap, fmt);
     gtp_base_printf(id, "=", fmt, ap);
     va_end(ap);
+}
+
+void Utils::gtp_printf_raw(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stdout, fmt, ap);
+    va_end(ap);
+
+    if (cfg_logfile_handle) {
+        std::lock_guard<std::mutex> lock(IOmutex);
+        va_start(ap, fmt);
+        vfprintf(cfg_logfile_handle, fmt, ap);
+        va_end(ap);
+    }
 }
 
 void Utils::gtp_fail_printf(int id, const char *fmt, ...) {
@@ -143,4 +174,25 @@ size_t Utils::ceilMultiple(size_t a, size_t b) {
 
     auto ret = a + (b - a % b);
     return ret;
+}
+
+const std::string Utils::leelaz_file(std::string file) {
+#ifdef _WIN32
+    boost::filesystem::path dir(boost::filesystem::current_path());
+#else
+    // https://stackoverflow.com/a/26696759
+    const char *homedir;
+    if ((homedir = getenv("HOME")) == nullptr) {
+        struct passwd *pwd;
+        if ((pwd = getpwuid(getuid())) == nullptr) { // NOLINT(runtime/threadsafe_fn)
+            return std::string();
+        }
+        homedir = pwd->pw_dir;
+    }
+    boost::filesystem::path dir(homedir);
+    dir /= ".local/share/leela-zero";
+#endif
+    boost::filesystem::create_directories(dir);
+    dir /= file;
+    return dir.string();
 }

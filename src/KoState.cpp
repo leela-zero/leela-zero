@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ void KoState::init_game(int size, float komi) {
     m_ko_hash_history.emplace_back(board.get_ko_hash());
 }
 
-bool KoState::superko(void) const {
+bool KoState::superko() const {
     auto first = crbegin(m_ko_hash_history);
     auto last = crend(m_ko_hash_history);
 

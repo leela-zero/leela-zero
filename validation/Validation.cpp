@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,17 +23,19 @@
 
 using VersionTuple = std::tuple<int, int, int>;
 // Minimal Leela Zero version we expect to see
-const VersionTuple min_leelaz_version{0, 10, 0};
+const VersionTuple min_leelaz_version{0, 16, 0};
 
 
 void ValidationWorker::run() {
     do {
-        Game first(m_firstNet,  m_firstOpts, m_firstBin);
+        Game first(m_engines[0].m_network, m_engines[0].m_options,
+                   m_engines[0].m_binary, m_engines[0].m_commands);
         if (!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
-        Game second(m_secondNet, m_secondOpts, m_secondBin);
+        Game second(m_engines[1].m_network, m_engines[1].m_options,
+                    m_engines[1].m_binary, m_engines[1].m_commands);
         if (!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
@@ -42,22 +44,22 @@ void ValidationWorker::run() {
             first.getCmdLine() << endl <<
             "vs" << endl <<
             second.getCmdLine() << endl;
-            
+
         QString wmove = "play white ";
         QString bmove = "play black ";
         do {
             first.move();
-            if(!first.waitForMove()) {
+            if (!first.waitForMove()) {
                 emit resultReady(Sprt::NoResult, Game::BLACK);
                 return;
             }
             first.readMove();
-            if(first.checkGameEnd()) {
+            if (first.checkGameEnd()) {
                 break;
             }
             second.setMove(bmove + first.getMove());
             second.move();
-            if(!second.waitForMove()) {
+            if (!second.waitForMove()) {
                 emit resultReady(Sprt::NoResult, Game::BLACK);
                 return;
             }
@@ -74,7 +76,7 @@ void ValidationWorker::run() {
                 if (!m_keepPath.isEmpty()) {
                     first.writeSgf();
                     QString prefix = m_keepPath + '/';
-                    if(m_expected == Game::BLACK) {
+                    if (m_expected == Game::BLACK) {
                         prefix.append("black_");
                     } else {
                         prefix.append("white_");
@@ -93,9 +95,7 @@ void ValidationWorker::run() {
                 emit resultReady(Sprt::Loss, m_expected);
             }
             // Change color and play again
-            m_firstNet.swap(m_secondNet);
-            m_firstBin.swap(m_secondBin);
-            m_firstOpts.swap(m_secondOpts);
+            std::swap(m_engines[0], m_engines[1]);
             if (m_expected == Game::BLACK) {
                 m_expected = Game::WHITE;
             } else {
@@ -109,24 +109,14 @@ void ValidationWorker::run() {
 }
 
 void ValidationWorker::init(const QString& gpuIndex,
-                            const QString& firstNet,
-                            const QString& secondNet,
-                            const QString& firstBin,
-                            const QString& secondBin,
-                            const QString& firstOpts,
-                            const QString& secondOpts,
+                            const QVector<Engine>& engines,
                             const QString& keep,
                             int expected) {
-    m_firstOpts = firstOpts;
-    m_secondOpts = secondOpts;
+    m_engines = engines;
     if (!gpuIndex.isEmpty()) {
-        m_firstOpts.prepend(" --gpu=" + gpuIndex + " ");
-        m_secondOpts.prepend(" --gpu=" + gpuIndex + " ");
+        m_engines[0].m_options.prepend(" --gpu=" + gpuIndex + " ");
+        m_engines[1].m_options.prepend(" --gpu=" + gpuIndex + " ");
     }
-    m_firstNet = firstNet;
-    m_secondNet = secondNet;
-    m_firstBin = firstBin;
-    m_secondBin = secondBin;
     m_expected = expected;
     m_keepPath = keep;
     m_state.store(RUNNING);
@@ -135,70 +125,48 @@ void ValidationWorker::init(const QString& gpuIndex,
 Validation::Validation(const int gpus,
                        const int games,
                        const QStringList& gpuslist,
-                       const QString& firstNet,
-                       const QString& secondNet,
+                       QVector<Engine>& engines,
                        const QString& keep,
                        QMutex* mutex,
-                       const QString& firstBin,
-                       const QString& secondBin,
-                       const QString& firstOpts,
-                       const QString& secondOpts,
                        const float& h0,
                        const float& h1) :
-        
+
     m_mainMutex(mutex),
     m_syncMutex(),
     m_gamesThreads(gpus*games),
     m_games(games),
     m_gpus(gpus),
     m_gpusList(gpuslist),
-    m_firstNet(firstNet),
-    m_secondNet(secondNet),
-    m_firstBin(firstBin),
-    m_secondBin(secondBin),
-    m_firstOpts(firstOpts),
-    m_secondOpts(secondOpts),
+    m_engines(engines),
     m_keepPath(keep) {
     m_statistic.initialize(h0, h1, 0.05, 0.05);
     m_statistic.addGameResult(Sprt::Draw);
 }
 
 void Validation::startGames() {
-    QString n1, n2, b1 ,b2 ,o1, o2;
-    int expected;
-    QString myGpu;
-    for(int gpu = 0; gpu < m_gpus; ++gpu) {
-        for(int game = 0; game < m_games; ++game) {
+    for (int gpu = 0; gpu < m_gpus; ++gpu) {
+        for (int game = 0; game < m_games; ++game) {
             auto thread_index = gpu * m_games + game;
             connect(&m_gamesThreads[thread_index],
                     &ValidationWorker::resultReady,
                     this,
                     &Validation::getResult,
                     Qt::DirectConnection);
-            if (game % 2) {
-                n1 = m_firstNet;
-                n2 = m_secondNet;
-                b1 = m_firstBin;
-                b2 = m_secondBin;
-                o1 = m_firstOpts;
-                o2 = m_secondOpts;
-                expected = Game::BLACK;
-            } else {
-                n1 = m_secondNet;
-                n2 = m_firstNet;
-                b1 = m_secondBin;
-                b2 = m_firstBin;
-                o1 = m_secondOpts;
-                o2 = m_firstOpts;
+
+            auto engines = m_engines;
+            auto expected = Game::BLACK;
+            if (game & 1) {
+                std::swap(engines[0], engines[1]);
                 expected = Game::WHITE;
             }
-            if (m_gpusList.isEmpty()) {
-                myGpu = "";
-            } else {
+
+            auto myGpu = QString("");
+            if (!m_gpusList.isEmpty()) {
                 myGpu = m_gpusList.at(gpu);
             }
 
-            m_gamesThreads[thread_index].init(myGpu, n1, n2, b1, b2, o1, o2, m_keepPath, expected);
+            m_gamesThreads[thread_index].init(
+                myGpu, engines, m_keepPath, expected);
             m_gamesThreads[thread_index].start();
         }
     }
@@ -213,7 +181,7 @@ void Validation::saveSprt() {
     out << m_statistic;
     out << m_results;
     f.close();
-    m_results.printResults(m_firstNet, m_secondNet);
+    m_results.printResults(m_engines[0].m_network, m_engines[1].m_network);
     printSprtStatus(m_statistic.status());
 }
 
@@ -237,7 +205,7 @@ void Validation::loadSprt() {
     f.close();
     QFile::remove(fi.fileName());
     QTextStream(stdout) << "Initial Statistics" << endl;
-    m_results.printResults(m_firstNet, m_secondNet);
+    m_results.printResults(m_engines[0].m_network, m_engines[1].m_network);
     printSprtStatus(m_statistic.status());
 }
 
@@ -252,7 +220,7 @@ void Validation::printSprtStatus(const Sprt::Status& status) {
 }
 
 void Validation::getResult(Sprt::GameResult result, int net_one_color) {
-    if(result == Sprt::NoResult) {
+    if (result == Sprt::NoResult) {
         QTextStream(stdout) << "Engine Error." << endl;
         return;
     }
@@ -264,13 +232,13 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
     auto wdl = m_statistic.getWDL();
     QTextStream(stdout) << std::get<0>(wdl) << " wins, "
                         << std::get<2>(wdl) << " losses" << endl;
-    if(status.result != Sprt::Continue) {
+    if (status.result != Sprt::Continue) {
         quitThreads();
         QTextStream(stdout)
             << "The first net is "
             <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ")
             << "than the second" << endl;
-        m_results.printResults(m_firstNet, m_secondNet);
+        m_results.printResults(m_engines[0].m_network, m_engines[1].m_network);
         //sendQuit();
     } else {
         printSprtStatus(status);
@@ -279,13 +247,13 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
 }
 
 void Validation::quitThreads() {
-    for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
+    for (int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
         m_gamesThreads[gpu].doFinish();
     }
 }
 
 void Validation::wait() {
-    for(int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
+    for (int gpu = 0; gpu < m_gpus * m_games; ++gpu) {
         m_gamesThreads[gpu].wait();
     }
 }

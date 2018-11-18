@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,47 +39,51 @@ public:
     // search tree.
     static constexpr auto VIRTUAL_LOSS_COUNT = 3;
     // Defined in UCTNode.cpp
-    explicit UCTNode(int vertex, float score);
+    explicit UCTNode(int vertex, float policy);
     UCTNode() = delete;
     ~UCTNode() = default;
 
-    bool create_children(std::atomic<int>& nodecount,
+    bool create_children(Network & network,
+                         std::atomic<int>& nodecount,
                          GameState& state, float& eval,
-                         float mem_full = 0.0f);
+                         float min_psa_ratio = 0.0f);
 
     const std::vector<UCTNodePointer>& get_children() const;
     void sort_children(int color);
     UCTNode& get_best_root_child(int color);
     UCTNode* uct_select_child(int color, bool is_root);
 
-    size_t count_nodes() const;
-    SMP::Mutex& get_mutex();
+    size_t count_nodes_and_clear_expand_state();
     bool first_visit() const;
     bool has_children() const;
+    bool expandable(const float min_psa_ratio = 0.0f) const;
     void invalidate();
     void set_active(const bool active);
     bool valid() const;
     bool active() const;
     int get_move() const;
     int get_visits() const;
-    float get_score() const;
-    void set_score(float score);
+    float get_policy() const;
+    void set_policy(float policy);
     float get_eval(int tomove) const;
+    float get_raw_eval(int tomove, int virtual_loss = 0) const;
     float get_net_eval(int tomove) const;
-    void virtual_loss(void);
-    void virtual_loss_undo(void);
+    void virtual_loss();
+    void virtual_loss_undo();
     void update(float eval);
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch
-    void kill_superkos(const KoState& state);
-    void dirichlet_noise(float epsilon, float alpha);
     void randomize_first_proportionally();
+    void prepare_root_node(Network & network, int color,
+                           std::atomic<int>& nodecount,
+                           GameState& state);
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
     std::unique_ptr<UCTNode> find_child(const int move);
     void inflate_all_children();
 
+    void clear_expand_state();
 private:
     enum Status : char {
         INVALID, // superko
@@ -87,10 +91,12 @@ private:
         ACTIVE
     };
     void link_nodelist(std::atomic<int>& nodecount,
-                       std::vector<Network::scored_node>& nodelist,
-                       float mem_full);
+                       std::vector<Network::PolicyVertexPair>& nodelist,
+                       float min_psa_ratio);
     double get_blackevals() const;
     void accumulate_eval(float eval);
+    void kill_superkos(const KoState& state);
+    void dirichlet_noise(float epsilon, float alpha);
 
     // Note : This class is very size-sensitive as we are going to create
     // tens of millions of instances of these.  Please put extra caution
@@ -102,19 +108,46 @@ private:
     std::atomic<std::int16_t> m_virtual_loss{0};
     std::atomic<int> m_visits{0};
     // UCT eval
-    float m_score;
+    float m_policy;
     // Original net eval for this node (not children).
     float m_net_eval{0.0f};
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
-    // Is someone adding scores to this node?
-    // We don't need to unset this.
-    bool m_is_expanding{false};
-    SMP::Mutex m_nodemutex;
+
+    // m_expand_state acts as the lock for m_children.
+    // see manipulation methods below for possible state transition
+    enum class ExpandState : std::uint8_t {
+        // initial state, no children
+        INITIAL = 0,
+
+        // creating children.  the thread that changed the node's state to
+        // EXPANDING is responsible of finishing the expansion and then
+        // move to EXPANDED, or revert to INITIAL if impossible
+        EXPANDING,
+
+        // expansion done.  m_children cannot be modified on a multi-thread
+        // context, until node is destroyed.
+        EXPANDED,
+    };
+    std::atomic<ExpandState> m_expand_state{ExpandState::INITIAL};
 
     // Tree data
-    std::atomic<bool> m_has_children{false};
+    std::atomic<float> m_min_psa_ratio_children{2.0f};
     std::vector<UCTNodePointer> m_children;
+
+    //  m_expand_state manipulation methods
+    // INITIAL -> EXPANDING
+    // Return false if current state is not INITIAL
+    bool acquire_expanding();
+
+    // EXPANDING -> DONE
+    void expand_done();
+
+    // EXPANDING -> INITIAL
+    void expand_cancel();
+
+    // wait until we are on EXPANDED state
+    void wait_expanded();
 };
 
 #endif

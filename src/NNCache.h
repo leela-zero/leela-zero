@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Michael O
+    Copyright (C) 2017-2018 Michael O and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,16 +21,42 @@
 
 #include "config.h"
 
+#include <array>
 #include <deque>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 
-#include "Network.h"
-
 class NNCache {
 public:
-    // return the global NNCache
-    static NNCache& get_NNCache(void);
+
+    // Maximum size of the cache in number of items.
+    static constexpr int MAX_CACHE_COUNT = 150'000;
+
+    // Minimum size of the cache in number of items.
+    static constexpr int MIN_CACHE_COUNT = 6'000;
+
+    struct Netresult {
+        // 19x19 board positions
+        std::array<float, NUM_INTERSECTIONS> policy;
+
+        // pass
+        float policy_pass;
+
+        // winrate
+        float winrate;
+
+        Netresult() : policy_pass(0.0f), winrate(0.0f) {
+            policy.fill(0.0f);
+        }
+    };
+
+    static constexpr size_t ENTRY_SIZE =
+          sizeof(Netresult)
+        + sizeof(std::uint64_t)
+        + sizeof(std::unique_ptr<Netresult>);
+
+    NNCache(int size = MAX_CACHE_COUNT);  // ~ 208MiB
 
     // Set a reasonable size gives max number of playouts
     void set_size_from_playouts(int max_playouts);
@@ -39,11 +65,11 @@ public:
     void resize(int size);
 
     // Try and find an existing entry.
-    bool lookup(std::uint64_t hash, Network::Netresult & result);
+    bool lookup(std::uint64_t hash, Netresult & result);
 
     // Insert a new entry.
     void insert(std::uint64_t hash,
-                const Network::Netresult& result);
+                const Netresult& result);
 
     // Return the hit rate ratio.
     std::pair<int, int> hit_rate() const {
@@ -52,8 +78,9 @@ public:
 
     void dump_stats();
 
+    // Return the estimated memory consumption of the cache.
+    size_t get_estimated_size();
 private:
-    NNCache(int size = 50000);  // ~ 250MB
 
     std::mutex m_mutex;
 
@@ -65,9 +92,9 @@ private:
     int m_inserts{0};
 
     struct Entry {
-        Entry( const Network::Netresult& r)
+        Entry(const Netresult& r)
             : result(r) {}
-        Network::Netresult result;  // ~ 3KB
+        Netresult result;  // ~ 1.4KiB
     };
 
     // Map from hash to {features, result}

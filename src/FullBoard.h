@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,17 +28,23 @@ public:
     int remove_string(int i);
     int update_board(const int color, const int i);
 
-    std::uint64_t calc_hash(int komove = 0);
-    std::uint64_t calc_ko_hash(void);
-    std::uint64_t get_hash(void) const;
-    std::uint64_t get_ko_hash(void) const;
+    std::uint64_t get_hash() const;
+    std::uint64_t get_ko_hash() const;
     void set_to_move(int tomove);
 
     void reset_board(int size);
     void display_board(int lastmove = -1);
 
+    std::uint64_t calc_hash(int komove = NO_VERTEX) const;
+    std::uint64_t calc_symmetry_hash(int komove, int symmetry) const;
+    std::uint64_t calc_ko_hash() const;
+
     std::uint64_t m_hash;
     std::uint64_t m_ko_hash;
+
+private:
+    template<class Function>
+    std::uint64_t calc_hash(int komove, Function transform) const;
 };
 
 #endif

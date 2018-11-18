@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,8 +44,8 @@ public:
     virtual Result execute() = 0;
     virtual void init(const Order &o);
     void finish() { m_state.store(FINISHING); }
-    void store() { 
-        m_state.store(STORING); 
+    void store() {
+        m_state.store(STORING);
     }
 
 protected:
