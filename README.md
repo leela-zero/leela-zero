@@ -52,7 +52,7 @@ It will connect to the server automatically and do its work in the background, u
 after each game. You can just close the autogtp window to stop it.
 
 - More complicated way (not recommended, if you know what you're doing) :
-but if you want to manually compile your own leela-zero version, read [the main instructions there](https://github.com/wonderingabout/leela-zero#i-want-to-run-leela-zero-now-main-instructions), then follow [the instructions for windows to compile](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---windows) there.
+but if you want to manually compile your own leela-zero version, read [the main instructions there](https://github.com/wonderingabout/leela-zero#i-want-to-run-leela-zero-now-main-instructions), then follow [the instructions to compile for windows](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---windows) there.
 
 ### macOS and Linux (Ubuntu and similar, etc)
 
