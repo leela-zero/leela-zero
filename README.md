@@ -60,6 +60,8 @@ Then, if you want to contribute, don't run leelaz, but instead copy autogtp and 
 
 Else, if you want to play only, run instead leelaz as explained in the main instructions below for macOS or linux.
 
+The steps to compile leelaz and autogtp are [below](https://github.com/wonderingabout/leela-zero#compiling-autogtp-andor-leelaz)
+
 
 ## Using a Cloud provider
 
@@ -74,7 +76,7 @@ There are community maintained instructions available here:
 
 As said earlier, to use leela-zero, you have to run autogtp and/or leelaz. The easiest way is to download an official tested release (for windows only) [as explained here](https://github.com/gcp/leela-zero/releases) which avoids to manually compile your own build of leela-zero.
 
-Else, you need to compile leelaz and autogtp binaries from leela-zero sources. The steps to compile are explained below.
+Else, you need to compile leelaz and autogtp binaries from leela-zero sources. The steps to compile leelaz and autogtp are explained [below](https://github.com/wonderingabout/leela-zero#compiling-autogtp-andor-leelaz).
 
 - To play, only leelaz is needed (and not AutoGTP).
 
