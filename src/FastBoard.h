@@ -90,6 +90,7 @@ public:
 
     void reset_board(int size);
     void display_board(int lastmove = -1);
+    std::string serialize_board(int lastmove = -1);
 
     static bool starpoint(int size, int point);
     static bool starpoint(int size, int x, int y);
@@ -125,7 +126,7 @@ protected:
     void merge_strings(const int ip, const int aip);
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
-    void print_columns();
+    std::string get_columns();
 };
 
 #endif
