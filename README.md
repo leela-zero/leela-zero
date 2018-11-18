@@ -44,11 +44,13 @@ the distributed effort. But you can still play, especially if you are patient.
 
 ### Windows
 
-Easiest way : If you want to run the latest stable version ("master" branch), head to the Github releases page at https://github.com/gcp/leela-zero/releases, download the latest release for windows, unzip, and launch autogtp.exe.
+- Easiest way (recommended) : 
+If you want to run the latest stable version ("master" branch), head to the Github releases page at https://github.com/gcp/leela-zero/releases, download the latest release for windows, unzip, and launch autogtp.exe.
 It will connect to the server automatically and do its work in the background, uploading results
 after each game. You can just close the autogtp window to stop it.
 
-More complicated way : but if you want to manually compile your own leela-zero version, read [the main instructions there](https://github.com/wonderingabout/leela-zero#i-just-want-to-run-leela-zero-right-now), then follow [the instructions for windows to compile](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---windows) there. You can also read these [AutoGTP details there](autogtp/README.md)
+- More complicated way (not recommended, if you know what you're doing) :
+but if you want to manually compile your own leela-zero version, read [the main instructions there](https://github.com/wonderingabout/leela-zero#i-just-want-to-run-leela-zero-right-now), then follow [the instructions for windows to compile](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---windows) there. You can also read these [AutoGTP details there](autogtp/README.md)
 
 ### macOS and Linux (Ubuntu and similar, etc)
 
@@ -68,16 +70,18 @@ There are community maintained instructions available here:
 [Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial, Microsoft Azure, Oracle cloud, etc)](https://docs.google.com/document/d/1P_c-RbeLKjv1umc4rMEgvIVrUUZSeY0WAtYHjaxjD64/edit?usp=sharing)
 
 
-# I just want to run leela-zero right now (main instructions)
+# I want to run leela-zero now (main instructions)
 
-To play, only leelaz is needed (and not AutoGTP).
+As said earlier, to use leela-zero, you have to run autogtp and/or leelaz. The easiest way is to download an official tested release (for windows only) [as explained here](https://github.com/gcp/leela-zero/releases) which avoids to manually compile your own build of leela-zero.
+
+Else, you need to compile leelaz and autogtp binaries from leela-zero sources. The steps to compile are explained below.
+
+- To play, only leelaz is needed (and not AutoGTP).
 
 Download the best known network weights file from: https://zero.sjeng.org/best-network
-And head to the [Usage](#usage) section of this README.
+And head to the [Usage](#usage) section of this README. If you prefer a more human style, a network trained from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
 
-If you prefer a more human style, a network trained from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
-
-To contribute, you need to run autogtp instead.
+- To contribute, you need to run autogtp instead.
 
 
 # Compiling autogtp and/or leelaz
@@ -127,7 +131,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     curl -O https://zero.sjeng.org/best-network
     ./leelaz --weights best-network
     
-### Else, if you want to help (to contribute), run autogtp :
+### Else, if you want to help (to contribute), run instead autogtp :
 
     # Copy autogtp and leelaz binaries from build subdirectory to autogtp subdirectory
     cd ../autogtp
@@ -164,7 +168,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     curl -O https://zero.sjeng.org/best-network
     ./leelaz --weights best-network
     
-### Else, if you want to help (to contribute), run autogtp :
+### Else, if you want to help (to contribute), run instead autogtp :
 
     # Copy autogtp and leelaz binaries from build subdirectory to autogtp subdirectory
     cd ../autogtp
@@ -177,6 +181,13 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 
 ## Example of compiling and running - Windows
 
+- recommended : As said earlier in [i want to help instructions for windows](https://github.com/wonderingabout/leela-zero#windows), the easiest way (recommended) is to download already compiled and tested releases for windows here : https://github.com/gcp/leela-zero/releases , you can run leelaz to play, and/or contribute with autogtp.exe that is provided in the release, ready to use
+
+- not recommended, do only if you know what you're doing : however, if you want to manually compile your own windows build, you can follow the command instructions below.
+For AutoGTP compile details, see AutoGTP information page : [AutoGTP information there](autogtp/README.md).  
+
+-- NOTE TO GCP : i'm not familiar with compiling on windows, these may be outdated, didnt try them, didnt modify or improve them --
+
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
     cd leela-zero
@@ -188,7 +199,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Download <https://zero.sjeng.org/best-network> to msvc\x64\Release
     msvc\x64\Release\leelaz.exe --weights best-network
     
-For AutoGTP compile details, see AutoGTP information page : [AutoGTP information there](autogtp/README.md).    
+  
 
 # Usage
 
