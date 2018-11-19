@@ -62,8 +62,9 @@ Many cloud companies offer free trials (or paid solutions, not discussed here)
 that are usable for helping the leela-zero project.
 
 There are community maintained instructions available here:
-[Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial, Microsoft Azure, Oracle cloud, etc)](https://docs.google.com/document/d/1P_c-RbeLKjv1umc4rMEgvIVrUUZSeY0WAtYHjaxjD64/edit?usp=sharing)
+* [Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial)](https://docs.google.com/document/d/1P_c-RbeLKjv1umc4rMEgvIVrUUZSeY0WAtYHjaxjD64/edit?usp=sharing)
 
+* [Running Leela Zero client on a Tesla V100 GPU for free (Microsoft Azure Cloud Free Trial)](https://docs.google.com/document/d/1DMpi16Aq9yXXvGj0OOw7jbd7k2A9LHDUDxxWPNHIRPQ/edit?usp=sharing)
 
 # I just want to play right now
 
