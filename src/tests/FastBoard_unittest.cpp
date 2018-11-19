@@ -307,34 +307,3 @@ TEST(FastBoardTest, GetStoneList) {
     FastBoard whiteFieldBoard = create_5x5_all_white_field();
     EXPECT_EQ("A3 B3 C1 C2 C3 C4 C5 D3 D5 E4", whiteFieldBoard.get_stone_list());
 }
-
-TEST(FastBoardTest, StarPoint9x9) {
-
-    EXPECT_EQ(true, FastBoard::starpoint(9, 2, 2));
-    EXPECT_EQ(true, FastBoard::starpoint(9, 4, 4));
-    EXPECT_EQ(false, FastBoard::starpoint(9, 5, 5));
-    EXPECT_EQ(false, FastBoard::starpoint(9, 3, 4));
-}
-
-TEST(FastBoardTest, StarPoint13x13) {
-
-    EXPECT_EQ(false, FastBoard::starpoint(13, 2, 2));
-    EXPECT_EQ(true, FastBoard::starpoint(13, 3, 3));
-    EXPECT_EQ(false, FastBoard::starpoint(13, 4, 4));
-    EXPECT_EQ(true, FastBoard::starpoint(13, 6, 6));
-    EXPECT_EQ(false, FastBoard::starpoint(13, 2, 3));
-    EXPECT_EQ(false, FastBoard::starpoint(13, 8, 8));
-}
-
-TEST(FastBoardTest, StarPoint19x19) {
-
-    EXPECT_EQ(false, FastBoard::starpoint(19, 2, 2));
-    EXPECT_EQ(false, FastBoard::starpoint(19, 4, 4));
-    EXPECT_EQ(false, FastBoard::starpoint(19, 2, 3));
-    EXPECT_EQ(true, FastBoard::starpoint(19, 3, 3));
-    EXPECT_EQ(true, FastBoard::starpoint(19, 15, 15));
-    EXPECT_EQ(false, FastBoard::starpoint(19, 14, 14));
-    EXPECT_EQ(false, FastBoard::starpoint(19, 3, 14));
-    EXPECT_EQ(true, FastBoard::starpoint(19, 3, 15));
-    EXPECT_EQ(true, FastBoard::starpoint(19, 3, 9));
-}

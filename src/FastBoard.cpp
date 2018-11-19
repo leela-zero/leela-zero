@@ -28,6 +28,7 @@
 #include <sstream>
 #include <string>
 
+#include "FastBoardSerializer.h"
 #include "Utils.h"
 #include "config.h"
 
@@ -113,6 +114,8 @@ void FastBoard::reset_board(int size) {
     m_dirs[1] = +1;
     m_dirs[2] = +m_sidevertices;
     m_dirs[3] = -1;
+
+    m_serializer = new FastBoardSerializer(this);
 
     for (int i = 0; i < m_numvertices; i++) {
         m_state[i]     = INVAL;
@@ -283,56 +286,11 @@ float FastBoard::area_score(float komi) const {
 }
 
 void FastBoard::display_board(int lastmove) {
-    myprintf("%s", FastBoard::serialize_board(lastmove).c_str());
+    myprintf("%s", m_serializer->serialize_board(lastmove).c_str());
 }
 
 std::string FastBoard::serialize_board(int lastmove) {
-
-    int boardsize = get_boardsize();
-    std::ostringstream oss;
-
-    oss << "\n   ";
-    oss << get_columns();
-    for (int j = boardsize-1; j >= 0; j--) {
-        oss << boost::format("%2d") % (j + 1);
-        if (lastmove == get_vertex(0, j))
-            oss << "(";
-        else
-            oss << " ";
-        for (int i = 0; i < boardsize; i++) {
-            if (get_state(i,j) == WHITE) {
-                oss << "O";
-            } else if (get_state(i,j) == BLACK)  {
-                oss << "X";
-            } else if (starpoint(boardsize, i, j)) {
-                oss << "+";
-            } else {
-                oss << ".";
-            }
-            if (lastmove == get_vertex(i, j))
-                oss << ")";
-            else if (i != boardsize-1 && lastmove == get_vertex(i, j)+1)
-                oss << "(";
-            else oss << " ";
-        }
-        oss << boost::format("%2d\n") % (j + 1);
-    }
-    oss << "   ";
-    oss << get_columns();
-    oss << "\n";
-    return oss.str();
-}
-
-std::string FastBoard::get_columns() {
-    std::ostringstream oss;
-    for (int i = 0; i < get_boardsize(); i++) {
-        char c =  (i < 25) ?
-            (('a' + i < 'i') ? 'a' + i : 'a' + i + 1) :
-            (('A' + (i - 25) < 'I') ? 'A' + (i - 25) : 'A' + (i - 25) + 1);
-        oss << c << " ";
-    }
-    oss << "\n";
-    return oss.str();
+    return m_serializer->serialize_board(lastmove).c_str();
 }
 
 void FastBoard::merge_strings(const int ip, const int aip) {
@@ -414,133 +372,15 @@ bool FastBoard::is_eye(const int color, const int i) const {
 }
 
 std::string FastBoard::move_to_text(int move) const {
-    std::ostringstream result;
-
-    int column = move % m_sidevertices;
-    int row = move / m_sidevertices;
-
-    column--;
-    row--;
-
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (column >= 0 && column < m_boardsize));
-
-    if (move >= 0 && move <= m_numvertices) {
-        result << static_cast<char>(column < 8 ? 'A' + column : 'A' + column + 1);
-        result << (row + 1);
-    } else if (move == FastBoard::PASS) {
-        result << "pass";
-    } else if (move == FastBoard::RESIGN) {
-        result << "resign";
-    } else {
-        result << "error";
-    }
-
-    return result.str();
+    return m_serializer->move_to_text(move);
 }
 
 int FastBoard::text_to_move(std::string move) const {
-    transform(cbegin(move), cend(move), begin(move), tolower);
-
-    if (move == "pass") {
-        return PASS;
-    } else if (move == "resign") {
-        return RESIGN;
-    } else if (move.size() < 2 || !std::isalpha(move[0]) || !std::isdigit(move[1]) || move[0] == 'i') {
-        return NO_VERTEX;
-    }
-
-    auto column = move[0] - 'a';
-    if (move[0] > 'i') {
-        --column;
-    }
-
-    int row;
-    std::istringstream parsestream(move.substr(1));
-    parsestream >> row;
-    --row;
-
-    if (row >= m_boardsize || column >= m_boardsize) {
-        return NO_VERTEX;
-    }
-
-    return get_vertex(column, row);
+    return m_serializer->text_to_move(move);
 }
 
 std::string FastBoard::move_to_text_sgf(int move) const {
-    std::ostringstream result;
-
-    int column = move % m_sidevertices;
-    int row = move / m_sidevertices;
-
-    column--;
-    row--;
-
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (column >= 0 && column < m_boardsize));
-
-    // SGF inverts rows
-    row = m_boardsize - row - 1;
-
-    if (move >= 0 && move <= m_numvertices) {
-        if (column <= 25) {
-            result << static_cast<char>('a' + column);
-        } else {
-            result << static_cast<char>('A' + column - 26);
-        }
-        if (row <= 25) {
-            result << static_cast<char>('a' + row);
-        } else {
-            result << static_cast<char>('A' + row - 26);
-        }
-    } else if (move == FastBoard::PASS) {
-        result << "tt";
-    } else if (move == FastBoard::RESIGN) {
-        result << "tt";
-    } else {
-        result << "error";
-    }
-
-    return result.str();
-}
-
-bool FastBoard::starpoint(int size, int point) {
-    int stars[3];
-    int points[2];
-    int hits = 0;
-
-    if (size % 2 == 0 || size < 9) {
-        return false;
-    }
-
-    stars[0] = size >= 13 ? 3 : 2;
-    stars[1] = size / 2;
-    stars[2] = size - 1 - stars[0];
-
-    points[0] = point / size;
-    points[1] = point % size;
-
-    for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 3; j++) {
-            if (points[i] == stars[j]) {
-                hits++;
-            }
-        }
-    }
-
-    return hits >= 2;
-}
-
-bool FastBoard::starpoint(int size, int x, int y) {
-    return starpoint(size, y * size + x);
+    return m_serializer->move_to_text_sgf(move);
 }
 
 int FastBoard::get_prisoners(int side)  const {

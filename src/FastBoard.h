@@ -27,6 +27,9 @@
 #include <utility>
 #include <vector>
 
+#include "FastBoardSerializer.h"
+
+
 class FastBoard {
     friend class FastState;
 public:
@@ -92,8 +95,6 @@ public:
     void display_board(int lastmove = -1);
     std::string serialize_board(int lastmove = -1);
 
-    static bool starpoint(int size, int point);
-    static bool starpoint(int size, int x, int y);
 
 protected:
     /*
@@ -120,13 +121,14 @@ protected:
     int m_boardsize;
     int m_sidevertices;
 
+    FastBoardSerializer *m_serializer;
+
     int calc_reach_color(int color) const;
 
     int count_neighbours(const int color, const int i) const;
     void merge_strings(const int ip, const int aip);
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
-    std::string get_columns();
 };
 
 #endif
