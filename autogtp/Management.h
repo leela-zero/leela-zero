@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,10 +23,14 @@
 #include <QString>
 #include <QTextStream>
 #include <QThread>
+#include <QFileInfo>
+#include <QLockFile>
 #include <QVector>
 #include <chrono>
 #include <stdexcept>
 #include "Worker.h"
+
+constexpr int AUTOGTP_VERSION = 17;
 
 class Management : public QObject {
     Q_OBJECT
@@ -35,13 +39,19 @@ public:
                const int games,
                const QStringList& gpuslist,
                const int ver,
+               const int maxGame,
+               const bool delNetworks,
                const QString& keep,
-               const QString& debug,
-               QMutex* mutex);
+               const QString& debug);
     ~Management() = default;
     void giveAssignments();
+    void incMoves() { m_movesMade++; }
+    void wait();
+signals:
+    void sendQuit();
 public slots:
     void getResult(Order ord, Result res, int index, int duration);
+    void storeGames();
 
 private:
 
@@ -51,7 +61,6 @@ private:
             : std::runtime_error("NetworkException: " + message)
         {}
     };
-    QMutex* m_mainMutex;
     QMutex m_syncMutex;
     QVector<Worker*> m_gamesThreads;
     int m_games;
@@ -65,12 +74,34 @@ private:
     QString m_debugPath;
     int m_version;
     std::chrono::high_resolution_clock::time_point m_start;
-    Order getWork();
+    int m_storeGames;
+    QList<QFileInfo> m_storedFiles;
+    Order m_fallBack;
+    Order m_lastMatch;
+    int m_gamesLeft;
+    int m_threadsLeft;
+    bool m_delNetworks;
+    QLockFile *m_lockFile;
+    QString m_leelaversion;
+
+    Order getWorkInternal(bool tuning);
+    Order getWork(bool tuning = false);
+    Order getWork(const QFileInfo &file);
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
-    bool networkExists(const QString &name);
-    void fetchNetwork(const QString &name);
+    QString getOptionsString(const QJsonObject &opt, const QString &rnd);
+    void sendAllGames();
+    void checkStoredGames();
+    QFileInfo getNextStored();
+    bool networkExists(const QString &name, const QString &gzipHash);
+    void fetchNetwork(const QString &net, const QString &hash);
     void printTimingInfo(float duration);
+    void runTuningProcess(const QString &tuneCmdLine);
+    void gzipFile(const QString &fileName);
+    bool sendCurl(const QStringList &lines);
+    void saveCurlCmdLine(const QStringList &prog_cmdline, const QString &name);
+    void archiveFiles(const QString &fileName);
+    void cleanupFiles(const QString &fileName);
     void uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l);
     void uploadResult(const QMap<QString, QString> &r, const QMap<QString, QString> &l);
 };

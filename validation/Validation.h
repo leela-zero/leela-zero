@@ -2,7 +2,7 @@
 #define VALIDATION_H
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,9 +28,25 @@
 #include "../autogtp/Game.h"
 #include "Results.h"
 
+class Engine {
+public:
+    Engine(const QString& network,
+           const QString& options,
+           const QStringList& commands = QStringList("time_settings 0 1 0"),
+           const QString& binary = QString("./leelaz")) :
+        m_binary(binary), m_options(options),
+        m_network(network), m_commands(commands) {}
+    Engine() = default;
+    QString m_binary;
+    QString m_options;
+    QString m_network;
+    QStringList m_commands;
+};
+
 class ValidationWorker : public QThread {
     Q_OBJECT
 public:
+
     enum {
         RUNNING = 0,
         FINISHING
@@ -39,8 +55,7 @@ public:
     ValidationWorker(const ValidationWorker& w) : QThread(w.parent()) {}
     ~ValidationWorker() = default;
     void init(const QString& gpuIndex,
-              const QString& firstNet,
-              const QString& secondNet,
+              const QVector<Engine>& engines,
               const QString& keep,
               int expected);
     void run() override;
@@ -49,11 +64,9 @@ public:
 signals:
     void resultReady(Sprt::GameResult r, int net_one_color);
 private:
-    QString m_firstNet;
-    QString m_secondNet;
+    QVector<Engine> m_engines;
     int m_expected;
     QString m_keepPath;
-    QString m_option;
     QAtomicInt m_state;
 };
 
@@ -63,17 +76,20 @@ class Validation : public QObject {
 public:
     Validation(const int gpus, const int games,
                const QStringList& gpusList,
-               const QString& firstNet,
-               const QString& secondNet,
+               QVector<Engine>& engines,
                const QString& keep,
-               QMutex* mutex);
+               QMutex* mutex,
+               const float& h0,
+               const float& h1);
     ~Validation() = default;
     void startGames();
     void wait();
-
+    void loadSprt();
+signals:
+    void sendQuit();
 public slots:
     void getResult(Sprt::GameResult result, int net_one_color);
-
+    void storeSprt();
 private:
     QMutex* m_mainMutex;
     QMutex m_syncMutex;
@@ -83,10 +99,11 @@ private:
     int m_games;
     int m_gpus;
     QStringList m_gpusList;
-    QString m_firstNet;
-    QString m_secondNet;
+    QVector<Engine>& m_engines;
     QString m_keepPath;
     void quitThreads();
+    void saveSprt();
+    void printSprtStatus(const Sprt::Status& status);
 };
 
 #endif

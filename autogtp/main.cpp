@@ -1,7 +1,7 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
-    Copyright (C) 2017 Marco Calignano
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Marco Calignano
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,22 +24,24 @@
 #include <QCommandLineParser>
 #include <QProcess>
 #include <QFile>
+#include <QFileInfo>
 #include <QDir>
+#include <QtWidgets/QShortcut>
 #include <QDebug>
 #include <chrono>
+#ifdef WIN32
+#include <direct.h>
+#endif
 #include <QCommandLineParser>
 #include <iostream>
 #include "Game.h"
 #include "Management.h"
-
-constexpr int AUTOGTP_VERSION = 9;
+#include "Console.h"
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
     app.setApplicationName("autogtp");
     app.setApplicationVersion(QString("v%1").arg(AUTOGTP_VERSION));
-
-    QTimer::singleShot(0, &app, SLOT(quit()));
 
     QCommandLineParser parser;
     parser.addHelpOption();
@@ -60,11 +62,30 @@ int main(int argc, char *argv[]) {
     QCommandLineOption keepDebugOption(
         { "d", "debug" }, "Save training and extra debug files after each self-play game.",
                           "output directory");
+    QCommandLineOption timeoutOption(
+        { "t", "timeout" }, "Save running games after the timeout (in minutes) is passed and then exit.",
+                          "time in minutes");
+
+    QCommandLineOption singleOption(
+        { "s", "single" }, "Exit after the first game is completed.",
+                          "");
+
+    QCommandLineOption maxOption(
+        { "m", "maxgames" }, "Exit after the given number of games is completed.",
+                          "max number of games");
+
+    QCommandLineOption eraseOption(
+        { "e", "erase" }, "Erase old networks when new ones are available.",
+                          "");
 
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
     parser.addOption(keepSgfOption);
     parser.addOption(keepDebugOption);
+    parser.addOption(timeoutOption);
+    parser.addOption(singleOption);
+    parser.addOption(maxOption);
+    parser.addOption(eraseOption);
 
     // Process the actual command line arguments given by the user
     parser.process(app);
@@ -74,23 +95,31 @@ int main(int argc, char *argv[]) {
     if (gpusNum == 0) {
         gpusNum = 1;
     }
+    int maxNum = -1;
+    if (parser.isSet(maxOption)) {
+        maxNum = parser.value(maxOption).toInt();
+        if (maxNum == 0) {
+            maxNum = 1;
+        }
+        if (maxNum < gpusNum * gamesNum) {
+            gamesNum = maxNum / gpusNum;
+            if (gamesNum == 0) {
+                gamesNum = 1;
+                gpusNum = 1;
+            }
+        }
+        maxNum -= (gpusNum * gamesNum);
+    }
+    if (parser.isSet(singleOption)) {
+        gamesNum = 1;
+        gpusNum = 1;
+        maxNum = 0;
+    }
 
     // Map streams
-    QTextStream cin(stdin, QIODevice::ReadOnly);
-    QTextStream cout(stdout, QIODevice::WriteOnly);
-#if defined(LOG_ERRORS_TO_FILE)
-    // Log stderr to file
-    QFile caFile("output.txt");
-    caFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append);
-    if(!caFile.isOpen()){
-        qDebug() << "- Error, unable to open" << "outputFilename" << "for output";
-    }
-    QTextStream cerr(&caFile);
-#else
     QTextStream cerr(stderr, QIODevice::WriteOnly);
-#endif
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
-    cerr << "Using " << gamesNum << " thread(s)." << endl;
+    cerr << "Using " << gamesNum << " thread(s) for GPU(s)." << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"
@@ -105,12 +134,28 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
     }
-    QMutex mutex;
-    Management boss(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, parser.value(keepSgfOption), parser.value(keepDebugOption), &mutex);
-    boss.giveAssignments();
-    mutex.lock();
-    cerr.flush();
-    cout.flush();
-    mutex.unlock();
+    Console *cons = nullptr;
+    if (!QDir().mkpath("networks")) {
+        cerr << "Couldn't create the directory for the networks files!"
+             << endl;
+        return EXIT_FAILURE;
+    }
+    Management *boss = new Management(gpusNum, gamesNum, gpusList, AUTOGTP_VERSION, maxNum,
+                                      parser.isSet(eraseOption), parser.value(keepSgfOption),
+                                      parser.value(keepDebugOption));
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
+    QTimer *timer = new QTimer();
+    boss->giveAssignments();
+    if (parser.isSet(timeoutOption)) {
+        QObject::connect(timer, &QTimer::timeout, &app, &QCoreApplication::quit);
+        timer->start(parser.value(timeoutOption).toInt() * 60000);
+    }
+    if (parser.isSet(singleOption) || parser.isSet(maxOption)) {
+        QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
+    }
+    if (true) {
+        cons = new Console();
+        QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
+    }
     return app.exec();
 }

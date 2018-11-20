@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,14 +19,16 @@
 #ifndef GAMESTATE_H_INCLUDED
 #define GAMESTATE_H_INCLUDED
 
-#include <vector>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "FastState.h"
 #include "FullBoard.h"
 #include "KoState.h"
 #include "TimeControl.h"
+
+class Network;
 
 class GameState : public KoState {
 public:
@@ -40,33 +42,35 @@ public:
     void reset_game();
     bool set_fixed_handicap(int stones);
     int set_fixed_handicap_2(int stones);
-    void place_free_handicap(int stones);
-    void anchor_game_history(void);
+    void place_free_handicap(int stones, Network & network);
+    void anchor_game_history();
 
-    void rewind(void); /* undo infinite */
-    bool undo_move(void);
-    bool forward_move(void);
+    void rewind(); /* undo infinite */
+    bool undo_move();
+    bool forward_move();
+    const FullBoard& get_past_board(int moves_ago) const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
-    void play_pass();
-    bool play_textmove(std::string color, std::string vertex);
+    bool play_textmove(std::string color, const std::string& vertex);
 
     void start_clock(int color);
     void stop_clock(int color);
-    TimeControl& get_timecontrol();
+    const TimeControl& get_timecontrol() const;
     void set_timecontrol(int maintime, int byotime, int byostones,
                          int byoperiods);
-    void set_timecontrol(TimeControl tmc);
     void adjust_time(int color, int time, int stones);
 
     void display_state();
+    bool has_resigned() const;
+    int who_resigned() const;
 
 private:
     bool valid_handicap(int stones);
 
-    std::vector<std::shared_ptr<KoState>> game_history;
+    std::vector<std::shared_ptr<const KoState>> game_history;
     TimeControl m_timecontrol;
+    int m_resigned{FastBoard::EMPTY};
 };
 
 #endif

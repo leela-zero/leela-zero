@@ -1,0 +1,34 @@
+sudo: required
+
+language: cpp
+services:
+  - docker
+
+before_install:
+  - docker pull ubuntu:16.04
+  - docker build -f Dockerfiles/Dockerfile.base -t leela-zero:base .
+
+jobs:
+  include:
+    - stage: test
+      script:
+      - docker build -f Dockerfiles/Dockerfile.gpu -t leela-zero:gpu .
+      - docker run leela-zero:gpu
+    - script:
+      - docker build -f Dockerfiles/Dockerfile.gpu-blas -t leela-zero:gpu-blas .
+      - docker run leela-zero:gpu-blas
+    - script:
+      - docker build -f Dockerfiles/Dockerfile.cpu -t leela-zero:cpu .
+      - docker run leela-zero:cpu
+    - script:
+      - docker build -f Dockerfiles/Dockerfile.cpu-blas -t leela-zero:cpu-blas .
+      - docker run leela-zero:cpu-blas
+    - script:
+      - docker build -f Dockerfiles/Dockerfile.tests -t leela-zero:tests .
+      - docker run leela-zero:tests
+    - script:
+      - docker build -f Dockerfiles/Dockerfile.tests-blas -t leela-zero:tests-blas .
+      - docker run leela-zero:tests-blas
+    - stage: style
+      before_install:
+      script: find . -regex ".*\.\(cpp\|h\|hpp\)" -not -regex ".*moc_.*.cpp" -not -path "./gtest/*" -not -path "./training/*" -not -path "./src/half/*" -not -path "./src/CL/*" -not -path "./src/Eigen/*" | xargs python2 scripts/cpplint.py --filter=-build/c++11,-build/include,-build/include_order,-build/include_what_you_use,-build/namespaces,-readability/braces,-readability/casting,-readability/fn_size,-readability/namespace,-readability/todo,-runtime/explicit,-runtime/indentation_namespace,-runtime/int,-runtime/references,-whitespace/blank_line,-whitespace/braces,-whitespace/comma,-whitespace/comments,-whitespace/empty_loop_body,-whitespace/line_length,-whitespace/semicolon

@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Seth Troisi
+    Copyright (C) 2017-2018 Seth Troisi
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,4 +88,20 @@ void Results::printResults(const QString& firstNetName,
         << std::string(20, ' ')
         << winPercentColumn(black_wins, m_gamesPlayed)
         << winPercentColumn(white_wins, m_gamesPlayed) << std::endl;
+}
+
+QTextStream& operator<<(QTextStream& stream, const Results& r) {
+    stream << r.m_gamesPlayed << ' ';
+    stream << r.m_blackWins << ' ' << r.m_blackLosses << ' ';
+    stream << r.m_whiteWins << ' ' << r.m_whiteLosses << endl;
+    return stream;
+}
+
+QTextStream& operator>>(QTextStream& stream, Results& r) {
+    stream >> r.m_gamesPlayed;
+    stream >> r.m_blackWins;
+    stream >> r.m_blackLosses;
+    stream >> r.m_whiteWins;
+    stream >> r.m_whiteLosses;
+    return stream;
 }

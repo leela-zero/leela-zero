@@ -3,6 +3,8 @@
 /*
     Extended from code:
     Copyright (c) 2012 Jakob Progsch, Václav Zeman
+    Modifications:
+    Copyright (c) 2017-2018 Gian-Carlo Pascutto and contributors
 
     This software is provided 'as-is', without any express or implied
     warranty. In no event will the authors be held liable for any damages
@@ -40,7 +42,13 @@ class ThreadPool {
 public:
     ThreadPool() = default;
     ~ThreadPool();
+
+    // create worker threads.  This version has no initializers.
     void initialize(std::size_t);
+
+    // add an extra thread.  The thread calls initializer() before doing anything,
+    // so that the user can initialize per-thread data structures before doing work.
+    void add_thread(std::function<void()> initializer);
     template<class F, class... Args>
     auto add_task(F&& f, Args&&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
@@ -53,23 +61,28 @@ private:
     bool m_exit{false};
 };
 
+inline void ThreadPool::add_thread(std::function<void()> initializer) {
+    m_threads.emplace_back([this, initializer] {
+        initializer();
+        for (;;) {
+            std::function<void()> task;
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_condvar.wait(lock, [this]{ return m_exit || !m_tasks.empty(); });
+                if (m_exit && m_tasks.empty()) {
+                    return;
+                }
+                task = std::move(m_tasks.front());
+                m_tasks.pop();
+            }
+            task();
+        }
+    });
+}
+
 inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
-        m_threads.emplace_back([this] {
-            for (;;) {
-                std::function<void()> task;
-                {
-                    std::unique_lock<std::mutex> lock(m_mutex);
-                    m_condvar.wait(lock, [this]{ return m_exit || !m_tasks.empty(); });
-                    if (m_exit && m_tasks.empty()) {
-                        return;
-                    }
-                    task = std::move(m_tasks.front());
-                    m_tasks.pop();
-                }
-                task();
-            }
-        });
+        add_thread([](){} /* null function */);
     }
 }
 
@@ -97,7 +110,7 @@ inline ThreadPool::~ThreadPool() {
         m_exit = true;
     }
     m_condvar.notify_all();
-    for (std::thread & worker: m_threads) {
+    for (std::thread & worker : m_threads) {
         worker.join();
     }
 }
@@ -112,7 +125,7 @@ public:
         );
     }
     void wait_all() {
-        for (auto && result: m_taskresults) {
+        for (auto && result : m_taskresults) {
             result.get();
         }
     }

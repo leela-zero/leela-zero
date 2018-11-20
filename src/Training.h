@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,14 +20,22 @@
 #define TRAINING_H_INCLUDED
 
 #include "config.h"
+
+#include <bitset>
+#include <cstddef>
 #include <string>
 #include <utility>
+#include <vector>
+
 #include "GameState.h"
 #include "Network.h"
+#include "UCTNode.h"
 
 class TimeStep {
 public:
-    Network::NNPlanes planes;
+    using BoardPlane = std::bitset<NUM_INTERSECTIONS>;
+    using NNPlanes = std::vector<BoardPlane>;
+    NNPlanes planes;
     std::vector<float> probabilities;
     int to_move;
     float net_winrate;
@@ -36,18 +44,21 @@ public:
     int bestmove_visits;
 };
 
+std::ostream& operator<< (std::ostream& stream, const TimeStep& timestep);
+std::istream& operator>> (std::istream& stream, TimeStep& timestep);
+
 class OutputChunker {
 public:
     OutputChunker(const std::string& basename, bool compress = false);
     ~OutputChunker();
     void append(const std::string& str);
 
-    // Group this many positions in a batch.
-    static constexpr size_t CHUNK_SIZE = 16384;
+    // Group this many games in a batch.
+    static constexpr size_t CHUNK_SIZE = 32;
 private:
     std::string gen_chunk_name() const;
     void flush_chunks();
-    size_t m_step_count{0};
+    size_t m_game_count{0};
     size_t m_chunk_count{0};
     std::string m_buffer;
     std::string m_basename;
@@ -59,22 +70,24 @@ public:
     static void clear_training();
     static void dump_training(int winner_color,
                               const std::string& out_filename);
-    static void dump_stats(const std::string& out_filename);
-    static void record(GameState& state, UCTNode& node);
+    static void dump_debug(const std::string& out_filename);
+    static void record(Network & network, GameState& state, UCTNode& node);
 
     static void dump_supervised(const std::string& sgf_file,
                                 const std::string& out_filename);
-private:
-    // Consider only every 1/th position in a game.
-    // This ensures that positions in a chunk are from disjoint games.
-    static constexpr size_t SKIP_SIZE = 16;
+    static void save_training(const std::string& filename);
+    static void load_training(const std::string& filename);
 
+private:
+    static TimeStep::NNPlanes get_planes(const GameState* const state);
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,
                              OutputChunker& outchunker);
     static void dump_training(int winner_color,
                               OutputChunker& outchunker);
-    static void dump_stats(OutputChunker& outchunker);
+    static void dump_debug(OutputChunker& outchunker);
+    static void save_training(std::ofstream& out);
+    static void load_training(std::ifstream& in);
     static std::vector<TimeStep> m_data;
 };
 

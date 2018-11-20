@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #define SMP_H_INCLUDED
 
 #include "config.h"
+
 #include <atomic>
 
 namespace SMP {
@@ -29,7 +30,6 @@ namespace SMP {
     public:
         Mutex();
         ~Mutex() = default;
-        bool is_held();
         friend class Lock;
     private:
         std::atomic<bool> m_lock;
@@ -43,6 +43,7 @@ namespace SMP {
         void unlock();
     private:
         Mutex * m_mutex;
+        bool m_owns_lock{false};
     };
 }
 

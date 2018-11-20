@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,9 +19,12 @@
 #ifndef SGFPARSER_H_INCLUDED
 #define SGFPARSER_H_INCLUDED
 
-#include <string>
-#include <sstream>
+#include <cstddef>
+#include <cstdint>
 #include <climits>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "SGFTree.h"
 
@@ -36,7 +39,6 @@ public:
     static std::vector<std::string> chop_stream(std::istream& ins,
                                                 size_t stopat = SIZE_MAX);
     static void parse(std::istringstream & strm, SGFTree * node);
-    static int count_games_in_file(std::string filename);
 };
 
 

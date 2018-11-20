@@ -1,0 +1,50 @@
+version: '{build}'
+image:
+- Visual Studio 2015
+- Visual Studio 2017
+configuration: Release
+platform: x64
+matrix:
+  fast_finish: true
+environment:
+  matrix:
+  - cmake_build: 1
+  - cmake_build: 1
+    features: USE_CPU_ONLY
+    run_tests: 1
+  - cmake_build: 1
+    features: USE_CPU_ONLY USE_BLAS
+    run_tests: 1
+  - msbuild: 1
+skip_commits:
+  files:
+    - '**/*.md'
+    - '**/.gitignore'
+    - scripts/
+    - training/
+    - AUTHORS
+    - COPYING
+for:
+- matrix:
+    only:
+    - image: Visual Studio 2015
+  install:
+  - cmd: set MSVCDIR=msvc\VS2015
+  - cmd: echo %MSVCDIR%
+  - cmd: nuget restore %MSVCDIR% -PackagesDirectory msvc\packages
+- matrix:
+    only:
+    - image: Visual Studio 2017
+  install:
+  - cmd: set MSVCDIR=msvc\VS2017
+  - cmd: echo %MSVCDIR%
+  - cmd: nuget restore %MSVCDIR% -PackagesDirectory msvc\packages
+build_script:
+- cmd: if "%cmake_build%"=="1" %MSVCDIR%\cmake_build.bat
+- cmd: if "%msbuild%"=="1" git submodule update --init --recursive
+- cmd: if "%msbuild%"=="1" msbuild /t:build %MSVCDIR%\leela-zero.vcxproj
+
+test_script:
+- cmd: if "%run_tests%"=="1" cd build && Release\tests.exe
+
+cache: msvc\packages -> appveyor.yml

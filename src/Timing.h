@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,28 +19,21 @@
 #ifndef TIMING_H_INCLUDED
 #define TIMING_H_INCLUDED
 
-#include "config.h"
-
-#include <time.h>
-#ifdef _WIN32
-#define NOMINMAX
-#include <windows.h>
-#endif
+#include <chrono>
 
 class Time {
 public:
-    /*
-        sets to current time
-    */
-    Time(void);
+    /* sets to current time */
+    Time();
 
-    /*
-        time difference in centiseconds
-    */
-    static int timediff(Time start, Time end);
+    /* time difference in centiseconds */
+    static int timediff_centis(Time start, Time end);
+
+    /* time difference in seconds */
+    static double timediff_seconds(Time start, Time end);
 
 private:
-    rtime_t m_time;
+    std::chrono::steady_clock::time_point m_time;
 };
 
 #endif

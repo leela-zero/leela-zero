@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Seth Troisi
+    Copyright (C) 2017-2018 Seth Troisi
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@ public:
     void printResults(const QString& firstNetName,
                       const QString& secondNetName) const;
 
+    friend QTextStream& operator<<(QTextStream& stream, const Results& r);
+    friend QTextStream& operator>>(QTextStream& stream, Results& r);
 private:
     int m_gamesPlayed{0};
     int m_blackWins{0};

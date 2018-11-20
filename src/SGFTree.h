@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017 Gian-Carlo Pascutto
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,16 +19,19 @@
 #ifndef SGFTREE_H_INCLUDED
 #define SGFTREE_H_INCLUDED
 
-#include <vector>
+#include <cstddef>
 #include <map>
-#include <string>
 #include <sstream>
-#include "KoState.h"
+#include <string>
+#include <vector>
+
+#include "FastBoard.h"
 #include "GameState.h"
+#include "KoState.h"
 
 class SGFTree {
 public:
-    static const int EOT = 0;               // End-Of-Tree marker
+    static constexpr auto EOT = 0;               // End-Of-Tree marker
 
     SGFTree() = default;
     void init_state();
@@ -36,24 +39,28 @@ public:
     const KoState * get_state() const;
     GameState follow_mainline_state(unsigned int movenum = 999) const;
     std::vector<int> get_mainline() const;
-    void load_from_file(std::string filename, int index = 0);
-    void load_from_string(std::string gamebuff);
 
     int count_mainline_moves(void) const;
+
+
+    void load_from_file(const std::string& filename, int index = 0);
+    void load_from_string(const std::string& gamebuff);
 
     void add_property(std::string property, std::string value);
     SGFTree * add_child();
     const SGFTree * get_child(size_t count) const;
     int get_move(int tomove) const;
+    FastBoard::square_t get_winner() const;
+    std::pair<int, int> get_colored_move() const;
     bool is_initialized() const {
         return m_initialized;
     }
-    FastBoard::square_t get_winner() const;
+    FastBoard::vertex_t get_winner() const;
 
     static std::string state_to_string(GameState& state, int compcolor);
 
 private:
-    void populate_states(void);
+    void populate_states();
     void apply_move(int color, int move);
     void apply_move(int move);
     void copy_state(const SGFTree& state);
@@ -63,7 +70,7 @@ private:
 
     bool m_initialized{false};
     KoState m_state;
-    FastBoard::square_t m_winner{FastBoard::INVAL};
+    FastBoard::vertex_t m_winner{FastBoard::INVAL};
     std::vector<SGFTree> m_children;
     PropertyMap m_properties;
 };

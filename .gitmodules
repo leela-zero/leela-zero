@@ -1,0 +1,6 @@
+[submodule "gtest"]
+	path = gtest
+	url = https://github.com/google/googletest.git
+[submodule "src/Eigen"]
+	path = src/Eigen
+	url = https://github.com/eigenteam/eigen-git-mirror
