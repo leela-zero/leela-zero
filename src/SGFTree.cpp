@@ -65,7 +65,7 @@ const SGFTree * SGFTree::get_child(size_t count) const {
 // states, just the moves. As a consequence, states that contain more than
 // just moves won't have any effect.
 GameState SGFTree::follow_mainline_state(unsigned int movenum) const {
-    const SGFTree * link = this;
+    const auto* link = this;
     // This initializes a starting state from a KoState and
     // sets up the game history.
     GameState result(get_state());
@@ -89,19 +89,6 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) const {
     }
 
     return result;
-}
-
-// the number of states is one more than the number of moves
-int SGFTree::count_mainline_moves(void) const {
-    const SGFTree * link = this;
-    int count = -1;
-
-    while (link != nullptr) {
-        link = link->get_child(0);
-        count++;
-    }
-
-    return count;
 }
 
 void SGFTree::load_from_string(const std::string& gamebuff) {
@@ -388,8 +375,7 @@ FastBoard::vertex_t SGFTree::get_winner() const {
 std::vector<int> SGFTree::get_mainline() const {
     std::vector<int> moves;
 
-    // todo const auto?
-    const SGFTree * link = this;
+    const auto* link = this;
     auto tomove = link->m_state.get_to_move();
     link = link->get_child(0);
 

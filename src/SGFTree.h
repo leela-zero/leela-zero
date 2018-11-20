@@ -40,9 +40,6 @@ public:
     GameState follow_mainline_state(unsigned int movenum = 999) const;
     std::vector<int> get_mainline() const;
 
-    int count_mainline_moves(void) const;
-
-
     void load_from_file(const std::string& filename, int index = 0);
     void load_from_string(const std::string& gamebuff);
 
@@ -50,7 +47,6 @@ public:
     SGFTree * add_child();
     const SGFTree * get_child(size_t count) const;
     int get_move(int tomove) const;
-    FastBoard::square_t get_winner() const;
     std::pair<int, int> get_colored_move() const;
     bool is_initialized() const {
         return m_initialized;
