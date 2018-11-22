@@ -248,26 +248,6 @@ TEST(FullBoardTest, SemiFilled9x9Board) {
     EXPECT_EQ(expected,  b.serialize_board());
 }
 
-TEST(FullBoardTest, RemoveString) {
-    FullBoard b = create_semi_filled_9x9();
-    b.remove_string(b.get_vertex(1, 2));
-
-    const char *expected = "\n"
-                           "   a b c d e f g h j \n"
-                           " 9 . . . . . . . . .  9\n"
-                           " 8 . . . . . . . . .  8\n"
-                           " 7 . . + . + . O . .  7\n"
-                           " 6 . . . . O . . . .  6\n"
-                           " 5 . . + . + O + . .  5\n"
-                           " 4 . . . . O . O . .  4\n"
-                           " 3 . . + . + O + . .  3\n"
-                           " 2 . . . . . . . . .  2\n"
-                           " 1 X . . . . . . . .  1\n"
-                           "   a b c d e f g h j \n\n";
-
-    EXPECT_EQ(expected,  b.serialize_board());
-}
-
 TEST(FullBoardTest, CountRealLibertiesOn9x9) {
     FullBoard b = create_semi_filled_9x9();
 

@@ -187,7 +187,6 @@ TEST(FastBoardTest, SemiFilled5x5Board) {
     EXPECT_EQ(expected,  b.serialize_board());
 }
 
-// Results will make more sense in FullBuard test
 TEST(FastBoardTest, CountRealLibertiesOn5x5) {
     FastBoard b = create_filled_5x5();
     EXPECT_EQ(2, b.count_pliberties(b.get_vertex(0, 0)));
@@ -198,6 +197,71 @@ TEST(FastBoardTest, CountRealLibertiesOn5x5) {
     EXPECT_EQ(1, b.count_pliberties(b.get_vertex(2, 2)));
     EXPECT_EQ(2, b.count_pliberties(b.get_vertex(3, 2)));
     EXPECT_EQ(3, b.count_pliberties(b.get_vertex(0, 3)));
+}
+
+// Verify the process of capturing a string of 3 white stones.
+TEST(FastBoardTest, TestCaptureWhiteStringOn5x5) {
+    FastBoard b = create_filled_5x5();
+
+    // surround the string of 3 white stones at the top
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 4));
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 3));
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 2));
+    b.update_board(FastBoard::BLACK, b.get_vertex(3, 3));
+    EXPECT_EQ(1, b.count_pliberties(b.get_vertex(2, 4))); // it's now in atari
+    b.update_board(FastBoard::BLACK, b.get_vertex(3, 4)); // captured
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . X . X .  5\n"
+                           " 4 X X . X .  4\n"
+                           " 3 . X . X .  3\n"
+                           " 2 . X X O .  2\n"
+                           " 1 . . . . .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(3, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+}
+
+// Verify the process of capturing a string of 3 black stones.
+TEST(FastBoardTest, TestCaptureBlackStringOn9x9) {
+    FastBoard b = create_filled_9x9();
+
+    // surround the string of 3 black stones on the left
+    b.update_board(FastBoard::WHITE, b.get_vertex(0, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(1, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 4));
+
+    // the 3 black stones now in atari
+    EXPECT_EQ(1, b.count_pliberties(b.get_vertex(1, 2)));
+    EXPECT_EQ(0, b.count_pliberties(b.get_vertex(2, 2)));
+    EXPECT_EQ(1, b.count_pliberties(b.get_vertex(2, 3)));
+
+    b.update_board(FastBoard::WHITE, b.get_vertex(1, 3)); // now captured
+
+    const char *expected = "\n"
+                           "   a b c d e f g h j \n"
+                           " 9 . . . . . . . . .  9\n"
+                           " 8 . . . . . . . . .  8\n"
+                           " 7 . . + . + . O . .  7\n"
+                           " 6 . . . . O . . . .  6\n"
+                           " 5 . . O . + O + . .  5\n"
+                           " 4 . O . O O . O . .  4\n"
+                           " 3 O . + O + O + . .  3\n"
+                           " 2 . O O . . . . . .  2\n"
+                           " 1 X . . . . . . . .  1\n"
+                           "   a b c d e f g h j \n\n";
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::BLACK));
+    // 3 new captures, plus the one from setup
+    EXPECT_EQ(4, b.get_prisoners(FastBoard::WHITE));
 }
 
 TEST(FastBoardTest, SemiFilled9x9Board) {
@@ -219,28 +283,6 @@ TEST(FastBoardTest, SemiFilled9x9Board) {
     EXPECT_EQ(expected,  b.serialize_board());
 }
 
-TEST(FastBoardTest, RemoveString) {
-    FastBoard b = create_filled_9x9();
-    b.remove_string(b.get_vertex(1, 2));
-
-    const char *expected = "\n"
-                           "   a b c d e f g h j \n"
-                           " 9 . . . . . . . . .  9\n"
-                           " 8 . . . . . . . . .  8\n"
-                           " 7 . . + . + . O . .  7\n"
-                           " 6 . . . . O . . . .  6\n"
-                           " 5 . . + . + O + . .  5\n"
-                           " 4 . . . . O . O . .  4\n"
-                           " 3 . . + . + O + . .  3\n"
-                           " 2 . . . . . . . . .  2\n"
-                           " 1 X . . . . . . . .  1\n"
-                           "   a b c d e f g h j \n\n";
-
-    EXPECT_EQ(expected,  b.serialize_board());
-}
-
-
-// Results will make more sense in FullBuard test
 TEST(FastBoardTest, CountRealLibertiesOn9x9) {
     FastBoard b = create_filled_9x9();
 
@@ -252,7 +294,6 @@ TEST(FastBoardTest, CountRealLibertiesOn9x9) {
     EXPECT_EQ(4, b.count_pliberties(b.get_vertex(5, 4)));
 }
 
-// Results will make more sense in FullBuard test
 TEST(FastBoardTest, IsSuicideWhenNotForBlack) {
     FastBoard b;
     b.reset_board(5);
@@ -261,7 +302,6 @@ TEST(FastBoardTest, IsSuicideWhenNotForBlack) {
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(2, 1), FastBoard::BLACK));
 }
 
-// Results will make more sense in FullBuard test
 TEST(FastBoardTest, IsSuicideForBlackInAllWhiteField) {
     FastBoard b = create_5x5_all_white_field();
 

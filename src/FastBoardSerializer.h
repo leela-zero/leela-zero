@@ -46,10 +46,10 @@ public:
     static bool starpoint(int size, int point);
     static bool starpoint(int size, int x, int y);
 
-protected:
+private:
     FastBoard *m_board;
 
-    std::tuple<int, int> get_coords(int move, int size) const;
+    std::pair<int, int> get_coords(int move, int size) const;
     std::string get_columns();
 };
 

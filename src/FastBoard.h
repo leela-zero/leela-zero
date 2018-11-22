@@ -67,7 +67,6 @@ public:
 
     int get_boardsize() const;
     int update_board(const int color, const int i);
-    int remove_string(int i);
     vertex_t get_state(int x, int y) const;
     vertex_t get_state(int vertex) const ;
     int get_vertex(int x, int y) const;
@@ -122,6 +121,7 @@ protected:
 
     FastBoardSerializer *m_serializer;
 
+    int remove_string(int i);
     virtual void record_position(int pos);
     virtual void record_captures(int color, int captured_stones);
     int calc_reach_color(int color) const;

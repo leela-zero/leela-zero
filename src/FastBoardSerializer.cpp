@@ -84,15 +84,14 @@ std::string FastBoardSerializer::get_columns() {
 std::string FastBoardSerializer::move_to_text(int move) const {
     std::ostringstream result;
     int size = m_board->get_boardsize();
-
-    int row, column;
-    std::tie (row, column) = get_coords(move, size);
+    std::pair<int, int> coord = get_coords(move, size);
 
     int sidevertices = size + 2;
     int numvertices = sidevertices * sidevertices;
     if (move >= 0 && move <= numvertices) {
+        int column = coord.first;
         result << static_cast<char>(column < 8 ? 'A' + column : 'A' + column + 1);
-        result << (row + 1);
+        result << (coord.second + 1);
     } else if (move == FastBoard::PASS) {
         result << "pass";
     } else if (move == FastBoard::RESIGN) {
@@ -107,16 +106,15 @@ std::string FastBoardSerializer::move_to_text(int move) const {
 std::string FastBoardSerializer::move_to_text_sgf(int move) const {
     std::ostringstream result;
     int size = m_board->get_boardsize();
-
-    int row, column;
-    std::tie (row, column) = get_coords(move, size);
+    std::pair<int, int> coord = get_coords(move, size);
 
     // SGF inverts rows
-    row = size - row - 1;
+    int row = size - coord.second - 1;
 
     int sidevertices = size + 2;
     int numvertices = sidevertices * sidevertices;
     if (move >= 0 && move <= numvertices) {
+        int column = coord.first;
         if (column <= 25) {
             result << static_cast<char>('a' + column);
         } else {
@@ -138,7 +136,7 @@ std::string FastBoardSerializer::move_to_text_sgf(int move) const {
     return result.str();
 }
 
-std::tuple<int, int> FastBoardSerializer::get_coords(int move, int size) const {
+std::pair<int, int> FastBoardSerializer::get_coords(int move, int size) const {
 
     int sidevertices = size + 2;
     int column = move % sidevertices;
@@ -151,7 +149,7 @@ std::tuple<int, int> FastBoardSerializer::get_coords(int move, int size) const {
            || move == FastBoard::RESIGN
            || (row >= 0 && row < size && column >= 0 && column <size));
 
-    return std::make_tuple(row, column);
+    return std::make_pair(column, row);
 }
 
 int FastBoardSerializer::text_to_move(std::string move) const {
