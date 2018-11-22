@@ -54,11 +54,10 @@ ProductionJob::ProductionJob(QString gpu, Management *parent) :
 }
 
 ValidationJob::ValidationJob(QString gpu, Management *parent) :
-    Job(gpu, parent)
+    Job(gpu, parent),
+    m_engineFirst(Engine(QString(), QString())),
+    m_engineSecond(Engine(QString(), QString()))
 {
-    for (auto engine : m_engines) {
-        engine = Engine(QString(), QString());
-    }
 }
 
 WaitJob::WaitJob(QString gpu, Management *parent) :
@@ -133,7 +132,7 @@ void ProductionJob::init(const Order &o) {
 
 Result ValidationJob::execute(){
     Result res(Result::Error);
-    Game first(m_engines[0]);
+    Game first(m_engineFirst);
     if (!first.gameStart(m_leelazMinVersion)) {
         return res;
     }
@@ -142,7 +141,7 @@ Result ValidationJob::execute(){
         first.setMovesCount(m_moves);
         QFile::remove(m_sgfFirst + ".sgf");
     }
-    Game second(m_engines[1]);
+    Game second(m_engineSecond);
     if (!second.gameStart(m_leelazMinVersion)) {
         return res;
     }
@@ -183,7 +182,7 @@ Result ValidationJob::execute(){
             res.add("score", first.getResult());
             res.add("winner", first.getWinnerName());
             first.writeSgf();
-            first.fixSgf(m_engines[1].getNetworkFile(),
+            first.fixSgf(m_engineSecond.getNetworkFile(),
                          (res.parameters()["score"] == "B+Resign"));
             res.add("file", first.getFile());
         }
@@ -208,10 +207,10 @@ Result ValidationJob::execute(){
 
 void ValidationJob::init(const Order &o) {
     Job::init(o);
-    m_engines[0].m_network = "networks/" + o.parameters()["firstNet"] + ".gz";
-    m_engines[0].m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
-    m_engines[1].m_network = "networks/" + o.parameters()["secondNet"] + ".gz";
-    m_engines[1].m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
+    m_engineFirst.m_network = "networks/" + o.parameters()["firstNet"] + ".gz";
+    m_engineFirst.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
+    m_engineSecond.m_network = "networks/" + o.parameters()["secondNet"] + ".gz";
+    m_engineSecond.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
     if (o.type() == Order::RestoreMatch) {
         m_sgfFirst = o.parameters()["sgfFirst"];
         m_sgfSecond = o.parameters()["sgfSecond"];

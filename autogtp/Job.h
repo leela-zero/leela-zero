@@ -79,7 +79,8 @@ public:
     void init(const Order &o);
     Result execute();
 private:
-    Engine m_engines[2];
+    Engine m_engineFirst;
+    Engine m_engineSecond;
     QString m_sgfFirst;
     QString m_sgfSecond;
 };
