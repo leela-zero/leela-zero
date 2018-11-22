@@ -49,6 +49,110 @@ int FastBoard::get_boardsize() const {
     return m_boardsize;
 }
 
+
+int FastBoard::update_board(const int color, const int i) {
+    assert(i != FastBoard::PASS);
+    assert(m_state[i] == EMPTY);
+    assert(i >= 0 && i < m_numvertices);
+    assert(color == BLACK || color == WHITE);
+
+    record_position(i);
+    m_state[i] = vertex_t(color);
+    m_next[i] = i;
+    m_parent[i] = i;
+    m_libs[i] = count_pliberties(i);
+    m_stones[i] = 1;
+    record_position(i);
+
+    /* update neighbor liberties (they all lose 1) */
+    add_neighbour(i, color);
+
+    /* did we play into an opponent eye? */
+    auto eyeplay = (m_neighbours[i] & s_eyemask[!color]);
+
+    auto captured_stones = 0;
+    int captured_vtx;
+
+    for (int k = 0; k < 4; k++) {
+        int ai = i + m_dirs[k];
+
+        if (m_state[ai] == !color) {
+            if (m_libs[m_parent[ai]] <= 0) {
+                int this_captured = remove_string(ai);
+                captured_vtx = ai;
+                captured_stones += this_captured;
+            }
+        } else if (m_state[ai] == color) {
+            int ip = m_parent[i];
+            int aip = m_parent[ai];
+
+            if (ip != aip) {
+                if (m_stones[ip] >= m_stones[aip]) {
+                    merge_strings(ip, aip);
+                } else {
+                    merge_strings(aip, ip);
+                }
+            }
+        }
+    }
+
+    record_captures(color, captured_stones);
+
+    /* move last vertex in list to our position */
+    auto lastvertex = m_empty[--m_empty_cnt];
+    m_empty_idx[lastvertex] = m_empty_idx[i];
+    m_empty[m_empty_idx[i]] = lastvertex;
+
+    /* check whether we still live (i.e. detect suicide) */
+    if (m_libs[m_parent[i]] == 0) {
+        assert(captured_stones == 0);
+        remove_string(i);
+    }
+
+    /* check for possible simple ko */
+    if (captured_stones == 1 && eyeplay) {
+        assert(get_state(captured_vtx) == FastBoard::EMPTY
+               && !is_suicide(captured_vtx, !color));
+        return captured_vtx;
+    }
+
+    // No ko
+    return NO_VERTEX;
+}
+
+int FastBoard::remove_string(int i) {
+    int pos = i;
+    int removed = 0;
+    int color = m_state[i];
+
+    do {
+        record_position(pos);
+        m_state[pos] = EMPTY;
+        m_parent[pos] = NUM_VERTICES;
+
+        remove_neighbour(pos, color);
+
+        m_empty_idx[pos]      = m_empty_cnt;
+        m_empty[m_empty_cnt]  = pos;
+        m_empty_cnt++;
+
+        record_position(pos);
+        removed++;
+        pos = m_next[pos];
+    } while (pos != i);
+
+    return removed;
+}
+
+
+void FastBoard::record_position(int pos) {
+    (void)pos; // does nothing in FastBoard, but FullBoard will update Zobrist here
+}
+
+void FastBoard::record_captures(const int color, const int captured_stones) {
+    m_prisoners[color] += captured_stones;
+}
+
 int FastBoard::get_vertex(int x, int y) const {
     assert(x >= 0 && x < BOARD_SIZE);
     assert(y >= 0 && y < BOARD_SIZE);
@@ -81,20 +185,8 @@ FastBoard::vertex_t FastBoard::get_state(int vertex) const {
     return m_state[vertex];
 }
 
-void FastBoard::set_state(int vertex, FastBoard::vertex_t content) {
-    assert(vertex >= 0 && vertex < NUM_VERTICES);
-    assert(vertex >= 0 && vertex < m_numvertices);
-    assert(content >= BLACK && content <= INVAL);
-
-    m_state[vertex] = content;
-}
-
 FastBoard::vertex_t FastBoard::get_state(int x, int y) const {
     return get_state(get_vertex(x, y));
-}
-
-void FastBoard::set_state(int x, int y, FastBoard::vertex_t content) {
-    set_state(get_vertex(x, y), content);
 }
 
 void FastBoard::reset_board(int size) {

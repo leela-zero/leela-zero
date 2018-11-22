@@ -66,11 +66,11 @@ public:
     };
 
     int get_boardsize() const;
+    int update_board(const int color, const int i);
+    int remove_string(int i);
     vertex_t get_state(int x, int y) const;
     vertex_t get_state(int vertex) const ;
     int get_vertex(int x, int y) const;
-    void set_state(int x, int y, vertex_t content);
-    void set_state(int vertex, vertex_t content);
     std::pair<int, int> get_xy(int vertex) const;
 
     bool is_suicide(int i, int color) const;
@@ -122,6 +122,8 @@ protected:
 
     FastBoardSerializer *m_serializer;
 
+    virtual void record_position(int pos);
+    virtual void record_captures(int color, int captured_stones);
     int calc_reach_color(int color) const;
 
     int count_neighbours(const int color, const int i) const;
