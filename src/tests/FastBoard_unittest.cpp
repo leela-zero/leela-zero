@@ -26,42 +26,42 @@
 FastBoard create_filled_3x3() {
     FastBoard b;
     b.reset_board(3);
-    b.set_state(1, 1, FastBoard::BLACK);
-    b.set_state(2, 1, FastBoard::BLACK);
-    b.set_state(0, 1, FastBoard::WHITE);
-    b.set_state(1, 0, FastBoard::WHITE);
-    b.set_state(2, 2, FastBoard::BLACK);
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 1));
+    b.update_board(FastBoard::BLACK, b.get_vertex(2, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(0, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(1, 0));
+    b.update_board(FastBoard::BLACK, b.get_vertex(2, 2));
     return b;
 }
 
 FastBoard create_filled_5x5() {
     FastBoard b;
     b.reset_board(5);
-    b.set_state(1, 1, FastBoard::BLACK);
-    b.set_state(2, 1, FastBoard::BLACK);
-    b.set_state(3, 1, FastBoard::WHITE);
-    b.set_state(2, 2, FastBoard::WHITE);
-    b.set_state(3, 2, FastBoard::BLACK);
-    b.set_state(0, 3, FastBoard::BLACK);
-    b.set_state(2, 3, FastBoard::WHITE);
-    b.set_state(2, 4, FastBoard::WHITE);
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 1));
+    b.update_board(FastBoard::BLACK, b.get_vertex(2, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 2));
+    b.update_board(FastBoard::BLACK, b.get_vertex(3, 2));
+    b.update_board(FastBoard::BLACK, b.get_vertex(0, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 4));
     return b;
 }
 
 FastBoard create_filled_9x9() {
     FastBoard b;
     b.reset_board(9);
-    b.set_state(5, 4, FastBoard::WHITE);
-    b.set_state(5, 3, FastBoard::BLACK);
-    b.set_state(4, 5, FastBoard::WHITE);
-    b.set_state(2, 2, FastBoard::BLACK);
-    b.set_state(4, 3, FastBoard::WHITE);
-    b.set_state(1, 2, FastBoard::BLACK);
-    b.set_state(6, 3, FastBoard::WHITE);
-    b.set_state(2, 3, FastBoard::BLACK);
-    b.set_state(5, 2, FastBoard::WHITE);
-    b.set_state(0, 0, FastBoard::BLACK);
-    b.set_state(6, 6, FastBoard::WHITE);
+    b.update_board(FastBoard::WHITE, b.get_vertex(5, 4));
+    b.update_board(FastBoard::BLACK, b.get_vertex(5, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(4, 5));
+    b.update_board(FastBoard::BLACK, b.get_vertex(2, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(4, 3));
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(6, 3));
+    b.update_board(FastBoard::BLACK, b.get_vertex(2, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(5, 2));
+    b.update_board(FastBoard::BLACK, b.get_vertex(0, 0));
+    b.update_board(FastBoard::WHITE, b.get_vertex(6, 6));
     return b;
 }
 
@@ -77,16 +77,16 @@ FastBoard create_filled_9x9() {
 FastBoard create_5x5_all_white_field() {
     FastBoard b;
     b.reset_board(5);
-    b.set_state(1, 2, FastBoard::WHITE);
-    b.set_state(2, 1, FastBoard::WHITE);
-    b.set_state(2, 2, FastBoard::WHITE);
-    b.set_state(2, 3, FastBoard::WHITE);
-    b.set_state(2, 4, FastBoard::WHITE);
-    b.set_state(3, 2, FastBoard::WHITE);
-    b.set_state(3, 4, FastBoard::WHITE);
-    b.set_state(4, 3, FastBoard::WHITE);
-    b.set_state(0, 2, FastBoard::WHITE);
-    b.set_state(2, 0, FastBoard::WHITE);
+    b.update_board(FastBoard::WHITE, b.get_vertex(1, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 4));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 4));
+    b.update_board(FastBoard::WHITE, b.get_vertex(4, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(0, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 0));
     return b;
 }
 
@@ -108,7 +108,7 @@ TEST(FastBoardTest, Board3x3) {
 TEST(FastBoardTest, MakeBlackMoveOn19x19) {
     FastBoard b;
     b.reset_board(19);
-    b.set_state(b.get_vertex(2, 1), FastBoard::BLACK);
+    b.update_board(FastBoard::BLACK, b.get_vertex(2, 1));
 
     const char *expected = "\n"
                            "   a b c d e f g h j k l m n o p q r s t \n"
@@ -160,14 +160,16 @@ TEST(FastBoardTest, GetXYFromVertex) {
     //ASSERT_DEATH({ b.get_xy(7);}, ".*FastBoard.cpp.* Assertion `y >= 0 && y < m_boardsize' failed.");
 }
 
-TEST(FastBoardTest, GetSquare) {
+// Check that stones are where we put them
+TEST(FastBoardTest, GetState) {
     FastBoard b;
     b.reset_board(19);
     EXPECT_EQ(FastBoard::EMPTY, b.get_state(43));
     EXPECT_EQ(FastBoard::EMPTY, b.get_state(0, 1));
-    b.set_state(43, FastBoard::BLACK);
+    b.update_board(FastBoard::BLACK, 43);
     EXPECT_EQ(FastBoard::BLACK, b.get_state(43));
-    b.set_state(43, FastBoard::WHITE);
+    b.reset_board(19);
+    b.update_board(FastBoard::WHITE, 43);
     EXPECT_EQ(FastBoard::WHITE, b.get_state(43));
 }
 
@@ -186,17 +188,85 @@ TEST(FastBoardTest, SemiFilled5x5Board) {
     EXPECT_EQ(expected,  b.serialize_board());
 }
 
-// Results will make more sense in FullBuard test
 TEST(FastBoardTest, CountRealLibertiesOn5x5) {
     FastBoard b = create_filled_5x5();
     EXPECT_EQ(2, b.count_pliberties(b.get_vertex(0, 0)));
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(1, 1)));
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(2, 1)));
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(3, 1)));
-    EXPECT_EQ(3, b.count_pliberties(b.get_vertex(4, 1)));
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(2, 2)));
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(3, 2)));
+    EXPECT_EQ(3, b.count_pliberties(b.get_vertex(1, 1)));
+    EXPECT_EQ(1, b.count_pliberties(b.get_vertex(2, 1)));
+    EXPECT_EQ(2, b.count_pliberties(b.get_vertex(3, 1)));
+    EXPECT_EQ(2, b.count_pliberties(b.get_vertex(4, 1)));
+    EXPECT_EQ(1, b.count_pliberties(b.get_vertex(2, 2)));
+    EXPECT_EQ(2, b.count_pliberties(b.get_vertex(3, 2)));
     EXPECT_EQ(3, b.count_pliberties(b.get_vertex(0, 3)));
+}
+
+// Verify the process of capturing a string of 3 white stones.
+TEST(FastBoardTest, TestCaptureWhiteStringOn5x5) {
+    FastBoard b = create_filled_5x5();
+
+    // surround the string of 3 white stones at the top
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 4));
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 3));
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 2));
+    b.update_board(FastBoard::BLACK, b.get_vertex(3, 3));
+    EXPECT_EQ(1, b.count_pliberties(b.get_vertex(2, 4))); // it's now in atari
+    b.update_board(FastBoard::BLACK, b.get_vertex(3, 4)); // captured
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . X . X .  5\n"
+                           " 4 X X . X .  4\n"
+                           " 3 . X . X .  3\n"
+                           " 2 . X X O .  2\n"
+                           " 1 . . . . .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(3, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+    // black: 24 -  white: 12 -  komi: 6.5 = 5.5
+    EXPECT_EQ(5.5, b.area_score(6.5F));
+}
+
+// Verify the process of capturing a string of 3 black stones.
+TEST(FastBoardTest, TestCaptureBlackStringOn9x9) {
+    FastBoard b = create_filled_9x9();
+
+    // surround the string of 3 black stones on the left
+    b.update_board(FastBoard::WHITE, b.get_vertex(0, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(1, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 4));
+
+    // the 3 black stones now in atari
+    EXPECT_EQ(1, b.count_pliberties(b.get_vertex(1, 2)));
+    EXPECT_EQ(0, b.count_pliberties(b.get_vertex(2, 2)));
+    EXPECT_EQ(1, b.count_pliberties(b.get_vertex(2, 3)));
+
+    b.update_board(FastBoard::WHITE, b.get_vertex(1, 3)); // now captured
+
+    const char *expected = "\n"
+                           "   a b c d e f g h j \n"
+                           " 9 . . . . . . . . .  9\n"
+                           " 8 . . . . . . . . .  8\n"
+                           " 7 . . + . + . O . .  7\n"
+                           " 6 . . . . O . . . .  6\n"
+                           " 5 . . O . + O + . .  5\n"
+                           " 4 . O . O O . O . .  4\n"
+                           " 3 O . + O + O + . .  3\n"
+                           " 2 . O O . . . . . .  2\n"
+                           " 1 X . . . . . . . .  1\n"
+                           "   a b c d e f g h j \n\n";
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::BLACK));
+    // 3 new captures, plus the one from setup
+    EXPECT_EQ(4, b.get_prisoners(FastBoard::WHITE));
+    //black: 64 -  white:80 - komi: 6.5 = -22.5
+    EXPECT_EQ(-22.5, b.area_score(6.5F));
 }
 
 TEST(FastBoardTest, SemiFilled9x9Board) {
@@ -209,44 +279,89 @@ TEST(FastBoardTest, SemiFilled9x9Board) {
                            " 7 . . + . + . O . .  7\n"
                            " 6 . . . . O . . . .  6\n"
                            " 5 . . + . + O + . .  5\n"
-                           " 4 . . X . O X O . .  4\n"
+                           " 4 . . X . O . O . .  4\n"
                            " 3 . X X . + O + . .  3\n"
                            " 2 . . . . . . . . .  2\n"
                            " 1 X . . . . . . . .  1\n"
                            "   a b c d e f g h j \n\n";
 
-    EXPECT_EQ(expected,  b.serialize_board());
+    EXPECT_EQ(expected, b.serialize_board());
 }
 
-// Results will make more sense in FullBuard test
 TEST(FastBoardTest, CountRealLibertiesOn9x9) {
     FastBoard b = create_filled_9x9();
 
     EXPECT_EQ(2, b.count_pliberties(b.get_vertex(0, 0)));
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(1, 2)));
+    EXPECT_EQ(3, b.count_pliberties(b.get_vertex(1, 2)));
+    EXPECT_EQ(2, b.count_pliberties(b.get_vertex(2, 2)));
     EXPECT_EQ(4, b.count_pliberties(b.get_vertex(4, 3)));
-    EXPECT_EQ(4, b.count_pliberties(b.get_vertex(4, 4)));
+    EXPECT_EQ(1, b.count_pliberties(b.get_vertex(4, 4)));
     EXPECT_EQ(4, b.count_pliberties(b.get_vertex(5, 4)));
 }
 
-// Results will make more sense in FullBuard test
+// Putting a black stone next to a white one should not be suicide
 TEST(FastBoardTest, IsSuicideWhenNotForBlack) {
     FastBoard b;
     b.reset_board(5);
-    b.set_state(2, 2, FastBoard::WHITE);
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 2));
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(1, 1), FastBoard::BLACK));
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(2, 1), FastBoard::BLACK));
 }
 
-// Results will make more sense in FullBuard test
+// Placing a black stode at (3, 3) or (4, 4) is suicidal.
 TEST(FastBoardTest, IsSuicideForBlackInAllWhiteField) {
     FastBoard b = create_5x5_all_white_field();
 
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(1, 1), FastBoard::BLACK));
-    EXPECT_EQ(false, b.is_suicide(b.get_vertex(3, 3), FastBoard::BLACK));
-    EXPECT_EQ(false, b.is_suicide(b.get_vertex(4, 4), FastBoard::BLACK));
+    EXPECT_EQ(true, b.is_suicide(b.get_vertex(3, 3), FastBoard::BLACK));
+    EXPECT_EQ(true, b.is_suicide(b.get_vertex(4, 4), FastBoard::BLACK));
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(4, 2), FastBoard::BLACK));
-    EXPECT_EQ(false, b.is_suicide(b.get_vertex(4, 4), FastBoard::BLACK));
+    EXPECT_EQ(false, b.is_suicide(b.get_vertex(3, 4), FastBoard::BLACK));
+}
+
+// test capture of stone in the corner
+TEST(FastBoardTest, CaptureOfWhitesOneInCornerOf5x5Board) {
+    FastBoard b = create_filled_5x5();
+    b.update_board(FastBoard::WHITE, b.get_vertex(0, 4));
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 4));
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . X O . .  5\n"
+                           " 4 X . O . .  4\n"
+                           " 3 . . O X .  3\n"
+                           " 2 . X X O .  2\n"
+                           " 1 . . . . .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(1, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+    EXPECT_EQ(-4.5, b.area_score(6.5F));
+}
+
+// test placing a white stone in suicidal position in the corner
+TEST(FastBoardTest, PlaceSuicidalWhiteStoneInCornerOf5x5Board) {
+    FastBoard b = create_filled_5x5();
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 4));
+    EXPECT_EQ(true, b.is_suicide(b.get_vertex(0, 4), FastBoard::WHITE));
+    b.update_board(FastBoard::WHITE, b.get_vertex(0, 4)); // this should not be allowed
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . X O . .  5\n"
+                           " 4 X . O . .  4\n"
+                           " 3 . . O X .  3\n"
+                           " 2 . X X O .  2\n"
+                           " 1 . . . . .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+    EXPECT_EQ(-4.5, b.area_score(6.5F));
 }
 
 TEST(FastBoardTest, CalcAreaScore) {
@@ -265,9 +380,9 @@ TEST(FastBoardTest, CalcAreaScoreOnWhiteField) {
 
 TEST(FastBoardTest, CalcAreaScoreOnSemiFilled9x9) {
     FastBoard b = create_filled_9x9();
-    EXPECT_EQ(-7.5, b.area_score(6.5F));
-    EXPECT_EQ(-1.5, b.area_score(0.5F));
-    EXPECT_EQ(-10.0, b.area_score(9.0F));
+    EXPECT_EQ(-9.5, b.area_score(6.5F));
+    EXPECT_EQ(-3.5, b.area_score(0.5F));
+    EXPECT_EQ(-12.0, b.area_score(9.0F));
 }
 
 TEST(FastBoardTest, ToMove) {
