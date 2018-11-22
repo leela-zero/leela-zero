@@ -101,7 +101,6 @@ protected:
         bit masks to detect eyes on neighbors
     */
     static const std::array<int,      2> s_eyemask;
-    static const std::array<vertex_t, 4> s_cinvert; /* color inversion */
 
     std::array<vertex_t, NUM_VERTICES>         m_state;      /* board contents */
     std::array<unsigned short, NUM_VERTICES+1> m_next;       /* next stone in string */
