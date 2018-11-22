@@ -83,23 +83,12 @@ std::string FastBoardSerializer::get_columns() {
 
 std::string FastBoardSerializer::move_to_text(int move) const {
     std::ostringstream result;
-
     int size = m_board->get_boardsize();
+
+    int row, column;
+    std::tie (row, column) = get_coords(move, size);
+
     int sidevertices = size + 2;
-
-    int column = move % sidevertices;
-    int row = move / sidevertices;
-
-    column--;
-    row--;
-
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (row >= 0 && row < size));
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (column >= 0 && column <size));
-
     int numvertices = sidevertices * sidevertices;
     if (move >= 0 && move <= numvertices) {
         result << static_cast<char>(column < 8 ? 'A' + column : 'A' + column + 1);
@@ -113,6 +102,56 @@ std::string FastBoardSerializer::move_to_text(int move) const {
     }
 
     return result.str();
+}
+
+std::string FastBoardSerializer::move_to_text_sgf(int move) const {
+    std::ostringstream result;
+    int size = m_board->get_boardsize();
+
+    int row, column;
+    std::tie (row, column) = get_coords(move, size);
+
+    // SGF inverts rows
+    row = size - row - 1;
+
+    int sidevertices = size + 2;
+    int numvertices = sidevertices * sidevertices;
+    if (move >= 0 && move <= numvertices) {
+        if (column <= 25) {
+            result << static_cast<char>('a' + column);
+        } else {
+            result << static_cast<char>('A' + column - 26);
+        }
+        if (row <= 25) {
+            result << static_cast<char>('a' + row);
+        } else {
+            result << static_cast<char>('A' + row - 26);
+        }
+    } else if (move == FastBoard::PASS) {
+        result << "tt";
+    } else if (move == FastBoard::RESIGN) {
+        result << "tt";
+    } else {
+        result << "error";
+    }
+
+    return result.str();
+}
+
+std::tuple<int, int> FastBoardSerializer::get_coords(int move, int size) const {
+
+    int sidevertices = size + 2;
+    int column = move % sidevertices;
+    int row = move / sidevertices;
+
+    column--;
+    row--;
+
+    assert(move == FastBoard::PASS
+           || move == FastBoard::RESIGN
+           || (row >= 0 && row < size && column >= 0 && column <size));
+
+    return std::make_tuple(row, column);
 }
 
 int FastBoardSerializer::text_to_move(std::string move) const {
@@ -142,50 +181,6 @@ int FastBoardSerializer::text_to_move(std::string move) const {
     }
 
     return m_board->get_vertex(column, row);
-}
-
-std::string FastBoardSerializer::move_to_text_sgf(int move) const {
-    std::ostringstream result;
-
-    int size = m_board->get_boardsize();
-    int sidevertices = size + 2;
-    int column = move % sidevertices;
-    int row = move / sidevertices;
-
-    column--;
-    row--;
-
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (row >= 0 && row < size));
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (column >= 0 && column < size));
-
-    // SGF inverts rows
-    row = size - row - 1;
-
-    int numvertices = sidevertices * sidevertices;
-    if (move >= 0 && move <= numvertices) {
-        if (column <= 25) {
-            result << static_cast<char>('a' + column);
-        } else {
-            result << static_cast<char>('A' + column - 26);
-        }
-        if (row <= 25) {
-            result << static_cast<char>('a' + row);
-        } else {
-            result << static_cast<char>('A' + row - 26);
-        }
-    } else if (move == FastBoard::PASS) {
-        result << "tt";
-    } else if (move == FastBoard::RESIGN) {
-        result << "tt";
-    } else {
-        result << "error";
-    }
-
-    return result.str();
 }
 
 bool FastBoardSerializer::starpoint(int size, int point) {
