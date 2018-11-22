@@ -30,30 +30,26 @@
 class FastBoard;
 
 
-
 class FastBoardSerializer {
 
 public:
-
-    FastBoardSerializer();
-
-    FastBoardSerializer(FastBoard *board) {
+    explicit FastBoardSerializer(FastBoard *board) {
         m_board = board;
     }
 
     std::string move_to_text(int move) const;
-    int text_to_move(std::string move) const;
     std::string move_to_text_sgf(int move) const;
+    int text_to_move(std::string move) const;
 
     std::string serialize_board(int lastmove = -1);
 
     static bool starpoint(int size, int point);
     static bool starpoint(int size, int x, int y);
 
-protected:
-
+private:
     FastBoard *m_board;
 
+    std::pair<int, int> get_coords(int move, int size) const;
     std::string get_columns();
 };
 

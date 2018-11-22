@@ -28,34 +28,6 @@
 
 using namespace Utils;
 
-int FullBoard::remove_string(int i) {
-    int pos = i;
-    int removed = 0;
-    int color = m_state[i];
-
-    do {
-        m_hash    ^= Zobrist::zobrist[m_state[pos]][pos];
-        m_ko_hash ^= Zobrist::zobrist[m_state[pos]][pos];
-
-        m_state[pos] = EMPTY;
-        m_parent[pos] = NUM_VERTICES;
-
-        remove_neighbour(pos, color);
-
-        m_empty_idx[pos]      = m_empty_cnt;
-        m_empty[m_empty_cnt]  = pos;
-        m_empty_cnt++;
-
-        m_hash    ^= Zobrist::zobrist[m_state[pos]][pos];
-        m_ko_hash ^= Zobrist::zobrist[m_state[pos]][pos];
-
-        removed++;
-        pos = m_next[pos];
-    } while (pos != i);
-
-    return removed;
-}
-
 std::uint64_t FullBoard::calc_ko_hash() const {
     auto res = Zobrist::zobrist_empty;
 
@@ -92,6 +64,17 @@ std::uint64_t FullBoard::calc_hash(int komove, Function transform) const {
     return res;
 }
 
+void FullBoard::record_position(int pos) {
+    m_hash    ^= Zobrist::zobrist[m_state[pos]][pos];
+    m_ko_hash ^= Zobrist::zobrist[m_state[pos]][pos];
+}
+
+void FullBoard::record_captures(const int color, const int captured_stones) {
+    m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
+    m_prisoners[color] += captured_stones;
+    m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
+}
+
 std::uint64_t FullBoard::calc_hash(int komove) const {
     return calc_hash(komove, [](const auto vertex) { return vertex; });
 }
@@ -122,79 +105,6 @@ void FullBoard::set_to_move(int tomove) {
     FastBoard::set_to_move(tomove);
 }
 
-int FullBoard::update_board(const int color, const int i) {
-    assert(i != FastBoard::PASS);
-    assert(m_state[i] == EMPTY);
-
-    m_hash ^= Zobrist::zobrist[m_state[i]][i];
-    m_ko_hash ^= Zobrist::zobrist[m_state[i]][i];
-
-    m_state[i] = vertex_t(color);
-    m_next[i] = i;
-    m_parent[i] = i;
-    m_libs[i] = count_pliberties(i);
-    m_stones[i] = 1;
-
-    m_hash ^= Zobrist::zobrist[m_state[i]][i];
-    m_ko_hash ^= Zobrist::zobrist[m_state[i]][i];
-
-    /* update neighbor liberties (they all lose 1) */
-    add_neighbour(i, color);
-
-    /* did we play into an opponent eye? */
-    auto eyeplay = (m_neighbours[i] & s_eyemask[!color]);
-
-    auto captured_stones = 0;
-    int captured_vtx;
-
-    for (int k = 0; k < 4; k++) {
-        int ai = i + m_dirs[k];
-
-        if (m_state[ai] == !color) {
-            if (m_libs[m_parent[ai]] <= 0) {
-                int this_captured = remove_string(ai);
-                captured_vtx = ai;
-                captured_stones += this_captured;
-            }
-        } else if (m_state[ai] == color) {
-            int ip = m_parent[i];
-            int aip = m_parent[ai];
-
-            if (ip != aip) {
-                if (m_stones[ip] >= m_stones[aip]) {
-                    merge_strings(ip, aip);
-                } else {
-                    merge_strings(aip, ip);
-                }
-            }
-        }
-    }
-
-    m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
-    m_prisoners[color] += captured_stones;
-    m_hash ^= Zobrist::zobrist_pris[color][m_prisoners[color]];
-
-    /* move last vertex in list to our position */
-    auto lastvertex = m_empty[--m_empty_cnt];
-    m_empty_idx[lastvertex] = m_empty_idx[i];
-    m_empty[m_empty_idx[i]] = lastvertex;
-
-    /* check whether we still live (i.e. detect suicide) */
-    if (m_libs[m_parent[i]] == 0) {
-        assert(captured_stones == 0);
-        remove_string(i);
-    }
-
-    /* check for possible simple ko */
-    if (captured_stones == 1 && eyeplay) {
-        assert(get_state(captured_vtx) == FastBoard::EMPTY
-                && !is_suicide(captured_vtx, !color));
-        return captured_vtx;
-    }
-
-    // No ko
-    return NO_VERTEX;
-}
 
 void FullBoard::display_board(int lastmove) {
     FastBoard::display_board(lastmove);
