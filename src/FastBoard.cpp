@@ -49,7 +49,7 @@ int FastBoard::get_boardsize() const {
     return m_boardsize;
 }
 
-
+// return NO_VERTEX if not ko, else return the position of the captured stone.
 int FastBoard::update_board(const int color, const int i) {
     assert(i != FastBoard::PASS);
     assert(m_state[i] == EMPTY);

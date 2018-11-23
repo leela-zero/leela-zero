@@ -67,8 +67,10 @@ public:
 
     int get_boardsize() const;
     int update_board(const int color, const int i);
+
     vertex_t get_state(int x, int y) const;
     vertex_t get_state(int vertex) const ;
+
     int get_vertex(int x, int y) const;
     std::pair<int, int> get_xy(int vertex) const;
 

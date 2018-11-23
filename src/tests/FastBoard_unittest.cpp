@@ -160,6 +160,7 @@ TEST(FastBoardTest, GetXYFromVertex) {
     //ASSERT_DEATH({ b.get_xy(7);}, ".*FastBoard.cpp.* Assertion `y >= 0 && y < m_boardsize' failed.");
 }
 
+// Check that stones are where we put them
 TEST(FastBoardTest, GetState) {
     FastBoard b;
     b.reset_board(19);
@@ -224,6 +225,8 @@ TEST(FastBoardTest, TestCaptureWhiteStringOn5x5) {
 
     EXPECT_EQ(3, b.get_prisoners(FastBoard::BLACK));
     EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+    // black: 24 -  white: 12 -  komi: 6.5 = 5.5
+    EXPECT_EQ(5.5, b.area_score(6.5F));
 }
 
 // Verify the process of capturing a string of 3 black stones.
@@ -262,6 +265,8 @@ TEST(FastBoardTest, TestCaptureBlackStringOn9x9) {
     EXPECT_EQ(0, b.get_prisoners(FastBoard::BLACK));
     // 3 new captures, plus the one from setup
     EXPECT_EQ(4, b.get_prisoners(FastBoard::WHITE));
+    //black: 64 -  white:80 - komi: 6.5 = -22.5
+    EXPECT_EQ(-22.5, b.area_score(6.5F));
 }
 
 TEST(FastBoardTest, SemiFilled9x9Board) {
@@ -280,7 +285,7 @@ TEST(FastBoardTest, SemiFilled9x9Board) {
                            " 1 X . . . . . . . .  1\n"
                            "   a b c d e f g h j \n\n";
 
-    EXPECT_EQ(expected,  b.serialize_board());
+    EXPECT_EQ(expected, b.serialize_board());
 }
 
 TEST(FastBoardTest, CountRealLibertiesOn9x9) {
@@ -294,6 +299,7 @@ TEST(FastBoardTest, CountRealLibertiesOn9x9) {
     EXPECT_EQ(4, b.count_pliberties(b.get_vertex(5, 4)));
 }
 
+// Putting a black stone next to a white one should not be suicide
 TEST(FastBoardTest, IsSuicideWhenNotForBlack) {
     FastBoard b;
     b.reset_board(5);
@@ -302,6 +308,7 @@ TEST(FastBoardTest, IsSuicideWhenNotForBlack) {
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(2, 1), FastBoard::BLACK));
 }
 
+// Placing a black stode at (3, 3) or (4, 4) is suicidal.
 TEST(FastBoardTest, IsSuicideForBlackInAllWhiteField) {
     FastBoard b = create_5x5_all_white_field();
 
@@ -310,6 +317,51 @@ TEST(FastBoardTest, IsSuicideForBlackInAllWhiteField) {
     EXPECT_EQ(true, b.is_suicide(b.get_vertex(4, 4), FastBoard::BLACK));
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(4, 2), FastBoard::BLACK));
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(3, 4), FastBoard::BLACK));
+}
+
+// test capture of stone in the corner
+TEST(FastBoardTest, CaptureOfWhitesOneInCornerOf5x5Board) {
+    FastBoard b = create_filled_5x5();
+    b.update_board(FastBoard::WHITE, b.get_vertex(0, 4));
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 4));
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . X O . .  5\n"
+                           " 4 X . O . .  4\n"
+                           " 3 . . O X .  3\n"
+                           " 2 . X X O .  2\n"
+                           " 1 . . . . .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(1, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+    EXPECT_EQ(-4.5, b.area_score(6.5F));
+}
+
+// test placing a white stone in suicidal position in the corner
+TEST(FastBoardTest, PlaceSuicidalWhiteStoneInCornerOf5x5Board) {
+    FastBoard b = create_filled_5x5();
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 4));
+    EXPECT_EQ(true, b.is_suicide(b.get_vertex(0, 4), FastBoard::WHITE));
+    b.update_board(FastBoard::WHITE, b.get_vertex(0, 4)); // this should not be allowed
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . X O . .  5\n"
+                           " 4 X . O . .  4\n"
+                           " 3 . . O X .  3\n"
+                           " 2 . X X O .  2\n"
+                           " 1 . . . . .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+    EXPECT_EQ(-4.5, b.area_score(6.5F));
 }
 
 TEST(FastBoardTest, CalcAreaScore) {

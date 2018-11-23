@@ -42,8 +42,8 @@ public:
 private:
     template<class Function>
     std::uint64_t calc_hash(int komove, Function transform) const;
-    void record_position(int pos);
-    void record_captures(int color, int captured_stones);
+    void record_position(int pos) override;
+    void record_captures(int color, int captured_stones) override;
 };
 
 #endif

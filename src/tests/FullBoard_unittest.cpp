@@ -114,6 +114,43 @@ FullBoard create_5x5_all_black() {
     return b;
 }
 
+/*
+         a b c d e
+       5 . X X X .  5
+       4 X O O O X  4
+       3 X O . O X  3
+       2 X O O O X  2
+       1 . X X X .  1
+         a b c d e
+*/
+FullBoard create_white_one_eye_5x5() {
+    FullBoard b;
+    b.reset_board(5);
+
+    b.update_board(FastBoard::WHITE, b.get_vertex(1, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(1, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 3));
+    b.update_board(FastBoard::WHITE, b.get_vertex(1, 2));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 2));
+
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 0));
+    b.update_board(FastBoard::BLACK, b.get_vertex(2, 0));
+    b.update_board(FastBoard::BLACK, b.get_vertex(3, 0));
+    b.update_board(FastBoard::BLACK, b.get_vertex(1, 4));
+    b.update_board(FastBoard::BLACK, b.get_vertex(2, 4));
+    b.update_board(FastBoard::BLACK, b.get_vertex(3, 4));
+    b.update_board(FastBoard::BLACK, b.get_vertex(0, 1));
+    b.update_board(FastBoard::BLACK, b.get_vertex(0, 2));
+    b.update_board(FastBoard::BLACK, b.get_vertex(0, 3));
+    b.update_board(FastBoard::BLACK, b.get_vertex(4, 1));
+    b.update_board(FastBoard::BLACK, b.get_vertex(4, 2));
+    b.update_board(FastBoard::BLACK, b.get_vertex(4, 3));
+    return b;
+}
+
 FullBoard create_semi_filled_9x9() {
     FullBoard b;
     b.reset_board(9);
@@ -277,6 +314,114 @@ TEST(FullBoardTest, IsSuicideForBlackInAllWhiteField) {
     EXPECT_EQ(false, b.is_suicide(b.get_vertex(3, 4), FastBoard::BLACK));
 }
 
+
+// test placing a white stone in suicidal position in the corner
+TEST(FullBoardTest, PlaceSuicidalWhiteStoneInCornerOf5x5Board) {
+    FullBoard b = create_semi_filled_5x5();
+    int v = b.update_board(FastBoard::BLACK, b.get_vertex(1, 4));
+    EXPECT_EQ(FastBoard::NO_VERTEX, v);
+    EXPECT_EQ(true, b.is_suicide(b.get_vertex(0, 4), FastBoard::WHITE));
+    EXPECT_EQ(false, b.is_eye(b.get_vertex(0, 4), FastBoard::BLACK));
+    v = b.update_board(FastBoard::WHITE, b.get_vertex(0, 4)); // normally not allowed
+    EXPECT_EQ(FastBoard::NO_VERTEX, v);
+    EXPECT_EQ(false, b.is_eye(b.get_vertex(0, 4), FastBoard::BLACK));
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . X O . .  5\n"
+                           " 4 X . O . .  4\n"
+                           " 3 . . O X .  3\n"
+                           " 2 . X X O .  2\n"
+                           " 1 . . . . .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+    EXPECT_EQ(-4.5, b.area_score(6.5F));
+}
+
+// The rule of ko is handled elsewhere. The ko can be immediately recaptured here.
+TEST(FullBoardTest, VerifyKoOn5x5Board) {
+    FullBoard b = create_semi_filled_5x5();
+
+    b.update_board(FastBoard::BLACK, b.get_vertex(4, 1));
+    b.update_board(FastBoard::WHITE, b.get_vertex(3, 3));
+    int v = b.update_board(FastBoard::BLACK, b.get_vertex(4, 3));
+    EXPECT_EQ(FastBoard::NO_VERTEX, v);
+    v = b.update_board(FastBoard::WHITE, b.get_vertex(4, 2)); // start the ko
+    EXPECT_EQ(25, v);
+    EXPECT_EQ(false, b.is_suicide(b.get_vertex(3, 2), FastBoard::BLACK));
+    v = b.update_board(FastBoard::BLACK, b.get_vertex(3, 2)); // retake the ko
+    EXPECT_EQ(26, v);
+    EXPECT_EQ(false, b.is_suicide(b.get_vertex(4, 2), FastBoard::WHITE));
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . . O . .  5\n"
+                           " 4 X . O O X  4\n"
+                           " 3 . . O X .  3\n"
+                           " 2 . X X O X  2\n"
+                           " 1 . . . . .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(1, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(1, b.get_prisoners(FastBoard::WHITE));
+    EXPECT_EQ(-4.5, b.area_score(6.5F));
+}
+
+// Playing in an eye can capture a group if its the last liberty.
+TEST(FullBoardTest, GroupCaptureWithEyePlay) {
+    FullBoard b = create_white_one_eye_5x5();
+    EXPECT_EQ(true, b.is_suicide(b.get_vertex(2, 2), FastBoard::WHITE));
+    EXPECT_EQ(false, b.is_suicide(b.get_vertex(2, 2), FastBoard::BLACK));
+
+    b.update_board(FastBoard::BLACK, b.get_vertex(2, 2)); // kills all the white stones
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . X X X .  5\n"
+                           " 4 X . . . X  4\n"
+                           " 3 X . X . X  3\n"
+                           " 2 X . . . X  2\n"
+                           " 1 . X X X .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(8, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+    EXPECT_EQ(18.5, b.area_score(6.5F));
+}
+
+// Playing in your own eye can cause self-capture (disallowed in other part of the code).
+// The captures are not counted for plack if they resulted from suicide/
+TEST(FullBoardTest, SelfCaptureWithEyePlay) {
+    FullBoard b = create_white_one_eye_5x5();
+
+    EXPECT_EQ(true, b.is_suicide(b.get_vertex(2, 2), FastBoard::WHITE));
+
+    b.update_board(FastBoard::WHITE, b.get_vertex(2, 2)); // self-kills all the white stones
+
+    const char *expected = "\n"
+                           "   a b c d e \n"
+                           " 5 . X X X .  5\n"
+                           " 4 X . . . X  4\n"
+                           " 3 X . . . X  3\n"
+                           " 2 X . . . X  2\n"
+                           " 1 . X X X .  1\n"
+                           "   a b c d e \n\n";
+
+    EXPECT_EQ(expected,  b.serialize_board());
+
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::BLACK));
+    EXPECT_EQ(0, b.get_prisoners(FastBoard::WHITE));
+    EXPECT_EQ(18.5, b.area_score(6.5F));
+}
+
 TEST(FullBoardTest, CalcAreaScore) {
     FullBoard b = create_semi_filled_5x5();
     EXPECT_EQ(-6.5, b.area_score(6.5F));
@@ -377,7 +522,7 @@ TEST(FullBoardTest, IsEyeOnBlackField) {
     FullBoard b = create_5x5_all_black();
     EXPECT_EQ(true, b.is_eye(FastBoard::BLACK, b.get_vertex(4, 4)));
     EXPECT_EQ(true, b.is_eye(FastBoard::BLACK, b.get_vertex(3, 3))); // black eye
-    EXPECT_EQ(false, b.is_eye(FastBoard::WHITE, b.get_vertex(3, 3))); // not whte eye
+    EXPECT_EQ(false, b.is_eye(FastBoard::WHITE, b.get_vertex(3, 3))); // not white eye
     EXPECT_EQ(false, b.is_eye(FastBoard::BLACK, b.get_vertex(2, 2))); // potentially false eye
     EXPECT_EQ(false, b.is_eye(FastBoard::BLACK, b.get_vertex(1, 1)));
     EXPECT_EQ(false, b.is_eye(FastBoard::BLACK, b.get_vertex(0, 3)));
