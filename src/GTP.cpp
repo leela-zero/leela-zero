@@ -266,6 +266,9 @@ AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameSt
     /* Default color is the current one */
     tags.m_who = game.board.get_to_move();
 
+    bool avoid_not_pass_resign_b = false, avoid_not_pass_resign_w = false;
+    bool allow_b = false, allow_w = false;
+
     while (true) {
         cmdstream >> std::ws;
         if (isdigit(cmdstream.peek())) {
@@ -279,7 +282,7 @@ AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameSt
             }
         }
 
-        if (tag == "avoid") {
+        if (tag == "avoid" || tag == "allow") {
             std::string textcolor, textmove;
             size_t to_movenum;
             cmdstream >> textcolor;
@@ -308,7 +311,29 @@ AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameSt
             }
             to_movenum += game.get_movenum() - 1;
 
-            tags.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
+            if (tag == "avoid") {
+                tags.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
+                if (move != FastBoard::PASS && move != FastBoard::RESIGN) {
+                    if (color == FastBoard::BLACK) {
+                        avoid_not_pass_resign_b = true;
+                    } else {
+                        avoid_not_pass_resign_w = true;
+                    }
+                }
+            } else {
+                tags.add_move_to_allow(color, move, game.get_movenum(), to_movenum);
+                if (color == FastBoard::BLACK) {
+                    allow_b = true;
+                } else {
+                    allow_w = true;
+                }
+            }
+            if ((allow_b && avoid_not_pass_resign_b) ||
+                (allow_w && avoid_not_pass_resign_w)) {
+                /* If "allow" is in use, it is illegal to use "avoid" with any
+                 * move that is not "pass" or "resign". */
+                break;
+            }
         } else if (tag == "w" || tag == "white") {
             tags.m_who = FastBoard::WHITE;
         } else if (tag == "b" || tag == "black") {

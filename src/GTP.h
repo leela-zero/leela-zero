@@ -58,7 +58,7 @@ struct MoveToAvoid {
 class AnalyzeTags {
 public:
     bool m_invalid;
-    std::vector<MoveToAvoid> m_moves_to_avoid;
+    std::vector<MoveToAvoid> m_moves_to_avoid, m_moves_to_allow;
     int m_interval_centis;
     int m_who;
 
@@ -69,12 +69,17 @@ public:
     void clear() {
         m_invalid = true;
         m_moves_to_avoid.clear();
+        m_moves_to_allow.clear();
         m_interval_centis = 0;
         m_who = FastBoard::INVAL;
     }
 
     void add_move_to_avoid(int color, int vertex, size_t from_move, size_t to_move) {
         m_moves_to_avoid.emplace_back(color, from_move, to_move, vertex);
+    }
+
+    void add_move_to_allow(int color, int vertex, size_t from_move, size_t to_move) {
+        m_moves_to_allow.emplace_back(color, from_move, to_move, vertex);
     }
 };
 

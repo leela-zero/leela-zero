@@ -91,6 +91,18 @@ bool FastState::is_to_avoid(int color, int vertex, size_t movenum) const {
             return true;
         }
     }
+    if (!cfg_analyze_tags.m_moves_to_allow.empty()
+            && vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
+        for (auto& move : cfg_analyze_tags.m_moves_to_allow) {
+            if (color == move.color &&
+                    vertex == move.vertex &&
+                    movenum >= move.from_move &&
+                    movenum <= move.to_move) {
+                return false;
+            }
+        }
+        return true;
+    }
     return false;
 }
 
