@@ -213,16 +213,16 @@ void HgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
                         ".reg .b32 a0, a1, a2, a3, a4, a5, a6, a7;\n"
                         ".reg .b32 b0, b1, b2, b3, b4, b5, b6, b7;\n"
 #if SA == 1
-                        "wmma.load.a.sync.aligned.m16n16k16.shared.row.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%4], %6;\n"
+                        "wmma.load.a.sync.aligned.m16n16k16.shared.col.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%4], %6;\n"
 #else
-                        "wmma.load.a.sync.aligned.m16n16k16.row.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%4], %6;\n"
+                        "wmma.load.a.sync.aligned.m16n16k16.global.col.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%4], %6;\n"
 #endif
 #if SB == 1
-                        "wmma.load.b.sync.aligned.m16n16k16.shared.col.f16 {b0,b1,b2,b3,b4,b5,b6,b7}, [%5], %7;\n"
+                        "wmma.load.b.sync.aligned.m16n16k16.shared.row.f16 {b0,b1,b2,b3,b4,b5,b6,b7}, [%5], %7;\n"
 #else
-                        "wmma.load.b.sync.aligned.m16n16k16.col.f16 {b0,b1,b2,b3,b4,b5,b6,b7}, [%5], %7;\n"
+                        "wmma.load.b.sync.aligned.m16n16k16.global.row.f16 {b0,b1,b2,b3,b4,b5,b6,b7}, [%5], %7;\n"
 #endif
-                        "wmma.mma.sync.aligned.row.col.m16n16k16.f16.f16 "
+                        "wmma.mma.sync.aligned.col.row.m16n16k16.f16.f16.satfinite "
                         "    {%0,%1,%2,%3},\n"
                         "    {a0,a1,a2,a3,a4,a5,a6,a7},\n"
                         "    {b0,b1,b2,b3,b4,b5,b6,b7},\n"
@@ -259,7 +259,7 @@ void HgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
             int c3_ = c3[mb][nb];
             __global half * b_cgm_ = cgm_ + kSizeM * nb * 16 + mb * 16;
             asm("{\n"
-                "wmma.store.d.sync.aligned.row.m16n16k16.f16 [%4], {%0,%1,%2,%3}, %5;"
+                "wmma.store.d.sync.aligned.global.col.m16n16k16.f16 [%4], {%0,%1,%2,%3}, %5;"
                 "}" : : "r"(c0_), "r"(c1_), "r"(c2_), "r"(c3_), "l"(b_cgm_), "r"(kSizeM));
         }
     }
@@ -279,7 +279,8 @@ void HgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
 struct alm_t {short alm[KWG * MWG];} __attribute__((aligned(32)));
 struct blm_t {short blm[KWG * NWG];} __attribute__((aligned(32)));
 
-__kernel void XgemmBatched(const int kSizeM, const int kSizeN, const int kSizeK,
+__kernel __attribute__((reqd_work_group_size(32*MDIMC/16, NDIMC/16, 1)))
+void XgemmBatched(const int kSizeM, const int kSizeN, const int kSizeK,
                   const __global half* restrict agm,
                   const __global half* restrict bgm,
                   __global half* restrict cgm)

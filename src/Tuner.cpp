@@ -334,7 +334,7 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
             {"STRN", {0}},
             {"SA", {0, 1}},
             {"SB", {0, 1}},
-            {"TCE", {1, 0}},
+            {"TCE", {0, 1}},
         };
     }
 
@@ -470,7 +470,7 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
             local_sgemm = {32 * p["MDIMC"]/16, p["NDIMC"]/16, 1};
             size_sgemm = {32 * m_ceil / 16 * p["MDIMC"] / p["MWG"],
                           n_ceil / 16 * p["NDIMC"] / p["NWG"],
-                          cl::size_type(WINOGRAD_TILE)};
+                          size_t(batch_size)};
         }
 
         auto sum = 0.0f;
