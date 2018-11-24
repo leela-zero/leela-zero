@@ -123,6 +123,7 @@ static bool IsMultiple(const size_t a, const size_t b) {
 
 template <typename net_t>
 bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
+#if 0
     if (!IsMultiple(p["MWG"], p["MDIMC"]*p["VWM"])) {
         return false;
     }
@@ -141,6 +142,7 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
     if (!IsMultiple(p["KWG"], p["MDIMC"]*p["NDIMC"]/p["NDIMB"])) {
         return false;
     }
+#endif
     // Extra restrictions for a fast tuning run
     if (!exhaustive) {
         if (p["MDIMC"] != p["MDIMA"]) {
@@ -172,16 +174,16 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
         if (!IsMultiple(p["KWG"], 16)) {
             return false; 
         }
-        if (!IsMultiple(p["MWG"], 16)) {
+        if (!IsMultiple(p["MWG"], 32)) {
             return false; 
         }
-        if (!IsMultiple(p["NWG"], 16)) {
+        if (!IsMultiple(p["NWG"], 8)) {
             return false; 
         }
-        if (!IsMultiple(p["MDIMC"], 16)) {
+        if (!IsMultiple(p["MDIMC"], 32)) {
             return false; 
         }
-        if (!IsMultiple(p["NDIMC"], 16)) {
+        if (!IsMultiple(p["NDIMC"], 8)) {
             return false; 
         }
         if (p["STRM"] != 0) {
@@ -193,10 +195,10 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
         if (p["KWI"] != 2) {
             return false;
         }
-        if (p["MDIMA"] != 16) {
+        if (p["MDIMA"] != 32) {
             return false;
         }
-        if (p["NDIMB"] != 16) {
+        if (p["NDIMB"] != 8) {
             return false;
         }
 
@@ -320,8 +322,8 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
         };
     } else {
         opts = {
-            {"MWG", {16, 32, 64}},
-            {"NWG", {16, 32, 64}},
+            {"MWG", {8, 16, 32, 64}},
+            {"NWG", {8, 16, 32, 64}},
             {"KWG", {16, 32}},
             {"MDIMC", {8, 16, 32}},
             {"NDIMC", {8, 16, 32}},
@@ -334,7 +336,7 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
             {"STRN", {0}},
             {"SA", {0, 1}},
             {"SB", {0, 1}},
-            {"TCE", {0, 1}},
+            {"TCE", {1}},
         };
     }
 
@@ -467,9 +469,9 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
                                   size_t(batch_size)};
         // tensorcore implementation uses a different dimension
         if (p["TCE"]) {
-            local_sgemm = {32 * p["MDIMC"]/16, p["NDIMC"]/16, 1};
-            size_sgemm = {32 * m_ceil / 16 * p["MDIMC"] / p["MWG"],
-                          n_ceil / 16 * p["NDIMC"] / p["NWG"],
+            local_sgemm = {32 * p["MDIMC"]/32, p["NDIMC"]/8, 1};
+            size_sgemm = {32 * m_ceil / 32 * p["MDIMC"] / p["MWG"],
+                          n_ceil / 8 * p["NDIMC"] / p["NWG"],
                           size_t(batch_size)};
         }
 

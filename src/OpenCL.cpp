@@ -406,9 +406,9 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
 
         // tensorcore implementation uses a different dimension
         if (tce) {
-            local_sgemm = {32 * mdimc/16, ndimc/16, 1};
-            size_sgemm = {32 * m_ceil / 16 * mdimc / mwg,
-                          n_ceil / 16 * ndimc / nwg,
+            local_sgemm = {32 * mdimc/32, ndimc/8, 1};
+            size_sgemm = {32 * m_ceil / 32 * mdimc / mwg,
+                          n_ceil / 8 * ndimc / nwg,
                           cl::size_type(WINOGRAD_TILE)};
         }
         queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
