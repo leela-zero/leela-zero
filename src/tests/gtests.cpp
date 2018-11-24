@@ -115,7 +115,7 @@ public:
                               testing::internal::GetCapturedStderr());
     }
     void test_analyze_cmd(std::string cmd, bool valid, int who, int interval,
-            int avoidlen, int avoidcolor, int avoidfrom, int avoidto);
+            int avoidlen, int avoidcolor, int avoiduntil);
 
 private:
     std::unique_ptr<GameState> m_gamestate;
@@ -267,7 +267,7 @@ TEST_F(LeelaTest, TimeControl2) {
 }
 
 void LeelaTest::test_analyze_cmd(std::string cmd, bool valid, int who, int interval,
-        int avoidlen, int avoidcolor, int avoidfrom, int avoidto) {
+        int avoidlen, int avoidcolor, int avoiduntil) {
     // std::cout << "testing " << cmd << std::endl;
     std::istringstream cmdstream(cmd);
     auto maingame = get_gamestate();
@@ -279,8 +279,7 @@ void LeelaTest::test_analyze_cmd(std::string cmd, bool valid, int who, int inter
     EXPECT_EQ(result.m_moves_to_avoid.size(), avoidlen);
     if (avoidlen) {
         EXPECT_EQ(result.m_moves_to_avoid[0].color, avoidcolor);
-        EXPECT_EQ(result.m_moves_to_avoid[0].from_move, avoidfrom);
-        EXPECT_EQ(result.m_moves_to_avoid[0].to_move, avoidto);
+        EXPECT_EQ(result.m_moves_to_avoid[0].until_move, avoiduntil);
     }
 }
 
@@ -289,59 +288,59 @@ TEST_F(LeelaTest, AnalyzeParse) {
     gtp_execute("clear_board");
 
     test_analyze_cmd("b 50",
-            true, FastBoard::BLACK, 50, 0, -1, -1, -1);
+            true, FastBoard::BLACK, 50, 0, -1, -1);
     test_analyze_cmd("50 b",
-            true, FastBoard::BLACK, 50, 0, -1, -1, -1);
+            true, FastBoard::BLACK, 50, 0, -1, -1);
     test_analyze_cmd("b interval 50",
-            true, FastBoard::BLACK, 50, 0, -1, -1, -1);
+            true, FastBoard::BLACK, 50, 0, -1, -1);
     test_analyze_cmd("interval 50 b",
-            true, FastBoard::BLACK, 50, 0, -1, -1, -1);
+            true, FastBoard::BLACK, 50, 0, -1, -1);
     test_analyze_cmd("b interval",
-            false, -1, -1, -1, -1, -1, -1);
+            false, -1, -1, -1, -1, -1);
     test_analyze_cmd("42 w",
-            true, FastBoard::WHITE, 42, 0, -1, -1, -1);
+            true, FastBoard::WHITE, 42, 0, -1, -1);
     test_analyze_cmd("1234",
-            true, FastBoard::BLACK, 1234, 0, -1, -1, -1);
+            true, FastBoard::BLACK, 1234, 0, -1, -1);
     gtp_execute("play b q16");
     test_analyze_cmd("1234",
-            true, FastBoard::WHITE, 1234, 0, -1, -1, -1);
+            true, FastBoard::WHITE, 1234, 0, -1, -1);
     test_analyze_cmd("b 100 avoid b k10 1",
-            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 1, 1);
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 1);
     test_analyze_cmd("b 100 avoid b k10 1 avoid b a1 1",
-            true, FastBoard::BLACK, 100, 2, FastBoard::BLACK, 1, 1);
+            true, FastBoard::BLACK, 100, 2, FastBoard::BLACK, 1);
     test_analyze_cmd("b 100 avoid w k10 8",
-            true, FastBoard::BLACK, 100, 1, FastBoard::WHITE, 1, 8);
+            true, FastBoard::BLACK, 100, 1, FastBoard::WHITE, 8);
     gtp_execute("play w q4");
     test_analyze_cmd("b 100 avoid b k10 8",
-            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 2, 9);
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 9);
     test_analyze_cmd("100 b avoid b k10 8",
-            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 2, 9);
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 9);
     test_analyze_cmd("b avoid b k10 8 100",
-            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 2, 9);
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 9);
     test_analyze_cmd("avoid b k10 8 100 b",
-            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 2, 9);
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 9);
     test_analyze_cmd("avoid b k10 8 100 w",
-            true, FastBoard::WHITE, 100, 1, FastBoard::BLACK, 2, 9);
+            true, FastBoard::WHITE, 100, 1, FastBoard::BLACK, 9);
     test_analyze_cmd("avoid b z10 8 100 w",
-            false, -1, -1, -1, -1, -1, -1);
+            false, -1, -1, -1, -1, -1);
     test_analyze_cmd("avoid b k10 8 100 w bogus",
-            false, -1, -1, -1, -1, -1, -1);
+            false, -1, -1, -1, -1, -1);
     test_analyze_cmd("avoid b k10 8 100 w avoid b pass 17",
-            true, FastBoard::WHITE, 100, 2, FastBoard::BLACK, 2, 9);
+            true, FastBoard::WHITE, 100, 2, FastBoard::BLACK, 9);
     test_analyze_cmd("avoid b k10 8 w avoid b pass 17",
-            true, FastBoard::WHITE, 0, 2, FastBoard::BLACK, 2, 9);
+            true, FastBoard::WHITE, 0, 2, FastBoard::BLACK, 9);
 
     gtp_execute("clear_board");
     test_analyze_cmd("b avoid b a1 10 allow b t1 1",
-            false, -1, -1, -1, -1, -1, -1);
+            false, -1, -1, -1, -1, -1);
     test_analyze_cmd("b avoid w a1 10 allow b t1 1",
-            true, FastBoard::BLACK, 0, 1, FastBoard::WHITE, 0, 9);
+            true, FastBoard::BLACK, 0, 1, FastBoard::WHITE, 9);
     test_analyze_cmd("b avoid b pass 10 allow b t1 1",
-            true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 0, 9);
+            true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 9);
     test_analyze_cmd("b avoid b resign 10 allow b t1 1",
-            true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 0, 9);
+            true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 9);
     test_analyze_cmd("b avoid w c3,c4,d3,d4 2 avoid b pass 50",
-            true, FastBoard::BLACK, 0, 5, FastBoard::WHITE, 0, 1);
+            true, FastBoard::BLACK, 0, 5, FastBoard::WHITE, 1);
     test_analyze_cmd("b avoid w c3,c4,d3,d4, 2 avoid b pass 50",
-            false, -1, -1, -1, -1, -1, -1);
+            false, -1, -1, -1, -1, -1);
 }

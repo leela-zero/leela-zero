@@ -42,16 +42,16 @@
 
 struct MoveToAvoid {
     int color;
-    size_t from_move, to_move;
+    size_t until_move;
     int vertex;
 
-    MoveToAvoid(int color, size_t from_move, size_t to_move, int vertex)
-        : color(color), from_move(from_move), to_move(to_move), vertex(vertex)
+    MoveToAvoid(int color, size_t until_move, int vertex)
+        : color(color), until_move(until_move), vertex(vertex)
     {}
 
     bool operator==(const MoveToAvoid other) const {
-        return color == other.color && from_move == other.from_move &&
-            to_move == other.to_move && vertex == other.vertex;
+        return color == other.color &&
+            until_move == other.until_move && vertex == other.vertex;
     }
 };
 
@@ -74,12 +74,12 @@ public:
         m_who = FastBoard::INVAL;
     }
 
-    void add_move_to_avoid(int color, int vertex, size_t from_move, size_t to_move) {
-        m_moves_to_avoid.emplace_back(color, from_move, to_move, vertex);
+    void add_move_to_avoid(int color, int vertex, size_t until_move) {
+        m_moves_to_avoid.emplace_back(color, until_move, vertex);
     }
 
-    void add_move_to_allow(int color, int vertex, size_t from_move, size_t to_move) {
-        m_moves_to_allow.emplace_back(color, from_move, to_move, vertex);
+    void add_move_to_allow(int color, int vertex, size_t until_move) {
+        m_moves_to_allow.emplace_back(color, until_move, vertex);
     }
 };
 

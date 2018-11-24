@@ -84,19 +84,14 @@ bool FastState::is_move_legal(int color, int vertex) const {
 
 bool FastState::is_to_avoid(int color, int vertex, size_t movenum) const {
     for (auto& move : cfg_analyze_tags.m_moves_to_avoid) {
-        if (color == move.color &&
-                vertex == move.vertex &&
-                movenum >= move.from_move &&
-                movenum <= move.to_move) {
+        if (color == move.color && vertex == move.vertex && movenum <= move.until_move) {
             return true;
         }
     }
     if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
         bool active_allow = false;
         for (auto& move : cfg_analyze_tags.m_moves_to_allow) {
-            if (color == move.color &&
-                    movenum >= move.from_move &&
-                    movenum <= move.to_move) {
+            if (color == move.color && movenum <= move.until_move) {
                 active_allow = true;
                 if (vertex == move.vertex) {
                     return false;

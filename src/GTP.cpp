@@ -284,10 +284,10 @@ AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameSt
 
         if (tag == "avoid" || tag == "allow") {
             std::string textcolor, textmoves;
-            size_t to_movenum;
+            size_t until_movenum;
             cmdstream >> textcolor;
             cmdstream >> textmoves;
-            cmdstream >> to_movenum;
+            cmdstream >> until_movenum;
             if (cmdstream.fail()) {
                 break;
             }
@@ -317,14 +317,14 @@ AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameSt
                 break;
             }
 
-            if (to_movenum < 1) {
+            if (until_movenum < 1) {
                 break;
             }
-            to_movenum += game.get_movenum() - 1;
+            until_movenum += game.get_movenum() - 1;
 
             for (auto move : moves) {
                 if (tag == "avoid") {
-                    tags.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
+                    tags.add_move_to_avoid(color, move, until_movenum);
                     if (move != FastBoard::PASS && move != FastBoard::RESIGN) {
                         if (color == FastBoard::BLACK) {
                             avoid_not_pass_resign_b = true;
@@ -333,7 +333,7 @@ AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameSt
                         }
                     }
                 } else {
-                    tags.add_move_to_allow(color, move, game.get_movenum(), to_movenum);
+                    tags.add_move_to_allow(color, move, until_movenum);
                     if (color == FastBoard::BLACK) {
                         allow_b = true;
                     } else {
