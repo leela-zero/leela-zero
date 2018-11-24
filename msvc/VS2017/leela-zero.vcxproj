@@ -22,6 +22,7 @@
     <ClInclude Include="..\..\src\CL\cl2.hpp" />
     <ClInclude Include="..\..\src\config.h" />
     <ClInclude Include="..\..\src\FastBoard.h" />
+    <ClInclude Include="..\..\src\FastBoardSerializer.h" />
     <ClInclude Include="..\..\src\FastState.h" />
     <ClInclude Include="..\..\src\FullBoard.h" />
     <ClInclude Include="..\..\src\GameState.h" />
@@ -52,6 +53,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <ClCompile Include="..\..\src\FastBoard.cpp" />
+    <ClCompile Include="..\..\src\FastBoardSerializer.cpp" />
     <ClCompile Include="..\..\src\FastState.cpp" />
     <ClCompile Include="..\..\src\FullBoard.cpp" />
     <ClCompile Include="..\..\src\GameState.cpp" />
