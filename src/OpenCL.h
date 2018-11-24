@@ -204,12 +204,14 @@ private:
         size_t mwg, nwg, kwg;
         size_t vwm, vwn;
         size_t mdimc, ndimc;
+        size_t tce;
     };
     sgemm_tuners m_sgemm_tuners;
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};
     std::vector<size_t> m_max_workgroup_dims;
     bool m_fp16_compute{false};
+    bool m_tensorcore{false};
     bool m_init_ok{false};
 };
 

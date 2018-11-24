@@ -152,6 +152,54 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
         if (p["SA"] != p["SB"]) {
             return false;
         }
+    
+        // if we use a normal run, we will only test SA == 1 && SB == 1
+        // on a tensorcore, we will only test SA == 0 && SB == 0
+        if (p["TCE"] == 1) {
+            if (p["SA"] == 1) {
+                return false;
+            }
+        } else {
+            if (p["SA"] == 0) {
+                return false;
+            }
+        }
+    }
+    if (p["TCE"] == 1) {
+        if (!m_use_tensorcore) {
+            return false;
+        }
+        if (!IsMultiple(p["KWG"], 16)) {
+            return false; 
+        }
+        if (!IsMultiple(p["MWG"], 16)) {
+            return false; 
+        }
+        if (!IsMultiple(p["NWG"], 16)) {
+            return false; 
+        }
+        if (!IsMultiple(p["MDIMC"], 16)) {
+            return false; 
+        }
+        if (!IsMultiple(p["NDIMC"], 16)) {
+            return false; 
+        }
+        if (p["STRM"] != 0) {
+            return false;
+        }
+        if (p["STRN"] != 0) {
+            return false;
+        }
+        if (p["KWI"] != 2) {
+            return false;
+        }
+        if (p["MDIMA"] != 16) {
+            return false;
+        }
+        if (p["NDIMB"] != 16) {
+            return false;
+        }
+
     }
     return true;
 }
@@ -268,6 +316,7 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
             {"STRN", {0, 1}},
             {"SA", {0, 1}},
             {"SB", {0, 1}},
+            {"TCE", {0, 1}},
         };
     } else {
         opts = {
@@ -283,8 +332,9 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
             {"VWN", {2, 4}},
             {"STRM", {0}},
             {"STRN", {0}},
-            {"SA", {1}},
-            {"SB", {1}},
+            {"SA", {0, 1}},
+            {"SB", {0, 1}},
+            {"TCE", {1, 0}},
         };
     }
 
@@ -415,6 +465,13 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
         cl::NDRange size_sgemm = {(m_ceil * p["MDIMC"]) / p["MWG"],
                                   (n_ceil * p["NDIMC"]) / p["NWG"],
                                   size_t(batch_size)};
+        // tensorcore implementation uses a different dimension
+        if (p["TCE"]) {
+            local_sgemm = {32 * p["MDIMC"]/16, p["NDIMC"]/16, 1};
+            size_sgemm = {32 * m_ceil / 16 * p["MDIMC"] / p["MWG"],
+                          n_ceil / 16 * p["NDIMC"] / p["NWG"],
+                          cl::size_type(WINOGRAD_TILE)};
+        }
 
         auto sum = 0.0f;
         auto error = 0.0f;
@@ -612,6 +669,14 @@ std::string Tuner<net_t>::load_sgemm_tuners(const int m, const int n, const int 
     auto tuners = tune_sgemm(m, n, k, batch_size);
     store_sgemm_tuners(m, n, k, batch_size, tuners);
     return tuners;
+}
+
+template <typename net_t>
+void Tuner<net_t>::enable_tensorcore() {}
+
+template <>
+void Tuner<half_float::half>::enable_tensorcore() {
+    m_use_tensorcore = true;
 }
 
 template class Tuner<float>;
