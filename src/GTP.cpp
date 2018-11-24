@@ -283,17 +283,28 @@ AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameSt
         }
 
         if (tag == "avoid" || tag == "allow") {
-            std::string textcolor, textmove;
+            std::string textcolor, textmoves;
             size_t to_movenum;
             cmdstream >> textcolor;
-            cmdstream >> textmove;
+            cmdstream >> textmoves;
             cmdstream >> to_movenum;
             if (cmdstream.fail()) {
                 break;
             }
 
-            const auto move = game.board.text_to_move(textmove);
-            if (move == FastBoard::NO_VERTEX) {
+            std::vector<int> moves;
+            std::istringstream movestream(textmoves);
+            while (!movestream.eof()) {
+                std::string textmove;
+                getline(movestream, textmove, ',');
+                auto move = game.board.text_to_move(textmove);
+                if (move == FastBoard::NO_VERTEX) {
+                    moves.clear();
+                    break;
+                }
+                moves.push_back(move);
+            }
+            if (moves.empty()) {
                 break;
             }
 
@@ -311,21 +322,23 @@ AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameSt
             }
             to_movenum += game.get_movenum() - 1;
 
-            if (tag == "avoid") {
-                tags.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
-                if (move != FastBoard::PASS && move != FastBoard::RESIGN) {
-                    if (color == FastBoard::BLACK) {
-                        avoid_not_pass_resign_b = true;
-                    } else {
-                        avoid_not_pass_resign_w = true;
+            for (auto move : moves) {
+                if (tag == "avoid") {
+                    tags.add_move_to_avoid(color, move, game.get_movenum(), to_movenum);
+                    if (move != FastBoard::PASS && move != FastBoard::RESIGN) {
+                        if (color == FastBoard::BLACK) {
+                            avoid_not_pass_resign_b = true;
+                        } else {
+                            avoid_not_pass_resign_w = true;
+                        }
                     }
-                }
-            } else {
-                tags.add_move_to_allow(color, move, game.get_movenum(), to_movenum);
-                if (color == FastBoard::BLACK) {
-                    allow_b = true;
                 } else {
-                    allow_w = true;
+                    tags.add_move_to_allow(color, move, game.get_movenum(), to_movenum);
+                    if (color == FastBoard::BLACK) {
+                        allow_b = true;
+                    } else {
+                        allow_w = true;
+                    }
                 }
             }
             if ((allow_b && avoid_not_pass_resign_b) ||

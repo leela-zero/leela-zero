@@ -340,4 +340,8 @@ TEST_F(LeelaTest, AnalyzeParse) {
             true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 0, 9);
     test_analyze_cmd("b avoid b resign 10 allow b t1 1",
             true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 0, 9);
+    test_analyze_cmd("b avoid w c3,c4,d3,d4 2 avoid b pass 50",
+            true, FastBoard::BLACK, 0, 5, FastBoard::WHITE, 0, 1);
+    test_analyze_cmd("b avoid w c3,c4,d3,d4, 2 avoid b pass 50",
+            false, -1, -1, -1, -1, -1, -1);
 }
