@@ -91,17 +91,21 @@ bool FastState::is_to_avoid(int color, int vertex, size_t movenum) const {
             return true;
         }
     }
-    if (!cfg_analyze_tags.m_moves_to_allow.empty()
-            && vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
+    if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
+        bool active_allow = false;
         for (auto& move : cfg_analyze_tags.m_moves_to_allow) {
             if (color == move.color &&
-                    vertex == move.vertex &&
                     movenum >= move.from_move &&
                     movenum <= move.to_move) {
-                return false;
+                active_allow = true;
+                if (vertex == move.vertex) {
+                    return false;
+                }
             }
         }
-        return true;
+        if (active_allow) {
+            return true;
+        }
     }
     return false;
 }
