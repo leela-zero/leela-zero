@@ -339,8 +339,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
             {"VWN", {2}},
             {"STRM", {0}},
             {"STRN", {0}},
-            {"SA", {1}},
-            {"SB", {1}},
+            {"SA", {0}},
+            {"SB", {0}},
         };
     }
 
