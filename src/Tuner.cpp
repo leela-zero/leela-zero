@@ -171,6 +171,12 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
         if (p["NWG"] < p["NDIMC"]) {
             return false;
         }
+	if (p["MDIMC"] < p["MDIMA"]) {
+            return false;
+        }
+	if (p["NDIMC"] < p["NDIMB"]) {
+            return false;
+        }
         // VWM / VWN has no meaning if we don't do SA / SB.
         // only test VWM / VWN == 2
         if (p["SA"] == 0 && p["VWM"] != 2) {
@@ -320,8 +326,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
             {"MWG", {32, 64, 128, 256}},
             {"NWG", {8, 16, 32, 64}},
             {"KWG", {16, 32, 64}},
-            {"MDIMC", {32, 64}},
-            {"NDIMC", {8, 16, 32}},
+            {"MDIMC", {8, 16, 32, 64}},
+            {"NDIMC", {8, 16, 32, 64}},
             {"MDIMA", {8, 16, 32}},
             {"NDIMB", {8, 16, 32}},
             {"KWI", {2}},
@@ -337,8 +343,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
             {"MWG", {32, 64, 128}},
             {"NWG", {8, 16, 32}},
             {"KWG", {16, 32}},
-            {"MDIMC", {32, 64}},
-            {"NDIMC", {8, 16}},
+            {"MDIMC", {8, 16, 32}},
+            {"NDIMC", {8, 16, 32}},
             {"MDIMA", {8, 16, 32}},
             {"NDIMB", {8, 16, 32}},
             {"KWI", {2}},
