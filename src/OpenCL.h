@@ -203,6 +203,7 @@ private:
     struct sgemm_tuners {
         size_t mwg, nwg, kwg;
         size_t vwm, vwn;
+        size_t mdima, ndimb;
         size_t mdimc, ndimc;
         size_t tce;
     };

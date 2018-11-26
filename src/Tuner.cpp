@@ -158,6 +158,13 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
         if (!m_use_tensorcore) {
             return false;
         }
+
+        // in tensorcore implementations, MDIMA and NDIMB represents the
+        // wmmv multiplication dimensions, that is,
+        // m16n16k16 / m32n8k16 / m8n32k16.  Thus m * n is fixed to 256.
+        if (p["MDIMA"] * p["NDIMB"] != 256) {
+            return false;
+        }
         if (p["MWG"] < p["MDIMC"]) {
             return false;
         }
@@ -315,8 +322,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
             {"KWG", {16, 32, 64}},
             {"MDIMC", {32, 64}},
             {"NDIMC", {8, 16, 32}},
-            {"MDIMA", {32}},
-            {"NDIMB", {8}},
+            {"MDIMA", {8, 16, 32}},
+            {"NDIMB", {8, 16, 32}},
             {"KWI", {2}},
             {"VWM", {2, 4, 8}},
             {"VWN", {2, 4, 8}},
@@ -332,8 +339,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
             {"KWG", {16, 32}},
             {"MDIMC", {32, 64}},
             {"NDIMC", {8, 16}},
-            {"MDIMA", {32}},
-            {"NDIMB", {8,}},
+            {"MDIMA", {8, 16, 32}},
+            {"NDIMB", {8, 16, 32}},
             {"KWI", {2}},
             {"VWM", {2}},
             {"VWN", {2}},
@@ -485,9 +492,9 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
                                   size_t(batch_size)};
         // tensorcore implementation uses a different dimension
         if (p["TCE"]) {
-            local_sgemm = {32 * p["MDIMC"]/32, p["NDIMC"]/8, 1};
-            size_sgemm = {32 * m_ceil / 32 * p["MDIMC"] / p["MWG"],
-                          n_ceil / 8 * p["NDIMC"] / p["NWG"],
+            local_sgemm = {32 * p["MDIMC"] / p["MDIMA"], p["NDIMC"] / p["NDIMB"], 1};
+            size_sgemm = {32 * m_ceil / p["MDIMA"] * p["MDIMC"] / p["MWG"],
+                          n_ceil / p["NDIMB"] * p["NDIMC"] / p["NWG"],
                           size_t(batch_size)};
         }
 

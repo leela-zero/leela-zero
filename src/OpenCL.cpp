@@ -349,6 +349,8 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
     auto mdimc = m_opencl.m_sgemm_tuners.mdimc;
     auto ndimc = m_opencl.m_sgemm_tuners.ndimc;
     auto tce = m_opencl.m_sgemm_tuners.tce;
+    auto mdima = m_opencl.m_sgemm_tuners.mdima;
+    auto ndimb = m_opencl.m_sgemm_tuners.ndimb;
 
     auto wavefront_size = m_opencl.m_wavefront_size;
 
@@ -406,9 +408,9 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
 
         // tensorcore implementation uses a different dimension
         if (tce) {
-            local_sgemm = {32 * mdimc/32, ndimc/8, 1};
-            size_sgemm = {32 * m_ceil / 32 * mdimc / mwg,
-                          n_ceil / 8 * ndimc / nwg,
+            local_sgemm = {32 * mdimc/mdima, ndimc/ndimb, 1};
+            size_sgemm = {32 * m_ceil / mdima * mdimc / mwg,
+                          n_ceil / ndimb * ndimc / nwg,
                           cl::size_type(WINOGRAD_TILE)};
         }
         queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
@@ -585,6 +587,8 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
     auto kwg = false;
     auto ndimc = false;
     auto mdimc = false;
+    auto mdima = false;
+    auto ndimb = false;
     auto vwm = false;
     auto vwn = false;
     auto tce = false;
@@ -609,6 +613,14 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
             m_sgemm_tuners.kwg = value;
             kwg = true;
         }
+        if (name == "-DMDIMA") {
+            m_sgemm_tuners.mdima = value;
+            mdima = true;
+        }
+        if (name == "-DNDIMB") {
+            m_sgemm_tuners.ndimb = value;
+            ndimb = true;
+        }
         if (name == "-DMDIMC") {
             m_sgemm_tuners.mdimc = value;
             mdimc = true;
@@ -630,7 +642,7 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
             tce = true;
         }
     }
-    if (!mwg || !nwg || !kwg || !mdimc || !ndimc || !vwm || !vwn) {
+    if (!mwg || !nwg || !kwg || !mdimc || !ndimc || !vwm || !vwn || !mdima || !ndimb) {
         std::cerr << "Missing tuner parameters";
         if (!mwg) {
             std::cerr << " MWG";
@@ -640,6 +652,12 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
         }
         if (!kwg) {
             std::cerr << " KWG";
+        }
+        if (!mdima) {
+            std::cerr << " MDIMA";
+        }
+        if (!ndimb) {
+            std::cerr << " NDIMB";
         }
         if (!mdimc) {
             std::cerr << " MDIMC";
