@@ -2,7 +2,6 @@
 [![Windows Build Status](https://ci.appveyor.com/api/projects/status/pf1hcgly8f1a8iu0/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero/branch/next)
 
 
-
 # What
 
 A Go program with no human provided knowledge. Using MCTS (but without
@@ -51,10 +50,10 @@ after each game. You can just close the autogtp window to stop it.
 
 ### macOS and Linux
 
-Follow the instructions below to compile the leelaz binary, then go into
-the autogtp subdirectory and follow [the instructions there](autogtp/README.md)
-to build the autogtp binary. Copy the leelaz binary into the autogtp dir, and
-launch autogtp.
+Follow the instructions below to compile the leelaz and autogtp binaries in
+the build subdirectory. Then run autogtp as explained in the
+[contributing](#contributing) instructions below.
+Contributing will start when you run autogtp.
 
 ## Using a Cloud provider
 
@@ -66,15 +65,18 @@ There are community maintained instructions available here:
 
 * [Running Leela Zero client on a Tesla V100 GPU for free (Microsoft Azure Cloud Free Trial)](https://docs.google.com/document/d/1DMpi16Aq9yXXvGj0OOw7jbd7k2A9LHDUDxxWPNHIRPQ/edit?usp=sharing)
 
-# I just want to play right now
+# I just want to play with Leela Zero right now
 
-Download the best known network weights file from: https://zero.sjeng.org/best-network
+Download the best known network weights file from [here](https://zero.sjeng.org/best-network), or, if you prefer a more human style,
+a (weaker) network trained from human games [here](https://sjeng.org/zero/best_v1.txt.zip).
 
-And head to the [Usage](#usage) section of this README.
+If you are on Windows, download an official release from [here](https://github.com/gcp/leela-zero/releases) and head to the [Usage](#usage-for-playing-or-analyzing-games)
+section of this README.
 
-If you prefer a more human style, a network trained from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
+If you are on Unix or macOS, you have to compile the program yourself. Follow
+the compilation instructions below and then read the [Usage](#usage-for-playing-or-analyzing-games) section.
 
-# Compiling
+# Compiling AutoGTP and/or Leela Zero
 
 ## Requirements
 
@@ -91,7 +93,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 * Optional: BLAS Library: OpenBLAS (libopenblas-dev) or Intel MKL
 * The program has been tested on Windows, Linux and macOS.
 
-## Example of compiling and running - Ubuntu & similar
+## Example of compiling - Ubuntu & similar
 
     # Test for OpenCL support & compatibility
     sudo apt install clinfo && clinfo
@@ -104,15 +106,17 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install build depedencies
     sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
 
-    # Use stand alone directory to keep source dir clean
+    # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
+
+    # Compile leelaz and autogtp in build subdirectory with cmake
     cmake ..
     cmake --build .
-    ./tests
-    curl -O https://zero.sjeng.org/best-network
-    ./leelaz --weights best-network
 
-## Example of compiling and running - macOS
+    # Optional: test if your build works correctly
+    ./tests
+
+## Example of compiling - macOS
 
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
@@ -122,33 +126,47 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install build depedencies
     brew install boost cmake
 
-    # Use stand alone directory to keep source dir clean
+    # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
+
+    # Compile leelaz and autogtp in build subdirectory with cmake
     cmake ..
     cmake --build .
-    ./tests
-    curl -O https://zero.sjeng.org/best-network
-    ./leelaz --weights best-network
 
-## Example of compiling and running - Windows
+    # Optional: test if your build works correctly
+    ./tests
+
+## Example of compiling - Windows
 
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
     cd leela-zero
     git submodule update --init --recursive
+
     cd msvc
     Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
     to the Visual Studio version you have.
     # Build from Visual Studio 2015 or 2017
-    # Download <https://zero.sjeng.org/best-network> to msvc\x64\Release
-    msvc\x64\Release\leelaz.exe --weights best-network
 
-# Usage
+# Contributing
 
-The engine supports the [GTP protocol, version 2](https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html).
+For Windows, you can use a release package, see ["I want to help"](#windows).
+
+Unix and macOS, after finishing the compile and while in the build directory:
+
+    # Copy leelaz binary to autogtp subdirectory
+    cp leelaz autogtp
+
+    # Run AutoGTP to start contributing
+    ./autogtp/autogtp
+
+
+# Usage for playing or analyzing games
 
 Leela Zero is not meant to be used directly. You need a graphical interface
 for it, which will interface with Leela Zero through the GTP protocol.
+
+The engine supports the [GTP protocol, version 2](https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html).
 
 [Lizzie](https://github.com/featurecat/lizzie/releases) is a client specifically
 for Leela Zero which shows live search probilities, a win rate graph, and has
