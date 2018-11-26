@@ -361,6 +361,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
     } else if (command.find("clear_board") == 0) {
         Training::clear_training();
         game.reset_game();
+        s_network->nncache_clear();
         search = std::make_unique<UCTSearch>(game, *s_network);
         assert(UCTNodePointer::get_tree_size() == 0);
         gtp_printf(id, "");
@@ -763,6 +764,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         } catch (const std::exception&) {
             gtp_fail_printf(id, "cannot load file");
         }
+        s_network->nncache_clear();
         return;
     } else if (command.find("kgs-chat") == 0) {
         // kgs-chat (game|private) Name Message
