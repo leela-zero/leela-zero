@@ -171,10 +171,10 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
         if (p["NWG"] < p["NDIMC"]) {
             return false;
         }
-	if (p["MDIMC"] < p["MDIMA"]) {
+        if (p["MDIMC"] < p["MDIMA"]) {
             return false;
         }
-	if (p["NDIMC"] < p["NDIMB"]) {
+        if (p["NDIMC"] < p["NDIMB"]) {
             return false;
         }
         // VWM / VWN has no meaning if we don't do SA / SB.

@@ -18,8 +18,7 @@
 
 
 // This kernel simply tests if the host can compile a wmma insturction.
-// Not intended to be run
-
+// Not intended to be run at all.
 
 // Enables loading of this file using the C++ pre-processor's #include (C++11 standard raw string
 // literal). Comment-out this line for syntax-highlighting when developing.
@@ -29,6 +28,8 @@ __kernel void tensorcore_test(__global int * ptr) {
     asm(
         ".reg .b32 a0, a1, a2, a3, a4, a5, a6, a7;\n"
         "wmma.load.a.sync.aligned.m16n16k16.shared.row.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%0];\n" : : "l"(ptr)
+        "wmma.load.a.sync.aligned.m32n8k16.shared.row.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%0];\n" : : "l"(ptr)
+        "wmma.load.a.sync.aligned.m8n32k16.shared.row.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%0];\n" : : "l"(ptr)
     );
 }
 

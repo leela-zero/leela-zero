@@ -101,7 +101,7 @@ void GlobalToLocalA(int tid, int stride, __local short * alm, __global short * a
         int y = i / dest_stride;
 
         vstoreM( vloadM((y * stride + x) / VWM, agm), i / VWM, alm);
-    } 
+    }
 }
 
 
@@ -115,7 +115,7 @@ void GlobalToLocalB(int tid, int stride, __local short * blm, __global short * b
         int x = i % dest_stride;
         int y = i / dest_stride;
         vstoreN( vloadN((y * stride + x) / VWN, bgm), i / VWN, blm);
-    } 
+    }
 }
 
 
@@ -146,7 +146,7 @@ void HgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
     int offset_number = laneid;
     int offset_m = offset_number % (MDIMA/2);
     int offset_n = offset_number / (MDIMA/2);
-    
+
     if(laneid != get_global_id(0) % WARP_SIZE) {
         // this is just to make sure we crash ourselves if the basic assumption doesn't hold
         return;
@@ -197,16 +197,16 @@ void HgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
     for(kwg = 0; kwg < kSizeK; kwg += KWG) {
 #if SA == 1
         GlobalToLocalA(get_local_id(0) + get_local_id(1) * WARP_SIZE * MDIMC / MDIMA, kSizeM,
-            alm, 
+            alm,
             (__global short *)(agm + get_group_id(0) * MWG + kwg * kSizeM)
-        ); 
+        );
 #endif
 
 #if SB == 1
         GlobalToLocalB(get_local_id(0) +  get_local_id(1) * WARP_SIZE * MDIMC / MDIMA, kSizeN,
-            blm, 
+            blm,
             (__global short *)(bgm + get_group_id(1) * NWG + kwg * kSizeN)
-        ); 
+        );
 
 #endif
 
