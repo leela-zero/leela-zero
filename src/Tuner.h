@@ -45,7 +45,10 @@ public:
     // This is to prevent the same device from being tuned multiple times.
     static std::vector<std::string> tuned_devices;
 
-    static constexpr auto TUNER_VERSION = 0;
+    // version 0 : Initial release
+    // version 1 : Tuner with additional tensor cores (parameter TCE)
+    static constexpr auto TUNER_VERSION = 1;
+
     Tuner(OpenCL<net_t> & opencl, cl::Context context, cl::Device device) :
         m_opencl(opencl), m_context(context), m_device(device) {}
 
