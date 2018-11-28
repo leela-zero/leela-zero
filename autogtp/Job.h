@@ -84,6 +84,7 @@ private:
     Engine m_engineSecond;
     QString m_sgfFirst;
     QString m_sgfSecond;
+    bool m_restore;
 };
 
 class WaitJob : public Job {

@@ -293,9 +293,12 @@ Order Management::getWorkInternal(bool tuning) {
        resignation_percent : "3",
        noise : "true",
        randomcnt : "30"
-    }
-    white_hash_gzip_hash: "23c29bf777e446b5c3fb0e6e7fa4d53f15b99cc0c25798b70b57877b55bf1638"
-    black_hash_gzip_hash: "ccfe6023456aaaa423c29bf777e4aab481245289aaaabb70b7b5380992377aa8"
+    },
+    white_hash_gzip_hash: "23c29bf777e446b5c3fb0e6e7fa4d53f15b99cc0c25798b70b57877b55bf1638",
+    black_hash_gzip_hash: "ccfe6023456aaaa423c29bf777e4aab481245289aaaabb70b7b5380992377aa8",
+    black_hash_sgf_hash: "7dbccc5ad9eb38f0135ff7ec860f0e81157f47dfc0a8375cef6bf1119859e537",
+    white_hash_sgf_hash: "7dbccc5ad9eb38f0135ff7ec860f0e81157f47dfc0a8375cef6bf1119859e537",
+    moves_count: "92"
 }
 
 {
@@ -311,8 +314,10 @@ Order Management::getWorkInternal(bool tuning) {
        resignation_percent : "3",
        noise : "true",
        randomcnt : "30"
-    }
-    hash_gzip_hash: "23c29bf777e446b5c3fb0e6e7fa4d53f15b99cc0c25798b70b57877b55bf1638"
+    },
+    hash_gzip_hash: "23c29bf777e446b5c3fb0e6e7fa4d53f15b99cc0c25798b70b57877b55bf1638",
+    hash_sgf_hash: "7dbccc5ad9eb38f0135ff7ec860f0e81157f47dfc0a8375cef6bf1119859e537",
+    moves_count: "92"
 }
 
 {
@@ -408,8 +413,10 @@ Order Management::getWorkInternal(bool tuning) {
         fetchNetwork(net, gzipHash);
         o.type(Order::Production);
         parameters["network"] = net;
-        parameters["sgf"] = ob.contains("sgfhash") ? fetchGameData(ob.value("sgfhash").toString(), "sgf") : "" ;
-        parameters["moves"] = ob.contains("movescount") ? ob.value("movescount").toString() : "0";
+        parameters["sgf"] = ob.contains("hash_sgf_hash") ?
+            fetchGameData(ob.value("hash_sgf_hash").toString(), "sgf") : "" ;
+        parameters["moves"] = ob.contains("moves_count") ?
+            ob.value("moves_count").toString() : "0";
         o.parameters(parameters);
         if (m_delNetworks &&
             m_fallBack.parameters()["network"] != net) {
@@ -429,6 +436,14 @@ Order Management::getWorkInternal(bool tuning) {
         fetchNetwork(net2, gzipHash2);
         parameters["firstNet"] = net1;
         parameters["secondNet"] = net2;
+        parameters["sgfFirst"] = ob.contains("black_hash_sgf_hash") ?
+            fetchGameData(ob.value("black_hash_sgf_hash").toString(), "sgf") :
+            "";
+        parameters["sgfSecond"] = ob.contains("white_hash_sgf_hash") ?
+            fetchGameData(ob.value("white_hash_sgf_hash").toString(), "sgf") :
+            "";
+        parameters["moves"] = ob.contains("moves_count") ?
+            ob.value("moves_count").toString() : "0";
         o.parameters(parameters);
         if (m_delNetworks) {
             if (m_lastMatch.parameters()["firstNet"] != net1 &&
