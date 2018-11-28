@@ -213,15 +213,9 @@ void ValidationJob::init(const Order &o) {
     m_engineFirst.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
     m_engineSecond.m_network = "networks/" + o.parameters()["secondNet"] + ".gz";
     m_engineSecond.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
-    if (o.type() == Order::RestoreMatch) {
-        m_sgfFirst = o.parameters()["sgfFirst"];
-        m_sgfSecond = o.parameters()["sgfSecond"];
-        m_moves = o.parameters()["moves"].toInt();
-    } else {
-        m_sgfFirst = "";
-        m_sgfSecond = "";
-        m_moves = 0;
-    }
+    m_sgfFirst = o.parameters()["sgfFirst"];
+    m_sgfSecond = o.parameters()["sgfSecond"];
+    m_moves = o.parameters()["moves"].toInt();
 }
 
 Result WaitJob::execute(){
