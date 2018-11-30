@@ -45,6 +45,7 @@ extern int cfg_noise;
 extern int cfg_random_cnt;
 extern int cfg_random_min_visits;
 extern float cfg_random_temp;
+extern int cfg_winrate_target;
 extern std::uint64_t cfg_rng_seed;
 extern bool cfg_dumbpass;
 #ifdef USE_OPENCL
