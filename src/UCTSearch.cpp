@@ -225,13 +225,13 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         }
     }
 
-	auto depth =
-		int(currstate.get_movenum() - m_rootstate.get_movenum());
-	auto apparent_depth = depth;
-	if (is_pondering_now == true) { // Adjust depth by 1 to account for thinking/pondering during opponent's turn
-		apparent_depth =
-			(1 + int(currstate.get_movenum() - m_rootstate.get_movenum()));
-	}
+    auto depth =
+        int(currstate.get_movenum() - m_rootstate.get_movenum());
+    auto apparent_depth = depth;
+    if (is_pondering_now == true) { // Adjust depth by 1 to account for thinking/pondering during opponent's turn
+        apparent_depth =
+            (1 + int(currstate.get_movenum() - m_rootstate.get_movenum()));
+    }
 
     if (node->has_children() && !result.valid()) {
         auto next = node->uct_select_child(color, node == m_root.get(), ((apparent_depth % 2) != 0));
@@ -787,7 +787,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 }
 
 void UCTSearch::ponder() {
-	is_pondering_now = true;
+    is_pondering_now = true;
     update_root();
 
     m_root->prepare_root_node(m_network, m_rootstate.board.get_to_move(),
@@ -828,7 +828,7 @@ void UCTSearch::ponder() {
     dump_stats(m_rootstate, *m_root);
 
     myprintf("\n%d visits, %d nodes\n\n", m_root->get_visits(), m_nodes.load());
-	is_pondering_now = false;
+    is_pondering_now = false;
 
     // Copy the root state. Use to check for tree re-use in future calls.
     m_last_rootstate = std::make_unique<GameState>(m_rootstate);

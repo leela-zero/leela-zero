@@ -112,11 +112,11 @@ static void parse_commandline(int argc, char *argv[]) {
         ("randomtemp",
             po::value<float>()->default_value(cfg_random_temp),
             "Temperature to use for random move selection.")
-		("winratetarget",
+        ("winratetarget",
             po::value<int>()->default_value(cfg_winrate_target),
             "Require engine to play weaker moves to maintain a winrate of x%, regardless of the strength of the engine's opponent. Valid arguments are any integer from 0 to 100.\n"
-			"100 is unmodified search, playing strongest moves as usual.\n"
-			"50 forces a perfectly tied 50% winrate game against its opponent.")
+            "100 is unmodified search, playing strongest moves as usual.\n"
+            "50 forces a perfectly tied 50% winrate game against its opponent.")
         ;
 #ifdef USE_TUNER
     po::options_description tuner_desc("Tuning options");
@@ -335,9 +335,9 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_random_temp = vm["randomtemp"].as<float>();
     }
 
-	if (vm.count("winratetarget")) {
-		cfg_winrate_target = vm["winratetarget"].as<int>();
-	}
+    if (vm.count("winratetarget")) {
+        cfg_winrate_target = vm["winratetarget"].as<int>();
+    }
 
     if (vm.count("timemanage")) {
         auto tm = vm["timemanage"].as<std::string>();

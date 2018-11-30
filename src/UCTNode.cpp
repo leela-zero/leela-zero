@@ -259,11 +259,11 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root, bool is_opponent_mov
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
 
-	if ((cfg_winrate_target > 100) || (cfg_winrate_target < 0)) {
-		cfg_winrate_target = 100;
-	}
-	const bool unmodified_search = (cfg_winrate_target == 100);
-	const auto winrate_target_value = 0.01f * cfg_winrate_target;
+    if ((cfg_winrate_target > 100) || (cfg_winrate_target < 0)) {
+        cfg_winrate_target = 100;
+    }
+    const bool unmodified_search = (cfg_winrate_target == 100);
+    const auto winrate_target_value = 0.01f * cfg_winrate_target;
 
     for (auto& child : m_children) {
         if (!child.active()) {
@@ -283,11 +283,11 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root, bool is_opponent_mov
         const auto puct = cfg_puct * psa * (numerator / denom);
         auto value = winrate + puct;
 
-		if (!unmodified_search && !is_opponent_move) {
-			value = (1 - abs(winrate_target_value - winrate)) + puct;
-		}
+        if (!unmodified_search && !is_opponent_move) {
+            value = (1 - abs(winrate_target_value - winrate)) + puct;
+        }
 
-		assert(value > std::numeric_limits<double>::lowest());
+        assert(value > std::numeric_limits<double>::lowest());
 
         if (value > best_value) {
             best_value = value;
