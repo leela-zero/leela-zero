@@ -153,9 +153,9 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
         const auto n_ceil = ceilMultiple(ceilMultiple(tiles, nwg), vwn);
 
         const auto alloc_inSize =
-            MAX_BATCH * NUM_INTERSECTIONS * max_channels * sizeof(net_t);
+            getOpenCL().m_batch_size * NUM_INTERSECTIONS * max_channels * sizeof(net_t);
         const auto alloc_vm_size =
-            MAX_BATCH * WINOGRAD_TILE * m_ceil * n_ceil * sizeof(net_t);
+            getOpenCL().m_batch_size * WINOGRAD_TILE * m_ceil * n_ceil * sizeof(net_t);
 
         auto v_zeros = std::vector<net_t>(alloc_vm_size);
 
@@ -175,10 +175,10 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
 
         opencl_context.m_pinnedOutBuffer_pol = cl::Buffer(
             m_opencl.m_context,
-            CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR, MAX_BATCH * finalSize_pol);
+            CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR, getOpenCL().m_batch_size * finalSize_pol);
         opencl_context.m_pinnedOutBuffer_val = cl::Buffer(
             m_opencl.m_context,
-            CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR, MAX_BATCH * finalSize_val);
+            CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR, getOpenCL().m_batch_size * finalSize_val);
 
         opencl_context.m_buffers_allocated = true;
     }
@@ -782,7 +782,8 @@ OpenCL<net_t>::OpenCL(int gpu, bool silent) {
 }
 
 template <typename net_t>
-void OpenCL<net_t>::initialize(const int channels) {
+void OpenCL<net_t>::initialize(const int channels, int batch_size) {
+    m_batch_size = batch_size;
     // Make program of the source code in the context
     try {
         m_program = cl::Program(m_context,
@@ -798,7 +799,7 @@ void OpenCL<net_t>::initialize(const int channels) {
 
     auto t = Tuner<net_t>(*this, m_context, m_device);
     auto sgemm_tuners =
-        t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
+        t.load_sgemm_tuners(channels, batch_size * WINOGRAD_P, channels, WINOGRAD_TILE);
 
     // Some NVIDIA drivers are buggy and will fail to compile the rest of the
     // kernels after a tuning run.
