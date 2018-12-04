@@ -101,8 +101,7 @@ void GTP::initialize(std::unique_ptr<Network>&& net) {
         myprintf("for the default settings on your system.\n");
         throw std::runtime_error("Error setting memory requirements.");
     }
-    myprintf(message.c_str());
-    myprintf("\n");
+    myprintf("%s\n", message.c_str());
 }
 
 void GTP::setup_default_parameters() {
