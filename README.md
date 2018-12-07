@@ -150,9 +150,9 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 
 # Contributing
 
-For Windows, you can use a release package, see ["I want to help"](#windows).
+- For Windows, you can use a release package, see ["I want to help"](#windows).
 
-For Unix and macOS, after finishing the compile and while in the build directory:
+- For Unix and macOS, after finishing the compile and while in the build directory:
 
     # Copy leelaz binary to build/autogtp/ subdirectory
     cp leelaz autogtp
