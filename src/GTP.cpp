@@ -73,6 +73,8 @@ precision_t cfg_precision;
 #endif
 #endif
 float cfg_puct;
+float cfg_logpuct;
+float cfg_logconst;
 float cfg_softmax_temp;
 float cfg_fpu_reduction;
 float cfg_fpu_root_reduction;
@@ -133,7 +135,9 @@ void GTP::setup_default_parameters() {
     cfg_precision = precision_t::AUTO;
 #endif
 #endif
-    cfg_puct = 0.8f;
+    cfg_puct = 0.5f;
+    cfg_logpuct = 0.015f;
+    cfg_logconst = 1.7f;
     cfg_softmax_temp = 1.0f;
     cfg_fpu_reduction = 0.25f;
     // see UCTSearch::should_resign
