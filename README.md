@@ -104,7 +104,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     git submodule update --init --recursive
 
     # Install build depedencies
-    sudo apt install cmake libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+    sudo apt install cmake libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev qt5-default qt5-qmake curl
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
@@ -124,7 +124,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     git submodule update --init --recursive
 
     # Install build depedencies
-    brew install boost cmake
+    brew install boost cmake qt5 curl
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
