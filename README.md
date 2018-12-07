@@ -154,11 +154,11 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 
 - For Unix and macOS, after finishing the compile and while in the build directory:
 
-    # Copy leelaz binary to build/autogtp/ subdirectory
-    cp leelaz autogtp
+      # Copy leelaz binary to build/autogtp/ subdirectory
+      cp leelaz autogtp
 
-    # Run AutoGTP to start contributing
-    ./autogtp/autogtp
+      # Run AutoGTP to start contributing
+      ./autogtp/autogtp
 
 
 # Usage for playing or analyzing games
