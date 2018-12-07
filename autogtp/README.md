@@ -30,6 +30,6 @@ directly.
 
 # Running
 
-See : [Contributing](https://github.com/gcp/leela-zero/tree/next#contributing)
+See : [Contributing](https://github.com/wonderingabout/leela-zero/tree/next#contributing)
 
 While autogtp is running, typing q+Enter will save the processed data and exit. When autogtp runs next, autogtp will continue the game.
