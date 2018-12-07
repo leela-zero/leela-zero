@@ -13,15 +13,15 @@ the SGF and training data at the end of the game.
 
 ## Compiling - Ubuntu and similar
 
-See : [Example of compiling (Ubuntu and similar)](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---ubuntu--similar)
+See : [Example of compiling (Ubuntu and similar)](https://github.com/wonderingabout/leela-zero/tree/minor-clearer-next#example-of-compiling---ubuntu--similar)
 
 ## Compiling - macOS
 
-See : [Example of compiling (macOS)](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---macos)
+See : [Example of compiling (macOS)](https://github.com/wonderingabout/leela-zero/tree/minor-clearer-next#example-of-compiling---macos)
 
 ## Compiling under Visual Studio - Windows
 
-See : [Example of compiling (Windows)](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---windows)
+See : [Example of compiling (Windows)](https://github.com/wonderingabout/leela-zero/tree/minor-clearer-next#example-of-compiling---windows)
 
 You have to download and install Qt and Qt VS Tools. You only need QtCore to
 run. Locate a copy of curl.exe and gzip.exe (a previous Leela release package
