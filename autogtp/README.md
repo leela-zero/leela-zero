@@ -11,13 +11,17 @@ the SGF and training data at the end of the game.
 * curl
 * gzip and gunzip
 
-## Example of compiling - Ubuntu
+## Compiling - Ubuntu and similar
 
-    sudo apt install qt5-default qt5-qmake curl
-    qmake -qt5
-    make
+See : [Example of compiling (Ubuntu and similar](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---ubuntu--similar)
+
+## Compiling - macOS
+
+See : [Example of compiling (macOS)](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---macos)
 
 ## Compiling under Visual Studio - Windows
+
+See : [Example of compiling (Windows)](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---windows)
 
 You have to download and install Qt and Qt VS Tools. You only need QtCore to
 run. Locate a copy of curl.exe and gzip.exe (a previous Leela release package
