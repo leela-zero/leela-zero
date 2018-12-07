@@ -13,7 +13,7 @@ the SGF and training data at the end of the game.
 
 ## Compiling - Ubuntu and similar
 
-See : [Example of compiling (Ubuntu and similar](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---ubuntu--similar)
+See : [Example of compiling (Ubuntu and similar)](https://github.com/wonderingabout/leela-zero#example-of-compiling-and-running---ubuntu--similar)
 
 ## Compiling - macOS
 
