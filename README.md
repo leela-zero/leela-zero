@@ -166,6 +166,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
       # Run AutoGTP to start contributing
       ./autogtp/autogtp
 
+For more details about autogtp or for more advanced use, you can see [the autogtp details there](https://github.com/gcp/leela-zero/blob/next/autogtp/README.md)
 
 # Usage for playing or analyzing games
 
