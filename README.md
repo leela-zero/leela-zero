@@ -106,7 +106,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install leelaz build depedencies
     sudo apt install cmake libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev curl
     
-    # Optionnal : if you intend to use autogtp to contribute, install autogtp dependencies as well :
+    # Optional : if you intend to use autogtp to contribute, install autogtp dependencies as well :
     sudo apt install qt5-default qt5-qmake
 
     # Use a stand alone build directory to keep source dir clean
@@ -129,7 +129,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install leelaz build depedencies
     brew install boost cmake curl
     
-    # Optionnal : if you intend to use autogtp to contribute, install autogtp dependencies as well :
+    # Optional : if you intend to use autogtp to contribute, install autogtp dependencies as well :
     brew install qt5
 
     # Use a stand alone build directory to keep source dir clean
