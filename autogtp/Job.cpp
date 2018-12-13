@@ -211,7 +211,7 @@ void ValidationJob::init(const Order &o) {
     m_engineFirst.m_network = "networks/" + o.parameters()["firstNet"] + ".gz";
     m_engineFirst.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
     m_engineSecond.m_network = "networks/" + o.parameters()["secondNet"] + ".gz";
-    m_engineSecond.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
+    m_engineSecond.m_options = " " + o.parameters()["optionsSecond"] + m_gpu + " -g -q -w ";
     m_sgf = o.parameters()["sgf"];
     m_moves = o.parameters()["moves"].toInt();
 }
