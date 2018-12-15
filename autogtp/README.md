@@ -23,11 +23,11 @@ To work successfully, autogtp binary needs to also have leelaz binary to be in t
       qmake -qt5
       make
       
-If you compile autogtp this way, remember to copy leelaz binary to the directory where autogtp binary is. For example, if leelaz binary has been compiled in leela-zero/build/, you can do it like that : 
+  If you compile autogtp this way, remember to copy leelaz binary to the directory where autogtp binary is. For example, if leelaz binary has been compiled in leela-zero/build/, you can do it like that : 
 
       cp ../build/leelaz .
       
-Then run autogtp to start contributing : 
+  Then run autogtp to start contributing : 
 
       ./autogtp
 
