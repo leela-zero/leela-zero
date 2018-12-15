@@ -17,7 +17,7 @@ To work successfully, autogtp binary needs to also have leelaz binary to be in t
 
 - To compile both autogtp and leelaz binaries at the same time, see : [Example of compiling (Ubuntu and similar)](https://github.com/gcp/leela-zero/tree/next#example-of-compiling---ubuntu--similar)
 
-- However, if for some reason you want to only compile autogtp binary (without leelaz), you can follow these instructions instead, leela-zero/autogtp/ directory : 
+- However, if for some reason you want to only compile autogtp binary (without leelaz), you can follow these instructions instead, in leela-zero/autogtp/ directory : 
 
       sudo apt install qt5-default qt5-qmake curl
       qmake -qt5
