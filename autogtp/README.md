@@ -4,6 +4,8 @@ This is a self-play tool for Leela-Zero. When launched, it will fetch the
 best network from the server so far, play a game against itself, and upload
 the SGF and training data at the end of the game.
 
+To work successfully, autogtp binary needs to also have leelaz binary to be in the same directory.
+
 # Requirements
 
 * Qt 5.3 or later with qmake
@@ -13,11 +15,29 @@ the SGF and training data at the end of the game.
 
 ## Compiling - Ubuntu and similar
 
-See : [Example of compiling (Ubuntu and similar)](https://github.com/gcp/leela-zero/tree/next#example-of-compiling---ubuntu--similar)
+- To compile both autogtp and leelaz binaries at the same time, see : [Example of compiling (Ubuntu and similar)](https://github.com/gcp/leela-zero/tree/next#example-of-compiling---ubuntu--similar)
+
+- However, if for some reason you want to only compile autogtp binary (without leelaz), you can follow these instructions instead, leela-zero/autogtp/ directory : 
+
+      sudo apt install qt5-default qt5-qmake curl
+      qmake -qt5
+      make
+      
+If you compile autogtp this way, remember to copy leelaz binary to the directory where autogtp binary is. For example, if leelaz binary has been compiled in leela-zero/build/, you can do it like that : 
+
+      cp ../build/leelaz .
+      
+Then run autogtp to start contributing : 
+
+      ./autogtp
 
 ## Compiling - macOS
 
-See : [Example of compiling (macOS)](https://github.com/gcp/leela-zero/tree/next#example-of-compiling---macos)
+- To compile both autogtp and leelaz binaries at the same time, see : [Example of compiling (macOS)](https://github.com/gcp/leela-zero/tree/next#example-of-compiling---macos)
+
+- However, if for some reason you want to only compile autogtp binary (without leelaz), you can follow these instructions instead : 
+
+??? is empty in gcp/master and gcp/next ??? https://github.com/gcp/leela-zero/tree/next/autogtp
 
 ## Compiling under Visual Studio - Windows
 
