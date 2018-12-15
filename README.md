@@ -92,7 +92,7 @@ If you do not have a GPU, add the define "USE_CPU_ONLY", for example
 by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 * Optional: BLAS Library: OpenBLAS (libopenblas-dev) or Intel MKL
 * The program has been tested on Windows, Linux and macOS.
-* To work successfully, autogtp binary needs to also have leelaz binary to be in the same directory. However if for some reason you want to only compile autogtp binary (without leelaz), see [the autogtp readme](https://github.com/gcp/leela-zero/tree/next/autogtp).
+* To work successfully, autogtp binary needs to also have leelaz binary to be in the same directory. The below instructions can compile leelaz, and optionally autogtp at the same time if you want. However if for some reason you want to only compile autogtp binary (without leelaz), see [the autogtp readme](https://github.com/gcp/leela-zero/tree/next/autogtp).
 
 ## Example of compiling - Ubuntu & similar
 
@@ -107,7 +107,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install leelaz build depedencies
     sudo apt install cmake libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev curl
     
-    # Optional : if you want to use autogtp to contribute, install autogtp dependencies as well; autogtp binary can be compiled separately another time as expained in the autogtp readme
+    # Optional : if you want to use autogtp to contribute, install autogtp dependencies as well
     sudo apt install qt5-default qt5-qmake
 
     # Use a stand alone build directory to keep source dir clean
@@ -130,7 +130,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install leelaz build depedencies
     brew install boost cmake curl
     
-    # Optional : if you want to use autogtp to contribute, install autogtp dependencies as well; autogtp binary can be compiled separately another time as expained in the autogtp readme
+    # Optional : if you want to use autogtp to contribute, install autogtp dependencies as well
     brew install qt5
 
     # Use a stand alone build directory to keep source dir clean
