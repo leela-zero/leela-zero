@@ -27,6 +27,8 @@
 #include <QLockFile>
 #include <QUuid>
 #include <QRegularExpression>
+#include <QTemporaryFile>
+#include <QFileInfo>
 #include "Management.h"
 #include "Game.h"
 
@@ -414,7 +416,7 @@ Order Management::getWorkInternal(bool tuning) {
         o.type(Order::Production);
         parameters["network"] = net;
         parameters["sgf"] = ob.contains("hash_sgf_hash") ?
-            fetchGameData(ob.value("hash_sgf_hash").toString(), "sgf") : "" ;
+            fetchGameData(ob.value("hash_sgf_hash").toString(), "sgf") : "";
         parameters["moves"] = ob.contains("moves_count") ?
             ob.value("moves_count").toString() : "0";
         o.parameters(parameters);
@@ -576,7 +578,13 @@ QString Management::fetchGameData(const QString &name, const QString &extension)
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    QString fileName =  QString::fromStdString(std::tmpnam(nullptr));
+    const auto templateName = name + "-XXXXXX." + extension;
+    QTemporaryFile file(templateName);
+    if (!file.open()) {
+        throw NetworkException("Unable to generate temporary file for game data");
+    }
+    file.setAutoRemove(false);
+    const auto fileName = QFileInfo(file.fileName()).baseName();
 
     // Be quiet, but output the real file name we saved.
     // Use the filename from the server.
