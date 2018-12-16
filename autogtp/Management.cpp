@@ -578,13 +578,8 @@ QString Management::fetchGameData(const QString &name, const QString &extension)
 #ifdef WIN32
     prog_cmdline.append(".exe");
 #endif
-    const auto templateName = name + "-XXXXXX." + extension;
-    QTemporaryFile file(templateName);
-    if (!file.open()) {
-        throw NetworkException("Unable to generate temporary file for game data");
-    }
-    file.setAutoRemove(false);
-    const auto fileName = QFileInfo(file.fileName()).baseName();
+
+    const auto fileName = QUuid::createUuid().toRfc4122().toHex();
 
     // Be quiet, but output the real file name we saved.
     // Use the filename from the server.
