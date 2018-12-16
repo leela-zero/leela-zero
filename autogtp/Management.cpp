@@ -27,8 +27,6 @@
 #include <QLockFile>
 #include <QUuid>
 #include <QRegularExpression>
-#include <QTemporaryFile>
-#include <QFileInfo>
 #include "Management.h"
 #include "Game.h"
 
@@ -298,8 +296,7 @@ Order Management::getWorkInternal(bool tuning) {
     },
     white_hash_gzip_hash: "23c29bf777e446b5c3fb0e6e7fa4d53f15b99cc0c25798b70b57877b55bf1638",
     black_hash_gzip_hash: "ccfe6023456aaaa423c29bf777e4aab481245289aaaabb70b7b5380992377aa8",
-    black_hash_sgf_hash: "7dbccc5ad9eb38f0135ff7ec860f0e81157f47dfc0a8375cef6bf1119859e537",
-    white_hash_sgf_hash: "7dbccc5ad9eb38f0135ff7ec860f0e81157f47dfc0a8375cef6bf1119859e537",
+    hash_sgf_hash: "7dbccc5ad9eb38f0135ff7ec860f0e81157f47dfc0a8375cef6bf1119859e537",
     moves_count: "92"
 }
 
@@ -391,8 +388,9 @@ Order Management::getWorkInternal(bool tuning) {
 
     //getting the random seed
     QString rndSeed = "0";
-    if (ob.contains("random_seed"))
-         rndSeed = ob.value("random_seed").toString();
+    if (ob.contains("random_seed")) {
+        rndSeed = ob.value("random_seed").toString();
+    }
     parameters["rndSeed"] = rndSeed;
     if (rndSeed == "0") {
         rndSeed = "";
@@ -402,6 +400,11 @@ Order Management::getWorkInternal(bool tuning) {
     if (ob.contains("options")) {
         parameters["optHash"] = ob.value("options_hash").toString();
         parameters["options"] = getOptionsString(ob.value("options").toObject(), rndSeed);
+    }
+    if (ob.contains("hash_sgf_hash")) {
+        parameters["sgf"] = fetchGameData(ob.value("hash_sgf_hash").toString(), "sgf");
+        parameters["moves"] = ob.contains("moves_count") ?
+            ob.value("moves_count").toString() : "0";
     }
 
     parameters["debug"] = !m_debugPath.isEmpty() ? "true" : "false";
@@ -413,23 +416,20 @@ Order Management::getWorkInternal(bool tuning) {
         QString net = ob.value("hash").toString();
         QString gzipHash = ob.value("hash_gzip_hash").toString();
         fetchNetwork(net, gzipHash);
-        o.type(Order::Production);
         parameters["network"] = net;
-        parameters["sgf"] = ob.contains("hash_sgf_hash") ?
-            fetchGameData(ob.value("hash_sgf_hash").toString(), "sgf") : "";
-        parameters["moves"] = ob.contains("moves_count") ?
-            ob.value("moves_count").toString() : "0";
+
+        o.type(Order::Production);
         o.parameters(parameters);
         if (m_delNetworks &&
             m_fallBack.parameters()["network"] != net) {
-            QTextStream(stdout) << "Deleting network " << "networks/" + m_fallBack.parameters()["network"] + ".gz" << endl;
+            QTextStream(stdout) << "Deleting network " << "networks/"
+                + m_fallBack.parameters()["network"] + ".gz" << endl;
             QFile::remove("networks/" + m_fallBack.parameters()["network"] + ".gz");
         }
         m_fallBack = o;
         QTextStream(stdout) << "net: " << net << "." << endl;
     }
     if (ob.value("cmd").toString() == "match") {
-        o.type(Order::Validation);
         QString net1 = ob.value("black_hash").toString();
         QString gzipHash1 = ob.value("black_hash_gzip_hash").toString();
         QString net2 = ob.value("white_hash").toString();
@@ -438,24 +438,20 @@ Order Management::getWorkInternal(bool tuning) {
         fetchNetwork(net2, gzipHash2);
         parameters["firstNet"] = net1;
         parameters["secondNet"] = net2;
-        parameters["sgfFirst"] = ob.contains("black_hash_sgf_hash") ?
-            fetchGameData(ob.value("black_hash_sgf_hash").toString(), "sgf") :
-            "";
-        parameters["sgfSecond"] = ob.contains("white_hash_sgf_hash") ?
-            fetchGameData(ob.value("white_hash_sgf_hash").toString(), "sgf") :
-            "";
-        parameters["moves"] = ob.contains("moves_count") ?
-            ob.value("moves_count").toString() : "0";
+
+        o.type(Order::Validation);
         o.parameters(parameters);
         if (m_delNetworks) {
             if (m_lastMatch.parameters()["firstNet"] != net1 &&
                 m_lastMatch.parameters()["firstNet"] != net2) {
-                QTextStream(stdout) << "Deleting network " << "networks/" + m_lastMatch.parameters()["firstNet"] + ".gz" << endl;
+                QTextStream(stdout) << "Deleting network " << "networks/"
+                    + m_lastMatch.parameters()["firstNet"] + ".gz" << endl;
                 QFile::remove("networks/" + m_lastMatch.parameters()["firstNet"] + ".gz");
             }
             if (m_lastMatch.parameters()["secondNet"] != net1 &&
                 m_lastMatch.parameters()["secondNet"] != net2) {
-                QTextStream(stdout) << "Deleting network " << "networks/" + m_lastMatch.parameters()["secondNet"] + ".gz" << endl;
+                QTextStream(stdout) << "Deleting network " << "networks/"
+                    + m_lastMatch.parameters()["secondNet"] + ".gz" << endl;
                 QFile::remove("networks/" + m_lastMatch.parameters()["secondNet"] + ".gz");
             }
         }
@@ -464,8 +460,9 @@ Order Management::getWorkInternal(bool tuning) {
         QTextStream(stdout) << "second network " << net2 << "." << endl;
     }
     if (ob.value("cmd").toString() == "wait") {
-        o.type(Order::Wait);
         parameters["minutes"] = ob.value("minutes").toString();
+
+        o.type(Order::Wait);
         o.parameters(parameters);
         QTextStream(stdout) << "minutes: " << parameters["minutes"]  << "." << endl;
     }
@@ -520,7 +517,8 @@ bool Management::networkExists(const QString &name, const QString &gzipHash) {
             if (result == gzipHash) {
                 return true;
             }
-            QTextStream(stdout) << "Downloaded network hash doesn't match, calculated: " << result << " it should be: " << gzipHash << endl;
+            QTextStream(stdout) << "Downloaded network hash doesn't match, calculated: "
+                << result << " it should be: " << gzipHash << endl;
         } else {
             QTextStream(stdout)
                 << "Unable to open network file for reading." << endl;

@@ -91,12 +91,10 @@ void Worker::run() {
     } while (m_state == RUNNING);
     if (m_state == STORING) {
         m_todo.add("moves", res.parameters()["moves"]);
+        m_todo.add("sgf", res.parameters()["sgf"]);
         if (res.type() == Result::StoreMatch) {
-            m_todo.add("sgfFirst", res.parameters()["sgfFirst"]);
-            m_todo.add("sgfSecond", res.parameters()["sgfSecond"]);
             m_todo.type(Order::RestoreMatch);
         } else {
-            m_todo.add("sgf", res.parameters()["sgf"]);
             m_todo.type(Order::RestoreSelfPlayed);
         }
         QString unique = QUuid::createUuid().toRfc4122().toHex();
