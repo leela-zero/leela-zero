@@ -72,17 +72,17 @@ Result ProductionJob::execute(){
         return res;
     }
     if (!m_sgf.isEmpty()) {
-        if (m_restore) {
+        if (m_moves == 0) {
             game.loadSgf(m_sgf);
-            game.loadTraining(m_sgf);
-            game.setMovesCount(m_moves);
-            QFile::remove(m_sgf + ".sgf");
-            QFile::remove(m_sgf + ".train");
         } else {
-            game.loadSgf(m_sgf, m_moves + 1);
-            game.setMovesCount(m_moves);
-            QFile::remove(m_sgf + ".sgf");
+            game.loadSgf(m_sgf, m_moves);
         }
+        game.setMovesCount(m_moves);
+        if (m_restore) {
+            game.loadTraining(m_sgf);
+            QFile::remove(m_sgf + ".train");
+        }
+        QFile::remove(m_sgf + ".sgf");
     }
     do {
         game.move();
@@ -139,10 +139,10 @@ Result ValidationJob::execute(){
         return res;
     }
     if (!m_sgfFirst.isEmpty()) {
-        if (m_restore) {
+        if (m_moves == 0) {
             first.loadSgf(m_sgfFirst);
         } else {
-            first.loadSgf(m_sgfFirst, m_moves + 1);
+            first.loadSgf(m_sgfFirst, m_moves);
         }
         first.setMovesCount(m_moves);
         QFile::remove(m_sgfFirst + ".sgf");
@@ -152,10 +152,10 @@ Result ValidationJob::execute(){
         return res;
     }
     if (!m_sgfSecond.isEmpty()) {
-        if (m_restore) {
+        if (m_moves == 0) {
             second.loadSgf(m_sgfSecond);
         } else {
-            second.loadSgf(m_sgfSecond, m_moves + 1);
+            second.loadSgf(m_sgfSecond, m_moves);
         }
         second.setMovesCount(m_moves);
         QFile::remove(m_sgfSecond + ".sgf");
@@ -224,7 +224,6 @@ void ValidationJob::init(const Order &o) {
     m_sgfFirst = o.parameters()["sgfFirst"];
     m_sgfSecond = o.parameters()["sgfSecond"];
     m_moves = o.parameters()["moves"].toInt();
-    m_restore = o.type() == Order::RestoreMatch;
 }
 
 Result WaitJob::execute(){
