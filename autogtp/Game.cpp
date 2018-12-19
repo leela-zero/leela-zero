@@ -177,6 +177,9 @@ bool Game::gameStart(const VersionTuple &min_version) {
             QTextStream(stdout) << "GTP failed on: " << command << endl;
             exit(EXIT_FAILURE);
         }
+        if (command.contains("handicap")) {
+            m_blackToMove = false;
+        }
     }
     QTextStream(stdout) << "Thinking time set." << endl;
     return true;
@@ -196,7 +199,11 @@ void Game::move() {
 
 void Game::setMovesCount(int moves) {
     m_moveNum = moves;
-    m_blackToMove = (moves % 2) == 0;
+    //The game always starts at move 0 (GTP state that handicap stones are not part
+    //of the move history), so if there is no handicap then black moves on even
+    //numbered turns but if there is handicap then black moves on odd numbered turns.
+    const auto handicap_in_use = !m_engine.m_commands.filter("handicap").isEmpty();
+    m_blackToMove = (moves % 2) == (handicap_in_use ? 1 : 0);
 }
 
 bool Game::waitReady() {

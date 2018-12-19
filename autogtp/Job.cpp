@@ -126,6 +126,9 @@ void ProductionJob::init(const Order &o) {
     Job::init(o);
     m_engine.m_network = "networks/" + o.parameters()["network"] + ".gz";
     m_engine.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
+    if (o.parameters().contains("gtpCommands")) {
+        m_engine.m_commands = o.parameters()["gtpCommands"].split(",");
+    }
     m_debug = o.parameters()["debug"] == "true";
     m_sgf = o.parameters()["sgf"];
     m_moves = o.parameters()["moves"].toInt();
@@ -158,25 +161,27 @@ Result ValidationJob::execute(){
     QString wmove = "play white ";
     QString bmove = "play black ";
     do {
-        first.move();
-        if (!first.waitForMove()) {
-            return res;
+        if (first.getToMove() == Game::BLACK) {
+            first.move();
+            if (!first.waitForMove()) {
+                return res;
+            }
+            first.readMove();
+            m_boss->incMoves();
+            if (first.checkGameEnd()) {
+                break;
+            }
+            second.setMove(bmove + first.getMove());
+            first.nextMove();
         }
-        first.readMove();
-       m_boss->incMoves();
-        if (first.checkGameEnd()) {
-            break;
-        }
-        second.setMove(bmove + first.getMove());
         second.move();
         if (!second.waitForMove()) {
             return res;
         }
         second.readMove();
-       m_boss->incMoves();
+        m_boss->incMoves();
         first.setMove(wmove + second.getMove());
-        second.nextMove();
-    } while (first.nextMove() && m_state.load() == RUNNING);
+    } while (second.nextMove() && m_state.load() == RUNNING);
 
     switch (m_state.load()) {
     case RUNNING:
@@ -210,8 +215,14 @@ void ValidationJob::init(const Order &o) {
     Job::init(o);
     m_engineFirst.m_network = "networks/" + o.parameters()["firstNet"] + ".gz";
     m_engineFirst.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
+    if (o.parameters().contains("gtpCommands")) {
+        m_engineFirst.m_commands = o.parameters()["gtpCommands"].split(",");
+    }
     m_engineSecond.m_network = "networks/" + o.parameters()["secondNet"] + ".gz";
     m_engineSecond.m_options = " " + o.parameters()["optionsSecond"] + m_gpu + " -g -q -w ";
+    if (o.parameters().contains("gtpCommandsSecond")) {
+        m_engineSecond.m_commands = o.parameters()["gtpCommandsSecond"].split(",");
+    }
     m_sgf = o.parameters()["sgf"];
     m_moves = o.parameters()["moves"].toInt();
 }

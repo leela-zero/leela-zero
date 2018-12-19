@@ -80,6 +80,7 @@ public:
     QString getWinnerName() const { return m_winner; }
     int getMovesCount() const { return m_moveNum; }
     void setMovesCount(int moves);
+    int getToMove() const { return m_blackToMove ? BLACK : WHITE; }
     QString getResult() const { return m_result.trimmed(); }
     enum {
         BLACK = 0,
