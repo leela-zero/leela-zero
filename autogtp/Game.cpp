@@ -344,6 +344,11 @@ bool Game::loadSgf(const QString &fileName) {
     return sendGtpCommand(qPrintable("loadsgf " + fileName + ".sgf"));
 }
 
+bool Game::loadSgf(const QString &fileName, const int moves) {
+    QTextStream(stdout) << "Loading " << fileName + ".sgf with " << moves << " moves" << endl;
+    return sendGtpCommand(qPrintable("loadsgf " + fileName + ".sgf " + QString::number(moves + 1)));
+}
+
 bool Game::fixSgf(const QString& weightFile, const bool resignation) {
     QFile sgfFile(m_fileName + ".sgf");
     if (!sgfFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
