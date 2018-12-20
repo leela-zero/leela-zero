@@ -161,10 +161,10 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 
 - For Unix and macOS, after finishing the compile and while in the build directory:
 
-      # Copy leelaz binary to /build/autogtp/ subdirectory, and go in that subdirectory
+      # Copy leelaz binary to build/autogtp/ subdirectory, and go in that subdirectory
       cp leelaz autogtp && cd autogtp
 
-      # Run AutoGTP in /build/autogtp/ subdirectory to start contributing
+      # Run AutoGTP in build/autogtp/ subdirectory to start contributing
       ./autogtp
 
 For more details about AutoGTP or for more advanced use, please see [the autogtp readme](/autogtp/README.md)
