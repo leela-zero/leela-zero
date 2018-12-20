@@ -92,7 +92,7 @@ If you do not have a GPU, add the define "USE_CPU_ONLY", for example
 by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 * Optional: BLAS Library: OpenBLAS (libopenblas-dev) or Intel MKL
 * The program has been tested on Windows, Linux and macOS.
-* To work successfully, autogtp binary needs to also have leelaz binary to be in the same directory. The below instructions can compile leelaz, and optionally autogtp at the same time.
+* To work successfully, autogtp and leelaz binaries need to be in the same directory. The below instructions can compile leelaz, and optionally autogtp at the same time.
 
 ## Example of compiling - Ubuntu & similar
 
