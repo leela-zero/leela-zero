@@ -337,10 +337,10 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("winratetarget")) {
         cfg_winrate_target = vm["winratetarget"].as<int>();
-		// 0 to 100 are the only meaningful values. Default to 100% (unmodified search) if invalid input.
-		if ((cfg_winrate_target > 100) || (cfg_winrate_target < 0)) {
-			cfg_winrate_target = 100;
-		}
+        // 0 to 100 are the only meaningful values. Default to 100% (unmodified search) if invalid input.
+        if ((cfg_winrate_target > 100) || (cfg_winrate_target < 0)) {
+            cfg_winrate_target = 100;
+        }
     }
 
     if (vm.count("timemanage")) {
