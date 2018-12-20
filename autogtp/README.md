@@ -4,8 +4,6 @@ This is a self-play tool for Leela-Zero. When launched, it will fetch the
 best network from the server so far, play a game against itself, and upload
 the SGF and training data at the end of the game.
 
-To work successfully, autogtp binary needs to also have leelaz binary to be in the same directory.
-
 # Requirements
 
 * Qt 5.3 or later with qmake
@@ -13,35 +11,13 @@ To work successfully, autogtp binary needs to also have leelaz binary to be in t
 * curl
 * gzip and gunzip
 
-## Compiling - Ubuntu and similar
+## Compiling - Ubuntu and macOS
 
-- To compile both autogtp and leelaz binaries at the same time, see : [Example of compiling (Ubuntu and similar)](https://github.com/gcp/leela-zero/tree/next#example-of-compiling---ubuntu--similar)
+Follow main page instructions to compile leelaz and autogtp binaries at the same time.
 
-- However, if for some reason you want to only compile autogtp binary (without leelaz), you can follow these instructions instead, in leela-zero/autogtp/ directory : 
-
-      sudo apt install qt5-default qt5-qmake curl
-      qmake -qt5
-      make
-      
-  If you compile autogtp this way, remember to copy leelaz binary to the directory where autogtp binary is. For example, if leelaz binary has been compiled in leela-zero/build/, you can do it like that : 
-
-      cp ../build/leelaz .
-      
-  Then run autogtp to start contributing : 
-
-      ./autogtp
-
-## Compiling - macOS
-
-- To compile both autogtp and leelaz binaries at the same time, see : [Example of compiling (macOS)](https://github.com/gcp/leela-zero/tree/next#example-of-compiling---macos)
-
-- However, if for some reason you want to only compile autogtp binary (without leelaz), you can follow these instructions instead : 
-
-??? is empty in gcp/master and gcp/next ??? https://github.com/gcp/leela-zero/tree/next/autogtp
+For specific use, you can also compile the autogtp binary separately with qmake.
 
 ## Compiling under Visual Studio - Windows
-
-See : [Example of compiling (Windows)](https://github.com/gcp/leela-zero/tree/next#example-of-compiling---windows)
 
 You have to download and install Qt and Qt VS Tools. You only need QtCore to
 run. Locate a copy of curl.exe and gzip.exe (a previous Leela release package
@@ -54,6 +30,7 @@ directly.
 
 # Running
 
-See : [Contributing](https://github.com/gcp/leela-zero/tree/next#contributing)
+To work successfully, autogtp and leelaz binaries need to be in the same directory.
 
-While autogtp is running, typing q+Enter will save the processed data and exit. When autogtp runs next, autogtp will continue the game.
+While autogtp is running, typing q+Enter will save the processed data and exit. 
+When autogtp runs next, autogtp will continue the game.
