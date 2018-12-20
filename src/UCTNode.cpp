@@ -261,10 +261,10 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root, bool is_pondering, i
 
     const auto winrate_target_value = 0.01f * cfg_winrate_target; // Converts user input into float between 1.0f and 0.0f
 
-	bool is_opponent_move = ((depth % 2) != 0); // Returns "true" on moves at odd-numbered depth, indicating at any depth in a search variation which moves are played by LZ's opponent.
-	if (is_pondering) {
-		is_opponent_move = !is_opponent_move; // When pondering, opponent's moves are made at even-numbered depths. Flipping this bool accounts for this.
-	}
+    bool is_opponent_move = ((depth % 2) != 0); // Returns "true" on moves at odd-numbered depth, indicating at any depth in a search variation which moves are played by LZ's opponent.
+    if (is_pondering) {
+        is_opponent_move = !is_opponent_move; // When pondering, opponent's moves are made at even-numbered depths. Flipping this bool accounts for this.
+    }
 
     for (auto& child : m_children) {
         if (!child.active()) {
