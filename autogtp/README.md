@@ -11,7 +11,7 @@ the SGF and training data at the end of the game.
 * curl
 * gzip and gunzip
 
-## Compiling - Ubuntu and macOS
+## Compiling - Ubuntu and similar, macOS
 
 Follow main page instructions to compile leelaz and autogtp binaries at the same time.
 
