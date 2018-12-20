@@ -107,7 +107,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install leelaz build depedencies
     sudo apt install cmake libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev curl
     
-    # Optional : if you want to use autogtp to contribute, install autogtp dependencies as well
+    # Optional : if you want to contribute to the distributed effort, you need these dependencies as well
     sudo apt install qt5-default qt5-qmake
 
     # Use a stand alone build directory to keep source dir clean
@@ -130,7 +130,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     # Install leelaz build depedencies
     brew install boost cmake curl
     
-    # Optional : if you want to use autogtp to contribute, install autogtp dependencies as well
+    # Optional : if you want to contribute to the distributed effort, you need these dependencies as well
     brew install qt5
 
     # Use a stand alone build directory to keep source dir clean
@@ -167,7 +167,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
       # Run AutoGTP to start contributing
       ./autogtp/autogtp
 
-For more details about autogtp or for more advanced use, you can see [the autogtp readme](https://github.com/gcp/leela-zero/blob/next/autogtp/README.md)
+For more details about AutoGTP or for more advanced use, please see [the autogtp readme](https://github.com/gcp/leela-zero/blob/next/autogtp/README.md)
 
 # Usage for playing or analyzing games
 
