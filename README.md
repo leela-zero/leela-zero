@@ -92,6 +92,7 @@ If you do not have a GPU, add the define "USE_CPU_ONLY", for example
 by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 * Optional: BLAS Library: OpenBLAS (libopenblas-dev) or Intel MKL
 * The program has been tested on Windows, Linux and macOS.
+* [autogtp](/autogtp/README.md)
 
 ## Example of compiling - Ubuntu & similar
 
