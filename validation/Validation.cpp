@@ -23,27 +23,25 @@
 
 using VersionTuple = std::tuple<int, int, int>;
 // Minimal Leela Zero version we expect to see
-const VersionTuple min_leelaz_version{0, 10, 0};
+const VersionTuple min_leelaz_version{0, 16, 0};
 
 
 void ValidationWorker::run() {
     do {
-        Game first(m_engines[0].m_network, m_engines[0].m_options,
-                   m_engines[0].m_binary, m_engines[0].m_commands);
+        Game first(m_engines[0]);
         if (!first.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
-        Game second(m_engines[1].m_network, m_engines[1].m_options,
-                    m_engines[1].m_binary, m_engines[1].m_commands);
+        Game second(m_engines[1]);
         if (!second.gameStart(min_leelaz_version)) {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
         QTextStream(stdout) << "starting:" << endl <<
-            first.getCmdLine() << endl <<
+            m_engines[0].getCmdLine() << endl <<
             "vs" << endl <<
-            second.getCmdLine() << endl;
+            m_engines[1].getCmdLine() << endl;
 
         QString wmove = "play white ";
         QString bmove = "play black ";

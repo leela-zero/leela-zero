@@ -195,6 +195,11 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, net_t_input.data());
 
+    // Fused in_out transformation kernel is slower with big batch_sizes than
+    // calling out and in transformations separately.
+    // This condition could be tunable in future.
+    auto use_inout = (batch_size == 1);
+
     auto skip_in_trans = false;
     for (auto iter = cbegin(m_layers); iter != cend(m_layers); iter++) {
         const auto& layer = *iter;
@@ -206,7 +211,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
             auto bn_weights = begin(layer.weights) + 1;
             auto skip_next_in_trans = false;
             if (niter->is_residual_block) {
-                skip_next_in_trans = true;
+                skip_next_in_trans = use_inout;
             }
 
             convolve3(opencl_context,
@@ -240,12 +245,12 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                       conv1_weights,
                       nullptr,
                       bn1_weights,
-                      skip_in_trans, true, false,
+                      skip_in_trans, use_inout, false,
                       batch_size);
 
             auto skip_next_in_trans = false;
             if (niter->is_residual_block) {
-                skip_next_in_trans = true;
+                skip_next_in_trans = use_inout;
             }
             convolve3(opencl_context,
                       layer.channels,
@@ -257,7 +262,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                       conv2_weights,
                       &inBuffer,
                       bn2_weights,
-                      true, skip_next_in_trans, true,
+                      use_inout, skip_next_in_trans, true,
                       batch_size);
             skip_in_trans = skip_next_in_trans;
         } else {
@@ -347,8 +352,6 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
     assert(wavefront_size != 0);
 
     constexpr auto tiles = WINOGRAD_P;
-    constexpr auto width = BOARD_SIZE;
-    constexpr auto height = BOARD_SIZE;
 
     auto wgs = ceilMultiple(batch_size * tiles, wavefront_size);
     auto wgs_single = ceilMultiple(tiles, wavefront_size);
@@ -371,7 +374,7 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
             queue.enqueueNDRangeKernel(in_transform_kernel, cl::NullRange,
                                        cl::NDRange(wgs, channels));
         } catch (const cl::Error &e) {
-            std::cerr << "Error in convolve3: " << e.what() << ": "
+            std::cerr << "Error in convolve3/in: " << e.what() << ": "
                 << e.err() << std::endl;
             throw;
         }
@@ -394,7 +397,7 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
         queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
                                    size_sgemm, local_sgemm);
     } catch (const cl::Error &e) {
-        std::cerr << "Error in convolve3: " << e.what() << ": "
+        std::cerr << "Error in convolve3/sgemm: " << e.what() << ": "
             << e.err() << std::endl;
         throw;
     }
@@ -402,6 +405,7 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
     try {
         if (fuse_in_transform) {
             // TODO : Eventually this might also be something tuneable?
+            // Needs to match OUTIN_KWG in kernel
             constexpr auto dim_size = 2;
             out_transform_bn_in_kernel.setArg(0, bufferM);
             if (store_inout) {
@@ -423,8 +427,6 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
             }
             out_transform_bn_in_kernel.setArg(8, bn_weights[0]);
             out_transform_bn_in_kernel.setArg(9, bn_weights[1]);
-            out_transform_bn_in_kernel.setArg(10,
-                cl::Local(dim_size * width * height * sizeof(float)));
 
             queue.enqueueNDRangeKernel(out_transform_bn_in_kernel,
                                        cl::NullRange,
@@ -445,11 +447,19 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
             out_transform_bn_kernel.setArg(7, bn_weights[0]);
             out_transform_bn_kernel.setArg(8, bn_weights[1]);
 
+            // Needs to match OUT_KWG, OUT_BWG in the kernel.
+            // This could be tuned.
+            cl::NDRange local_out = {32, 2};
+
+            cl::NDRange global_out = {ceilMultiple(outputs, local_out[0]),
+                                      ceilMultiple(tiles * batch_size, local_out[1])};
+
             queue.enqueueNDRangeKernel(out_transform_bn_kernel, cl::NullRange,
-                                       cl::NDRange(outputs, wgs));
+                                       global_out,
+                                       local_out);
         }
     } catch (const cl::Error &e) {
-        std::cerr << "Error in convolve3: " << e.what() << ": "
+        std::cerr << "Error in convolve3/out: " << e.what() << ": "
             << e.err() << std::endl;
         throw;
     }
@@ -641,7 +651,7 @@ std::vector<size_t> OpenCL<net_t>::get_sgemm_tuners() {
 }
 
 template <typename net_t>
-void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
+OpenCL<net_t>::OpenCL(int gpu, bool silent) {
     std::vector<cl::Platform> platforms;
     try {
         cl::Platform::get(&platforms);
@@ -719,7 +729,9 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
 
             bool preferred = (gpu == id);
 
-            if ((this_score > best_score) || preferred) {
+            if (((this_score > best_score)
+                 && (d.getInfo<CL_DEVICE_TYPE>() != CL_DEVICE_TYPE_CPU))
+                || preferred) {
                 best_version = opencl_version;
                 best_platform = p;
                 best_device = d;
@@ -756,6 +768,21 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     m_context = context;
     m_device = best_device;
 
+    m_cl_args = getClArgs<net_t>();
+
+    myprintf("Half precision compute support: ");
+    if (m_device.getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp16")
+        != std::string::npos) {
+        myprintf("Yes.\n");
+        m_fp16_compute = true;
+        m_cl_args += " -DFP16_SUPPORT";
+    } else {
+        myprintf("No.\n");
+    }
+}
+
+template <typename net_t>
+void OpenCL<net_t>::initialize(const int channels) {
     // Make program of the source code in the context
     try {
         m_program = cl::Program(m_context,
@@ -769,26 +796,17 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
         throw std::runtime_error("Error getting OpenCL kernels.");
     }
 
-    m_cl_args = getClArgs<net_t>();
-
-    myprintf("Half precision compute support: ");
-    if (m_device.getInfo<CL_DEVICE_EXTENSIONS>().find("cl_khr_fp16")
-        != std::string::npos) {
-        myprintf("YES\n");
-        m_cl_args += " -DFP16_SUPPORT";
-    } else {
-        myprintf("NO\n");
-    }
-
     auto t = Tuner<net_t>(*this, m_context, m_device);
     auto sgemm_tuners =
         t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
 
-    // Exit immediately after tuning. Some NVIDIA drivers are buggy
-    // and will fail to compile the rest of the kernels after a tuning
-    // run. See #729.
+    // Some NVIDIA drivers are buggy and will fail to compile the rest of the
+    // kernels after a tuning run.
     if (cfg_tune_only) {
-        exit(EXIT_SUCCESS);
+        // Originally this was an exit() but this will make the tuner
+        // only tune the first GPU.  Return instead.  Exit will be called
+        // after all GPUs are created.
+        return;
     }
 
     // Build program for these specific devices
@@ -814,11 +832,11 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
 
     m_wavefront_size =
         tdata.m_sgemm_kernel.getWorkGroupInfo<
-            CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(best_device);
+            CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE>(m_device);
     myprintf("Wavefront/Warp size: %d\n", m_wavefront_size);
 
-    m_max_workgroup_size = best_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-    m_max_workgroup_dims = best_device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
+    m_max_workgroup_size = m_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    m_max_workgroup_dims = m_device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
 
     myprintf("Max workgroup size: %d\n", m_max_workgroup_size);
     myprintf("Max workgroup dimensions: ");
@@ -828,6 +846,11 @@ void OpenCL<net_t>::initialize(const int channels, int gpu, bool silent) {
     myprintf("\n");
 
     m_init_ok = true;
+}
+
+template <typename net_t>
+bool OpenCL<net_t>::has_fp16_compute() {
+    return m_fp16_compute;
 }
 
 template <typename net_t>

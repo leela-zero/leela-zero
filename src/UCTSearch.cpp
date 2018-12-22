@@ -43,12 +43,18 @@ constexpr int UCTSearch::UNLIMITED_PLAYOUTS;
 
 class OutputAnalysisData {
 public:
-    OutputAnalysisData(const std::string& move, int visits, int winrate, std::string pv) :
-        m_move(move), m_visits(visits), m_winrate(winrate), m_pv(pv) {};
+    OutputAnalysisData(const std::string& move, int visits,
+                       float winrate, float policy_prior, std::string pv)
+    : m_move(move), m_visits(visits), m_winrate(winrate),
+      m_policy_prior(policy_prior), m_pv(pv) {};
 
     std::string get_info_string(int order) const {
-        auto tmp = "info move " + m_move + " visits " + std::to_string(m_visits) +
-                          " winrate " + std::to_string(m_winrate);
+        auto tmp = "info move " + m_move
+                 + " visits " + std::to_string(m_visits)
+                 + " winrate "
+                 + std::to_string(static_cast<int>(m_winrate * 10000))
+                 + " prior "
+                 + std::to_string(static_cast<int>(m_policy_prior * 10000.0f));
         if (order >= 0) {
             tmp += " order " + std::to_string(order);
         }
@@ -56,7 +62,8 @@ public:
         return tmp;
     }
 
-    friend bool operator<(const OutputAnalysisData& a, const OutputAnalysisData& b) {
+    friend bool operator<(const OutputAnalysisData& a,
+                          const OutputAnalysisData& b) {
         if (a.m_visits == b.m_visits) {
             return a.m_winrate < b.m_winrate;
         }
@@ -66,7 +73,8 @@ public:
 private:
     std::string m_move;
     int m_visits;
-    int m_winrate;
+    float m_winrate;
+    float m_policy_prior;
     std::string m_pv;
 };
 
@@ -182,6 +190,10 @@ float UCTSearch::get_min_psa_ratio() const {
     if (mem_full > 0.5f) {
         // Memory is almost exhausted, trim more aggressively.
         if (mem_full > 0.95f) {
+            // if completely full just stop expansion by returning an impossible number
+            if (mem_full >= 1.0f) {
+                return 2.0f;
+            }
             return 0.01f;
         }
         return 0.001f;
@@ -200,7 +212,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         if (currstate.get_passes() >= 2) {
             auto score = currstate.final_score();
             result = SearchResult::from_score(score);
-        } else if (UCTNodePointer::get_tree_size() < cfg_max_tree_size) {
+        } else {
             float eval;
             const auto had_children = node->has_children();
             const auto success =
@@ -275,21 +287,22 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         return;
     }
 
-    const int color = state.get_to_move();
+    const auto color = state.get_to_move();
 
     for (const auto& node : parent.get_children()) {
         // Only send variations with visits
-        if (!node->get_visits()) continue;
-
+        if (!node->get_visits()) {
+            continue;
+        }
         std::string move = state.move_to_text(node->get_move());
         FastState tmpstate = state;
         tmpstate.play_move(node->get_move());
         std::string pv = move + " " + get_pv(tmpstate, *node);
-        auto move_eval = node->get_visits() ?
-                         static_cast<int>(node->get_raw_eval(color) * 10000) : 0;
+        auto move_eval = node->get_visits() ? node->get_raw_eval(color) : 0.0f;
+        auto policy = node->get_policy();
         // Store data in array
-        sortable_data.emplace_back(move, node->get_visits(), move_eval, pv);
-
+        sortable_data.emplace_back(move, node->get_visits(),
+                                   move_eval, policy, pv);
     }
     // Sort array to decide order
     std::stable_sort(rbegin(sortable_data), rend(sortable_data));
@@ -527,6 +540,14 @@ std::string UCTSearch::get_pv(FastState & state, UCTNode& parent) {
         return std::string();
     }
 
+    if (parent.expandable()) {
+        // Not fully expanded. This means someone could expand
+        // the node while we want to traverse the children.
+        // Avoid the race conditions and don't go through the rabbit hole
+        // of trying to print things from this node.
+        return std::string();
+    }
+
     auto& best_child = parent.get_best_root_child(state.get_to_move());
     if (best_child.first_visit()) {
         return std::string();
@@ -716,7 +737,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         // check if we should still search
         if (elapsed_centis - last_update > 250) {
             last_update = elapsed_centis;
-            dump_analysis(static_cast<int>(m_playouts));
+            dump_analysis(m_playouts.load());
         }
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(elapsed_centis, time_for_move);
@@ -744,13 +765,11 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
     Time elapsed;
     int elapsed_centis = Time::timediff_centis(start, elapsed);
-    if (elapsed_centis+1 > 0) {
-        myprintf("%d visits, %d nodes, %d playouts, %.0f n/s\n\n",
-                 m_root->get_visits(),
-                 static_cast<int>(m_nodes),
-                 static_cast<int>(m_playouts),
-                 (m_playouts * 100.0) / (elapsed_centis+1));
-    }
+    myprintf("%d visits, %d nodes, %d playouts, %.0f n/s\n\n",
+             m_root->get_visits(),
+             m_nodes.load(),
+             m_playouts.load(),
+             (m_playouts * 100.0) / (elapsed_centis+1));
     int bestmove = get_best_move(passflag);
 
     // Copy the root state. Use to check for tree re-use in future calls.

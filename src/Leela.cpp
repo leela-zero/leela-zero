@@ -92,8 +92,9 @@ static void parse_commandline(int argc, char *argv[]) {
         ("full-tuner", "Try harder to find an optimal OpenCL tuning.")
         ("tune-only", "Tune OpenCL only and then exit.")
 #ifdef USE_HALF
-        ("precision", po::value<std::string>(), "Floating-point precision (single/half/auto).\n"
-                                                "Default is to auto which automatically determines which one to use.")
+        ("precision", po::value<std::string>(),
+            "Floating-point precision (single/half/auto).\n"
+            "Default is to auto which automatically determines which one to use.")
 #endif
         ;
 #endif
@@ -209,7 +210,8 @@ static void parse_commandline(int argc, char *argv[]) {
 #ifdef USE_OPENCL
     if (vm.count("gpu")) {
         cfg_gpus = vm["gpu"].as<std::vector<int> >();
-        // if we use OpenCL, we probably need more threads for the max so that we can saturate the GPU.
+        // if we use OpenCL, we probably need more threads for the max
+        // so that we can saturate the GPU.
         cfg_max_threads *= cfg_gpus.size();
         // we can't exceed MAX_CPUS
         cfg_max_threads = std::min(cfg_max_threads, MAX_CPUS);
@@ -217,6 +219,11 @@ static void parse_commandline(int argc, char *argv[]) {
 
     if (vm.count("full-tuner")) {
         cfg_sgemm_exhaustive = true;
+
+        // --full-tuner auto-implies --tune-only.  The full tuner is so slow
+        // that nobody will wait for it to finish befure running a game.
+        // This simply prevents some edge cases from confusing other people.
+        cfg_tune_only = true;
     }
 
     if (vm.count("tune-only")) {
@@ -234,6 +241,14 @@ static void parse_commandline(int argc, char *argv[]) {
             cfg_precision = precision_t::AUTO;
         } else {
             printf("Unexpected option for --precision, expecting single/half/auto\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (cfg_precision == precision_t::AUTO) {
+        // Auto precision is not supported for full tuner cases.
+        if (cfg_sgemm_exhaustive) {
+            printf("Automatic precision not supported when doing exhaustive tuning\n");
+            printf("Please add '--precision single' or '--precision half'\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -340,7 +355,8 @@ static void parse_commandline(int argc, char *argv[]) {
     if (vm.count("lagbuffer")) {
         int lagbuffer = vm["lagbuffer"].as<int>();
         if (lagbuffer != cfg_lagbuffer_cs) {
-            myprintf("Using per-move time margin of %.2fs.\n", lagbuffer/100.0f);
+            myprintf("Using per-move time margin of %.2fs.\n",
+                     lagbuffer/100.0f);
             cfg_lagbuffer_cs = lagbuffer;
         }
     }
@@ -360,6 +376,9 @@ static void parse_commandline(int argc, char *argv[]) {
         }
     }
 
+    // Do not lower the expected eval for root moves that are likely not
+    // the best if we have introduced noise there exactly to explore more.
+    cfg_fpu_root_reduction = cfg_noise ? 0.0f : cfg_fpu_reduction;
 
     auto out = std::stringstream{};
     for (auto i = 1; i < argc; i++) {
@@ -407,8 +426,6 @@ void benchmark(GameState& game) {
 }
 
 int main(int argc, char *argv[]) {
-    auto input = std::string{};
-
     // Set up engine parameters
     GTP::setup_default_parameters();
     parse_commandline(argc, argv);
@@ -420,7 +437,7 @@ int main(int argc, char *argv[]) {
 
     setbuf(stdout, nullptr);
     setbuf(stderr, nullptr);
-#ifndef WIN32
+#ifndef _WIN32
     setbuf(stdin, nullptr);
 #endif
 
@@ -448,6 +465,7 @@ int main(int argc, char *argv[]) {
             std::cout << "Leela: ";
         }
 
+        auto input = std::string{};
         if (std::getline(std::cin, input)) {
             Utils::log_input(input);
             GTP::execute(*maingame, input);

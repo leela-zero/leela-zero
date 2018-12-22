@@ -35,7 +35,8 @@
    number due to winograd tiles
  */
 static constexpr auto BOARD_SIZE = 19;
-static_assert(BOARD_SIZE % 2 == 1, "Code assumes odd board size, remove at your own risk!");
+static_assert(BOARD_SIZE % 2 == 1,
+              "Code assumes odd board size, remove at your own risk!");
 
 static constexpr auto NUM_INTERSECTIONS = BOARD_SIZE * BOARD_SIZE;
 static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
@@ -43,19 +44,23 @@ static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
 /*
  * Features
  *
- * USE_BLAS: Use a basic linear algebra library.
- * We currently require this, as not all operations are performed on
- * the GPU - some operations won't get any speedup from it.
+ * USE_BLAS: Optionally use a basic linear algebra library.
+ * This is may perform faster than the included Eigen library,
+ * and some BLAS libraries can target multiple CPU models.
+ * Not all operations are performed on the GPU -
+ * some operations won't get any speedup from it.
  * Also used for OpenCL self-checks.
  */
-#define USE_BLAS
+//#define USE_BLAS
 
 /*
  * We use OpenBLAS by default, except on macOS, which has a fast BLAS
  * built-in. (Accelerate)
  */
 #if !defined(__APPLE__) && !defined(__MACOSX)
+#if defined(USE_BLAS)
 #define USE_OPENBLAS
+#endif
 #endif
 
 /*
@@ -97,7 +102,7 @@ static_assert(MAX_BATCH == 1, "MAX_BATCH != 1 not implemented");
 //#define USE_TUNER
 
 static constexpr auto PROGRAM_NAME = "Leela Zero";
-static constexpr auto PROGRAM_VERSION = "0.15";
+static constexpr auto PROGRAM_VERSION = "0.16";
 
 /*
  * OpenBLAS limitation: the default configuration on some Linuxes
@@ -106,16 +111,16 @@ static constexpr auto PROGRAM_VERSION = "0.15";
 #if defined(USE_BLAS) && defined(USE_OPENBLAS)
 static constexpr auto MAX_CPUS = 64;
 #else
-static constexpr auto MAX_CPUS = 128;
+static constexpr auto MAX_CPUS = 256;
 #endif
 
 #ifdef USE_HALF
 #include "half/half.hpp"
 #endif
 
-#if defined(USE_BLAS) && defined(USE_OPENCL)
-// If both BLAS and OpenCL are fully usable, then check the OpenCL
-// results against BLAS with some probability.
+#ifdef USE_OPENCL
+// If OpenCL are fully usable, then check the OpenCL against CPU
+// implementation with some probability.
 #define USE_OPENCL_SELFCHECK
 static constexpr auto SELFCHECK_PROBABILITY = 2000;
 #endif

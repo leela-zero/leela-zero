@@ -27,14 +27,12 @@
 
 Job::Job(QString gpu, Management *parent) :
     m_state(RUNNING),
-    m_option(""),
-  m_gpu(gpu),
-  m_boss(parent)
+    m_gpu(gpu),
+    m_boss(parent)
 {
 }
 
 void Job::init(const Order &o) {
-    m_option = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
     QStringList version_list = o.parameters()["leelazVer"].split(".");
     if (version_list.size() < 2) {
         QTextStream(stdout)
@@ -47,36 +45,44 @@ void Job::init(const Order &o) {
     std::get<0>(m_leelazMinVersion) = version_list[0].toInt();
     std::get<1>(m_leelazMinVersion) = version_list[1].toInt();
     std::get<2>(m_leelazMinVersion) = version_list[2].toInt();
-
 }
 
 ProductionJob::ProductionJob(QString gpu, Management *parent) :
-Job(gpu, parent)
+    Job(gpu, parent),
+    m_engine(Engine(QString(), QString()))
 {
 }
 
 ValidationJob::ValidationJob(QString gpu, Management *parent) :
-Job(gpu, parent)
+    Job(gpu, parent),
+    m_engineFirst(Engine(QString(), QString())),
+    m_engineSecond(Engine(QString(), QString()))
 {
 }
 
 WaitJob::WaitJob(QString gpu, Management *parent) :
-Job(gpu, parent)
+    Job(gpu, parent)
 {
 }
 
 Result ProductionJob::execute(){
     Result res(Result::Error);
-    Game game("networks/" + m_network + ".gz", m_option);
+    Game game(m_engine);
     if (!game.gameStart(m_leelazMinVersion)) {
         return res;
     }
     if (!m_sgf.isEmpty()) {
-        game.loadSgf(m_sgf);
-        game.loadTraining(m_sgf);
+        if (m_moves == 0) {
+            game.loadSgf(m_sgf);
+        } else {
+            game.loadSgf(m_sgf, m_moves);
+        }
         game.setMovesCount(m_moves);
+        if (m_restore) {
+            game.loadTraining(m_sgf);
+            QFile::remove(m_sgf + ".train");
+        }
         QFile::remove(m_sgf + ".sgf");
-        QFile::remove(m_sgf + ".train");
     }
     do {
         game.move();
@@ -91,7 +97,7 @@ Result ProductionJob::execute(){
         QTextStream(stdout) << "Game has ended." << endl;
         if (game.getScore()) {
             game.writeSgf();
-            game.fixSgf(m_network, false);
+            game.fixSgf(m_engine.getNetworkFile(), false);
             game.dumpTraining();
             if (m_debug) {
                 game.dumpDebug();
@@ -103,9 +109,9 @@ Result ProductionJob::execute(){
         res.add("moves", QString::number(game.getMovesCount()));
         break;
     case STORING:
-        res.type(Result::StoreSelfPlayed);
         game.writeSgf();
         game.saveTraining();
+        res.type(Result::StoreSelfPlayed);
         res.add("sgf", game.getFile());
         res.add("moves", QString::number(game.getMovesCount()));
         break;
@@ -118,36 +124,35 @@ Result ProductionJob::execute(){
 
 void ProductionJob::init(const Order &o) {
     Job::init(o);
-    m_network = o.parameters()["network"];
+    m_engine.m_network = "networks/" + o.parameters()["network"] + ".gz";
+    m_engine.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
     m_debug = o.parameters()["debug"] == "true";
-    if (o.type() == Order::RestoreSelfPlayed) {
-        m_sgf = o.parameters()["sgf"];
-        m_moves = o.parameters()["moves"].toInt();
-    } else {
-        m_sgf = "";
-        m_moves = 0;
-    }
+    m_sgf = o.parameters()["sgf"];
+    m_moves = o.parameters()["moves"].toInt();
+    m_restore = o.type() == Order::RestoreSelfPlayed;
 }
 
 Result ValidationJob::execute(){
     Result res(Result::Error);
-    Game first("networks/" + m_firstNet + ".gz",  m_option);
+    Game first(m_engineFirst);
     if (!first.gameStart(m_leelazMinVersion)) {
         return res;
     }
-    if (!m_sgfFirst.isEmpty()) {
-        first.loadSgf(m_sgfFirst);
-        first.setMovesCount(m_moves);
-        QFile::remove(m_sgfFirst + ".sgf");
-    }
-    Game second("networks/" + m_secondNet + ".gz", m_option);
+    Game second(m_engineSecond);
     if (!second.gameStart(m_leelazMinVersion)) {
         return res;
     }
-    if (!m_sgfSecond.isEmpty()) {
-        second.loadSgf(m_sgfSecond);
+    if (!m_sgf.isEmpty()) {
+        if (m_moves == 0) {
+            first.loadSgf(m_sgf);
+            second.loadSgf(m_sgf);
+        } else {
+            first.loadSgf(m_sgf, m_moves);
+            second.loadSgf(m_sgf, m_moves);
+        }
+        first.setMovesCount(m_moves);
         second.setMovesCount(m_moves);
-        QFile::remove(m_sgfSecond + ".sgf");
+        QFile::remove(m_sgf + ".sgf");
     }
 
     QString wmove = "play white ";
@@ -175,24 +180,22 @@ Result ValidationJob::execute(){
 
     switch (m_state.load()) {
     case RUNNING:
-        res.add("moves", QString::number(first.getMovesCount()));
-       QTextStream(stdout) << "Game has ended." << endl;
+        QTextStream(stdout) << "Game has ended." << endl;
         if (first.getScore()) {
             res.add("score", first.getResult());
             res.add("winner", first.getWinnerName());
             first.writeSgf();
-            first.fixSgf(m_secondNet, (res.parameters()["score"] == "B+Resign"));
+            first.fixSgf(m_engineSecond.getNetworkFile(),
+                (res.parameters()["score"] == "B+Resign"));
             res.add("file", first.getFile());
         }
-        // Game is finished, send the result
         res.type(Result::Win);
+        res.add("moves", QString::number(first.getMovesCount()));
         break;
     case STORING:
-        res.type(Result::StoreMatch);
         first.writeSgf();
-        second.writeSgf();
-        res.add("sgfFirst", first.getFile());
-        res.add("sgfSecond", second.getFile());
+        res.type(Result::StoreMatch);
+        res.add("sgf", first.getFile());
         res.add("moves", QString::number(first.getMovesCount()));
         break;
     default:
@@ -205,17 +208,12 @@ Result ValidationJob::execute(){
 
 void ValidationJob::init(const Order &o) {
     Job::init(o);
-    m_firstNet = o.parameters()["firstNet"];
-    m_secondNet = o.parameters()["secondNet"];
-    if (o.type() == Order::RestoreMatch) {
-        m_sgfFirst = o.parameters()["sgfFirst"];
-        m_sgfSecond = o.parameters()["sgfSecond"];
-        m_moves = o.parameters()["moves"].toInt();
-    } else {
-        m_sgfFirst = "";
-        m_sgfSecond = "";
-        m_moves = 0;
-    }
+    m_engineFirst.m_network = "networks/" + o.parameters()["firstNet"] + ".gz";
+    m_engineFirst.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
+    m_engineSecond.m_network = "networks/" + o.parameters()["secondNet"] + ".gz";
+    m_engineSecond.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
+    m_sgf = o.parameters()["sgf"];
+    m_moves = o.parameters()["moves"].toInt();
 }
 
 Result WaitJob::execute(){
@@ -228,5 +226,3 @@ void WaitJob::init(const Order &o) {
     Job::init(o);
     m_minutes = o.parameters()["minutes"].toInt();
 }
-
-

@@ -28,6 +28,9 @@
 #include <random>
 #include <cmath>
 #include <fstream>
+#ifndef USE_BLAS
+#include <Eigen/Dense>
+#endif
 
 #include "GTP.h"
 #include "OpenCL.h"
@@ -36,6 +39,19 @@
 #include "Random.h"
 
 const auto TUNER_FILE_LOCAL = std::string("leelaz_opencl_tuning");
+
+template <typename net_t>
+std::vector<std::string> Tuner<net_t>::tuned_devices;
+
+#ifndef USE_BLAS
+// Eigen helpers
+template <typename T>
+using EigenMatrixMap =
+    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using ConstEigenMatrixMap =
+    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>;
+#endif
 
 template <typename net_t> static std::string getTunerKernel();
 template <typename net_t> static float getTunerMaxError();
@@ -77,8 +93,9 @@ static void sgemmBatched_ref(const std::vector<net_t>& a,
         auto offset_u = batch * m * k;
         auto offset_v = batch * n * k;
         auto offset_m = batch * m * n;
-
-        // Calculates transpose(tranpose(A) * B)
+#ifdef USE_BLAS
+        // Calculates C = transpose(tranpose(A) * B) in row major, or
+        // C = A * transpose(B) in column major.
         for (auto i = 0; i < m; i++) {
             for (auto j = 0; j < n; j++) {
                 auto acc = 0.0f;
@@ -88,6 +105,12 @@ static void sgemmBatched_ref(const std::vector<net_t>& a,
                 cr[j * m + i + offset_m] = acc;
             }
         }
+#else
+        auto C = EigenMatrixMap<float>(cr.data() + offset_m, m, n);
+        auto A = ConstEigenMatrixMap<float>(ar.data() + offset_u, m, k);
+        auto B = ConstEigenMatrixMap<float>(br.data() + offset_v, n, k);
+        C.noalias() = (A * B.transpose());
+#endif
     }
 
     std::copy(begin(cr), end(cr), begin(c));
@@ -134,8 +157,9 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
 }
 
 template <typename net_t>
-Parameters Tuner<net_t>::get_parameters_by_int(const std::vector<Configurations>& opts,
-                                        const int n) {
+Parameters Tuner<net_t>::get_parameters_by_int(
+    const std::vector<Configurations>& opts, const int n) {
+
     Parameters param;
     std::vector<size_t> choices(opts.size());
 
@@ -447,16 +471,16 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
     }
     if (best_time == 0) {
         if (failed_compile > 0) {
-            printf("Failed to compile: %d kernels.\n", failed_compile);
+            myprintf_error("Failed to compile: %d kernels.\n", failed_compile);
         }
         if (failed_enqueue > 0) {
-            printf("Failed to enqueue: %d kernels\n", failed_enqueue);
+            myprintf_error("Failed to enqueue: %d kernels\n", failed_enqueue);
         }
         if (failed_error > 0) {
-            printf("Too high error: %d kernels\n", failed_error);
+            myprintf_error("Too high error: %d kernels\n", failed_error);
         }
-        printf("Failed to find a working configuration.\nCheck your OpenCL drivers.\n");
-        printf("Minimum error: %f. Error bound: %f\n", min_error, getTunerMaxError<net_t>());
+        myprintf_error("Failed to find a working configuration.\nCheck your OpenCL drivers.\n");
+        myprintf_error("Minimum error: %f. Error bound: %f\n", min_error, getTunerMaxError<net_t>());
         throw std::runtime_error("Tuner failed to find working configuration.");
     }
     return best_params;
@@ -558,7 +582,24 @@ std::string Tuner<net_t>::load_sgemm_tuners(const int m, const int n, const int 
                                      const int batch_size) {
     auto tuner_file = leelaz_file(TUNER_FILE_LOCAL);
     auto file = std::ifstream{tuner_file};
-    if (!cfg_sgemm_exhaustive && file.good()) {
+
+    auto try_prior_tuning = file.good();
+
+    // If we want full tuning, don't reuse previously tuned results
+    // except if the tuning was created from this run from a different
+    // GPU instance with the same name.  This prevents the tuner running
+    // for multiple times if the system has multiple same GPUs.
+    if (try_prior_tuning && cfg_sgemm_exhaustive) {
+        auto dev = m_opencl.get_device_name();
+        try_prior_tuning = std::any_of(
+            begin(tuned_devices),
+            end(tuned_devices),
+            [&dev](const std::string & x) { return dev == x; }
+        );
+    }
+    tuned_devices.emplace_back(m_opencl.get_device_name());
+
+    if (try_prior_tuning) {
         auto line = std::string{};
         while (std::getline(file, line)) {
             auto tuners = sgemm_tuners_from_line(line, m, n, k, batch_size);

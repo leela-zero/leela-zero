@@ -45,6 +45,7 @@ public:
     virtual ~ForwardPipe() = default;
 
     virtual void initialize(const int channels) = 0;
+    virtual bool needs_autodetect() { return false; };
     virtual void forward(const std::vector<float>& input,
                          std::vector<float>& output_pol,
                          std::vector<float>& output_val) = 0;

@@ -36,16 +36,17 @@ public:
     SGFTree() = default;
     void init_state();
 
-    KoState * get_state();
-    GameState follow_mainline_state(unsigned int movenum = 999);
-    std::vector<int> get_mainline();
+    const KoState * get_state() const;
+    GameState follow_mainline_state(unsigned int movenum = 999) const;
+    std::vector<int> get_mainline() const;
+
     void load_from_file(const std::string& filename, int index = 0);
     void load_from_string(const std::string& gamebuff);
 
     void add_property(std::string property, std::string value);
     SGFTree * add_child();
-    SGFTree * get_child(size_t count);
-    int get_move(int tomove);
+    const SGFTree * get_child(size_t count) const;
+    int get_move(int tomove) const;
     std::pair<int, int> get_colored_move() const;
     bool is_initialized() const {
         return m_initialized;

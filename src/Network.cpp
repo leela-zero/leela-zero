@@ -30,6 +30,9 @@
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/home/x3.hpp>
+#ifndef USE_BLAS
+#include <Eigen/Dense>
+#endif
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -62,19 +65,38 @@
 namespace x3 = boost::spirit::x3;
 using namespace Utils;
 
+#ifndef USE_BLAS
+// Eigen helpers
+template <typename T>
+using EigenVectorMap =
+    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>>;
+template <typename T>
+using ConstEigenVectorMap =
+    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>>;
+template <typename T>
+using ConstEigenMatrixMap =
+    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>;
+#endif
+
 // Symmetry helper
 static std::array<std::array<int, NUM_INTERSECTIONS>,
                   Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
 
 float Network::benchmark_time(int centiseconds) {
     const auto cpus = cfg_num_threads;
-    const Time start;
 
     ThreadGroup tg(thread_pool);
     std::atomic<int> runcount{0};
 
     GameState state;
     state.init_game(BOARD_SIZE, 7.5);
+
+    // As a sanity run, try one run with self check.
+    // Isn't enough to guarantee correctness but better than nothing,
+    // plus for large nets self-check takes a while (1~3 eval per second)
+    get_output(&state, Ensemble::RANDOM_SYMMETRY, -1, true, true);
+
+    const Time start;
     for (auto i = 0; i < cpus; i++) {
         tg.add_task([this, &runcount, start, centiseconds, state]() {
             while (true) {
@@ -347,6 +369,93 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
     return {0, 0};
 }
 
+std::unique_ptr<ForwardPipe>&& Network::init_net(int channels,
+    std::unique_ptr<ForwardPipe>&& pipe) {
+
+    pipe->initialize(channels);
+    pipe->push_weights(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, m_fwd_weights);
+
+    return std::move(pipe);
+}
+
+#ifdef USE_HALF
+void Network::select_precision(int channels) {
+    if (cfg_precision == precision_t::AUTO) {
+        auto score_fp16 = float{-1.0};
+        auto score_fp32 = float{-1.0};
+
+        myprintf("Initializing OpenCL (autodetecting precision).\n");
+
+        // Setup fp16 here so that we can see if we can skip autodetect.
+        // However, if fp16 sanity check fails we will return a fp32 and pray it works.
+        auto fp16_net = std::make_unique<OpenCLScheduler<half_float::half>>();
+        if (!fp16_net->needs_autodetect()) {
+            try {
+                myprintf("OpenCL: using fp16/half compute support.\n");
+                m_forward = init_net(channels, std::move(fp16_net));
+                benchmark_time(1); // a sanity check run
+            } catch (...) {
+                myprintf("OpenCL: fp16/half failed despite driver claiming support.\n");
+                myprintf("Falling back to single precision\n");
+                m_forward.reset();
+                m_forward = init_net(channels,
+                    std::make_unique<OpenCLScheduler<float>>());
+            }
+            return;
+        }
+
+        // Start by setting up fp32.
+        try {
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+            score_fp32 = benchmark_time(100);
+        } catch (...) {
+            // empty - if exception thrown just throw away fp32 net
+        }
+
+        // Now benchmark fp16.
+        try {
+            m_forward.reset();
+            m_forward = init_net(channels, std::move(fp16_net));
+            score_fp16 = benchmark_time(100);
+        } catch (...) {
+            // empty - if exception thrown just throw away fp16 net
+        }
+
+        if (score_fp16 < 0.0f && score_fp32 < 0.0f) {
+            myprintf("Both single precision and half precision failed to run.\n");
+            throw std::runtime_error("Failed to initialize net.");
+        } else if (score_fp16 < 0.0f) {
+            myprintf("Using OpenCL single precision (half precision failed to run).\n");
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+        } else if (score_fp32 < 0.0f) {
+            myprintf("Using OpenCL half precision (single precision failed to run).\n");
+        } else if (score_fp32 * 1.05f > score_fp16) {
+            myprintf("Using OpenCL single precision (less than 5%% slower than half).\n");
+            m_forward.reset();
+            m_forward = init_net(channels,
+                std::make_unique<OpenCLScheduler<float>>());
+        } else {
+            myprintf("Using OpenCL half precision (at least 5%% faster than single).\n");
+        }
+        return;
+    } else if (cfg_precision == precision_t::SINGLE) {
+        myprintf("Initializing OpenCL (single precision).\n");
+        m_forward = init_net(channels,
+            std::make_unique<OpenCLScheduler<float>>());
+        return;
+    } else if (cfg_precision == precision_t::HALF) {
+        myprintf("Initializing OpenCL (half precision).\n");
+        m_forward = init_net(channels,
+            std::make_unique<OpenCLScheduler<half_float::half>>());
+        return;
+    }
+}
+#endif
+
 void Network::initialize(int playouts, const std::string & weightsfile) {
 #ifdef USE_BLAS
 #ifndef __APPLE__
@@ -362,11 +471,17 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     myprintf("BLAS core: MKL %s\n", Version.Processor);
 #endif
 #endif
+#else
+    myprintf("BLAS Core: built-in Eigen %d.%d.%d library.\n",
+             EIGEN_WORLD_VERSION, EIGEN_MAJOR_VERSION, EIGEN_MINOR_VERSION);
 #endif
 
     m_fwd_weights = std::make_shared<ForwardPipeWeights>();
 
+    // Make a guess at a good size as long as the user doesn't
+    // explicitly set a maximum memory usage.
     m_nncache.set_size_from_playouts(playouts);
+
     // Prepare symmetry table
     for (auto s = 0; s < NUM_SYMMETRIES; ++s) {
         for (auto v = 0; v < NUM_INTERSECTIONS; ++v) {
@@ -406,8 +521,10 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     // still have non-zero biases.
     // Move biases to batchnorm means to make the output match without having
     // to separately add the biases.
-    for (auto i = size_t{0}; i < m_fwd_weights->m_conv_biases.size(); i++) {
-        for (auto j = size_t{0}; j < m_fwd_weights->m_batchnorm_means[i].size(); j++) {
+    auto bias_size = m_fwd_weights->m_conv_biases.size();
+    for (auto i = size_t{0}; i < bias_size; i++) {
+        auto means_size = m_fwd_weights->m_batchnorm_means[i].size();
+        for (auto j = size_t{0}; j < means_size; j++) {
             m_fwd_weights->m_batchnorm_means[i][j] -= m_fwd_weights->m_conv_biases[i][j];
             m_fwd_weights->m_conv_biases[i][j] = 0.0f;
         }
@@ -423,103 +540,36 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
         m_fwd_weights->m_conv_pol_b[i] = 0.0f;
     }
 
-    auto init_net = [this, channels](auto&& p) {
-        p->initialize(channels);
-        p->push_weights(WINOGRAD_ALPHA, INPUT_CHANNELS, channels, m_fwd_weights);
-
-        return std::move(p);
-    };
-
-
-    bool use_selfcheck = true;
 #ifdef USE_OPENCL
     if (cfg_cpu_only) {
         myprintf("Initializing CPU-only evaluation.\n");
-        m_forward = init_net(std::make_unique<CPUPipe>());
-
-        use_selfcheck = false;
+        m_forward = init_net(channels, std::make_unique<CPUPipe>());
     } else {
+#ifdef USE_OPENCL_SELFCHECK
+        // initialize CPU reference first, so that we can self-check
+        // when doing fp16 vs. fp32 detections
+        m_forward_cpu = init_net(channels, std::make_unique<CPUPipe>());
+#endif
 #ifdef USE_HALF
-        switch (cfg_precision) {
-            case precision_t::AUTO:
-                {
-                    auto score_fp16 = float{-1.0};
-                    auto score_fp32 = float{-1.0};
-
-                    myprintf("Initializing OpenCL (autodetect precision).\n");
-                    try {
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<float>>());
-                        score_fp32 = benchmark_time(100);
-                    } catch (...) {
-                        // empty - if exception thrown just throw away fp32 net
-                    }
-
-                    try {
-                        m_forward.reset();
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<half_float::half>>());
-                        score_fp16 = benchmark_time(100);
-                    } catch (...) {
-                        // empty - if exception thrown just throw away fp16 net
-                    }
-
-                    if (score_fp16 < 0.0f && score_fp32 < 0.0f) {
-                        myprintf("Both single precision and half precision failed to run\n");
-                        throw std::runtime_error("Failed to initialize net");
-                    } else if (score_fp16 < 0.0f) {
-                        myprintf("Using OpenCL single precision (half precision failed to run)\n");
-                        m_forward.reset();
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<float>>());
-                    } else if (score_fp32 < 0.0f) {
-                        myprintf("Using OpenCL half precision (single precision failed to run)\n");
-                    } else if (score_fp32 * 1.05f > score_fp16) {
-                        myprintf("Using OpenCL single precision (less than 5%% slower than half)\n");
-                        m_forward.reset();
-                        m_forward = init_net(
-                            std::make_unique<OpenCLScheduler<float>>());
-                    } else {
-                        myprintf("Using OpenCL half precision (at least 5%% faster than single)\n");
-                    }
-                }
-                break;
-            case precision_t::SINGLE:
-                myprintf("Initializing OpenCL (single precision).\n");
-                m_forward = init_net(
-                    std::make_unique<OpenCLScheduler<float>>());
-                break;
-            case precision_t::HALF:
-                myprintf("Initializing OpenCL (half precision).\n");
-                m_forward = init_net(
-                    std::make_unique<OpenCLScheduler<half_float::half>>());
-                break;
-        }
+        // HALF support is enabled, and we are using the GPU.
+        // Select the precision to use at runtime.
+        select_precision(channels);
 #else
         myprintf("Initializing OpenCL (single precision).\n");
-        m_forward = init_net(std::make_unique<OpenCLScheduler<float>>());
+        m_forward = init_net(channels,
+                             std::make_unique<OpenCLScheduler<float>>());
 #endif
     }
 
 #else //!USE_OPENCL
     myprintf("Initializing CPU-only evaluation.\n");
-    m_forward = init_net(std::make_unique<CPUPipe>());
-    use_selfcheck = false;
+    m_forward = init_net(channels, std::make_unique<CPUPipe>());
 #endif
 
-#ifdef USE_OPENCL_SELFCHECK
-    if (use_selfcheck) {
-        m_forward_cpu = init_net(std::make_unique<CPUPipe>());
-    }
-#else
-    (void)use_selfcheck;
-#endif
     // Need to estimate size before clearing up the pipe.
     get_estimated_size();
     m_fwd_weights.reset();
 }
-
-#ifdef USE_BLAS
 
 template<unsigned int inputs,
          unsigned int outputs,
@@ -530,13 +580,21 @@ std::vector<float> innerproduct(const std::vector<float>& input,
                                 const std::array<float, outputs>& biases) {
     std::vector<float> output(outputs);
 
+#ifdef USE_BLAS
     cblas_sgemv(CblasRowMajor, CblasNoTrans,
                 // M     K
                 outputs, inputs,
                 1.0f, &weights[0], inputs,
                 &input[0], 1,
                 0.0f, &output[0], 1);
-
+#else
+    EigenVectorMap<float> y(output.data(), outputs);
+    y.noalias() =
+        ConstEigenMatrixMap<float>(weights.data(),
+                                   inputs,
+                                   outputs).transpose()
+        * ConstEigenVectorMap<float>(input.data(), inputs);
+#endif
     const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
                                                           val : 0.0f; };
     for (unsigned int o = 0; o < outputs; o++) {
@@ -577,11 +635,10 @@ void batchnorm(const size_t channels,
         }
     }
 }
-#endif
 
 #ifdef USE_OPENCL_SELFCHECK
-void Network::compare_net_outputs(Netresult& data,
-                                  Netresult& ref) {
+void Network::compare_net_outputs(const Netresult& data,
+                                  const Netresult& ref) {
     // Calculates L2-norm between data and ref.
     constexpr auto max_error = 0.2f;
 
@@ -659,7 +716,7 @@ bool Network::probe_cache(const GameState* const state,
 
 Network::Netresult Network::get_output(
     const GameState* const state, const Ensemble ensemble,
-    const int symmetry, const bool skip_cache) {
+    const int symmetry, const bool skip_cache, const bool force_selfcheck) {
     Netresult result;
     if (state->board.get_boardsize() != BOARD_SIZE) {
         return result;
@@ -699,10 +756,13 @@ Network::Netresult Network::get_output(
         // selfcheck is done here because this is the only place NN
         // evaluation is done on actual gameplay.
         if (m_forward_cpu != nullptr
-            && Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0) {
+            && (force_selfcheck || Random::get_Rng().randfix<SELFCHECK_PROBABILITY>() == 0)
+        ) {
             auto result_ref = get_output_internal(state, rand_sym, true);
             compare_net_outputs(result, result_ref);
         }
+#else
+        (void)force_selfcheck;
 #endif
     }
 
@@ -815,14 +875,12 @@ void Network::show_heatmap(const FastState* const state,
         std::stable_sort(rbegin(moves), rend(moves));
 
         auto cum = 0.0f;
-        size_t tried = 0;
-        while (cum < 0.85f && tried < moves.size()) {
-            if (moves[tried].first < 0.01f) break;
+        for (const auto& move : moves) {
+            if (cum > 0.85f || move.first < 0.01f) break;
             myprintf("%1.3f (%s)\n",
-                    moves[tried].first,
-                    state->board.move_to_text(moves[tried].second).c_str());
-            cum += moves[tried].first;
-            tried++;
+                    move.first,
+                    state->board.move_to_text(move.second).c_str());
+            cum += move.first;
         }
     }
 }

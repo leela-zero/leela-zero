@@ -2,7 +2,6 @@
 [![Windows Build Status](https://ci.appveyor.com/api/projects/status/pf1hcgly8f1a8iu0/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero/branch/next)
 
 
-
 # What
 
 A Go program with no human provided knowledge. Using MCTS (but without
@@ -32,6 +31,8 @@ a good network (which you can feed into this program, suddenly making it strong)
 
 # I want to help
 
+## Using your own hardware
+
 You need a PC with a GPU, i.e. a discrete graphics card made by NVIDIA or AMD,
 preferably not too old, and with the most recent drivers installed.
 
@@ -40,107 +41,132 @@ lower. If your CPU is not *very* recent (Haswell or newer, Ryzen or newer),
 performance will be outright bad, and it's probably of no use trying to join
 the distributed effort. But you can still play, especially if you are patient.
 
-[Running Leela Zero client on a Tesla K80 GPU for free (Google Colaboratory)](COLAB.md)
-
-## Windows
+### Windows
 
 Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
 download the latest release, unzip, and launch autogtp.exe. It will connect to
 the server automatically and do its work in the background, uploading results
 after each game. You can just close the autogtp window to stop it.
 
-## macOS and Linux
+### macOS and Linux
 
-Follow the instructions below to compile the leelaz binary, then go into
-the autogtp subdirectory and follow [the instructions there](autogtp/README.md)
-to build the autogtp binary. Copy the leelaz binary into the autogtp dir, and
-launch autogtp.
+Follow the instructions below to compile the leelaz and autogtp binaries in
+the build subdirectory. Then run autogtp as explained in the
+[contributing](#contributing) instructions below.
+Contributing will start when you run autogtp.
 
-# I just want to play right now
+## Using a Cloud provider
 
-Download the best known network weights file from: http://zero.sjeng.org/best-network
+Many cloud companies offer free trials (or paid solutions, not discussed here)
+that are usable for helping the leela-zero project.
 
-And head to the [Usage](#usage) section of this README.
+There are community maintained instructions available here:
+* [Running Leela Zero client on a Tesla V100 GPU for free (Google Cloud Free Trial)](https://docs.google.com/document/d/1P_c-RbeLKjv1umc4rMEgvIVrUUZSeY0WAtYHjaxjD64/edit?usp=sharing)
 
-If you prefer a more human style, a network trained from human games is available here: https://sjeng.org/zero/best_v1.txt.zip.
+* [Running Leela Zero client on a Tesla V100 GPU for free (Microsoft Azure Cloud Free Trial)](https://docs.google.com/document/d/1DMpi16Aq9yXXvGj0OOw7jbd7k2A9LHDUDxxWPNHIRPQ/edit?usp=sharing)
 
-# Compiling
+# I just want to play with Leela Zero right now
+
+Download the best known network weights file from [here](https://zero.sjeng.org/best-network), or, if you prefer a more human style,
+a (weaker) network trained from human games [here](https://sjeng.org/zero/best_v1.txt.zip).
+
+If you are on Windows, download an official release from [here](https://github.com/gcp/leela-zero/releases) and head to the [Usage](#usage-for-playing-or-analyzing-games)
+section of this README.
+
+If you are on Unix or macOS, you have to compile the program yourself. Follow
+the compilation instructions below and then read the [Usage](#usage-for-playing-or-analyzing-games) section.
+
+# Compiling AutoGTP and/or Leela Zero
 
 ## Requirements
 
 * GCC, Clang or MSVC, any C++14 compiler
 * Boost 1.58.x or later, headers and program_options, filesystem and system libraries (libboost-dev, libboost-program-options-dev and libboost-filesystem-dev on Debian/Ubuntu)
-* BLAS Library: OpenBLAS (libopenblas-dev) or (optionally) Intel MKL
 * zlib library (zlib1g & zlib1g-dev on Debian/Ubuntu)
 * Standard OpenCL C headers (opencl-headers on Debian/Ubuntu, or at
-https://github.com/KhronosGroup/OpenCL-Headers/tree/master/opencl22/)
+https://github.com/KhronosGroup/OpenCL-Headers/tree/master/CL)
 * OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
 * An OpenCL capable device, preferably a very, very fast GPU, with recent
 drivers is strongly recommended (OpenCL 1.1 support is enough).
-If you do not have a GPU, modify config.h in the source and remove
-the line that says "#define USE_OPENCL".
+If you do not have a GPU, add the define "USE_CPU_ONLY", for example
+by adding -DUSE_CPU_ONLY=1 to the cmake command line.
+* Optional: BLAS Library: OpenBLAS (libopenblas-dev) or Intel MKL
 * The program has been tested on Windows, Linux and macOS.
 
-## Example of compiling and running - Ubuntu
+## Example of compiling - Ubuntu & similar
 
     # Test for OpenCL support & compatibility
     sudo apt install clinfo && clinfo
 
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
-    cd leela-zero/src
-    sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev libopenblas-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
-    make
-    cd ..
-    wget http://zero.sjeng.org/best-network
-    src/leelaz --weights best-network
-
-## Example of compiling and running - macOS
-
-    # Clone github repo
-    git clone https://github.com/gcp/leela-zero
-    cd leela-zero/src
-    brew install boost
-    make
-    cd ..
-    curl -O http://zero.sjeng.org/best-network
-    src/leelaz --weights best-network
-
-## Example of compiling and running - Windows
-
-    # Clone github repo
-    git clone https://github.com/gcp/leela-zero
     cd leela-zero
-    cd msvc
-    Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
-    to the Visual Studio version you have.
-    # Build from Visual Studio 2015 or 2017
-    # Download <http://zero.sjeng.org/best-network> to msvc\x64\Release
-    msvc\x64\Release\leelaz.exe --weights best-network
+    git submodule update --init --recursive
 
-## Example of compiling and running - CMake (macOS/Ubuntu)
+    # Install build depedencies
+    sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+
+    # Use a stand alone build directory to keep source dir clean
+    mkdir build && cd build
+
+    # Compile leelaz and autogtp in build subdirectory with cmake
+    cmake ..
+    cmake --build .
+
+    # Optional: test if your build works correctly
+    ./tests
+
+## Example of compiling - macOS
 
     # Clone github repo
     git clone https://github.com/gcp/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
-    # Use stand alone directory to keep source dir clean
+    # Install build depedencies
+    brew install boost cmake
+
+    # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
+
+    # Compile leelaz and autogtp in build subdirectory with cmake
     cmake ..
-    make leelaz
-    make tests
+    cmake --build .
+
+    # Optional: test if your build works correctly
     ./tests
-    curl -O http://zero.sjeng.org/best-network
-    ./leelaz --weights best-network
+
+## Example of compiling - Windows
+
+    # Clone github repo
+    git clone https://github.com/gcp/leela-zero
+    cd leela-zero
+    git submodule update --init --recursive
+
+    cd msvc
+    Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
+    to the Visual Studio version you have.
+    # Build from Visual Studio 2015 or 2017
+
+# Contributing
+
+For Windows, you can use a release package, see ["I want to help"](#windows).
+
+Unix and macOS, after finishing the compile and while in the build directory:
+
+    # Copy leelaz binary to autogtp subdirectory
+    cp leelaz autogtp
+
+    # Run AutoGTP to start contributing
+    ./autogtp/autogtp
 
 
-# Usage
-
-The engine supports the [GTP protocol, version 2](https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html).
+# Usage for playing or analyzing games
 
 Leela Zero is not meant to be used directly. You need a graphical interface
 for it, which will interface with Leela Zero through the GTP protocol.
+
+The engine supports the [GTP protocol, version 2](https://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html).
 
 [Lizzie](https://github.com/featurecat/lizzie/releases) is a client specifically
 for Leela Zero which shows live search probilities, a win rate graph, and has
@@ -291,33 +317,36 @@ If interrupted, training can be resumed with:
 
 # Todo
 
-- [ ] Optimize Winograd transformations.
+- [ ] Further optimize Winograd transformations.
 - [ ] Implement GPU batching.
-- [ ] Parameter setting over GTP.
+- [ ] GTP extention to exclude moves from analysis.
+- [ ] Root filtering for handicap play.
 - More backends:
-- [ ] Eigen based BLAS backend.
 - [ ] MKL-DNN based backend.
-- [ ] CUDA specific version using cuDNN.
-- [ ] AMD specific version using MIOpen.
+- [ ] CUDA specific version using cuDNN or cuBLAS.
+- [ ] AMD specific version using MIOpen/ROCm.
 
 # Related links
 
 * Status page of the distributed effort:
-http://zero.sjeng.org
+https://zero.sjeng.org
+* GUI and study tool for Leela Zero:
+https://github.com/featurecat/lizzie
 * Watch Leela Zero's training games live in a GUI:
 https://github.com/fsparv/LeelaWatcher
-* GUI and study tool for Leela Zero:
-https://github.com/CamWagner/lizzie
-* Stockfish chess engine ported to Leela Zero framework:
-https://github.com/glinscott/leela-chess
 * Original Alpha Go (Lee Sedol) paper:
 https://storage.googleapis.com/deepmind-media/alphago/AlphaGoNaturePaper.pdf
-* Newer Alpha Zero (Go, Chess, Shogi) paper:
+* Alpha Go Zero paper:
+https://deepmind.com/documents/119/agz_unformatted_nature.pdf
+* Alpha Zero (Go, Chess, Shogi) paper:
 https://arxiv.org/pdf/1712.01815.pdf
 * AlphaGo Zero Explained In One Diagram:
 https://medium.com/applied-data-science/alphago-zero-explained-in-one-diagram-365f5abf67e0
+* Stockfish chess engine ported to Leela Zero framework:
+https://github.com/LeelaChessZero/lczero
+* Leela Chess Zero (chess optimized client)
+https://github.com/LeelaChessZero/lc0
 
 # License
 
-The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp,
-half.hpp and the clblast_level3 subdirs, which have specific licenses (compatible with GPLv3) mentioned in those files.
+The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp, half.hpp and the eigen and clblast_level3 subdirs, which have specific licenses (compatible with GPLv3) mentioned in those files.

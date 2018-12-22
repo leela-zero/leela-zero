@@ -1,12 +1,21 @@
 version: '{build}'
+image:
+- Visual Studio 2015
+- Visual Studio 2017
 configuration: Release
 platform: x64
+matrix:
+  fast_finish: true
 environment:
   matrix:
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+  - cmake_build: 1
+  - cmake_build: 1
     features: USE_CPU_ONLY
     run_tests: 1
+  - cmake_build: 1
+    features: USE_CPU_ONLY USE_BLAS
+    run_tests: 1
+  - msbuild: 1
 skip_commits:
   files:
     - '**/*.md'
@@ -15,30 +24,27 @@ skip_commits:
     - training/
     - AUTHORS
     - COPYING
-install:
-- cmd: nuget restore msvc\VS2017 -PackagesDirectory pkgs
-cache: pkgs -> appveyor.yml
+for:
+- matrix:
+    only:
+    - image: Visual Studio 2015
+  install:
+  - cmd: set MSVCDIR=msvc\VS2015
+  - cmd: echo %MSVCDIR%
+  - cmd: nuget restore %MSVCDIR% -PackagesDirectory msvc\packages
+- matrix:
+    only:
+    - image: Visual Studio 2017
+  install:
+  - cmd: set MSVCDIR=msvc\VS2017
+  - cmd: echo %MSVCDIR%
+  - cmd: nuget restore %MSVCDIR% -PackagesDirectory msvc\packages
 build_script:
-- cmd: >-
-    set PKG_FOLDER="%cd%\pkgs"
-
-    git submodule update --init --recursive
-
-    mkdir build
-
-    cd build
-
-    set BLAS_HOME="..\pkgs\OpenBLAS.0.2.14.1\lib\native"
-
-    for /F %%f in ("%features%") do set DEFINES=%DEFINES% -D%%f=1
-
-    cmake -G "Visual Studio 15 2017 Win64" %DEFINES% -DCMAKE_PREFIX_PATH="%QTDIR%/lib/cmake/" -DBOOST_ROOT="C:/Libraries/boost_1_65_1" -DBOOST_LIBRARYDIR="C:/Libraries/boost_1_65_1/lib64-msvc-14.1" -DBoost_USE_STATIC_LIBS=ON -DZLIB_ROOT="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native" -DZLIB_LIBRARY="%PKG_FOLDER%/zlib-msvc14-x64.1.2.11.7795/build/native/zlib-msvc14-x64.targets" -DOpenCL_LIBRARY="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/opencl-nug.targets" -DOpenCL_INCLUDE_DIR="%PKG_FOLDER%/opencl-nug.0.777.12/build/native/include" -DBLAS_LIBRARIES="%PKG_FOLDER%/OpenBLAS.0.2.14.1/build/native/openblas.targets" -Dgtest_force_shared_crt=ON ..
-
-    cmake --build . --config Release -- /maxcpucount:1
+- cmd: if "%cmake_build%"=="1" %MSVCDIR%\cmake_build.bat
+- cmd: if "%msbuild%"=="1" git submodule update --init --recursive
+- cmd: if "%msbuild%"=="1" msbuild /t:build %MSVCDIR%\leela-zero.vcxproj
 
 test_script:
-- cmd: >-
+- cmd: if "%run_tests%"=="1" cd build && Release\tests.exe
 
-    set PATH=Release;%PATH
-
-    if NOT "%run_tests%"=="" tests.exe
+cache: msvc\packages -> appveyor.yml
