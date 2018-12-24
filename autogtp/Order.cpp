@@ -48,8 +48,8 @@ void Order::load(const QString &file) {
     QString key;
     for (int i = 0; i < count; i++) {
         in >> key;
-        if (key == "options") {
-           m_parameters[key] = in.readLine();
+        if (key == "options" || key == "optionsSecond") {
+            m_parameters[key] = in.readLine();
         } else {
             in >> m_parameters[key];
         }
