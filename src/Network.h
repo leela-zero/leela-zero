@@ -66,7 +66,8 @@ public:
     Netresult get_output(const GameState* const state,
                          const Ensemble ensemble,
                          const int symmetry = -1,
-                         const bool skip_cache = false,
+                         const bool read_cache = true,
+                         const bool write_cache = true,
                          const bool force_selfcheck = false);
 
     static constexpr auto INPUT_MOVES = 8;

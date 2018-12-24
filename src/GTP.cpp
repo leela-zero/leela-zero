@@ -660,20 +660,20 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             // Default = DIRECT with no symmetric change
             vec = s_network->get_output(
                 &game, Network::Ensemble::DIRECT,
-                Network::IDENTITY_SYMMETRY, true);
+                Network::IDENTITY_SYMMETRY, false);
         } else if (symmetry == "all") {
             for (auto s = 0; s < Network::NUM_SYMMETRIES; ++s) {
                 vec = s_network->get_output(
-                    &game, Network::Ensemble::DIRECT, s, true);
+                    &game, Network::Ensemble::DIRECT, s, false);
                 Network::show_heatmap(&game, vec, false);
             }
         } else if (symmetry == "average" || symmetry == "avg") {
             vec = s_network->get_output(
                 &game, Network::Ensemble::AVERAGE,
-                Network::NUM_SYMMETRIES, true);
+                Network::NUM_SYMMETRIES, false);
         } else {
             vec = s_network->get_output(
-                &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
+                &game, Network::Ensemble::DIRECT, std::stoi(symmetry), false);
         }
 
         if (symmetry != "all") {
