@@ -30,7 +30,7 @@ directly.
 
 # Running
 
-To work successfully, autogtp and leelaz binaries need to be in the same directory.
+autogtp and leelaz binaries need to be in the same directory.
 
 While autogtp is running, typing q+Enter will save the processed data and exit. 
 When autogtp runs next, autogtp will continue the game.
