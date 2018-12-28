@@ -158,30 +158,30 @@ Result ValidationJob::execute(){
         QFile::remove(m_sgf + ".sgf");
     }
 
-    QString wmove = "play white ";
-    QString bmove = "play black ";
+    const QString stringWhite = "white";
+    const QString stringBlack = "black";
+    //Start with the side to move set to the opposite of the expected way around
+    //because the game playing loop swaps the sides at the start of each iteration.
+    //This avoids having to test which side is to move on every iteration of the loop.
+    auto gameToMove = &second;
+    auto colorToMove = &stringWhite;
+    auto gameOpponent = &first;
+    auto colorOpponent = &stringBlack;
+    if (first.getToMove() == Game::WHITE) {
+        std::swap(gameToMove, gameOpponent);
+        std::swap(colorToMove, colorOpponent);
+    }
     do {
-        if (first.getToMove() == Game::BLACK) {
-            first.move();
-            if (!first.waitForMove()) {
-                return res;
-            }
-            first.readMove();
-            m_boss->incMoves();
-            if (first.checkGameEnd()) {
-                break;
-            }
-            second.setMove(bmove + first.getMove());
-            first.nextMove();
-        }
-        second.move();
-        if (!second.waitForMove()) {
+        std::swap(gameToMove, gameOpponent);
+        std::swap(colorToMove, colorOpponent);
+        gameToMove->move();
+        if (!gameToMove->waitForMove()) {
             return res;
         }
-        second.readMove();
+        gameToMove->readMove();
         m_boss->incMoves();
-        first.setMove(wmove + second.getMove());
-    } while (second.nextMove() && m_state.load() == RUNNING);
+        gameOpponent->setMove("play " + *colorToMove + " " + gameToMove->getMove());
+    } while (gameToMove->nextMove() && m_state.load() == RUNNING);
 
     switch (m_state.load()) {
     case RUNNING:
