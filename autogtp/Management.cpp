@@ -283,7 +283,7 @@ Order Management::getWorkInternal(bool tuning) {
    cmd : "match",
    white_hash : "223737476718d58a4a5b0f317a1eeeb4b38f0c06af5ab65cb9d76d68d9abadb6",
    black_hash : "92c658d7325fe38f0c8adbbb1444ed17afd891b9f208003c272547a7bcb87909",
-   options_hash : "c2e3"
+   options_hash : "c2e3",
    minimum_autogtp_version: "16",
    random_seed: "2301343010299460478",
    minimum_leelaz_version: "0.15",
@@ -293,6 +293,13 @@ Order Management::getWorkInternal(bool tuning) {
        resignation_percent : "3",
        noise : "true",
        randomcnt : "30"
+    },
+    white_options : {
+       playouts : "0",
+       visits: "1601",
+       resignation_percent : "5",
+       noise : "false",
+       randomcnt : "0"
     },
     white_hash_gzip_hash: "23c29bf777e446b5c3fb0e6e7fa4d53f15b99cc0c25798b70b57877b55bf1638",
     black_hash_gzip_hash: "ccfe6023456aaaa423c29bf777e4aab481245289aaaabb70b7b5380992377aa8",
@@ -438,6 +445,9 @@ Order Management::getWorkInternal(bool tuning) {
         fetchNetwork(net2, gzipHash2);
         parameters["firstNet"] = net1;
         parameters["secondNet"] = net2;
+        parameters["optionsSecond"] = ob.contains("white_options") ?
+            getOptionsString(ob.value("white_options").toObject(), rndSeed) :
+            parameters["options"];
 
         o.type(Order::Validation);
         o.parameters(parameters);
