@@ -28,8 +28,6 @@ __kernel void tensorcore_test(__global int * ptr) {
     asm(
         ".reg .b32 a0, a1, a2, a3, a4, a5, a6, a7;\n"
         "wmma.load.a.sync.aligned.m16n16k16.shared.row.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%0];\n" : : "l"(ptr)
-        "wmma.load.a.sync.aligned.m32n8k16.shared.row.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%0];\n" : : "l"(ptr)
-        "wmma.load.a.sync.aligned.m8n32k16.shared.row.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%0];\n" : : "l"(ptr)
     );
 }
 
