@@ -44,7 +44,7 @@ extern int cfg_resignpct;
 extern int cfg_noise;
 extern int cfg_random_cnt;
 extern int cfg_random_min_visits;
-extern float cfg_random_temp;
+extern double cfg_random_temp;
 extern std::uint64_t cfg_rng_seed;
 extern bool cfg_dumbpass;
 #ifdef USE_OPENCL
@@ -58,9 +58,9 @@ enum class precision_t {
 extern precision_t cfg_precision;
 #endif
 #endif
-extern float cfg_puct;
-extern float cfg_logpuct;
-extern float cfg_logconst;
+extern double cfg_puct;
+extern double cfg_logpuct;
+extern double cfg_logconst;
 extern float cfg_softmax_temp;
 extern float cfg_fpu_reduction;
 extern float cfg_fpu_root_reduction;

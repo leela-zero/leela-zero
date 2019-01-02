@@ -110,15 +110,15 @@ static void parse_commandline(int argc, char *argv[]) {
             po::value<int>()->default_value(cfg_random_min_visits),
             "Don't play random moves if they have <= x visits.")
         ("randomtemp",
-            po::value<float>()->default_value(cfg_random_temp),
+            po::value<double>()->default_value(cfg_random_temp),
             "Temperature to use for random move selection.")
         ;
 #ifdef USE_TUNER
     po::options_description tuner_desc("Tuning options");
     tuner_desc.add_options()
-        ("puct", po::value<float>())
-        ("logpuct", po::value<float>())
-        ("logconst", po::value<float>())
+        ("puct", po::value<double>())
+        ("logpuct", po::value<double>())
+        ("logconst", po::value<double>())
         ("softmax_temp", po::value<float>())
         ("fpu_reduction", po::value<float>())
         ;
@@ -182,13 +182,13 @@ static void parse_commandline(int argc, char *argv[]) {
 
 #ifdef USE_TUNER
     if (vm.count("puct")) {
-        cfg_puct = vm["puct"].as<float>();
+        cfg_puct = vm["puct"].as<double>();
     }
     if (vm.count("logpuct")) {
-        cfg_logpuct = vm["logpuct"].as<float>();
+        cfg_logpuct = vm["logpuct"].as<double>();
     }
     if (vm.count("logconst")) {
-        cfg_logconst = vm["logconst"].as<float>();
+        cfg_logconst = vm["logconst"].as<double>();
     }
     if (vm.count("softmax_temp")) {
         cfg_softmax_temp = vm["softmax_temp"].as<float>();
@@ -335,7 +335,7 @@ static void parse_commandline(int argc, char *argv[]) {
     }
 
     if (vm.count("randomtemp")) {
-        cfg_random_temp = vm["randomtemp"].as<float>();
+        cfg_random_temp = vm["randomtemp"].as<double>();
     }
 
     if (vm.count("timemanage")) {
