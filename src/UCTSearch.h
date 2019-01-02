@@ -111,7 +111,7 @@ private:
     void tree_stats(const UCTNode& node);
     std::string get_pv(FastState& state, UCTNode& parent);
     void dump_analysis(int playouts);
-    bool should_resign(passflag_t passflag, float besteval);
+    bool should_resign(passflag_t passflag, double besteval);
     bool have_alternate_moves(int elapsed_centis, int time_for_move);
     int est_playouts_left(int elapsed_centis, int time_for_move) const;
     size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0,

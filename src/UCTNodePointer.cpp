@@ -132,7 +132,7 @@ bool UCTNodePointer::active() const {
     return true;
 }
 
-float UCTNodePointer::get_eval(int tomove) const {
+double UCTNodePointer::get_eval(int tomove) const {
     // this can only be called if it is an inflated pointer
     auto v = m_data.load();
     assert(is_inflated(v));

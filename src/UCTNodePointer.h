@@ -121,7 +121,7 @@ public:
     bool active() const;
     int get_move() const;
     // this can only be called if it is an inflated pointer
-    float get_eval(int tomove) const;
+    double get_eval(int tomove) const;
 };
 
 #endif

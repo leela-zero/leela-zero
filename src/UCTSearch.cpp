@@ -272,7 +272,7 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: %s\n",
             move.c_str(),
             node->get_visits(),
-            node->get_visits() ? node->get_raw_eval(color)*100.0f : 0.0f,
+            node->get_visits() ? node->get_raw_eval(color) * 100.0 : 0.0,
             node->get_policy() * 100.0f,
             pv.c_str());
     }
@@ -298,7 +298,7 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         FastState tmpstate = state;
         tmpstate.play_move(node->get_move());
         std::string pv = move + " " + get_pv(tmpstate, *node);
-        auto move_eval = node->get_visits() ? node->get_raw_eval(color) : 0.0f;
+        auto move_eval = node->get_visits() ? node->get_raw_eval(color) : 0.0;
         auto policy = node->get_policy();
         // Store data in array
         sortable_data.emplace_back(move, node->get_visits(),
@@ -331,13 +331,13 @@ void tree_stats_helper(const UCTNode& node, size_t depth,
     for (const auto& child : node.get_children()) {
         if (child.get_visits() > 0) {
             children_count += 1;
-            tree_stats_helper(*(child.get()), depth+1,
+            tree_stats_helper(*(child.get()), depth + 1,
                               nodes, non_leaf_nodes, depth_sum,
                               max_depth, children_count);
         } else {
             nodes += 1;
-            depth_sum += depth+1;
-            if (depth+1 > max_depth) max_depth = depth+1;
+            depth_sum += depth + 1;
+            if (depth + 1 > max_depth) max_depth = depth + 1;
         }
     }
 }
@@ -354,13 +354,13 @@ void UCTSearch::tree_stats(const UCTNode& node) {
 
     if (nodes > 0) {
         myprintf("%.1f average depth, %d max depth\n",
-                 (1.0f*depth_sum) / nodes, max_depth);
+                 (1.0f * depth_sum) / nodes, max_depth);
         myprintf("%d non leaf nodes, %.2f average children\n",
-                 non_leaf_nodes, (1.0f*children_count) / non_leaf_nodes);
+                 non_leaf_nodes, (1.0f * children_count) / non_leaf_nodes);
     }
 }
 
-bool UCTSearch::should_resign(passflag_t passflag, float besteval) {
+bool UCTSearch::should_resign(passflag_t passflag, double besteval) {
     if (passflag & UCTSearch::NORESIGN) {
         // resign not allowed
         return false;
@@ -384,7 +384,7 @@ bool UCTSearch::should_resign(passflag_t passflag, float besteval) {
 
     const auto is_default_cfg_resign = cfg_resignpct < 0;
     const auto resign_threshold =
-        0.01f * (is_default_cfg_resign ? 10 : cfg_resignpct);
+        0.01 * (is_default_cfg_resign ? 10 : cfg_resignpct);
     if (besteval > resign_threshold) {
         // eval > cfg_resign
         return false;
@@ -397,7 +397,7 @@ bool UCTSearch::should_resign(passflag_t passflag, float besteval) {
             resign_threshold / (1 + m_rootstate.get_handicap());
 
         // Blend the thresholds for the first ~215 moves.
-        auto blend_ratio = std::min(1.0f, movenum / (0.6f * num_intersections));
+        auto blend_ratio = std::min(1.0, movenum / (0.6 * num_intersections));
         auto blended_resign_threshold = blend_ratio * resign_threshold
             + (1 - blend_ratio) * handicap_resign_threshold;
         if (besteval > blended_resign_threshold) {
@@ -427,7 +427,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     assert(first_child != nullptr);
 
     auto bestmove = first_child->get_move();
-    auto besteval = first_child->first_visit() ? 0.5f : first_child->get_raw_eval(color);
+    auto besteval = first_child->first_visit() ? 0.5 : first_child->get_raw_eval(color);
 
     // do we want to fiddle with the best move because of the rule set?
     if (passflag & UCTSearch::NOPASS) {
@@ -439,7 +439,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 myprintf("Preferring not to pass.\n");
                 bestmove = nopass->get_move();
                 if (nopass->first_visit()) {
-                    besteval = 1.0f;
+                    besteval = 1.0;
                 } else {
                     besteval = nopass->get_raw_eval(color);
                 }
@@ -478,7 +478,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                     myprintf("Avoiding pass because it loses.\n");
                     bestmove = nopass->get_move();
                     if (nopass->first_visit()) {
-                        besteval = 1.0f;
+                        besteval = 1.0;
                     } else {
                         besteval = nopass->get_raw_eval(color);
                     }
@@ -493,7 +493,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 const auto nopass = m_root->get_nopass_child(m_rootstate);
                 if (nopass != nullptr && !nopass->first_visit()) {
                     const auto nopass_eval = nopass->get_raw_eval(color);
-                    if (nopass_eval > 0.5f) {
+                    if (nopass_eval > 0.5) {
                         myprintf("Avoiding pass because there could be a winning alternative.\n");
                         bestmove = nopass->get_move();
                         besteval = nopass_eval;
@@ -516,7 +516,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
                 bestmove = FastBoard::PASS;
             } else {
                 myprintf("Passing draws, make it depend on evaluation.\n");
-                if (besteval < 0.5f) {
+                if (besteval < 0.5) {
                     bestmove = FastBoard::PASS;
                 }
             }
@@ -527,7 +527,7 @@ int UCTSearch::get_best_move(passflag_t passflag) {
     if (bestmove != FastBoard::PASS) {
         if (should_resign(passflag, besteval)) {
             myprintf("Eval (%.2f%%) looks bad. Resigning.\n",
-                     100.0f * besteval);
+                     100.0 * besteval);
             bestmove = FastBoard::RESIGN;
         }
     }
@@ -573,7 +573,7 @@ void UCTSearch::dump_analysis(int playouts) {
     int color = tempstate.board.get_to_move();
 
     std::string pvstring = get_pv(tempstate, *m_root);
-    float winrate = 100.0f * m_root->get_raw_eval(color);
+    const auto winrate = 100.0 * m_root->get_raw_eval(color);
     myprintf("Playouts: %d, Win: %5.2f%%, PV: %s\n",
              playouts, winrate, pvstring.c_str());
 }
@@ -700,7 +700,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
             m_rootstate.board.get_boardsize(),
             color, m_rootstate.get_movenum());
 
-    myprintf("Thinking at most %.1f seconds...\n", time_for_move/100.0f);
+    myprintf("Thinking at most %.1f seconds...\n", time_for_move / 100.0f);
 
     // create a sorted list of legal moves (make sure we
     // play something legal and decent even in time trouble)
@@ -769,7 +769,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
              m_root->get_visits(),
              m_nodes.load(),
              m_playouts.load(),
-             (m_playouts * 100.0) / (elapsed_centis+1));
+             (m_playouts * 100.0) / (elapsed_centis + 1));
     int bestmove = get_best_move(passflag);
 
     // Copy the root state. Use to check for tree re-use in future calls.

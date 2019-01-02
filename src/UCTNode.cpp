@@ -200,21 +200,21 @@ int UCTNode::get_visits() const {
     return m_visits;
 }
 
-float UCTNode::get_raw_eval(int tomove, int virtual_loss) const {
+double UCTNode::get_raw_eval(int tomove, int virtual_loss) const {
     auto visits = get_visits() + virtual_loss;
     assert(visits > 0);
     auto blackeval = get_blackevals();
     if (tomove == FastBoard::WHITE) {
         blackeval += static_cast<double>(virtual_loss);
     }
-    auto eval = static_cast<float>(blackeval / double(visits));
+    auto eval = blackeval / double(visits);
     if (tomove == FastBoard::WHITE) {
-        eval = 1.0f - eval;
+        eval = 1.0 - eval;
     }
     return eval;
 }
 
-float UCTNode::get_eval(int tomove) const {
+double UCTNode::get_eval(int tomove) const {
     // Due to the use of atomic updates and virtual losses, it is
     // possible for the visit count to change underneath us. Make sure
     // to return a consistent result to the caller by caching the values.
@@ -265,11 +265,11 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
             continue;
         }
 
-        auto winrate = fpu_eval;
+        auto winrate = double(fpu_eval);
         if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
             // Someone else is expanding this node, never select it
             // if we can avoid so, because we'd block on it.
-            winrate = -1.0f - fpu_reduction;
+            winrate = -1.0 - fpu_reduction;
         } else if (child.get_visits() > 0) {
             winrate = child.get_eval(color);
         }
