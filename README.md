@@ -119,7 +119,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     git submodule update --init --recursive
 
     # Install build depedencies
-    brew install boost cmake
+    brew install boost cmake zlib qt5
 
     # Use stand alone directory to keep source dir clean
     mkdir build && cd build
