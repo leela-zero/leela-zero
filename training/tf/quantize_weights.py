@@ -3,7 +3,11 @@ import sys, os, argparse
 
 def format_n(x):
     x = float(x)
-    x = '{:.3g}'.format(x)
+    x2 =float('{:.2g}'.format(x))
+    if x!=0 and abs(x)<1 and abs(x-x2)/abs(x) <0.01:
+        x = '{:.2g}'.format(x)
+    else: 
+        x = '{:.3g}'.format(x)
     x = x.replace('e-0', 'e-')
     if x.startswith('0.'):
         x = x[1:]
