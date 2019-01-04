@@ -132,6 +132,10 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     
     # Optional : if you want to contribute to the distributed effort, you need these dependencies as well
     brew install qt5
+    # after qt5 install, then you also need to do the post install for mac, replace x.x with your qt5 version
+    export QT5DIR=/usr/local/Cellar/qt/5.x.x
+    export CMAKE_MODULE_PATH=${QT5DIR}/lib/cmake:${CMAKE_MODULE_PATH}
+    export CMAKE_PREFIX_PATH=${QT5DIR}
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
