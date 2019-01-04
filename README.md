@@ -319,7 +319,7 @@ If interrupted, training can be resumed with:
 
 - [ ] Further optimize Winograd transformations.
 - [ ] Implement GPU batching.
-- [ ] GTP extention to exclude moves from analysis.
+- [ ] GTP extension to exclude moves from analysis.
 - [ ] Root filtering for handicap play.
 - More backends:
 - [ ] MKL-DNN based backend.
@@ -350,3 +350,14 @@ https://github.com/LeelaChessZero/lc0
 # License
 
 The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp, half.hpp and the eigen and clblast_level3 subdirs, which have specific licenses (compatible with GPLv3) mentioned in those files.
+
+Additional permission under GNU GPL version 3 section 7
+
+If you modify this Program, or any covered work, by linking or
+combining it with NVIDIA Corporation's libraries from the
+NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+Network library and/or the NVIDIA TensorRT inference library
+(or a modified version of those libraries), containing parts covered
+by the terms of the respective license agreement, the licensors of
+this Program grant you additional permission to convey the resulting
+work.
