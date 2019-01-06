@@ -68,21 +68,15 @@ WaitJob::WaitJob(QString gpu, Management *parent) :
 Result ProductionJob::execute(){
     Result res(Result::Error);
     Game game(m_engine);
-    if (!game.gameStart(m_leelazMinVersion)) {
+    if (!game.gameStart(m_leelazMinVersion, m_sgf, m_moves)) {
         return res;
     }
     if (!m_sgf.isEmpty()) {
-        if (m_moves == 0) {
-            game.loadSgf(m_sgf);
-        } else {
-            game.loadSgf(m_sgf, m_moves);
-        }
-        game.setMovesCount(m_moves);
+        QFile::remove(m_sgf + ".sgf");
         if (m_restore) {
             game.loadTraining(m_sgf);
             QFile::remove(m_sgf + ".train");
         }
-        QFile::remove(m_sgf + ".sgf");
     }
     do {
         game.move();
@@ -138,23 +132,14 @@ void ProductionJob::init(const Order &o) {
 Result ValidationJob::execute(){
     Result res(Result::Error);
     Game first(m_engineFirst);
-    if (!first.gameStart(m_leelazMinVersion)) {
+    if (!first.gameStart(m_leelazMinVersion, m_sgf, m_moves)) {
         return res;
     }
     Game second(m_engineSecond);
-    if (!second.gameStart(m_leelazMinVersion)) {
+    if (!second.gameStart(m_leelazMinVersion, m_sgf, m_moves)) {
         return res;
     }
     if (!m_sgf.isEmpty()) {
-        if (m_moves == 0) {
-            first.loadSgf(m_sgf);
-            second.loadSgf(m_sgf);
-        } else {
-            first.loadSgf(m_sgf, m_moves);
-            second.loadSgf(m_sgf, m_moves);
-        }
-        first.setMovesCount(m_moves);
-        second.setMovesCount(m_moves);
         QFile::remove(m_sgf + ".sgf");
     }
 

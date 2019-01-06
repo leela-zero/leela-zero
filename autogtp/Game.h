@@ -57,7 +57,9 @@ class Game : QProcess {
 public:
     Game(const Engine& engine);
     ~Game() = default;
-    bool gameStart(const VersionTuple& min_version);
+    bool gameStart(const VersionTuple& min_version,
+                   const QString &sgf = QString(),
+                   const int moves = 0);
     void move();
     bool waitForMove() { return waitReady(); }
     bool readMove();

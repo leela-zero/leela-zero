@@ -160,7 +160,9 @@ void Game::checkVersion(const VersionTuple &min_version) {
     }
 }
 
-bool Game::gameStart(const VersionTuple &min_version) {
+bool Game::gameStart(const VersionTuple &min_version,
+                     const QString &sgf,
+                     const int moves) {
     start(m_engine.getCmdLine());
     if (!waitForStarted()) {
         error(Game::NO_LEELAZ);
@@ -170,18 +172,44 @@ bool Game::gameStart(const VersionTuple &min_version) {
     // check any return values.
     checkVersion(min_version);
     QTextStream(stdout) << "Engine has started." << endl;
-    for (auto command : m_engine.m_commands) {
+    //Send any handicap GTP commands before potentially loading an SGF
+    //because handicap commands will fail if the board is not empty.
+    //Then send the rest of the GTP commands after any SGF has been loaded so
+    //that they can override any settings loaded from the SGF.
+    auto commands = m_engine.m_commands;
+    const auto handicapCommands = commands.filter("handicap");
+    if (!handicapCommands.isEmpty()) {
+        QStringListIterator i(handicapCommands);
+        while (i.hasNext()) {
+            commands.removeAll(i.next());
+        }
+        for (auto command : handicapCommands) {
+            QTextStream(stdout) << command << endl;
+            if (!sendGtpCommand(command))
+            {
+                QTextStream(stdout) << "GTP failed on: " << command << endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+        m_blackToMove = false;
+    }
+    if (!sgf.isEmpty()) {
+        if (moves == 0) {
+            loadSgf(sgf);
+        } else {
+            loadSgf(sgf, moves);
+        }
+        setMovesCount(moves);
+    }
+    for (auto command : commands) {
         QTextStream(stdout) << command << endl;
         if (!sendGtpCommand(command))
         {
             QTextStream(stdout) << "GTP failed on: " << command << endl;
             exit(EXIT_FAILURE);
         }
-        if (command.contains("handicap")) {
-            m_blackToMove = false;
-        }
     }
-    QTextStream(stdout) << "Thinking time set." << endl;
+    QTextStream(stdout) << "Starting GTP commands sent." << endl;
     return true;
 }
 
