@@ -297,12 +297,47 @@ AnalyzeTags GTP::parse_analyze_tags(std::istringstream & cmdstream, const GameSt
             while (!movestream.eof()) {
                 std::string textmove;
                 getline(movestream, textmove, ',');
-                auto move = game.board.text_to_move(textmove);
-                if (move == FastBoard::NO_VERTEX) {
-                    moves.clear();
-                    break;
+                int sepidx = textmove.find_first_of(':');
+                if (sepidx != -1) {
+                    if (!(sepidx == 2 || sepidx == 3)) {
+                        moves.clear();
+                        break;
+                    }
+                    auto move1_compressed = game.board.text_to_move(
+                        textmove.substr(0, sepidx)
+                    );
+                    auto move2_compressed = game.board.text_to_move(
+                        textmove.substr(sepidx + 1)
+                    );
+                    if (move1_compressed == FastBoard::NO_VERTEX ||
+                        move1_compressed == FastBoard::PASS ||
+                        move1_compressed == FastBoard::RESIGN ||
+                        move2_compressed == FastBoard::NO_VERTEX ||
+                        move2_compressed == FastBoard::PASS ||
+                        move2_compressed == FastBoard::RESIGN)
+                    {
+                        moves.clear();
+                        break;
+                    }
+                    auto move1_xy = game.board.get_xy(move1_compressed);
+                    auto move2_xy = game.board.get_xy(move2_compressed);
+                    int xmin = std::min(move1_xy.first, move2_xy.first);
+                    int xmax = std::max(move1_xy.first, move2_xy.first);
+                    int ymin = std::min(move1_xy.second, move2_xy.second);
+                    int ymax = std::max(move1_xy.second, move2_xy.second);
+                    for (int move_x = xmin; move_x <= xmax; move_x++) {
+                        for (int move_y = ymin; move_y <= ymax; move_y++) {
+                            moves.push_back(game.board.get_vertex(move_x,move_y));
+                        }
+                    }
+                } else {
+                    auto move = game.board.text_to_move(textmove);
+                    if (move == FastBoard::NO_VERTEX) {
+                        moves.clear();
+                        break;
+                    }
+                    moves.push_back(move);
                 }
-                moves.push_back(move);
             }
             if (moves.empty()) {
                 break;
