@@ -102,6 +102,11 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 
     # Install build depedencies
     sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+    # For some systems (eg, debian) you may need to additionally install the opencl icd file for your driver.
+    # See https://wiki.tiker.net/OpenCLHowTo#How_to_set_up_OpenCL_in_Linux
+    # For example, if you have an nvidia gpu do: `sudo apt install nvidia-opencl-icd`
+    # The system will build without it, but the tests and leelaz binary will crash because 
+    # the system won't detect your GPU (it complains about clGetPlatformIDs failing).
 
     # Use stand alone directory to keep source dir clean
     mkdir build && cd build
