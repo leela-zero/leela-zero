@@ -61,7 +61,7 @@ UCTNode* UCTNode::get_first_child() const {
 
 void UCTNode::kill_superkos(const GameState& state) {
     UCTNodePointer *pass_child = nullptr;
-    size_t valid_count = m_children.size();
+    size_t valid_count = 0;
 
     for (auto& child : m_children) {
         auto move = child->get_move();
@@ -72,10 +72,12 @@ void UCTNode::kill_superkos(const GameState& state) {
             if (mystate.superko()) {
                 // Don't delete nodes for now, just mark them invalid.
                 child->invalidate();
-                valid_count--;
             }
         } else {
             pass_child = &child;
+        }
+        if (child->valid()) {
+            valid_count++;
         }
     }
 
