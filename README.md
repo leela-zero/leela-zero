@@ -179,6 +179,10 @@ capability.
 show variations and winning statistics in the game tree, as well as a heatmap
 on the game board.
 
+[GoReviewPartner](https://github.com/pnprog/goreviewpartner) is a tool for
+automated review and analysis of games using bots (saved as .rsgf files),
+Leela Zero is supported.
+
 A lot of go software can interface to an engine via GTP,
 so look around.
 
