@@ -26,6 +26,7 @@
 Game::Game(const Engine& engine) :
     QProcess(),
     m_engine(engine),
+    m_isHandicap(false),
     m_resignation(false),
     m_blackToMove(true),
     m_blackResigned(false),
@@ -172,36 +173,44 @@ bool Game::gameStart(const VersionTuple &min_version,
     // check any return values.
     checkVersion(min_version);
     QTextStream(stdout) << "Engine has started." << endl;
-    //Send any handicap GTP commands before potentially loading an SGF
-    //because handicap commands will fail if the board is not empty.
+    //If there is an sgf file to start playing from then it will contain
+    //whether there is handicap in use. If there is no sgf file then instead,
+    //check whether there are any handicap commands to send (these fail
+    //if the board is not empty).
     //Then send the rest of the GTP commands after any SGF has been loaded so
     //that they can override any settings loaded from the SGF.
-    auto commands = m_engine.m_commands;
-    const auto handicapCommands = commands.filter("handicap");
-    if (!handicapCommands.isEmpty()) {
-        QStringListIterator i(handicapCommands);
-        while (i.hasNext()) {
-            commands.removeAll(i.next());
-        }
-        for (auto command : handicapCommands) {
-            QTextStream(stdout) << command << endl;
-            if (!sendGtpCommand(command))
-            {
-                QTextStream(stdout) << "GTP failed on: " << command << endl;
-                exit(EXIT_FAILURE);
-            }
-        }
-        m_blackToMove = false;
-    }
     if (!sgf.isEmpty()) {
+        QFile sgfFile(sgf + ".sgf");
+        if (!sgfFile.exists()) {
+            QTextStream(stdout) << "Cannot find sgf file " << sgf << endl;
+            exit(EXIT_FAILURE);
+        }
+        sgfFile.open(QIODevice::Text | QIODevice::ReadOnly);
+        const auto sgfData = QTextStream(&sgfFile).readAll();
+        const auto re = QRegularExpression("HA\\[\\d+\\]");
+        const auto match = re.match(sgfData);
+        m_isHandicap = match.hasMatch();
+        sgfFile.close();
         if (moves == 0) {
             loadSgf(sgf);
         } else {
             loadSgf(sgf, moves);
         }
         setMovesCount(moves);
+    } else {
+        for (auto command : m_engine.m_commands.filter("handicap")) {
+            QTextStream(stdout) << command << endl;
+            if (!sendGtpCommand(command))
+            {
+                QTextStream(stdout) << "GTP failed on: " << command << endl;
+                exit(EXIT_FAILURE);
+            }
+            m_isHandicap = true;
+            m_blackToMove = false;
+        }
     }
-    for (auto command : commands) {
+    const auto re = QRegularExpression("^((?!handicap).)*$");
+    for (auto command : m_engine.m_commands.filter(re)) {
         QTextStream(stdout) << command << endl;
         if (!sendGtpCommand(command))
         {
@@ -227,11 +236,10 @@ void Game::move() {
 
 void Game::setMovesCount(int moves) {
     m_moveNum = moves;
-    //The game always starts at move 0 (GTP state that handicap stones are not part
+    //The game always starts at move 0 (GTP states that handicap stones are not part
     //of the move history), so if there is no handicap then black moves on even
     //numbered turns but if there is handicap then black moves on odd numbered turns.
-    const auto handicap_in_use = !m_engine.m_commands.filter("handicap").isEmpty();
-    m_blackToMove = (moves % 2) == (handicap_in_use ? 1 : 0);
+    m_blackToMove = (moves % 2) == (m_isHandicap ? 1 : 0);
 }
 
 bool Game::waitReady() {
