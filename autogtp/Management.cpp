@@ -483,7 +483,7 @@ Order Management::getWork(bool tuning) {
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
         try {
             return getWorkInternal(tuning);
-        } catch (NetworkException &ex) {
+        } catch (const NetworkException &ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;
             QTextStream(stdout)
@@ -704,7 +704,7 @@ void Management::sendAllGames() {
                     QThread::sleep(10);
                 }
             }
-        } catch (NetworkException &ex) {
+        } catch (const NetworkException &ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;
             QTextStream(stdout)
@@ -781,7 +781,7 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
         try {
             sent = sendCurl(prog_cmdline);
             break;
-        } catch (NetworkException &ex) {
+        } catch (const NetworkException &ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;
             QTextStream(stdout)
@@ -833,7 +833,7 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
         try {
             sent = sendCurl(prog_cmdline);
             break;
-        } catch (NetworkException &ex) {
+        } catch (const NetworkException &ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;
             QTextStream(stdout)
