@@ -755,15 +755,16 @@ int UCTSearch::think(int color, passflag_t passflag) {
         keeprunning &= have_alternate_moves(elapsed_centis, time_for_move);
     } while (keeprunning);
 
-    if (last_output == 0) {
+    // Make sure to post at least once.
+    if (cfg_analyze_interval_centis && last_output == 0) {
         output_analysis(m_rootstate, *m_root);
     }
 
-    // stop the search
+    // Stop the search.
     m_run = false;
     tg.wait_all();
 
-    // reactivate all pruned root children
+    // Reactivate all pruned root children.
     for (const auto& node : m_root->get_children()) {
         node->set_active(true);
     }
@@ -773,7 +774,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         return FastBoard::PASS;
     }
 
-    // display search info
+    // Display search info.
     myprintf("\n");
     dump_stats(m_rootstate, *m_root);
     Training::record(m_network, m_rootstate, *m_root);
@@ -824,15 +825,16 @@ void UCTSearch::ponder() {
         keeprunning &= !stop_thinking(0, 1);
     } while (!Utils::input_pending() && keeprunning);
 
-    if (last_output == 0) {
+    // Make sure to post at least once.
+    if (cfg_analyze_interval_centis && last_output == 0) {
         output_analysis(m_rootstate, *m_root);
     }
 
-    // stop the search
+    // Stop the search.
     m_run = false;
     tg.wait_all();
 
-    // display search info
+    // Display search info.
     myprintf("\n");
     dump_stats(m_rootstate, *m_root);
 
