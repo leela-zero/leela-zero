@@ -68,21 +68,15 @@ WaitJob::WaitJob(QString gpu, Management *parent) :
 Result ProductionJob::execute(){
     Result res(Result::Error);
     Game game(m_engine);
-    if (!game.gameStart(m_leelazMinVersion)) {
+    if (!game.gameStart(m_leelazMinVersion, m_sgf, m_moves)) {
         return res;
     }
     if (!m_sgf.isEmpty()) {
-        if (m_moves == 0) {
-            game.loadSgf(m_sgf);
-        } else {
-            game.loadSgf(m_sgf, m_moves);
-        }
-        game.setMovesCount(m_moves);
+        QFile::remove(m_sgf + ".sgf");
         if (m_restore) {
             game.loadTraining(m_sgf);
             QFile::remove(m_sgf + ".train");
         }
-        QFile::remove(m_sgf + ".sgf");
     }
     do {
         game.move();
@@ -126,6 +120,9 @@ void ProductionJob::init(const Order &o) {
     Job::init(o);
     m_engine.m_network = "networks/" + o.parameters()["network"] + ".gz";
     m_engine.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
+    if (o.parameters().contains("gtpCommands")) {
+        m_engine.m_commands = o.parameters()["gtpCommands"].split(",");
+    }
     m_debug = o.parameters()["debug"] == "true";
     m_sgf = o.parameters()["sgf"];
     m_moves = o.parameters()["moves"].toInt();
@@ -135,48 +132,41 @@ void ProductionJob::init(const Order &o) {
 Result ValidationJob::execute(){
     Result res(Result::Error);
     Game first(m_engineFirst);
-    if (!first.gameStart(m_leelazMinVersion)) {
+    if (!first.gameStart(m_leelazMinVersion, m_sgf, m_moves)) {
         return res;
     }
     Game second(m_engineSecond);
-    if (!second.gameStart(m_leelazMinVersion)) {
+    if (!second.gameStart(m_leelazMinVersion, m_sgf, m_moves)) {
         return res;
     }
     if (!m_sgf.isEmpty()) {
-        if (m_moves == 0) {
-            first.loadSgf(m_sgf);
-            second.loadSgf(m_sgf);
-        } else {
-            first.loadSgf(m_sgf, m_moves);
-            second.loadSgf(m_sgf, m_moves);
-        }
-        first.setMovesCount(m_moves);
-        second.setMovesCount(m_moves);
         QFile::remove(m_sgf + ".sgf");
     }
 
-    QString wmove = "play white ";
-    QString bmove = "play black ";
+    const QString stringWhite = "white";
+    const QString stringBlack = "black";
+    //Start with the side to move set to the opposite of the expected way around
+    //because the game playing loop swaps the sides at the start of each iteration.
+    //This avoids having to test which side is to move on every iteration of the loop.
+    auto gameToMove = &second;
+    auto colorToMove = &stringWhite;
+    auto gameOpponent = &first;
+    auto colorOpponent = &stringBlack;
+    if (first.getToMove() == Game::WHITE) {
+        std::swap(gameToMove, gameOpponent);
+        std::swap(colorToMove, colorOpponent);
+    }
     do {
-        first.move();
-        if (!first.waitForMove()) {
+        std::swap(gameToMove, gameOpponent);
+        std::swap(colorToMove, colorOpponent);
+        gameToMove->move();
+        if (!gameToMove->waitForMove()) {
             return res;
         }
-        first.readMove();
-       m_boss->incMoves();
-        if (first.checkGameEnd()) {
-            break;
-        }
-        second.setMove(bmove + first.getMove());
-        second.move();
-        if (!second.waitForMove()) {
-            return res;
-        }
-        second.readMove();
-       m_boss->incMoves();
-        first.setMove(wmove + second.getMove());
-        second.nextMove();
-    } while (first.nextMove() && m_state.load() == RUNNING);
+        gameToMove->readMove();
+        m_boss->incMoves();
+        gameOpponent->setMove("play " + *colorToMove + " " + gameToMove->getMove());
+    } while (gameToMove->nextMove() && m_state.load() == RUNNING);
 
     switch (m_state.load()) {
     case RUNNING:
@@ -210,8 +200,14 @@ void ValidationJob::init(const Order &o) {
     Job::init(o);
     m_engineFirst.m_network = "networks/" + o.parameters()["firstNet"] + ".gz";
     m_engineFirst.m_options = " " + o.parameters()["options"] + m_gpu + " -g -q -w ";
+    if (o.parameters().contains("gtpCommands")) {
+        m_engineFirst.m_commands = o.parameters()["gtpCommands"].split(",");
+    }
     m_engineSecond.m_network = "networks/" + o.parameters()["secondNet"] + ".gz";
     m_engineSecond.m_options = " " + o.parameters()["optionsSecond"] + m_gpu + " -g -q -w ";
+    if (o.parameters().contains("gtpCommandsSecond")) {
+        m_engineSecond.m_commands = o.parameters()["gtpCommandsSecond"].split(",");
+    }
     m_sgf = o.parameters()["sgf"];
     m_moves = o.parameters()["moves"].toInt();
 }

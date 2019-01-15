@@ -26,6 +26,7 @@
 Game::Game(const Engine& engine) :
     QProcess(),
     m_engine(engine),
+    m_isHandicap(false),
     m_resignation(false),
     m_blackToMove(true),
     m_blackResigned(false),
@@ -160,7 +161,9 @@ void Game::checkVersion(const VersionTuple &min_version) {
     }
 }
 
-bool Game::gameStart(const VersionTuple &min_version) {
+bool Game::gameStart(const VersionTuple &min_version,
+                     const QString &sgf,
+                     const int moves) {
     start(m_engine.getCmdLine());
     if (!waitForStarted()) {
         error(Game::NO_LEELAZ);
@@ -170,7 +173,44 @@ bool Game::gameStart(const VersionTuple &min_version) {
     // check any return values.
     checkVersion(min_version);
     QTextStream(stdout) << "Engine has started." << endl;
-    for (auto command : m_engine.m_commands) {
+    //If there is an sgf file to start playing from then it will contain
+    //whether there is handicap in use. If there is no sgf file then instead,
+    //check whether there are any handicap commands to send (these fail
+    //if the board is not empty).
+    //Then send the rest of the GTP commands after any SGF has been loaded so
+    //that they can override any settings loaded from the SGF.
+    if (!sgf.isEmpty()) {
+        QFile sgfFile(sgf + ".sgf");
+        if (!sgfFile.exists()) {
+            QTextStream(stdout) << "Cannot find sgf file " << sgf << endl;
+            exit(EXIT_FAILURE);
+        }
+        sgfFile.open(QIODevice::Text | QIODevice::ReadOnly);
+        const auto sgfData = QTextStream(&sgfFile).readAll();
+        const auto re = QRegularExpression("HA\\[\\d+\\]");
+        const auto match = re.match(sgfData);
+        m_isHandicap = match.hasMatch();
+        sgfFile.close();
+        if (moves == 0) {
+            loadSgf(sgf);
+        } else {
+            loadSgf(sgf, moves);
+        }
+        setMovesCount(moves);
+    } else {
+        for (auto command : m_engine.m_commands.filter("handicap")) {
+            QTextStream(stdout) << command << endl;
+            if (!sendGtpCommand(command))
+            {
+                QTextStream(stdout) << "GTP failed on: " << command << endl;
+                exit(EXIT_FAILURE);
+            }
+            m_isHandicap = true;
+            m_blackToMove = false;
+        }
+    }
+    const auto re = QRegularExpression("^((?!handicap).)*$");
+    for (auto command : m_engine.m_commands.filter(re)) {
         QTextStream(stdout) << command << endl;
         if (!sendGtpCommand(command))
         {
@@ -178,7 +218,7 @@ bool Game::gameStart(const VersionTuple &min_version) {
             exit(EXIT_FAILURE);
         }
     }
-    QTextStream(stdout) << "Thinking time set." << endl;
+    QTextStream(stdout) << "Starting GTP commands sent." << endl;
     return true;
 }
 
@@ -196,7 +236,10 @@ void Game::move() {
 
 void Game::setMovesCount(int moves) {
     m_moveNum = moves;
-    m_blackToMove = (moves % 2) == 0;
+    //The game always starts at move 0 (GTP states that handicap stones are not part
+    //of the move history), so if there is no handicap then black moves on even
+    //numbered turns but if there is handicap then black moves on odd numbered turns.
+    m_blackToMove = (moves % 2) == (m_isHandicap ? 1 : 0);
 }
 
 bool Game::waitReady() {
