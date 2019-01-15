@@ -305,15 +305,21 @@ class NodeComp : public std::binary_function<UCTNodePointer&,
                                              UCTNodePointer&, bool> {
 public:
     NodeComp(int color) : m_color(color) {};
+
+    // WARNING : on very unusual cases this can be called on multithread
+    // contexts (e.g., UCTSearch::get_pv()) so beware of race conditions
     bool operator()(const UCTNodePointer& a,
                     const UCTNodePointer& b) {
+        auto a_visit = a.get_visits();
+        auto b_visit = b.get_visits();
+
         // if visits are not same, sort on visits
-        if (a.get_visits() != b.get_visits()) {
-            return a.get_visits() < b.get_visits();
+        if (a_visit != b_visit) {
+            return a_visit < b_visit;
         }
 
         // neither has visits, sort on policy prior
-        if (a.get_visits() == 0) {
+        if (a_visit == 0) {
             return a.get_policy() < b.get_policy();
         }
 
