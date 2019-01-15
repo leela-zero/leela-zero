@@ -69,6 +69,7 @@ private:
     Engine m_engine;
     QString m_sgf;
     bool m_debug;
+    bool m_restore;
 };
 
 class ValidationJob : public Job {
@@ -81,8 +82,7 @@ public:
 private:
     Engine m_engineFirst;
     Engine m_engineSecond;
-    QString m_sgfFirst;
-    QString m_sgfSecond;
+    QString m_sgf;
 };
 
 class WaitJob : public Job {

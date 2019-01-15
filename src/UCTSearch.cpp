@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #include "config.h"
@@ -744,11 +755,16 @@ int UCTSearch::think(int color, passflag_t passflag) {
         keeprunning &= have_alternate_moves(elapsed_centis, time_for_move);
     } while (keeprunning);
 
-    // stop the search
+    // Make sure to post at least once.
+    if (cfg_analyze_interval_centis && last_output == 0) {
+        output_analysis(m_rootstate, *m_root);
+    }
+
+    // Stop the search.
     m_run = false;
     tg.wait_all();
 
-    // reactivate all pruned root children
+    // Reactivate all pruned root children.
     for (const auto& node : m_root->get_children()) {
         node->set_active(true);
     }
@@ -758,7 +774,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         return FastBoard::PASS;
     }
 
-    // display search info
+    // Display search info.
     myprintf("\n");
     dump_stats(m_rootstate, *m_root);
     Training::record(m_network, m_rootstate, *m_root);
@@ -809,11 +825,16 @@ void UCTSearch::ponder() {
         keeprunning &= !stop_thinking(0, 1);
     } while (!Utils::input_pending() && keeprunning);
 
-    // stop the search
+    // Make sure to post at least once.
+    if (cfg_analyze_interval_centis && last_output == 0) {
+        output_analysis(m_rootstate, *m_root);
+    }
+
+    // Stop the search.
     m_run = false;
     tg.wait_all();
 
-    // display search info
+    // Display search info.
     myprintf("\n");
     dump_stats(m_rootstate, *m_root);
 
