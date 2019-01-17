@@ -272,7 +272,7 @@ void LeelaTest::test_analyze_cmd(std::string cmd, bool valid, int who, int inter
     // avoid_until checks against the absolute game move number, indexed from 0
     std::istringstream cmdstream(cmd);
     auto maingame = get_gamestate();
-    auto result = GTP::parse_analyze_tags(cmdstream, maingame);
+    AnalyzeTags result{cmdstream, maingame};
     EXPECT_EQ(result.m_invalid, !valid);
     if (!valid) return;
     EXPECT_EQ(result.m_who, who);

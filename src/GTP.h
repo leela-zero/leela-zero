@@ -56,31 +56,25 @@ struct MoveToAvoid {
 };
 
 class AnalyzeTags {
+    friend class LeelaTest;
+
 public:
-    bool m_invalid;
+    AnalyzeTags() = default;
+    AnalyzeTags(std::istringstream& cmdstream, const GameState& game);
+
+    void add_move_to_avoid(int color, int vertex, size_t until_move);
+    void add_move_to_allow(int color, int vertex, size_t until_move);
+    int interval_centis() const;
+    int invalid() const;
+    int who() const;
+    bool is_to_avoid(int color, int vertex, size_t movenum) const;
+    bool has_move_restrictions() const;
+
+private:
+    bool m_invalid{true};
     std::vector<MoveToAvoid> m_moves_to_avoid, m_moves_to_allow;
-    int m_interval_centis;
-    int m_who;
-
-    AnalyzeTags() {
-        clear();
-    }
-
-    void clear() {
-        m_invalid = true;
-        m_moves_to_avoid.clear();
-        m_moves_to_allow.clear();
-        m_interval_centis = 0;
-        m_who = FastBoard::INVAL;
-    }
-
-    void add_move_to_avoid(int color, int vertex, size_t until_move) {
-        m_moves_to_avoid.emplace_back(color, until_move, vertex);
-    }
-
-    void add_move_to_allow(int color, int vertex, size_t until_move) {
-        m_moves_to_allow.emplace_back(color, until_move, vertex);
-    }
+    int m_interval_centis{0};
+    int m_who{FastBoard::INVAL};
 };
 
 extern bool cfg_gtp_mode;
@@ -140,7 +134,6 @@ public:
     static void initialize(std::unique_ptr<Network>&& network);
     static void execute(GameState & game, const std::string& xinput);
     static void setup_default_parameters();
-    static AnalyzeTags parse_analyze_tags(std::istringstream & cmdstream, const GameState & game);
 private:
     static constexpr int GTP_VERSION = 2;
 
