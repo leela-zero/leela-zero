@@ -601,8 +601,7 @@ bool UCTSearch::is_running() const {
 int UCTSearch::est_playouts_left(int elapsed_centis, int time_for_move) const {
     auto playouts = m_playouts.load();
     const auto playouts_left =
-        std::max(0, std::min(m_maxplayouts - playouts,
-                             m_maxvisits - m_root->get_visits()));
+        std::max(0, std::max(m_maxplayouts - playouts, m_maxvisits - m_root->get_visits()));
 
     // Wait for at least 1 second and 100 playouts
     // so we get a reliable playout_rate.
