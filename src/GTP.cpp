@@ -130,8 +130,9 @@ void GTP::setup_default_parameters() {
     cfg_num_threads = cfg_max_threads;
 #endif
     cfg_max_memory = UCTSearch::DEFAULT_MAX_MEMORY;
-    cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
-    cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
+    // Use unlimited playout only when both cfg_max_playouts and cfg_max_visits is 0
+    cfg_max_playouts = 0;
+    cfg_max_visits = 0;
     // This will be overwriiten in initialize() after network size is known.
     cfg_max_tree_size = UCTSearch::DEFAULT_MAX_MEMORY;
     cfg_max_cache_ratio_percent = 10;
@@ -1122,14 +1123,17 @@ void GTP::execute_setoption(UCTSearch & search,
         valuestream >> visits;
         cfg_max_visits = visits;
 
-        // 0 may be specified to mean "no limit"
-        if (cfg_max_visits == 0) {
-            cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
+        // 0 visit together with 0 playout means "no limit"
+        if (cfg_max_playouts  == 0 && cfg_max_visits == 0) {
+            search.set_visit_limit(UCTSearch::UNLIMITED_PLAYOUTS);
+            search.set_playout_limit(UCTSearch::UNLIMITED_PLAYOUTS);
+        } else {
+            // Note that if the visits are changed but no
+            // explicit command to set memory usage is given,
+            // we will stick with the initial guess we made on startup.
+            search.set_visit_limit(cfg_max_visits);
+            search.set_playout_limit(cfg_max_playouts);
         }
-        // Note that if the visits are changed but no
-        // explicit command to set memory usage is given,
-        // we will stick with the initial guess we made on startup.
-        search.set_visit_limit(cfg_max_visits);
 
         gtp_printf(id, "");
     } else if (name == "playouts") {
@@ -1138,20 +1142,23 @@ void GTP::execute_setoption(UCTSearch & search,
         valuestream >> playouts;
         cfg_max_playouts = playouts;
 
-        // 0 may be specified to mean "no limit"
-        if (cfg_max_playouts == 0) {
-            cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
+        // 0 visit together with 0 playout means "no limit"
+        if (cfg_max_playouts == 0 && cfg_max_visits == 0) {
+            search.set_visit_limit(UCTSearch::UNLIMITED_PLAYOUTS);
+            search.set_playout_limit(UCTSearch::UNLIMITED_PLAYOUTS);
         } else if (cfg_allow_pondering) {
             // Limiting playouts while pondering is still enabled
             // makes no sense.
             gtp_fail_printf(id, "incorrect value");
             return;
+        } else {
+            // Note that if the playouts are changed but no
+            // explicit command to set memory usage is given,
+            // we will stick with the initial guess we made on startup.
+            search.set_visit_limit(cfg_max_visits);
+            search.set_playout_limit(cfg_max_playouts);
         }
 
-        // Note that if the playouts are changed but no
-        // explicit command to set memory usage is given,
-        // we will stick with the initial guess we made on startup.
-        search.set_playout_limit(cfg_max_visits);
 
         gtp_printf(id, "");
     } else if (name == "lagbuffer") {

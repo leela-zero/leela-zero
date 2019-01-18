@@ -92,8 +92,13 @@ private:
 
 UCTSearch::UCTSearch(GameState& g, Network& network)
     : m_rootstate(g), m_network(network) {
-    set_playout_limit(cfg_max_playouts);
-    set_visit_limit(cfg_max_visits);
+    if (cfg_max_playouts == 0 && cfg_max_visits == 0) {
+        set_playout_limit(UCTSearch::UNLIMITED_PLAYOUTS);
+        set_visit_limit(UCTSearch::UNLIMITED_PLAYOUTS);
+    } else {
+        set_playout_limit(cfg_max_playouts);
+        set_visit_limit(cfg_max_visits);
+    }
 
     m_root = std::make_unique<UCTNode>(FastBoard::PASS, 0.0f);
 }
@@ -676,8 +681,8 @@ bool UCTSearch::have_alternate_moves(int elapsed_centis, int time_for_move) {
 }
 
 bool UCTSearch::stop_thinking(int elapsed_centis, int time_for_move) const {
-    return m_playouts >= m_maxplayouts
-           || m_root->get_visits() >= m_maxvisits
+    return (m_playouts >= m_maxplayouts
+            && m_root->get_visits() >= m_maxvisits)
            || elapsed_centis >= time_for_move;
 }
 
