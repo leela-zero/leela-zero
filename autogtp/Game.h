@@ -70,7 +70,8 @@ public:
     bool writeSgf();
     bool loadTraining(const QString &fileName);
     bool saveTraining();
-    bool fixSgf(const QString& weightFile, const bool resignation);
+    bool fixSgf(const Engine& whiteEngine, const bool resignation,
+        const bool isSelfPlay);
     bool dumpTraining();
     bool dumpDebug();
     void gameQuit();
