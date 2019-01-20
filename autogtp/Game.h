@@ -113,6 +113,10 @@ private:
     bool waitReady();
     bool eatNewLine();
     void error(int errnum);
+    void fixSgfPlayer(QString& sgfData, const Engine& whiteEngine);
+    void fixSgfComment(QString& sgfData, const Engine& whiteEngine,
+        const bool isSelfPlay);
+    void fixSgfResult(QString& sgfData, const bool resignation);
 };
 
 #endif /* GAME_H */
