@@ -213,6 +213,7 @@ const std::string GTP::s_commands[] = {
     "lz-genmove_analyze",
     "lz-memory_report",
     "lz-setoption",
+    "gomill-explain_last_move",
     ""
 };
 
@@ -651,7 +652,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         } while (game.get_passes() < 2 && !game.has_resigned());
 
         return;
-    } else if (command.find("go") == 0) {
+    } else if (command.find("go") == 0 && command.size() < 6) {
         int move = search->think(game.get_to_move());
         game.play_move(move);
 
@@ -970,6 +971,9 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         return;
     } else if (command.find("lz-setoption") == 0) {
         return execute_setoption(*search.get(), id, command);
+    } else if (command.find("gomill-explain_last_move") == 0) {
+        gtp_printf(id, "%s\n", search->explain_last_think().c_str());
+        return;
     }
     gtp_fail_printf(id, "unknown command");
     return;

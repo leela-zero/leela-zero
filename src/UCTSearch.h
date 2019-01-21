@@ -114,6 +114,7 @@ public:
     void ponder();
     bool is_running() const;
     void increment_playouts();
+    std::string explain_last_think() const;
     SearchResult play_simulation(GameState& currstate, UCTNode* const node);
 
 private:
@@ -121,7 +122,7 @@ private:
     void dump_stats(FastState& state, UCTNode& parent);
     void tree_stats(const UCTNode& node);
     std::string get_pv(FastState& state, UCTNode& parent);
-    void dump_analysis(int playouts);
+    std::string get_analysis();
     bool should_resign(passflag_t passflag, float besteval);
     bool have_alternate_moves(int elapsed_centis, int time_for_move);
     int est_playouts_left(int elapsed_centis, int time_for_move) const;
@@ -141,6 +142,7 @@ private:
     std::atomic<bool> m_run{false};
     int m_maxplayouts;
     int m_maxvisits;
+    std::string m_think_output;
 
     std::list<Utils::ThreadGroup> m_delete_futures;
 
