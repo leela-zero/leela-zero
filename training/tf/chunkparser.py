@@ -145,9 +145,9 @@ class ChunkParser:
         # int32 version (4 bytes)
         # (19*19+1) float32 probabilities (1448 bytes)
         # 19*19*16 packed bit planes (722 bytes)
-        # uint8 side_to_move (1 byte)
+        # float32 side_to_move (4 bytes)
         # uint8 is_winner (1 byte)
-        self.v2_struct = struct.Struct('4s1448s722sBB')
+        self.v2_struct = struct.Struct('4s1448s722sfB')
 
         # Struct used to return data from child workers.
         # float32 winner
@@ -190,10 +190,10 @@ class ChunkParser:
         planes = np.packbits(planes).tobytes()
 
         # Get the 'side to move'
-        stm = text_item[16][0]
-        if not(stm == "0" or stm == "1"):
-            return False, None
-        stm = int(stm)
+        stm = float(text_item[16])
+        #if not(stm == "0" or stm == "1"):
+        #    return False, None
+        #stm = int(stm)
 
         # Load the probabilities.
         probabilities = np.array(text_item[17].split()).astype(np.float32)
@@ -263,14 +263,14 @@ class ChunkParser:
         """
         (ver, probs, planes, to_move, winner) = self.v2_struct.unpack(content)
         # Unpack planes.
-        planes = np.unpackbits(np.frombuffer(planes, dtype=np.uint8))
+        planes = np.unpackbits(np.frombuffer(planes, dtype=np.uint8)).astype('f')
         assert len(planes) == 19*19*16
         # Now we add the two final planes, being the 'color to move' planes.
         stm = to_move
-        assert stm == 0 or stm == 1
+        # assert stm == 0 or stm == 1
         # Flattern all planes to a single byte string
-        planes = planes.tobytes() + self.flat_planes[stm]
-        assert len(planes) == (18 * 19 * 19), len(planes)
+        planes = planes.tobytes() + (np.array([1.0-stm]*361 + [stm]*361)).astype('f').tobytes()
+        assert len(planes) == (18 * 19 * 19 * 4), len(planes)
 
         winner = float(winner * 2 - 1)
         assert winner == 1.0 or winner == -1.0, winner
