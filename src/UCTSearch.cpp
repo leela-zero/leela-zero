@@ -51,6 +51,7 @@
 using namespace Utils;
 
 constexpr int UCTSearch::UNLIMITED_PLAYOUTS;
+bool is_pondering = false;
 
 class OutputAnalysisData {
 public:
@@ -235,8 +236,11 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         }
     }
 
+    auto depth =
+        int(currstate.get_movenum() - m_rootstate.get_movenum());
+
     if (node->has_children() && !result.valid()) {
-        auto next = node->uct_select_child(color, node == m_root.get());
+        auto next = node->uct_select_child(color, node == m_root.get(), is_pondering, depth);
         auto move = next->get_move();
 
         currstate.play_move(move);
@@ -794,6 +798,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
 }
 
 void UCTSearch::ponder() {
+    is_pondering = true;
     update_root();
 
     m_root->prepare_root_node(m_network, m_rootstate.board.get_to_move(),
@@ -839,6 +844,7 @@ void UCTSearch::ponder() {
     dump_stats(m_rootstate, *m_root);
 
     myprintf("\n%d visits, %d nodes\n\n", m_root->get_visits(), m_nodes.load());
+    is_pondering = false;
 
     // Copy the root state. Use to check for tree re-use in future calls.
     m_last_rootstate = std::make_unique<GameState>(m_rootstate);

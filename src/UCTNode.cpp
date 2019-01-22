@@ -247,7 +247,7 @@ void UCTNode::accumulate_eval(float eval) {
     atomic_add(m_blackevals, double(eval));
 }
 
-UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
+UCTNode* UCTNode::uct_select_child(int color, bool is_root, bool is_pondering, int depth) {
     wait_expanded();
 
     // Count parentvisits manually to avoid issues with transpositions.
@@ -271,6 +271,13 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
 
+    const auto winrate_target_value = 0.01f * cfg_winrate_target; // Converts user input into float between 1.0f and 0.0f
+
+    bool is_opponent_move = ((depth % 2) != 0); // Returns "true" on moves at odd-numbered depth, indicating at any depth in a search variation which moves are played by LZ's opponent.
+    if (is_pondering) {
+        is_opponent_move = !is_opponent_move; // When pondering, opponent's moves are made at even-numbered depths. Flipping this bool accounts for this.
+    }
+
     for (auto& child : m_children) {
         if (!child.active()) {
             continue;
@@ -287,7 +294,12 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         const auto psa = child.get_policy();
         const auto denom = 1.0 + child.get_visits();
         const auto puct = cfg_puct * psa * (numerator / denom);
-        const auto value = winrate + puct;
+        auto value = winrate + puct;
+
+        if (!is_opponent_move) {
+            value = (1 - abs(winrate_target_value - winrate)) + puct;
+        }
+
         assert(value > std::numeric_limits<double>::lowest());
 
         if (value > best_value) {
