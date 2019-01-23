@@ -762,7 +762,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     } while (keeprunning);
 
     // Make sure to post at least once.
-    if (cfg_analyze_interval_centis && last_output == 0) {
+    if (cfg_analyze_tags.interval_centis() && last_output == 0) {
         output_analysis(m_rootstate, *m_root);
     }
 
@@ -837,7 +837,7 @@ void UCTSearch::ponder() {
     } while (!Utils::input_pending() && keeprunning);
 
     // Make sure to post at least once.
-    if (cfg_analyze_interval_centis && last_output == 0) {
+    if (cfg_analyze_tags.interval_centis() && last_output == 0) {
         output_analysis(m_rootstate, *m_root);
     }
 
