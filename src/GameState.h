@@ -60,6 +60,7 @@ public:
     bool undo_move();
     bool forward_move();
     const FullBoard& get_past_board(int moves_ago) const;
+    std::shared_ptr<const KoState> get_past_state(int moves_ago) const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);

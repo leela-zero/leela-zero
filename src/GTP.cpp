@@ -381,6 +381,11 @@ const std::string GTP::s_commands[] = {
     "genmove",
     "showboard",
     "undo",
+    "redo",
+    "rewind",
+    "last_move",
+    "move_history",
+    "move_number",
     "final_score",
     "final_status_list",
     "time_settings",
@@ -734,6 +739,44 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         } else {
             gtp_fail_printf(id, "cannot undo");
         }
+        return;
+    } else if (command.find("redo") == 0) {
+        if (game.forward_move()) {
+            gtp_printf(id, "");
+        } else {
+            gtp_fail_printf(id, "cannot redo");
+        }
+        return;
+    } else if (command.find("rewind") == 0) {
+        game.rewind();
+        gtp_printf(id, "");
+        return;
+    } else if (command.find("last_move") == 0) {
+        auto last_move = game.get_last_move();
+        if (last_move == FastBoard::NO_VERTEX) {
+            gtp_fail_printf(id, "no previous move known");
+            return;
+        }
+        std::string coordinate = game.move_to_text(last_move);
+        std::string color = game.get_to_move() == FastBoard::WHITE ? "black": "white";
+        gtp_printf(id, "%s %s", color.c_str(), coordinate.c_str());
+        return;
+    } else if (command.find("move_history") == 0) {
+        if (game.get_movenum() == 0) {
+            gtp_printf_raw("= \n");
+        } else {
+            gtp_printf_raw("= ");
+        }
+        for (size_t i=0; i < game.get_movenum(); ++i) {
+            auto state = game.get_past_state(i);
+            std::string coordinate = game.move_to_text(state->get_last_move());
+            std::string color = state->get_to_move() == FastBoard::WHITE ? "black": "white";
+            gtp_printf_raw("%s %s\n", color.c_str(), coordinate.c_str());
+        }
+        gtp_printf_raw("\n");
+        return;
+    } else if (command.find("move_number") == 0) {
+        gtp_printf(id, "%u", game.get_movenum());
         return;
     } else if (command.find("showboard") == 0) {
         gtp_printf(id, "");
