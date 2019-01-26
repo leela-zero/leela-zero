@@ -32,6 +32,8 @@
 #include <cassert>
 #include <cstdlib>
 #include <algorithm>
+#include <regex>
+#include <sstream>
 
 #include "GTP.h"
 #include "Timing.h"
@@ -65,6 +67,28 @@ std::string TimeControl::to_text_sgf() const {
         }
     }
     return s;
+}
+
+void TimeControl::set_from_text_sgf(const std::string& maintime,
+    const std::string& byoyomi) {
+    m_maintime = std::stoi(maintime) * 100;
+    m_byotime = 0;
+    m_byostones = 0;
+    m_byoperiods = 0;
+    if (!byoyomi.empty()) {
+        std::smatch m;
+        if (std::regex_match(byoyomi, m, std::regex{"(\\d+)/(\\d+) Canadian"})) {
+            m_byostones = std::stoi(m[1]);
+            m_byotime = std::stoi(m[2]) * 100;
+        } else if (std::regex_match(byoyomi, m, std::regex{"(\\d+)x(\\d+) byo-yomi"})) {
+            m_byoperiods = std::stoi(m[1]);
+            m_byotime = std::stoi(m[2]) * 100;
+        } else {
+            // Unrecognised byo-yomi syntax
+        }
+    }
+    reset_clocks();
+    return;
 }
 
 void TimeControl::reset_clocks() {

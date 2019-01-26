@@ -53,7 +53,8 @@ public:
     bool can_accumulate_time(int color) const;
     size_t opening_moves(int boardsize) const;
     std::string to_text_sgf() const;
-
+    void set_from_text_sgf(const std::string& maintime,
+        const std::string& byoyomi);
 private:
     void display_color_time(int color);
     int get_moves_expected(int boardsize, size_t movenum) const;

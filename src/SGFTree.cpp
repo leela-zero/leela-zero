@@ -81,6 +81,10 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) const {
     // sets up the game history.
     GameState result(get_state());
 
+    if (m_loaded_timecontrol) {
+        result.set_timecontrol(m_timecontrol);
+    }
+
     for (unsigned int i = 0; i <= movenum && link != nullptr; i++) {
         // root position has no associated move
         if (i != 0) {
@@ -181,6 +185,16 @@ void SGFTree::populate_states() {
         }
     }
 
+    // time
+    it = m_properties.find("TM");
+    if (it != end(m_properties)) {
+        std::string maintime = it->second;
+        it = m_properties.find("OT");
+        std::string byoyomi = (it != end(m_properties)) ? it->second : "";
+        m_timecontrol.set_from_text_sgf(maintime, byoyomi);
+        m_loaded_timecontrol = true;
+    }
+
     // handicap
     it = m_properties.find("HA");
     if (it != end(m_properties)) {
@@ -268,6 +282,8 @@ void SGFTree::populate_states() {
 void SGFTree::copy_state(const SGFTree& tree) {
     m_initialized = tree.m_initialized;
     m_state = tree.m_state;
+    m_loaded_timecontrol = tree.m_loaded_timecontrol;
+    m_timecontrol = tree.m_timecontrol;
 }
 
 void SGFTree::apply_move(int color, int move) {
