@@ -90,6 +90,7 @@ private:
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
     QString getOptionsString(const QJsonObject &opt, const QString &rnd);
+    QString getGtpCommandsString(const QJsonValue &gtpCommands);
     void sendAllGames();
     void checkStoredGames();
     QFileInfo getNextStored();

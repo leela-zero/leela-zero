@@ -57,7 +57,9 @@ class Game : QProcess {
 public:
     Game(const Engine& engine);
     ~Game() = default;
-    bool gameStart(const VersionTuple& min_version);
+    bool gameStart(const VersionTuple& min_version,
+                   const QString &sgf = QString(),
+                   const int moves = 0);
     void move();
     bool waitForMove() { return waitReady(); }
     bool readMove();
@@ -68,7 +70,8 @@ public:
     bool writeSgf();
     bool loadTraining(const QString &fileName);
     bool saveTraining();
-    bool fixSgf(const QString& weightFile, const bool resignation);
+    bool fixSgf(const Engine& whiteEngine, const bool resignation,
+        const bool isSelfPlay);
     bool dumpTraining();
     bool dumpDebug();
     void gameQuit();
@@ -80,6 +83,7 @@ public:
     QString getWinnerName() const { return m_winner; }
     int getMovesCount() const { return m_moveNum; }
     void setMovesCount(int moves);
+    int getToMove() const { return m_blackToMove ? BLACK : WHITE; }
     QString getResult() const { return m_result.trimmed(); }
     enum {
         BLACK = 0,
@@ -98,6 +102,7 @@ private:
     QString m_fileName;
     QString m_moveDone;
     QString m_result;
+    bool m_isHandicap;
     bool m_resignation;
     bool m_blackToMove;
     bool m_blackResigned;
@@ -108,6 +113,10 @@ private:
     bool waitReady();
     bool eatNewLine();
     void error(int errnum);
+    void fixSgfPlayer(QString& sgfData, const Engine& whiteEngine);
+    void fixSgfComment(QString& sgfData, const Engine& whiteEngine,
+        const bool isSelfPlay);
+    void fixSgfResult(QString& sgfData, const bool resignation);
 };
 
 #endif /* GAME_H */

@@ -42,14 +42,14 @@ void Order::load(const QString &file) {
         return;
     }
     QTextStream in(&f);
-    in >>  m_type;
+    in >> m_type;
     int count;
     in >> count;
     QString key;
     for (int i = 0; i < count; i++) {
         in >> key;
-        if (key == "options" || key == "optionsSecond") {
-            m_parameters[key] = in.readLine();
+        if (key.contains("options") || key.contains("gtpCommands")) {
+            m_parameters[key] = in.readLine().remove(0, 1);
         } else {
             in >> m_parameters[key];
         }

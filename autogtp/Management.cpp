@@ -22,11 +22,13 @@
 #include <QThread>
 #include <QList>
 #include <QCryptographicHash>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLockFile>
 #include <QUuid>
 #include <QRegularExpression>
+#include <QVariant>
 #include "Management.h"
 #include "Game.h"
 
@@ -274,6 +276,14 @@ QString Management::getOptionsString(const QJsonObject &opt, const QString &rnd)
     return options;
 }
 
+QString Management::getGtpCommandsString(const QJsonValue &gtpCommands) {
+    const auto gtpCommandsJsonDoc = QJsonDocument(gtpCommands.toArray());
+    const auto gtpCommandsJson = gtpCommandsJsonDoc.toJson(QJsonDocument::Compact);
+    auto gtpCommandsString = QVariant(gtpCommandsJson).toString();
+    gtpCommandsString.remove(QRegularExpression("[\\[\\]\"]"));
+    return gtpCommandsString;
+}
+
 Order Management::getWorkInternal(bool tuning) {
     Order o(Order::Error);
 
@@ -304,7 +314,9 @@ Order Management::getWorkInternal(bool tuning) {
     white_hash_gzip_hash: "23c29bf777e446b5c3fb0e6e7fa4d53f15b99cc0c25798b70b57877b55bf1638",
     black_hash_gzip_hash: "ccfe6023456aaaa423c29bf777e4aab481245289aaaabb70b7b5380992377aa8",
     hash_sgf_hash: "7dbccc5ad9eb38f0135ff7ec860f0e81157f47dfc0a8375cef6bf1119859e537",
-    moves_count: "92"
+    moves_count: "92",
+    gtp_commands : [ "time_settings 600 30 1", "komi 0.5", "fixed_handicap 2" ],
+    white_gtp_commands : [ "time_settings 0 10 1", "komi 0.5", "fixed_handicap 2" ],
 }
 
 {
@@ -323,7 +335,8 @@ Order Management::getWorkInternal(bool tuning) {
     },
     hash_gzip_hash: "23c29bf777e446b5c3fb0e6e7fa4d53f15b99cc0c25798b70b57877b55bf1638",
     hash_sgf_hash: "7dbccc5ad9eb38f0135ff7ec860f0e81157f47dfc0a8375cef6bf1119859e537",
-    moves_count: "92"
+    moves_count: "92",
+    gtp_commands : [ "time_settings 600 30 1", "komi 0.5", "fixed_handicap 4" ],
 }
 
 {
@@ -408,6 +421,9 @@ Order Management::getWorkInternal(bool tuning) {
         parameters["optHash"] = ob.value("options_hash").toString();
         parameters["options"] = getOptionsString(ob.value("options").toObject(), rndSeed);
     }
+    if (ob.contains("gtp_commands")) {
+        parameters["gtpCommands"] = getGtpCommandsString(ob.value("gtp_commands"));
+    }
     if (ob.contains("hash_sgf_hash")) {
         parameters["sgf"] = fetchGameData(ob.value("hash_sgf_hash").toString(), "sgf");
         parameters["moves"] = ob.contains("moves_count") ?
@@ -448,6 +464,11 @@ Order Management::getWorkInternal(bool tuning) {
         parameters["optionsSecond"] = ob.contains("white_options") ?
             getOptionsString(ob.value("white_options").toObject(), rndSeed) :
             parameters["options"];
+        if (ob.contains("gtp_commands")) {
+            parameters["gtpCommandsSecond"] = ob.contains("white_gtp_commands") ?
+                getGtpCommandsString(ob.value("white_gtp_commands")) :
+                parameters["gtpCommands"];
+        }
 
         o.type(Order::Validation);
         o.parameters(parameters);
@@ -483,7 +504,7 @@ Order Management::getWork(bool tuning) {
     for (auto retries = 0; retries < MAX_RETRIES; retries++) {
         try {
             return getWorkInternal(tuning);
-        } catch (NetworkException ex) {
+        } catch (const NetworkException &ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;
             QTextStream(stdout)
@@ -704,7 +725,7 @@ void Management::sendAllGames() {
                     QThread::sleep(10);
                 }
             }
-        } catch (NetworkException ex) {
+        } catch (const NetworkException &ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;
             QTextStream(stdout)
@@ -781,7 +802,7 @@ void Management::uploadResult(const QMap<QString,QString> &r, const QMap<QString
         try {
             sent = sendCurl(prog_cmdline);
             break;
-        } catch (NetworkException ex) {
+        } catch (const NetworkException &ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;
             QTextStream(stdout)
@@ -833,7 +854,7 @@ void Management::uploadData(const QMap<QString,QString> &r, const QMap<QString,Q
         try {
             sent = sendCurl(prog_cmdline);
             break;
-        } catch (NetworkException ex) {
+        } catch (const NetworkException &ex) {
             QTextStream(stdout)
                 << "Network connection to server failed." << endl;
             QTextStream(stdout)
