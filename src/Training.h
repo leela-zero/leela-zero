@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #ifndef TRAINING_H_INCLUDED
@@ -21,6 +32,7 @@
 
 #include "config.h"
 
+#include <bitset>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -32,7 +44,9 @@
 
 class TimeStep {
 public:
-    Network::NNPlanes planes;
+    using BoardPlane = std::bitset<NUM_INTERSECTIONS>;
+    using NNPlanes = std::vector<BoardPlane>;
+    NNPlanes planes;
     std::vector<float> probabilities;
     int to_move;
     float net_winrate;
@@ -68,14 +82,15 @@ public:
     static void dump_training(int winner_color,
                               const std::string& out_filename);
     static void dump_debug(const std::string& out_filename);
-    static void record(GameState& state, UCTNode& node);
+    static void record(Network & network, GameState& state, UCTNode& node);
 
     static void dump_supervised(const std::string& sgf_file,
                                 const std::string& out_filename);
     static void save_training(const std::string& filename);
     static void load_training(const std::string& filename);
-private:
 
+private:
+    static TimeStep::NNPlanes get_planes(const GameState* const state);
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,
                              OutputChunker& outchunker);

@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2018-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 #include <gtest/gtest.h>
 
@@ -37,7 +48,7 @@
 
 using namespace Utils;
 
-void expect_regex(std::string s, std::string re, bool positive=true) {
+void expect_regex(std::string s, std::string re, bool positive = true) {
     auto m = std::regex_search(s, std::regex(re));
     if (positive && !m) {
         FAIL() << "Output:" << std::endl << s
@@ -69,10 +80,12 @@ public:
         // improves reproducibility across platforms.
         Random::get_Rng().seedrandom(cfg_rng_seed);
 
-        NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
-
         cfg_weightsfile = "../src/tests/0k.txt";
-        Network::initialize();
+
+        auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
+        auto network = std::make_unique<Network>();
+        network->initialize(playouts, cfg_weightsfile);
+        GTP::initialize(std::move(network));
     }
     void TearDown() {}
 };
@@ -81,7 +94,7 @@ public:
 
 class LeelaTest: public ::testing::Test {
 public:
-    LeelaTest( ) {
+    LeelaTest() {
         // Reset engine parameters
         GTP::setup_default_parameters();
         cfg_max_playouts = 1;
@@ -141,7 +154,7 @@ TEST_F(LeelaTest, Transposition) {
     EXPECT_EQ(ko_hash, maingame.board.get_ko_hash());
 }
 
-TEST_F(LeelaTest, KoSqNotSame) {
+TEST_F(LeelaTest, KoPntNotSame) {
     auto maingame = get_gamestate();
 
     testing::internal::CaptureStdout();
@@ -177,11 +190,11 @@ TEST_F(LeelaTest, KoSqNotSame) {
 
     // Board position is the same
     EXPECT_EQ(ko_hash, maingame.board.get_ko_hash());
-    // But ko (square) is not
+    // But ko (intersection) is not
     EXPECT_NE(hash, maingame.board.get_hash());
 }
 
-TEST_F(LeelaTest, MoveOnOccupiedSq) {
+TEST_F(LeelaTest, MoveOnOccupiedPnt) {
     auto maingame = get_gamestate();
     std::string output;
 

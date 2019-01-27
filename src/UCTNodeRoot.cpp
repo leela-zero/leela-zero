@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2018 Gian-Carlo Pascutto
+    Copyright (C) 2018-2019 Gian-Carlo Pascutto
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #include "config.h"
@@ -88,28 +99,42 @@ void UCTNode::dirichlet_noise(float epsilon, float alpha) {
         return;
     }
 
-    for (auto& v: dirichlet_vector) {
+    for (auto& v : dirichlet_vector) {
         v /= sample_sum;
     }
 
     child_cnt = 0;
     for (auto& child : m_children) {
-        auto score = child->get_score();
+        auto policy = child->get_policy();
         auto eta_a = dirichlet_vector[child_cnt++];
-        score = score * (1 - epsilon) + epsilon * eta_a;
-        child->set_score(score);
+        policy = policy * (1 - epsilon) + epsilon * eta_a;
+        child->set_policy(policy);
     }
 }
 
 void UCTNode::randomize_first_proportionally() {
-    auto accum = std::uint64_t{0};
-    auto accum_vector = std::vector<decltype(accum)>{};
+    auto accum = 0.0;
+    auto norm_factor = 0.0;
+    auto accum_vector = std::vector<double>{};
+
     for (const auto& child : m_children) {
-        accum += child->get_visits();
-        accum_vector.emplace_back(accum);
+        auto visits = child->get_visits();
+        if (norm_factor == 0.0) {
+            norm_factor = visits;
+            // Nonsensical options? End of game?
+            if (visits <= cfg_random_min_visits) {
+                return;
+            }
+        }
+        if (visits > cfg_random_min_visits) {
+            accum += std::pow(visits / norm_factor,
+                              1.0 / cfg_random_temp);
+            accum_vector.emplace_back(accum);
+        }
     }
 
-    auto pick = Random::get_Rng().randuint64(accum);
+    auto distribution = std::uniform_real_distribution<double>{0.0, accum};
+    auto pick = distribution(Random::get_Rng());
     auto index = size_t{0};
     for (size_t i = 0; i < accum_vector.size(); i++) {
         if (pick < accum_vector[i]) {
@@ -123,7 +148,7 @@ void UCTNode::randomize_first_proportionally() {
         return;
     }
 
-    assert(m_children.size() >= index);
+    assert(m_children.size() > index);
 
     // Now swap the child at index with the first child
     std::iter_swap(begin(m_children), begin(m_children) + index);
@@ -163,16 +188,16 @@ void UCTNode::inflate_all_children() {
     }
 }
 
-void UCTNode::prepare_root_node(int color,
+void UCTNode::prepare_root_node(Network & network, int color,
                                 std::atomic<int>& nodes,
                                 GameState& root_state) {
     float root_eval;
     const auto had_children = has_children();
     if (expandable()) {
-        create_children(nodes, root_state, root_eval);
+        create_children(network, nodes, root_state, root_eval);
     }
     if (had_children) {
-        root_eval = get_eval(color);
+        root_eval = get_net_eval(color);
     } else {
         update(root_eval);
         root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
@@ -189,7 +214,7 @@ void UCTNode::prepare_root_node(int color,
 
     if (cfg_noise) {
         // Adjust the Dirichlet noise's alpha constant to the board size
-        auto alpha = 0.03f * 361.0f / BOARD_SQUARES;
+        auto alpha = 0.03f * 361.0f / NUM_INTERSECTIONS;
         dirichlet_noise(0.25f, alpha);
     }
 }

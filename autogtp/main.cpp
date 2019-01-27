@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
         gpusNum = 1;
     }
     int maxNum = -1;
-    if(parser.isSet(maxOption)) {
+    if (parser.isSet(maxOption)) {
         maxNum = parser.value(maxOption).toInt();
         if (maxNum == 0) {
             maxNum = 1;
@@ -110,10 +110,10 @@ int main(int argc, char *argv[]) {
         }
         maxNum -= (gpusNum * gamesNum);
     }
-    if(parser.isSet(singleOption)) {
+    if (parser.isSet(singleOption)) {
         gamesNum = 1;
         gpusNum = 1;
-        maxNum = 0;      
+        maxNum = 0;
     }
 
     // Map streams
@@ -146,16 +146,16 @@ int main(int argc, char *argv[]) {
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
     QTimer *timer = new QTimer();
     boss->giveAssignments();
-    if(parser.isSet(timeoutOption)) {
+    if (parser.isSet(timeoutOption)) {
         QObject::connect(timer, &QTimer::timeout, &app, &QCoreApplication::quit);
         timer->start(parser.value(timeoutOption).toInt() * 60000);
-    } else {
-        if (parser.isSet(singleOption) || parser.isSet(maxOption)) {
-            QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
-        } else {
-            cons = new Console();
-            QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
-        }
+    }
+    if (parser.isSet(singleOption) || parser.isSet(maxOption)) {
+        QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
+    }
+    if (true) {
+        cons = new Console();
+        QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
     }
     return app.exec();
 }

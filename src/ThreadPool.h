@@ -4,7 +4,7 @@
     Extended from code:
     Copyright (c) 2012 Jakob Progsch, Václav Zeman
     Modifications:
-    Copyright (c) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (c) 2017-2019 Gian-Carlo Pascutto and contributors
 
     This software is provided 'as-is', without any express or implied
     warranty. In no event will the authors be held liable for any damages
@@ -82,7 +82,7 @@ inline void ThreadPool::add_thread(std::function<void()> initializer) {
 
 inline void ThreadPool::initialize(size_t threads) {
     for (size_t i = 0; i < threads; i++) {
-        add_thread( [](){} /* null function */);
+        add_thread([](){} /* null function */);
     }
 }
 
@@ -110,7 +110,7 @@ inline ThreadPool::~ThreadPool() {
         m_exit = true;
     }
     m_condvar.notify_all();
-    for (std::thread & worker: m_threads) {
+    for (std::thread & worker : m_threads) {
         worker.join();
     }
 }
@@ -125,7 +125,7 @@ public:
         );
     }
     void wait_all() {
-        for (auto && result: m_taskresults) {
+        for (auto && result : m_taskresults) {
             result.get();
         }
     }

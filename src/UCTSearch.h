@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #ifndef UCTSEARCH_H_INCLUDED
@@ -31,6 +42,7 @@
 #include "FastState.h"
 #include "GameState.h"
 #include "UCTNode.h"
+#include "Network.h"
 
 
 class SearchResult {
@@ -59,7 +71,7 @@ private:
 
 namespace TimeManagement {
     enum enabled_t {
-        AUTO = -1, OFF = 0, ON = 1
+        AUTO = -1, OFF = 0, ON = 1, FAST = 2, NO_PRUNING = 3
     };
 };
 
@@ -76,14 +88,26 @@ public:
     static constexpr passflag_t NORESIGN = 1 << 1;
 
     /*
-        Maximum size of the tree in memory. Nodes are about
-        48 bytes, so limit to ~1.2G on 32-bits and about 5.5G
-        on 64-bits.
+        Default memory limit in bytes.
+        ~1.6GiB on 32-bits and about 5.2GiB on 64-bits.
     */
-    static constexpr auto MAX_TREE_SIZE =
-        (sizeof(void*) == 4 ? 25'000'000 : 100'000'000);
+    static constexpr size_t DEFAULT_MAX_MEMORY =
+        (sizeof(void*) == 4 ? 1'600'000'000 : 5'200'000'000);
 
-    UCTSearch(GameState& g);
+    /*
+        Minimum allowed size for maximum tree size.
+    */
+    static constexpr size_t MIN_TREE_SPACE = 100'000'000;
+
+    /*
+        Value representing unlimited visits or playouts. Due to
+        concurrent updates while multithreading, we need some
+        headroom within the native type.
+    */
+    static constexpr auto UNLIMITED_PLAYOUTS =
+        std::numeric_limits<int>::max() / 2;
+
+    UCTSearch(GameState& g, Network & network);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
@@ -98,14 +122,16 @@ private:
     void tree_stats(const UCTNode& node);
     std::string get_pv(FastState& state, UCTNode& parent);
     void dump_analysis(int playouts);
-    bool should_resign(passflag_t passflag, float bestscore);
+    bool should_resign(passflag_t passflag, float besteval);
     bool have_alternate_moves(int elapsed_centis, int time_for_move);
     int est_playouts_left(int elapsed_centis, int time_for_move) const;
-    size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0);
+    size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0,
+                               bool prune = true);
     bool stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
     int get_best_move(passflag_t passflag);
     void update_root();
     bool advance_to_new_rootstate();
+    void output_analysis(FastState & state, UCTNode & parent);
 
     GameState & m_rootstate;
     std::unique_ptr<GameState> m_last_rootstate;
@@ -117,6 +143,8 @@ private:
     int m_maxvisits;
 
     std::list<Utils::ThreadGroup> m_delete_futures;
+
+    Network & m_network;
 };
 
 class UCTWorker {

@@ -178,7 +178,8 @@ class ChunkParser:
             # Remaining bit that didn't fit. Encoded LSB so
             # it needs to be specially handled.
             last_digit = text_item[plane][90]
-            assert last_digit == "0" or last_digit == "1"
+            if not (last_digit == "0" or last_digit == "1"):
+                return False, None
             # Apply symmetry and append
             planes.append(array)
             planes.append(np.array([last_digit], dtype=np.uint8))
@@ -190,7 +191,8 @@ class ChunkParser:
 
         # Get the 'side to move'
         stm = text_item[16][0]
-        assert stm == "0" or stm == "1"
+        if not(stm == "0" or stm == "1"):
+            return False, None
         stm = int(stm)
 
         # Load the probabilities.
@@ -199,14 +201,17 @@ class ChunkParser:
             # Work around a bug in leela-zero v0.3, skipping any
             # positions that have a NaN in the probabilities list.
             return False, None
-        assert len(probabilities) == 362
+        if not(len(probabilities) == 362):
+            return False, None
 
         probs = probabilities.tobytes()
-        assert(len(probs) == 362 * 4)
+        if not(len(probs) == 362 * 4):
+            return False, None
 
         # Load the game winner color.
         winner = float(text_item[18])
-        assert winner == 1.0 or winner == -1.0
+        if not(winner == 1.0 or winner == -1.0):
+            return False, None
         winner = int((winner + 1) / 2)
 
         version = struct.pack('i', 1)

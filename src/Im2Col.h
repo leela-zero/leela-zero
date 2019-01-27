@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #ifndef IM2COL_H_INCLUDED
@@ -25,7 +36,7 @@
 
 template <unsigned long filter_size>
 void im2col(const int channels,
-            const std::vector<net_t>& input,
+            const std::vector<float>& input,
             std::vector<float>& output) {
     constexpr unsigned int height = BOARD_SIZE;
     constexpr unsigned int width = BOARD_SIZE;
@@ -34,10 +45,10 @@ void im2col(const int channels,
     constexpr unsigned int output_h = height + 2 * pad - filter_size  + 1;
     constexpr unsigned int output_w = width + 2 * pad - filter_size + 1;
 
-    const net_t* data_im = input.data();
+    const float* data_im = input.data();
     float* data_col = output.data();
 
-    for (int channel = channels; channel--; data_im += BOARD_SQUARES) {
+    for (int channel = channels; channel--; data_im += NUM_INTERSECTIONS) {
         for (unsigned int kernel_row = 0; kernel_row < filter_size; kernel_row++) {
             for (unsigned int kernel_col = 0; kernel_col < filter_size; kernel_col++) {
                 int input_row = -pad + kernel_row;
@@ -67,9 +78,9 @@ void im2col(const int channels,
 
 template <>
 void im2col<1>(const int channels,
-               const std::vector<net_t>& input,
+               const std::vector<float>& input,
                std::vector<float>& output) {
-    auto outSize = size_t{channels * static_cast<size_t>(BOARD_SQUARES)};
+    auto outSize = size_t{channels * static_cast<size_t>(NUM_INTERSECTIONS)};
     assert(output.size() == outSize);
     std::copy(begin(input), begin(input) + outSize, begin(output));
 }

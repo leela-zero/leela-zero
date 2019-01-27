@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #include "TimeControl.h"
@@ -28,7 +39,7 @@
 
 using namespace Utils;
 
-TimeControl::TimeControl(int boardsize, int maintime, int byotime,
+TimeControl::TimeControl(int maintime, int byotime,
                          int byostones, int byoperiods)
     : m_maintime(maintime),
       m_byotime(byotime),
@@ -36,10 +47,9 @@ TimeControl::TimeControl(int boardsize, int maintime, int byotime,
       m_byoperiods(byoperiods) {
 
     reset_clocks();
-    set_boardsize(boardsize);
 }
 
-std::string TimeControl::to_text_sgf() {
+std::string TimeControl::to_text_sgf() const {
     if (m_byotime != 0 && m_byostones == 0 && m_byoperiods == 0) {
         return ""; // infinite
     }
@@ -58,14 +68,10 @@ std::string TimeControl::to_text_sgf() {
 }
 
 void TimeControl::reset_clocks() {
-    m_remaining_time[0] = m_maintime;
-    m_remaining_time[1] = m_maintime;
-    m_stones_left[0] = m_byostones;
-    m_stones_left[1] = m_byostones;
-    m_periods_left[0] = m_byoperiods;
-    m_periods_left[1] = m_byoperiods;
-    m_inbyo[0] = m_maintime <= 0;
-    m_inbyo[1] = m_maintime <= 0;
+    m_remaining_time = {m_maintime, m_maintime};
+    m_stones_left = {m_byostones, m_byostones};
+    m_periods_left = {m_byoperiods, m_byoperiods};
+    m_inbyo = {m_maintime <= 0, m_maintime <= 0};
     // Now that byo-yomi status is set, add time
     // back to our clocks
     if (m_inbyo[0]) {
@@ -136,15 +142,16 @@ void TimeControl::display_color_time(int color) {
 }
 
 void TimeControl::display_times() {
-    display_color_time(0); // Black
-    display_color_time(1); // White
+    display_color_time(FastBoard::BLACK);
+    display_color_time(FastBoard::WHITE);
     myprintf("\n");
 }
 
-int TimeControl::max_time_for_move(int color) {
+int TimeControl::max_time_for_move(int boardsize,
+                                   int color, size_t movenum) const {
     // default: no byo yomi (absolute)
     auto time_remaining = m_remaining_time[color];
-    auto moves_remaining = m_moves_expected;
+    auto moves_remaining = get_moves_expected(boardsize, movenum);
     auto extra_time_per_move = 0;
 
     if (m_byotime != 0) {
@@ -219,14 +226,54 @@ void TimeControl::adjust_time(int color, int time, int stones) {
     }
 }
 
-void TimeControl::set_boardsize(int boardsize) {
+size_t TimeControl::opening_moves(int boardsize) const {
+    auto num_intersections = boardsize * boardsize;
+    auto fast_moves = num_intersections / 6;
+    return fast_moves;
+}
+
+int TimeControl::get_moves_expected(int boardsize, size_t movenum) const {
     auto board_div = 5;
     if (cfg_timemanage != TimeManagement::OFF) {
         // We will take early exits with time management on, so
         // it's OK to make our base time bigger.
         board_div = 9;
     }
+
     // Note this is constant as we play, so it's fair
     // to underestimate quite a bit.
-    m_moves_expected = (boardsize * boardsize) / board_div;
+    auto base_remaining = (boardsize * boardsize) / board_div;
+
+    // Don't think too long in the opening.
+    auto fast_moves = opening_moves(boardsize);
+    if (movenum < fast_moves) {
+        return (base_remaining + fast_moves) - movenum;
+    } else {
+        return base_remaining;
+    }
+}
+
+// Returns true if we are in a time control where we
+// can save up time. If not, we should not move quickly
+// even if certain of our move, but plough ahead.
+bool TimeControl::can_accumulate_time(int color) const {
+    if (m_inbyo[color]) {
+        // Cannot accumulate in Japanese byo yomi
+        if (m_byoperiods) {
+            return false;
+        }
+
+        // Cannot accumulate in Canadese style with
+        // one move remaining in the period
+        if (m_byostones && m_stones_left[color] == 1) {
+            return false;
+        }
+    } else {
+        // If there is a base time, we should expect
+        // to be able to accumulate. This may be somewhat
+        // of an illusion if the base time is tiny and byo
+        // yomi time is big.
+    }
+
+    return true;
 }

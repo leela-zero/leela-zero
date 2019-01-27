@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #include "config.h"
@@ -37,20 +48,22 @@
 
 using namespace Utils;
 
-void SGFTree::init_state(void) {
+const int SGFTree::EOT;
+
+void SGFTree::init_state() {
     m_initialized = true;
     // Initialize with defaults.
     // The SGF might be missing boardsize or komi
     // which means we'll never initialize properly.
-    m_state.init_game(19, 7.5f);
+    m_state.init_game(std::min(BOARD_SIZE, 19), 7.5f);
 }
 
-KoState * SGFTree::get_state(void) {
+const KoState * SGFTree::get_state(void) const {
     assert(m_initialized);
     return &m_state;
 }
 
-SGFTree * SGFTree::get_child(size_t count) {
+const SGFTree * SGFTree::get_child(size_t count) const {
     if (count < m_children.size()) {
         assert(m_initialized);
         return &(m_children[count]);
@@ -62,8 +75,8 @@ SGFTree * SGFTree::get_child(size_t count) {
 // This follows the entire line, and doesn't really need the intermediate
 // states, just the moves. As a consequence, states that contain more than
 // just moves won't have any effect.
-GameState SGFTree::follow_mainline_state(unsigned int movenum) {
-    SGFTree * link = this;
+GameState SGFTree::follow_mainline_state(unsigned int movenum) const {
+    const auto* link = this;
     // This initializes a starting state from a KoState and
     // sets up the game history.
     GameState result(get_state());
@@ -71,14 +84,16 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) {
     for (unsigned int i = 0; i <= movenum && link != nullptr; i++) {
         // root position has no associated move
         if (i != 0) {
-            int move = link->get_move(result.get_to_move());
-            if (move != SGFTree::EOT) {
-                if (move != FastBoard::PASS && move != FastBoard::EMPTY
-                    && result.board.get_square(move) != FastBoard::EMPTY) {
+            auto colored_move = link->get_colored_move();
+            if (colored_move.first != FastBoard::INVAL) {
+                if (colored_move.second != FastBoard::PASS
+                    && colored_move.second != FastBoard::EMPTY
+                    && result.board.get_state(colored_move.second)
+                       != FastBoard::EMPTY) {
                     // Fail loading
                     return result;
                 }
-                result.play_move(move);
+                result.play_move(colored_move.first, colored_move.second);
             }
         }
         link = link->get_child(0);
@@ -87,7 +102,7 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) {
     return result;
 }
 
-void SGFTree::load_from_string(std::string gamebuff) {
+void SGFTree::load_from_string(const std::string& gamebuff) {
     std::istringstream pstream(gamebuff);
 
     // loads properties with moves
@@ -102,22 +117,22 @@ void SGFTree::load_from_string(std::string gamebuff) {
 }
 
 // load a single game from a file
-void SGFTree::load_from_file(std::string filename, int index) {
-    std::string gamebuff = SGFParser::chop_from_file(filename, index);
+void SGFTree::load_from_file(const std::string& filename, int index) {
+    auto gamebuff = SGFParser::chop_from_file(filename, index);
 
     //myprintf("Parsing: %s\n", gamebuff.c_str());
 
     load_from_string(gamebuff);
 }
 
-void SGFTree::populate_states(void) {
+void SGFTree::populate_states() {
     PropertyMap::iterator it;
-    bool valid_size = false;
-    bool has_handicap = false;
+    auto valid_size = false;
+    auto has_handicap = false;
 
     // first check for go game setup in properties
     it = m_properties.find("GM");
-    if (it != m_properties.end()) {
+    if (it != end(m_properties)) {
         if (it->second != "1") {
             throw std::runtime_error("SGF Game is not a Go game");
         } else {
@@ -131,7 +146,7 @@ void SGFTree::populate_states(void) {
 
     // board size
     it = m_properties.find("SZ");
-    if (it != m_properties.end()) {
+    if (it != end(m_properties)) {
         std::string size = it->second;
         std::istringstream strm(size);
         int bsize;
@@ -147,7 +162,7 @@ void SGFTree::populate_states(void) {
 
     // komi
     it = m_properties.find("KM");
-    if (it != m_properties.end()) {
+    if (it != end(m_properties)) {
         std::string foo = it->second;
         std::istringstream strm(foo);
         float komi;
@@ -168,7 +183,7 @@ void SGFTree::populate_states(void) {
 
     // handicap
     it = m_properties.find("HA");
-    if (it != m_properties.end()) {
+    if (it != end(m_properties)) {
         std::string size = it->second;
         std::istringstream strm(size);
         float handicap;
@@ -179,7 +194,7 @@ void SGFTree::populate_states(void) {
 
     // result
     it = m_properties.find("RE");
-    if (it != m_properties.end()) {
+    if (it != end(m_properties)) {
         std::string result = it->second;
         if (boost::algorithm::find_first(result, "Time")) {
             // std::cerr << "Skipping: " << result << std::endl;
@@ -225,7 +240,7 @@ void SGFTree::populate_states(void) {
     }
 
     it = m_properties.find("PL");
-    if (it != m_properties.end()) {
+    if (it != end(m_properties)) {
         std::string who = it->second;
         if (who == "W") {
             m_state.set_to_move(FastBoard::WHITE);
@@ -241,9 +256,9 @@ void SGFTree::populate_states(void) {
 
         // XXX: maybe move this to the recursive call
         // get move for side to move
-        int move = child_state.get_move(m_state.get_to_move());
-        if (move != EOT) {
-            child_state.apply_move(move);
+        auto colored_move = child_state.get_colored_move();
+        if (colored_move.first != FastBoard::INVAL) {
+            child_state.apply_move(colored_move.first, colored_move.second);
         }
 
         child_state.populate_states();
@@ -257,22 +272,22 @@ void SGFTree::copy_state(const SGFTree& tree) {
 
 void SGFTree::apply_move(int color, int move) {
     if (move != FastBoard::PASS && move != FastBoard::RESIGN) {
-        int curr_sq = m_state.board.get_square(move);
-        if (curr_sq == !color || curr_sq == FastBoard::INVAL) {
+        auto vtx_state = m_state.board.get_state(move);
+        if (vtx_state == !color || vtx_state == FastBoard::INVAL) {
             throw std::runtime_error("Illegal move");
         }
-        // Playing on an occupied square is legal in SGF setup,
+        // Playing on an occupied intersection is legal in SGF setup,
         // but we can't really handle it. So just ignore and hope that works.
-        if (curr_sq == color) {
+        if (vtx_state == color) {
             return;
         }
-        assert(curr_sq == FastBoard::EMPTY);
+        assert(vtx_state == FastBoard::EMPTY);
     }
     m_state.play_move(color, move);
 }
 
 void SGFTree::apply_move(int move) {
-    int color = m_state.get_to_move();
+    auto color = m_state.get_to_move();
     apply_move(color, move);
 }
 
@@ -333,7 +348,7 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
     return vtx;
 }
 
-int SGFTree::get_move(int tomove) {
+int SGFTree::get_move(int tomove) const {
     std::string colorstring;
 
     if (tomove == FastBoard::BLACK) {
@@ -342,10 +357,8 @@ int SGFTree::get_move(int tomove) {
         colorstring = "W";
     }
 
-    PropertyMap::iterator it;
-    it = m_properties.find(colorstring);
-
-    if (it != m_properties.end()) {
+    auto it = m_properties.find(colorstring);
+    if (it != end(m_properties)) {
         std::string movestring = it->second;
         return string_to_vertex(movestring);
     }
@@ -353,19 +366,32 @@ int SGFTree::get_move(int tomove) {
     return SGFTree::EOT;
 }
 
-FastBoard::square_t SGFTree::get_winner() const {
+std::pair<int, int> SGFTree::get_colored_move() const {
+    for (const auto& prop : m_properties) {
+        if (prop.first == "B") {
+            return std::make_pair(FastBoard::BLACK,
+                                  string_to_vertex(prop.second));
+        } else if (prop.first == "W") {
+            return std::make_pair(FastBoard::WHITE,
+                                  string_to_vertex(prop.second));
+        }
+    }
+    return std::make_pair(FastBoard::INVAL, SGFTree::EOT);
+}
+
+FastBoard::vertex_t SGFTree::get_winner() const {
     return m_winner;
 }
 
-std::vector<int> SGFTree::get_mainline() {
+std::vector<int> SGFTree::get_mainline() const {
     std::vector<int> moves;
 
-    SGFTree * link = this;
-    int tomove = link->m_state.get_to_move();
+    const auto* link = this;
+    auto tomove = link->m_state.get_to_move();
     link = link->get_child(0);
 
     while (link != nullptr && link->is_initialized()) {
-        int move = link->get_move(tomove);
+        auto move = link->get_move(tomove);
         if (move != SGFTree::EOT) {
             moves.push_back(move);
         }
@@ -385,8 +411,8 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     std::string header;
     std::string moves;
 
-    float komi = state->get_komi();
-    int size = state->board.get_boardsize();
+    auto komi = state->get_komi();
+    auto size = state->board.get_boardsize();
     time_t now;
     time(&now);
     char timestr[sizeof "2017-10-16"];
@@ -421,15 +447,15 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
     state->rewind();
 
     // check handicap here (anchor point)
-    int handicap = 0;
+    auto handicap = 0;
     std::string handicapstr;
 
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             int vertex = state->board.get_vertex(i, j);
-            int square = state->board.get_square(vertex);
+            int vtx_state = state->board.get_state(vertex);
 
-            if (square == FastBoard::BLACK) {
+            if (vtx_state == FastBoard::BLACK) {
                 handicap++;
                 handicapstr.append("[" + state->board.move_to_text_sgf(vertex) + "]");
             }
@@ -464,8 +490,10 @@ std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
 
         if (score > 0.0f) {
             header.append("RE[B+" + str(boost::format("%.1f") % score) + "]");
-        } else {
+        } else if (score < 0.0f) {
             header.append("RE[W+" + str(boost::format("%.1f") % -score) + "]");
+        } else {
+            header.append("RE[0]");
         }
     } else {
         if (state->who_resigned() == FastBoard::WHITE) {

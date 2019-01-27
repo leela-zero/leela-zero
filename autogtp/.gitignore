@@ -5,6 +5,7 @@
 /*.gz
 /moc_*.cpp
 /moc_*.h
+/autogtp.pro.user
 
 # Weight files
 /[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
