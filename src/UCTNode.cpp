@@ -278,7 +278,6 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     }
 
     // Estimated eval for unknown nodes = original parent NN eval - reduction
-    auto parent_eval = get_net_eval(color);
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
 
@@ -289,22 +288,28 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 
         auto psa = child.get_score();
         auto policy_ratio = max_policy / psa;
-        auto policy_reduction = cfg_fpu_reduction * std::sqrt(policy_ratio);
-        auto policy_eval = parent_eval - policy_reduction;
-        policy_eval = std::max(0.0f, policy_eval);
+        auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction) * std::sqrt(policy_ratio);
+        auto fpu_eval = get_net_eval(color) - fpu_reduction;
+        fpu_eval = std::max(0.0f, fpu_eval);
 
         auto success = 0.0f;
         auto failure = 0.0f;
         if (child.get_visits()) {
             std::tie(success, failure) = child.get_beta_param(color);
         }
-        success += cfg_beta_prior * policy_eval;
-        failure += cfg_beta_prior * (1.0f - policy_eval);
+        success += cfg_beta_prior * fpu_eval;
+        failure += cfg_beta_prior * (1.0f - fpu_eval);
 
         auto alpha = 1.0f + (success / cfg_puct);
         auto beta  = 1.0f + (failure / cfg_puct);
         boost::random::beta_distribution<float> dist(alpha, beta);
         auto value = dist(Random::get_Rng());
+
+        if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
+            // Someone else is expanding this node, never select it
+            // if we can avoid so, because we'd block on it.
+            value = -1.0f - fpu_reduction;
+        }
 
         assert(value > std::numeric_limits<double>::lowest());
         if (value > best_value) {
