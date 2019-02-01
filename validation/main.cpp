@@ -62,11 +62,11 @@ int main(int argc, char *argv[]) {
             "lower:upper", "0.0:35.0");
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
-            "Play 'gamesNum' games on one GPU at the same time.",
+            "Play 'gamesNum' games on one device (GPU/CPU) at the same time.",
             "num", "1");
     QCommandLineOption gpusOption(
         {"u", "gpus"},
-            "Index of the GPU to use for multiple GPUs support.",
+            "Index of the device(s) to use for multiple devices support.",
             "num");
     QCommandLineOption keepSgfOption(
         {"k", "keepSgf" },

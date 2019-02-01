@@ -70,6 +70,10 @@ const std::string sourceCode_common =
     #include "kernels/common.opencl"
 ;
 
+static const std::string sourceCode_tensorcore_test =
+    #include "kernels/tensorcore_test.opencl"
+;
+
 static const std::string sourceCode_config = R"(
 #define BOARD_SIZE )" + std::to_string(BOARD_SIZE) +
 "\n#define NUM_INTERSECTIONS " + std::to_string(NUM_INTERSECTIONS) +
@@ -86,10 +90,14 @@ static const std::string sourceCode_convolve3 =
 ;
 
 const std::string sourceCode_sgemm =
+    "#if TCE == 1\n" // Enable tensorcore
+    #include "kernels/clblast/hgemm_tensorcore.opencl"
+    "\n#else\n" // Use clblast
     #include "kernels/clblast/xgemm_part1.opencl"
     #include "kernels/clblast/xgemm_part2.opencl"
     #include "kernels/clblast/xgemm_part3.opencl"
     #include "kernels/clblast/xgemm_batched.opencl"
+    "\n#endif\n"
 ;
 
 template <typename net_t>
@@ -351,6 +359,10 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
     auto vwn = m_opencl.m_sgemm_tuners.vwn;
     auto mdimc = m_opencl.m_sgemm_tuners.mdimc;
     auto ndimc = m_opencl.m_sgemm_tuners.ndimc;
+    auto tce = m_opencl.m_sgemm_tuners.tce;
+    auto mdima = m_opencl.m_sgemm_tuners.mdima;
+    auto ndimb = m_opencl.m_sgemm_tuners.ndimb;
+
     auto wavefront_size = m_opencl.m_wavefront_size;
 
     assert(mwg != 0);
@@ -405,6 +417,13 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
                                   (n_ceil * ndimc) / nwg,
                                   cl::size_type(WINOGRAD_TILE)};
 
+        // tensorcore implementation uses a different dimension
+        if (tce) {
+            local_sgemm = {32 * mdimc/mdima, ndimc/ndimb, 1};
+            size_sgemm = {32 * m_ceil / mdima * mdimc / mwg,
+                          n_ceil / ndimb * ndimc / nwg,
+                          cl::size_type(WINOGRAD_TILE)};
+        }
         queue.enqueueNDRangeKernel(sgemm_kernel, cl::NullRange,
                                    size_sgemm, local_sgemm);
     } catch (const cl::Error &e) {
@@ -579,8 +598,12 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
     auto kwg = false;
     auto ndimc = false;
     auto mdimc = false;
+    auto mdima = false;
+    auto ndimb = false;
     auto vwm = false;
     auto vwn = false;
+    auto tce = false;
+
     while (ss >> buf) {
         found = buf.find("=");
         if (found == std::string::npos) {
@@ -601,6 +624,14 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
             m_sgemm_tuners.kwg = value;
             kwg = true;
         }
+        if (name == "-DMDIMA") {
+            m_sgemm_tuners.mdima = value;
+            mdima = true;
+        }
+        if (name == "-DNDIMB") {
+            m_sgemm_tuners.ndimb = value;
+            ndimb = true;
+        }
         if (name == "-DMDIMC") {
             m_sgemm_tuners.mdimc = value;
             mdimc = true;
@@ -617,8 +648,12 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
             m_sgemm_tuners.vwn = value;
             vwn = true;
         }
+        if (name == "-DTCE") {
+            m_sgemm_tuners.tce = value;
+            tce = true;
+        }
     }
-    if (!mwg || !nwg || !kwg || !mdimc || !ndimc || !vwm || !vwn) {
+    if (!mwg || !nwg || !kwg || !mdimc || !ndimc || !vwm || !vwn || !mdima || !ndimb) {
         std::cerr << "Missing tuner parameters";
         if (!mwg) {
             std::cerr << " MWG";
@@ -628,6 +663,12 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
         }
         if (!kwg) {
             std::cerr << " KWG";
+        }
+        if (!mdima) {
+            std::cerr << " MDIMA";
+        }
+        if (!ndimb) {
+            std::cerr << " NDIMB";
         }
         if (!mdimc) {
             std::cerr << " MDIMC";
@@ -639,6 +680,9 @@ void OpenCL<net_t>::process_tuners(std::string tuners) {
             std::cerr << " VWM";
         }
         if (!vwn) {
+            std::cerr << " VWN";
+        }
+        if (!tce) {
             std::cerr << " VWN";
         }
         std::cerr << std::endl;
@@ -790,6 +834,15 @@ OpenCL<net_t>::OpenCL(int gpu, bool silent) {
     } else {
         myprintf("No.\n");
     }
+
+    myprintf("Tensor Core support: ");
+    try {
+        cl::Program(m_context, sourceCode_tensorcore_test).build(m_cl_args.c_str());
+        m_tensorcore = true;
+        myprintf("Yes.\n");
+    } catch (...) {
+        myprintf("No.\n");
+    }
 }
 
 template <typename net_t>
@@ -808,6 +861,10 @@ void OpenCL<net_t>::initialize(const int channels) {
     }
 
     auto t = Tuner<net_t>(*this, m_context, m_device);
+    if (m_tensorcore) {
+        t.enable_tensorcore();
+    }
+
     auto sgemm_tuners =
         t.load_sgemm_tuners(channels, WINOGRAD_P, channels, WINOGRAD_TILE);
 
