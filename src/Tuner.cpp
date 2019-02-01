@@ -394,7 +394,7 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
     build_from(opts, 0);
     build_from(topts, 1);
 
-    return std::move(valid_params);
+    return valid_params;
 }
 
 template <typename net_t>
