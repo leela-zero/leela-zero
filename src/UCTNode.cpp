@@ -323,7 +323,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     auto max_policy = 0.0f;
     for (const auto& child : m_children) {
         if (child.valid()) {
-            max_policy = std::max(max_policy, child.get_score());
+            max_policy = std::max(max_policy, child.get_policy());
         }
     }
 
@@ -336,7 +336,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
             continue;
         }
 
-        auto psa = child.get_score();
+        auto psa = child.get_policy();
         auto policy_ratio = max_policy / psa;
         auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction) * std::sqrt(policy_ratio);
 
