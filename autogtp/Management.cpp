@@ -128,7 +128,7 @@ void Management::giveAssignments() {
                 myGpu = m_gpusList.at(gpu);
             }
             QTextStream(stdout) << "Starting thread " << game + 1 ;
-            QTextStream(stdout) << " on GPU " << gpu << endl;
+            QTextStream(stdout) << " on device " << gpu << endl;
             m_gamesThreads[thread_index] = new Worker(thread_index, myGpu, this);
             connect(m_gamesThreads[thread_index],
                     &Worker::resultReady,
