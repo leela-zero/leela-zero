@@ -324,8 +324,7 @@ If interrupted, training can be resumed with:
 # Todo
 
 - [ ] Further optimize Winograd transformations.
-- [ ] Implement GPU batching.
-- [ ] GTP extension to exclude moves from analysis.
+- [ ] Implement GPU batching in the search.
 - [ ] Root filtering for handicap play.
 - More backends:
 - [ ] MKL-DNN based backend.
