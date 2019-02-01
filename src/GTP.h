@@ -40,6 +40,43 @@
 #include "GameState.h"
 #include "UCTSearch.h"
 
+struct MoveToAvoid {
+    int color;
+    size_t until_move;
+    int vertex;
+
+    MoveToAvoid(int color, size_t until_move, int vertex)
+        : color(color), until_move(until_move), vertex(vertex)
+    {}
+
+    bool operator==(const MoveToAvoid other) const {
+        return color == other.color &&
+            until_move == other.until_move && vertex == other.vertex;
+    }
+};
+
+class AnalyzeTags {
+    friend class LeelaTest;
+
+public:
+    AnalyzeTags() = default;
+    AnalyzeTags(std::istringstream& cmdstream, const GameState& game);
+
+    void add_move_to_avoid(int color, int vertex, size_t until_move);
+    void add_move_to_allow(int color, int vertex, size_t until_move);
+    int interval_centis() const;
+    int invalid() const;
+    int who() const;
+    bool is_to_avoid(int color, int vertex, size_t movenum) const;
+    bool has_move_restrictions() const;
+
+private:
+    bool m_invalid{true};
+    std::vector<MoveToAvoid> m_moves_to_avoid, m_moves_to_allow;
+    int m_interval_centis{0};
+    int m_who{FastBoard::INVAL};
+};
+
 extern bool cfg_gtp_mode;
 extern bool cfg_allow_pondering;
 extern int cfg_num_threads;
@@ -82,7 +119,7 @@ extern bool cfg_quiet;
 extern std::string cfg_options_str;
 extern bool cfg_benchmark;
 extern bool cfg_cpu_only;
-extern int cfg_analyze_interval_centis;
+extern AnalyzeTags cfg_analyze_tags;
 
 static constexpr size_t MiB = 1024LL * 1024LL;
 
