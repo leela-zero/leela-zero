@@ -42,7 +42,6 @@
 #include <string>
 #include <vector>
 #include <boost/algorithm/string.hpp>
-#include <boost/range/adaptor/reversed.hpp>
 
 #include "GTP.h"
 #include "FastBoard.h"
