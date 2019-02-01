@@ -757,9 +757,9 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             gtp_fail_printf(id, "no previous move known");
             return;
         }
-        std::string coordinate = game.move_to_text(last_move);
-        std::string color = game.get_to_move() == FastBoard::WHITE ? "black": "white";
-        gtp_printf(id, "%s %s", color.c_str(), coordinate.c_str());
+        auto coordinate = game.move_to_text(last_move);
+        auto color = game.get_to_move() == FastBoard::WHITE ? "black": "white";
+        gtp_printf(id, "%s %s", color, coordinate.c_str());
         return;
     } else if (command.find("move_history") == 0) {
         if (game.get_movenum() == 0) {
@@ -767,11 +767,11 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         } else {
             gtp_printf_raw("= ");
         }
-        for (size_t i=0; i < game.get_movenum(); ++i) {
+        for (auto i = size_t{0}; i < game.get_movenum(); ++i) {
             auto state = game.get_past_state(i);
-            std::string coordinate = game.move_to_text(state->get_last_move());
-            std::string color = state->get_to_move() == FastBoard::WHITE ? "black": "white";
-            gtp_printf_raw("%s %s\n", color.c_str(), coordinate.c_str());
+            auto coordinate = game.move_to_text(state->get_last_move());
+            auto color = state->get_to_move() == FastBoard::WHITE ? "black": "white";
+            gtp_printf_raw("%s %s\n", color, coordinate.c_str());
         }
         gtp_printf_raw("\n");
         return;
