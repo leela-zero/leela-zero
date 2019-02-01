@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import gzip
 import re
 import os
 import sys
@@ -172,13 +173,13 @@ def merge_gammas(weights):
     return out_weights
 
 def save_leelaz_weights(filename, weights):
-    with open(filename, 'w') as file:
+    with gzip.open(filename, 'wb') as f_out:
         # Version tag
         # Minigo outputs winrate from blacks point of view (same as ELF)
-        file.write('2')
+        f_out.write(b'2')
         for e, w in enumerate(weights):
             # Newline unless last line (single bias)
-            file.write('\n')
+            f_out.write(b'\n')
             work_weights = None
             if len(w.shape) == 4:
                 # Convolution weights need a transpose
@@ -208,31 +209,36 @@ def save_leelaz_weights(filename, weights):
                 p = [0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15, 16, 17]
 
                 work_weights = work_weights[:, p, :, :]
-            wt_str = ["{:0.8g}".format(wt) for wt in np.ravel(work_weights)]
-            file.write(' '.join(wt_str))
+
+            # 80% of time is in this format line.
+            wt_str = ("{:0.4g}".format(wt) for wt in np.ravel(work_weights))
+            f_out.write(' '.join(wt_str).encode())
 
 
-if len(sys.argv) < 2:
-    print('Model filename without extension needed as an argument.')
-    exit()
+def main():
+    if len(sys.argv) < 2:
+        print('Model filename without extension needed as an argument.')
+        exit()
 
-model = sys.argv[1]
+    model = sys.argv[1]
 
-print ('loading ', model)
-print ()
+    print ('loading ', model)
+    print ()
 
-# Can be used for v9 or before models.
-# weights = getMinigoWeightsV1(model)
-weights = getMinigoWeightsV2(model)
+    # Can be used for v9 or before models.
+    # weights = getMinigoWeightsV1(model)
+    weights = getMinigoWeightsV2(model)
+    if 0:
+        for name, variables in [
+                ('load_checkpoint', var_names.keys()),
+        #        ('trainable_names', trainable_names),
+        #        ('global_variable', [v.name for v in tf.global_variables()])
+                ]:
+            print (name, len(variables))
+            print (deduped(variables))
+            print ()
 
-if 0:
-    for name, variables in [
-            ('load_checkpoint', var_names.keys()),
-    #        ('trainable_names', trainable_names),
-    #        ('global_variable', [v.name for v in tf.global_variables()])
-            ]:
-        print (name, len(variables))
-        print (deduped(variables))
-        print ()
+    save_leelaz_weights(model + '_converted.txt.gz', merge_gammas(weights))
 
-save_leelaz_weights(model + '_converted.txt', merge_gammas(weights))
+if __name__ == "__main__":
+    main()
