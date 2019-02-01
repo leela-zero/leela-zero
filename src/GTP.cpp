@@ -1169,6 +1169,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         return;
     } else if (command.find("gomill-explain_last_move") == 0) {
         gtp_printf(id, "%s\n", search->explain_last_think().c_str());
+        return;
     }
     gtp_fail_printf(id, "unknown command");
     return;
