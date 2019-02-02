@@ -302,12 +302,13 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
     // going to come due to a control dependency (e.g., evals stuck on a
     // critical path).  To do so:
     //
-    // 1) if we picked up a single eval, and ended up that there were no
-    // new incoming requests while handling the single eval, it means that
-    // we hit the critical path.  Wait 1ms shorter next time
+    // 1) if we couldn't form a batch after waiting m_waittime ms, it means 
+    // that we hit the critical path and should do scalar evals.
+    // Wait 1ms shorter next time.
+    //
     // 2) if we picked up a single eval, but were getting additional evals
     // while that single eval was being processed, it means that we made
-    // the wrong decision.  Wait 2ms longer next time
+    // the wrong decision.  Wait 2ms longer next time.
 
     auto pickup_task = [this, gnum] () {
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
@@ -333,6 +334,9 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
 
             if (!m_forward_queue.empty()) {
                 if (timeout && m_single_eval_in_progress.exchange(true) == false) {
+                    // waited long enoough but couldn't form a batch.
+                    // check if there is any other single eval in progress, and if not,
+                    // do one from this thread.
                     if (m_waittime > 1) {
                         m_waittime--;
                     }
@@ -341,6 +345,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                 }
             }
         }
+        // move 'count' evals from shared queue to local list
         auto end = begin(m_forward_queue);
         std::advance(end, count);
         std::move(begin(m_forward_queue), end, std::back_inserter(inputs));
@@ -365,35 +370,33 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         batch_stats[static_cast<int>(count) == cfg_batch_size ? 1 : 0]++;
 #endif
 
+        // parepare input for forward() call
         batch_input.resize(in_size * count);
         batch_output_pol.resize(out_pol_size * count);
         batch_output_val.resize(out_val_size * count);
-        {
-            size_t index = 0;
-            for (auto it = begin(inputs); it != end(inputs); ++it) {
-                std::unique_lock<std::mutex> lk((*it)->mutex);
-                std::copy(begin((*it)->in), end((*it)->in), begin(batch_input) + in_size * index);
-                index++;
-            }
+
+        size_t index = 0;
+        for (auto it = begin(inputs); it != end(inputs); ++it) {
+            std::unique_lock<std::mutex> lk((*it)->mutex);
+            std::copy(begin((*it)->in), end((*it)->in), begin(batch_input) + in_size * index);
+            index++;
         }
 
-        {
-            m_networks[gnum]->forward(
-                batch_input, batch_output_pol, batch_output_val, context, count);
-        }
+        // run the NN evaluation
+        m_networks[gnum]->forward(
+            batch_input, batch_output_pol, batch_output_val, context, count);
 
-        {
-            size_t index = 0;
-            for (auto it = begin(inputs); it != end(inputs); ++it) {
-                std::copy(begin(batch_output_pol) + out_pol_size * index,
-                          begin(batch_output_pol) + out_pol_size * (index + 1),
-                          begin((*it)->out_p));
-                std::copy(begin(batch_output_val) + out_val_size * index,
-                          begin(batch_output_val) + out_val_size * (index + 1),
-                          begin((*it)->out_v));
-                (*it)->cv.notify_all();
-                index++;
-            }
+        // Get output and copy back
+        index = 0;
+        for (auto it = begin(inputs); it != end(inputs); ++it) {
+            std::copy(begin(batch_output_pol) + out_pol_size * index,
+                      begin(batch_output_pol) + out_pol_size * (index + 1),
+                      begin((*it)->out_p));
+            std::copy(begin(batch_output_val) + out_val_size * index,
+                      begin(batch_output_val) + out_val_size * (index + 1),
+                      begin((*it)->out_v));
+            (*it)->cv.notify_all();
+            index++;
         }
 
         if (count == 1) {

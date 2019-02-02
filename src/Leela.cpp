@@ -374,12 +374,6 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_dumbpass = true;
     }
 
-#ifndef USE_CPU_ONLY
-    if (vm.count("cpu-only")) {
-        cfg_cpu_only = true;
-    }
-#endif
-
     if (vm.count("playouts")) {
         cfg_max_playouts = vm["playouts"].as<int>();
         if (!vm.count("noponder")) {
