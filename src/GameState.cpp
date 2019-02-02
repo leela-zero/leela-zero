@@ -312,3 +312,7 @@ const FullBoard& GameState::get_past_board(int moves_ago) const {
     assert(m_movenum + 1 <= game_history.size());
     return game_history[m_movenum - moves_ago]->board;
 }
+
+const std::vector<std::shared_ptr<const KoState>>& GameState::get_game_history() const {
+    return game_history;
+}
