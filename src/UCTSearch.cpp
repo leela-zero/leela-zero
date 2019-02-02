@@ -700,6 +700,12 @@ void UCTSearch::increment_playouts() {
     m_playouts++;
 }
 
+#ifdef USE_OPENCL
+#ifndef NDEBUG
+extern std::atomic<size_t> batch_stats[];
+#endif
+#endif
+
 int UCTSearch::think(int color, passflag_t passflag) {
     // Start counting time for us
     m_rootstate.start_clock(color);
@@ -791,6 +797,13 @@ int UCTSearch::think(int color, passflag_t passflag) {
              m_nodes.load(),
              m_playouts.load(),
              (m_playouts * 100.0) / (elapsed_centis+1));
+
+#ifdef USE_OPENCL
+#ifndef NDEBUG
+    myprintf("batch stats: %d %d\n", batch_stats[0].load(), batch_stats[1].load());
+#endif
+#endif
+
     int bestmove = get_best_move(passflag);
 
     // Save the explanation.
