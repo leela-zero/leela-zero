@@ -120,7 +120,7 @@ class TFProcess:
         self.model_dtype = tf.float32
 
         # Scale the loss to prevent gradient underflow
-        self.loss_scale = 128
+        self.loss_scale = 1 if self.model_dtype == tf.float32 else 128
 
         # Set number of GPUs for training
         self.gpus_num = 1
