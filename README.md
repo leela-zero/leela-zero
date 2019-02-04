@@ -138,6 +138,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     export QT5DIR=/usr/local/Cellar/qt/5.x.x
     export CMAKE_MODULE_PATH=${QT5DIR}/lib/cmake:${CMAKE_MODULE_PATH}
     export CMAKE_PREFIX_PATH=${QT5DIR}
+    PATH="$(brew --prefix qt5)/bin:$PATH"
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
