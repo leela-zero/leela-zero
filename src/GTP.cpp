@@ -230,6 +230,11 @@ AnalyzeTags::AnalyzeTags(std::istringstream& cmdstream, const GameState& game) {
             if (cmdstream.fail()) {
                 return;
             }
+        } else if (tag == "minmoves") {
+            cmdstream >> m_min_moves;
+            if (cmdstream.fail()) {
+                return;
+            }
         } else {
             return;
         }
@@ -254,6 +259,10 @@ int AnalyzeTags::invalid() const {
 
 int AnalyzeTags::who() const {
     return m_who;
+}
+
+size_t AnalyzeTags::post_move_count() const {
+    return m_min_moves;
 }
 
 bool AnalyzeTags::is_to_avoid(int color, int vertex, size_t movenum) const {
