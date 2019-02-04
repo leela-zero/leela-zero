@@ -380,7 +380,7 @@ TEST_F(LeelaTest, AnalyzeParseMinmoves) {
     gtp_execute("clear_board");
     gtp_execute("lz-setoption name pondering value false");
     gtp_execute("lz-setoption name playouts value 1");
-    auto result = gtp_execute("lz-analyze b interval 1 minmoves 20");
-    // Expect to see at least 20 move priors
-    expect_regex(result.first, "info.*?((prior\\s+\\d+\\s+).*?){20,}.*");
+    auto result = gtp_execute("lz-analyze b interval 1 minmoves 5");
+    // Expect to see at least 5 move priors
+    expect_regex(result.first, "info.*?(prior\\s+\\d+\\s+.*?){5,}.*");
 }
