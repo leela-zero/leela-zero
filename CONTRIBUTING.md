@@ -7,17 +7,17 @@ Leela Zero is written in C++14, and generally encourages writing in modern C++ s
 This means that:
 
 * The code overwhelmingly uses Almost Always Auto style, and so should you.
-* Prefer range based for and non-member begin/end.
+* Prefer range based for and non-member (c)begin/(c)end.
 * You can rely on boost 1.58.0 or later being present.
 * Manipulation of raw pointers is to be avoided as much as possible.
 * Prefer constexpr over defines or constants.
-* Prefer using over typedefs.
+* Prefer "using" over typedefs.
 * Prefer uniform initialization.
 * Prefer default initializers for member variables.
 * Aim for const-correctness. Prefer passing non-trivial parameters by const reference.
 * Use header include guards, not #pragma once (pragma once is non-standard, has issues with detecting identical files, and is slower https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58770)
 * config.h is always the first file included.
-* Feel free to use templates, but remember than debugging obscure template metaprogramming bugs is not something people enjoy doing in their spare time.
+* Feel free to use templates, but remember that debugging obscure template metaprogramming bugs is not something people enjoy doing in their spare time.
 * Using exceptions is allowed.
 
 ## Code Style
@@ -83,7 +83,8 @@ If a contributor can't be bothered to fix up the trailing whitespace in their pa
 
 Improvements to the engine that can affect strength should include supporting data. This means no-regression tests for functional changes, and a proof of strength improvement for things which are supposed to increase strength.
 
-The tools in the validation directory are well-fit for this purpose.
+The tools in the validation directory are well-fit for this purpose, as
+is the python tool "ringmaster".
 
 The number of configurable options should be limited where possible. If it is not possible for the author to make rules of thumb for suitable values for those options, then the majority of users have no hope of getting them right, and may mistakenly make the engine weaker. If you must introduce new ones, consider limiting their exposure to developers only via USE_TUNER and set a good default for them.
 
