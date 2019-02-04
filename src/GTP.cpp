@@ -898,10 +898,10 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         auto game_history = game.get_game_history();
         // undone moves may still be present, so reverse the portion of the
         // array we need and resize to trim it down for iteration.
-        std::reverse(game_history.begin(), 
-                game_history.begin() + game.get_movenum() + 1);
+        std::reverse(begin(game_history),
+                     begin(game_history) + game.get_movenum() + 1);
         game_history.resize(game.get_movenum());
-        for (auto &state : game_history) {
+        for (const auto &state : game_history) {
             auto coordinate = game.move_to_text(state->get_last_move());
             auto color = state->get_to_move() == FastBoard::WHITE ? "black" : "white";
             gtp_printf_raw("%s %s\n", color, coordinate.c_str());
