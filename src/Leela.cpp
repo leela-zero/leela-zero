@@ -82,9 +82,9 @@ static void calculate_thread_count_gpu(boost::program_options::variables_map & v
     auto cfg_max_threads = MAX_CPUS;
 
     // Default thread count : GPU case
-    // 1) if no args are given, use batch size of 5 and thread count of (batch size) * (number of gpus)
-    // 2) if number of threads are given, use batch size of (thread count) / (number of gpus)
-    // 3) if number of batches are given, use thread count of (batch size) * (number of gpus)
+    // 1) if no args are given, use batch size of 5 and thread count of (batch size) * (number of gpus) * 2
+    // 2) if number of threads are given, use batch size of (thread count) / (number of gpus) / 2
+    // 3) if number of batches are given, use thread count of (batch size) * (number of gpus) * 2
     auto gpu_count = static_cast<int>(cfg_gpus.size());
     if (gpu_count == 0) {
         // size of zero if autodetect GPU : default to 1
@@ -102,7 +102,7 @@ static void calculate_thread_count_gpu(boost::program_options::variables_map & v
         if (vm.count("batchsize")) {
             cfg_batch_size = vm["batchsize"].as<int>();
         } else {
-            cfg_batch_size = cfg_num_threads / gpu_count;
+            cfg_batch_size = (cfg_num_threads + (gpu_count * 2) - 1) / (gpu_count * 2);
 
             // no idea why somebody wants to use threads less than the number of GPUs
             // but should at least prevent crashing
@@ -117,7 +117,7 @@ static void calculate_thread_count_gpu(boost::program_options::variables_map & v
             cfg_batch_size = 5;
         }
 
-        cfg_num_threads = std::min(cfg_max_threads, cfg_batch_size * gpu_count);
+        cfg_num_threads = std::min(cfg_max_threads, cfg_batch_size * gpu_count * 2);
     }
 
     if (cfg_num_threads < cfg_batch_size) {
