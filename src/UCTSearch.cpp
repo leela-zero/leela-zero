@@ -276,10 +276,10 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         // only one move searched the user could get an idea why.
         if (++movecount > 2 && !node->get_visits()) break;
 
-        std::string move = state.move_to_text(node->get_move());
-        FastState tmpstate = state;
+        auto move = state.move_to_text(node->get_move());
+        auto tmpstate = FastState{state};
         tmpstate.play_move(node->get_move());
-        std::string pv = move + " " + get_pv(tmpstate, *node);
+        auto pv = move + " " + get_pv(tmpstate, *node);
 
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: %s\n",
             move.c_str(),
@@ -308,10 +308,11 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
             && sortable_data.size() >= cfg_analyze_tags.post_move_count()) {
             continue;
         }
-        std::string move = state.move_to_text(node->get_move());
-        FastState tmpstate = state;
+        auto move = state.move_to_text(node->get_move());
+        auto tmpstate = FastState{state};
         tmpstate.play_move(node->get_move());
-        std::string pv = move + " " + get_pv(tmpstate, *node);
+        auto rest_of_pv = get_pv(tmpstate, *node);
+        auto pv = move + (rest_of_pv.empty() ? "" : " " + rest_of_pv);
         auto move_eval = node->get_visits() ? node->get_raw_eval(color) : 0.0f;
         auto policy = node->get_policy();
         // Store data in array
