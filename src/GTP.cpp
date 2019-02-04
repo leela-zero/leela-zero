@@ -386,6 +386,8 @@ const std::string GTP::s_commands[] = {
     "time_settings",
     "time_left",
     "fixed_handicap",
+    "last_move",
+    "move_history",
     "place_free_handicap",
     "set_free_handicap",
     "loadsgf",
@@ -876,6 +878,35 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         } else {
             gtp_fail_printf(id, "Not a valid number of handicap stones");
         }
+        return;
+    } else if (command.find("last_move") == 0) {
+        auto last_move = game.get_last_move();
+        if (last_move == FastBoard::NO_VERTEX) {
+            gtp_fail_printf(id, "no previous move known");
+            return;
+        }
+        auto coordinate = game.move_to_text(last_move);
+        auto color = game.get_to_move() == FastBoard::WHITE ? "black" : "white";
+        gtp_printf(id, "%s %s", color, coordinate.c_str());
+        return;
+    } else if (command.find("move_history") == 0) {
+        if (game.get_movenum() == 0) {
+            gtp_printf_raw("= \n");
+        } else {
+            gtp_printf_raw("= ");
+        }
+        auto game_history = game.get_game_history();
+        // undone moves may still be present, so reverse the portion of the
+        // array we need and resize to trim it down for iteration.
+        std::reverse(game_history.begin(), 
+                game_history.begin() + game.get_movenum() + 1);
+        game_history.resize(game.get_movenum());
+        for (auto &state : game_history) {
+            auto coordinate = game.move_to_text(state->get_last_move());
+            auto color = state->get_to_move() == FastBoard::WHITE ? "black" : "white";
+            gtp_printf_raw("%s %s\n", color, coordinate.c_str());
+        }
+        gtp_printf_raw("\n");
         return;
     } else if (command.find("place_free_handicap") == 0) {
         std::istringstream cmdstream(command);
