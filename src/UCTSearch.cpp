@@ -302,8 +302,10 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
     const auto color = state.get_to_move();
 
     for (const auto& node : parent.get_children()) {
-        // Only send variations with visits
-        if (!node->get_visits()) {
+        // Send only variations with visits, unless more moves were
+        // requested explicitly.
+        if (!node->get_visits()
+            && sortable_data.size() >= cfg_analyze_tags.post_move_count()) {
             continue;
         }
         std::string move = state.move_to_text(node->get_move());

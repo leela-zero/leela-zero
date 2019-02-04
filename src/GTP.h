@@ -67,6 +67,7 @@ public:
     int interval_centis() const;
     int invalid() const;
     int who() const;
+    size_t post_move_count() const;
     bool is_to_avoid(int color, int vertex, size_t movenum) const;
     bool has_move_restrictions() const;
 
@@ -75,6 +76,7 @@ private:
     std::vector<MoveToAvoid> m_moves_to_avoid, m_moves_to_allow;
     int m_interval_centis{0};
     int m_who{FastBoard::INVAL};
+    size_t m_min_moves{0};
 };
 
 extern bool cfg_gtp_mode;

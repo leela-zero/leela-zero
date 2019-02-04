@@ -375,3 +375,12 @@ TEST_F(LeelaTest, AnalyzeParse) {
     test_analyze_cmd("b avoid b a1:t19,pass,resign 1",
             true, FastBoard::BLACK, 0, 363, FastBoard::BLACK, 0);
 }
+
+TEST_F(LeelaTest, AnalyzeParseMinmoves) {
+    gtp_execute("clear_board");
+    gtp_execute("lz-setoption name pondering value false");
+    gtp_execute("lz-setoption name playouts value 1");
+    auto result = gtp_execute("lz-analyze b interval 1 minmoves 20");
+    // Expect to see at least 20 move priors
+    expect_regex(result.first, "info.*?((prior\\s+\\d+\\s+).*?){20,}.*");
+}
