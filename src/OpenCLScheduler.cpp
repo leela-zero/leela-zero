@@ -281,7 +281,7 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
 }
 
 #ifndef NDEBUG
-std::atomic<size_t> batch_stats[2];
+struct batch_stats_t batch_stats;
 #endif
 
 template <typename net_t>
@@ -312,13 +312,13 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
 
     auto pickup_task = [this, gnum] () {
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
-        int count = 0;
+        size_t count = 0;
 
         std::unique_lock<std::mutex> lk(m_mutex);
         while (true) {
             if (!m_running) return inputs;
 
-            count = static_cast<int>(m_forward_queue.size());
+            count = m_forward_queue.size();
             if (count >= cfg_batch_size) {
                 count = cfg_batch_size;
                 break;
@@ -328,14 +328,14 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                 lk,
                 std::chrono::milliseconds(m_waittime),
                 [this] () {
-                    return !m_running || static_cast<int>(m_forward_queue.size()) >= cfg_batch_size;
+                    return !m_running || m_forward_queue.size() >= cfg_batch_size;
                 }
             );
 
             if (!m_forward_queue.empty()) {
                 if (timeout && m_single_eval_in_progress.exchange(true) == false) {
-                    // waited long enoough but couldn't form a batch.
-                    // check if there is any other single eval in progress, and if not,
+                    // Waited long enough but couldn't form a batch.
+                    // Check if there is any other single eval in progress, and if not,
                     // do one from this thread.
                     if (m_waittime > 1) {
                         m_waittime--;
@@ -345,7 +345,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
                 }
             }
         }
-        // move 'count' evals from shared queue to local list
+        // Move 'count' evals from shared queue to local list.
         auto end = begin(m_forward_queue);
         std::advance(end, count);
         std::move(begin(m_forward_queue), end, std::back_inserter(inputs));
@@ -367,18 +367,22 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         }
 
 #ifndef NDEBUG
-        batch_stats[static_cast<int>(count) == cfg_batch_size ? 1 : 0]++;
+        if (count == 1) {
+            batch_stats.single_evals++;
+        } else {
+            batch_stats.batch_evals++;
+        }
 #endif
 
-        // parepare input for forward() call
+        // prepare input for forward() call
         batch_input.resize(in_size * count);
         batch_output_pol.resize(out_pol_size * count);
         batch_output_val.resize(out_val_size * count);
 
-        size_t index = 0;
-        for (auto it = begin(inputs); it != end(inputs); ++it) {
-            std::unique_lock<std::mutex> lk((*it)->mutex);
-            std::copy(begin((*it)->in), end((*it)->in), begin(batch_input) + in_size * index);
+        auto index = size_t{0};
+        for (auto & x : inputs) {
+            std::unique_lock<std::mutex> lk(x->mutex);
+            std::copy(begin(x->in), end(x->in), begin(batch_input) + in_size * index);
             index++;
         }
 
@@ -388,14 +392,14 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
 
         // Get output and copy back
         index = 0;
-        for (auto it = begin(inputs); it != end(inputs); ++it) {
+        for (auto & x : inputs) {
             std::copy(begin(batch_output_pol) + out_pol_size * index,
                       begin(batch_output_pol) + out_pol_size * (index + 1),
-                      begin((*it)->out_p));
+                      begin(x->out_p));
             std::copy(begin(batch_output_val) + out_val_size * index,
                       begin(batch_output_val) + out_val_size * (index + 1),
-                      begin((*it)->out_v));
-            (*it)->cv.notify_all();
+                      begin(x->out_v));
+            x->cv.notify_all();
             index++;
         }
 

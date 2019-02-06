@@ -40,6 +40,14 @@
 #include "OpenCL.h"
 #include "ThreadPool.h"
 
+#ifndef NDEBUG
+struct batch_stats_t {
+    std::atomic<size_t> single_evals{0};
+    std::atomic<size_t> batch_evals{0};
+};
+extern batch_stats_t batch_stats;
+#endif
+
 template <typename net_t>
 class OpenCLScheduler : public ForwardPipe {
     class ForwardQueueEntry {

@@ -48,6 +48,7 @@
 #include "Timing.h"
 #include "Training.h"
 #include "Utils.h"
+#include "OpenCLScheduler.h"
 
 using namespace Utils;
 
@@ -700,12 +701,6 @@ void UCTSearch::increment_playouts() {
     m_playouts++;
 }
 
-#ifdef USE_OPENCL
-#ifndef NDEBUG
-extern std::atomic<size_t> batch_stats[];
-#endif
-#endif
-
 int UCTSearch::think(int color, passflag_t passflag) {
     // Start counting time for us
     m_rootstate.start_clock(color);
@@ -800,7 +795,10 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
 #ifdef USE_OPENCL
 #ifndef NDEBUG
-    myprintf("batch stats: %d %d\n", batch_stats[0].load(), batch_stats[1].load());
+    myprintf("batch stats: %d %d\n",
+        batch_stats.single_evals.load(),
+        batch_stats.batch_evals.load()
+    );
 #endif
 #endif
 
@@ -837,7 +835,7 @@ void UCTSearch::ponder() {
 
     m_run = true;
     ThreadGroup tg(thread_pool);
-    for (int i = 1; i < cfg_num_threads; i++) {
+    for (auto i = size_t{1}; i < cfg_num_threads; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
     Time start;
