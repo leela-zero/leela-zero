@@ -153,8 +153,6 @@ class TFProcess:
         probs = tf.decode_raw(self.probs, tf.float32)
         winner = tf.decode_raw(self.winner, tf.float32)
 
-        # planes = tf.to_float(planes)
-
         planes = tf.reshape(planes, (batch_size, 18, 19*19))
         probs = tf.reshape(probs, (batch_size, 19*19 + 1))
         winner = tf.reshape(winner, (batch_size, 1))

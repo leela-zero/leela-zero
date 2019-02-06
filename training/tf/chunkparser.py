@@ -32,7 +32,7 @@ import threading
 import time
 import unittest
 
-# 16 planes, 1 side to move, 1 x 362 probs, 1 winner = 19 lines
+# 16 planes, 1 side to move (komi), 1 x 362 probs, 1 winner = 19 lines
 DATA_ITEM_LINES = 16 + 1 + 1 + 1
 
 def remap_vertex(vertex, symmetry):
@@ -112,8 +112,6 @@ class ChunkParser:
             np.array(x, dtype=np.int64) for x in self.prob_reflection_table ]
         self.full_reflection_table = [
             np.array(x, dtype=np.int64) for x in self.full_reflection_table ]
-        # Build the all-zeros and all-ones flat planes, used for color-to-move.
-        self.flat_planes = [ b'\1'*361 + b'\0'*361, b'\0'*361 + b'\1'*361 ]
 
         # set the down-sampling rate
         self.sample = sample
@@ -189,11 +187,8 @@ class ChunkParser:
         # and then to a byte string
         planes = np.packbits(planes).tobytes()
 
-        # Get the 'side to move'
+        # Get the 'side to move' (komi)
         stm = float(text_item[16])
-        #if not(stm == "0" or stm == "1"):
-        #    return False, None
-        #stm = int(stm)
 
         # Load the probabilities.
         probabilities = np.array(text_item[17].split()).astype(np.float32)
@@ -253,7 +248,7 @@ class ChunkParser:
                 int32 ver
                 float probs[19*18+1]
                 byte planes[19*19*16/8]
-                byte to_move
+                float to_move
                 byte winner
 
             packed tensor formats are
@@ -265,9 +260,8 @@ class ChunkParser:
         # Unpack planes.
         planes = np.unpackbits(np.frombuffer(planes, dtype=np.uint8)).astype('f')
         assert len(planes) == 19*19*16
-        # Now we add the two final planes, being the 'color to move' planes.
+        # Now we add the two final planes, being the 'color to move' (komi) planes.
         stm = to_move
-        # assert stm == 0 or stm == 1
         # Flattern all planes to a single byte string
         planes = planes.tobytes() + (np.array([1.0-stm]*361 + [stm]*361)).astype('f').tobytes()
         assert len(planes) == (18 * 19 * 19 * 4), len(planes)
@@ -422,8 +416,8 @@ class ChunkParserTest(unittest.TestCase):
             # then add the stray single bit
             h += str(planes[p][360]) + "\n"
             items.append(h)
-        # then side to move
-        items.append(str(int(planes[17][0])) + "\n")
+        # then side to move/komi
+        items.append(str(planes[17][0]) + "\n")
         # then probabilities
         items.append(' '.join([str(x) for x in probs]) + "\n")
         # and finally if the side to move is a winner
@@ -442,7 +436,7 @@ class ChunkParserTest(unittest.TestCase):
         data = next(batchgen)
 
         # Convert batch to python lists.
-        batch = ( np.reshape(np.frombuffer(data[0], dtype=np.uint8),
+        batch = ( np.reshape(np.frombuffer(data[0], dtype=np.float32),
                              (batch_size, 18, 19*19)).tolist(),
                   np.reshape(np.frombuffer(data[1], dtype=np.float32),
                              (batch_size, 19*19+1)).tolist(),
