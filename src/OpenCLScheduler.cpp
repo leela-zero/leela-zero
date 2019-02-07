@@ -302,7 +302,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
     // going to come due to a control dependency (e.g., evals stuck on a
     // critical path).  To do so:
     //
-    // 1) if we couldn't form a batch after waiting m_waittime ms, it means 
+    // 1) if we couldn't form a batch after waiting m_waittime ms, it means
     // that we hit the critical path and should do scalar evals.
     // Wait 1ms shorter next time.
     //

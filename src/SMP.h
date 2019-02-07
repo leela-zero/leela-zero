@@ -32,6 +32,7 @@
 
 #include "config.h"
 
+#include <cstddef>
 #include <atomic>
 
 namespace SMP {
