@@ -73,6 +73,6 @@ SMP::Lock::~Lock() {
     }
 }
 
-int SMP::get_num_cpus() {
+size_t SMP::get_num_cpus() {
     return std::thread::hardware_concurrency();
 }
