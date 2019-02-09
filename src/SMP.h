@@ -32,10 +32,11 @@
 
 #include "config.h"
 
+#include <cstddef>
 #include <atomic>
 
 namespace SMP {
-    int get_num_cpus();
+    size_t get_num_cpus();
 
     class Mutex {
     public:
