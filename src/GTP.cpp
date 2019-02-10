@@ -59,8 +59,8 @@ using namespace Utils;
 // Configuration flags
 bool cfg_gtp_mode;
 bool cfg_allow_pondering;
-int cfg_num_threads;
-int cfg_max_threads;
+unsigned int cfg_num_threads;
+unsigned int cfg_batch_size;
 int cfg_max_playouts;
 int cfg_max_visits;
 size_t cfg_max_memory;
@@ -230,6 +230,11 @@ AnalyzeTags::AnalyzeTags(std::istringstream& cmdstream, const GameState& game) {
             if (cmdstream.fail()) {
                 return;
             }
+        } else if (tag == "minmoves") {
+            cmdstream >> m_min_moves;
+            if (cmdstream.fail()) {
+                return;
+            }
         } else {
             return;
         }
@@ -254,6 +259,10 @@ int AnalyzeTags::invalid() const {
 
 int AnalyzeTags::who() const {
     return m_who;
+}
+
+size_t AnalyzeTags::post_move_count() const {
+    return m_min_moves;
 }
 
 bool AnalyzeTags::is_to_avoid(int color, int vertex, size_t movenum) const {
@@ -305,15 +314,12 @@ void GTP::initialize(std::unique_ptr<Network>&& net) {
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
     cfg_allow_pondering = true;
-    cfg_max_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
-#ifdef USE_OPENCL
-    // If we will be GPU limited, using many threads won't help much.
-    // Multi-GPU is a different story, but we will assume that those people
-    // who do those stuff will know what they are doing.
-    cfg_num_threads = std::min(2, cfg_max_threads);
-#else
-    cfg_num_threads = cfg_max_threads;
-#endif
+
+    // we will re-calculate this on Leela.cpp
+    cfg_num_threads = 0;
+    // we will re-calculate this on Leela.cpp
+    cfg_batch_size = 0;
+
     cfg_max_memory = UCTSearch::DEFAULT_MAX_MEMORY;
     cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
     cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
@@ -327,6 +333,7 @@ void GTP::setup_default_parameters() {
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;
     cfg_tune_only = false;
+
 #ifdef USE_HALF
     cfg_precision = precision_t::AUTO;
 #endif
@@ -386,6 +393,8 @@ const std::string GTP::s_commands[] = {
     "time_settings",
     "time_left",
     "fixed_handicap",
+    "last_move",
+    "move_history",
     "place_free_handicap",
     "set_free_handicap",
     "loadsgf",
@@ -876,6 +885,35 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         } else {
             gtp_fail_printf(id, "Not a valid number of handicap stones");
         }
+        return;
+    } else if (command.find("last_move") == 0) {
+        auto last_move = game.get_last_move();
+        if (last_move == FastBoard::NO_VERTEX) {
+            gtp_fail_printf(id, "no previous move known");
+            return;
+        }
+        auto coordinate = game.move_to_text(last_move);
+        auto color = game.get_to_move() == FastBoard::WHITE ? "black" : "white";
+        gtp_printf(id, "%s %s", color, coordinate.c_str());
+        return;
+    } else if (command.find("move_history") == 0) {
+        if (game.get_movenum() == 0) {
+            gtp_printf_raw("= \n");
+        } else {
+            gtp_printf_raw("= ");
+        }
+        auto game_history = game.get_game_history();
+        // undone moves may still be present, so reverse the portion of the
+        // array we need and resize to trim it down for iteration.
+        std::reverse(begin(game_history),
+                     begin(game_history) + game.get_movenum() + 1);
+        game_history.resize(game.get_movenum());
+        for (const auto &state : game_history) {
+            auto coordinate = game.move_to_text(state->get_last_move());
+            auto color = state->get_to_move() == FastBoard::WHITE ? "black" : "white";
+            gtp_printf_raw("%s %s\n", color, coordinate.c_str());
+        }
+        gtp_printf_raw("\n");
         return;
     } else if (command.find("place_free_handicap") == 0) {
         std::istringstream cmdstream(command);

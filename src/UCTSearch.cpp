@@ -48,6 +48,7 @@
 #include "Timing.h"
 #include "Training.h"
 #include "Utils.h"
+#include "OpenCLScheduler.h"
 
 using namespace Utils;
 
@@ -276,10 +277,10 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         // only one move searched the user could get an idea why.
         if (++movecount > 2 && !node->get_visits()) break;
 
-        std::string move = state.move_to_text(node->get_move());
-        FastState tmpstate = state;
+        auto move = state.move_to_text(node->get_move());
+        auto tmpstate = FastState{state};
         tmpstate.play_move(node->get_move());
-        std::string pv = move + " " + get_pv(tmpstate, *node);
+        auto pv = move + " " + get_pv(tmpstate, *node);
 
         myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: %s\n",
             move.c_str(),
@@ -302,14 +303,17 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
     const auto color = state.get_to_move();
 
     for (const auto& node : parent.get_children()) {
-        // Only send variations with visits
-        if (!node->get_visits()) {
+        // Send only variations with visits, unless more moves were
+        // requested explicitly.
+        if (!node->get_visits()
+            && sortable_data.size() >= cfg_analyze_tags.post_move_count()) {
             continue;
         }
-        std::string move = state.move_to_text(node->get_move());
-        FastState tmpstate = state;
+        auto move = state.move_to_text(node->get_move());
+        auto tmpstate = FastState{state};
         tmpstate.play_move(node->get_move());
-        std::string pv = move + " " + get_pv(tmpstate, *node);
+        auto rest_of_pv = get_pv(tmpstate, *node);
+        auto pv = move + (rest_of_pv.empty() ? "" : " " + rest_of_pv);
         auto move_eval = node->get_visits() ? node->get_raw_eval(color) : 0.0f;
         auto policy = node->get_policy();
         // Store data in array
@@ -791,6 +795,16 @@ int UCTSearch::think(int color, passflag_t passflag) {
              m_nodes.load(),
              m_playouts.load(),
              (m_playouts * 100.0) / (elapsed_centis+1));
+
+#ifdef USE_OPENCL
+#ifndef NDEBUG
+    myprintf("batch stats: %d %d\n",
+        batch_stats.single_evals.load(),
+        batch_stats.batch_evals.load()
+    );
+#endif
+#endif
+
     int bestmove = get_best_move(passflag);
 
     // Save the explanation.
@@ -824,7 +838,7 @@ void UCTSearch::ponder() {
 
     m_run = true;
     ThreadGroup tg(thread_pool);
-    for (int i = 1; i < cfg_num_threads; i++) {
+    for (auto i = size_t{1}; i < cfg_num_threads; i++) {
         tg.add_task(UCTWorker(m_rootstate, this, m_root.get()));
     }
     Time start;
