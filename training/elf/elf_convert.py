@@ -41,7 +41,10 @@ if 0:
 with open('elf_converted_weights.txt', 'w') as f:
     # version 2 means value head is for black, not for side to move
     f.write('2\n')
-    b = convert_block(state, 'init_conv')
+    if 'init_conv.0.weight' in state:
+        b = convert_block(state, 'init_conv')
+    else:
+        b = convert_block(state, 'init_conv.module')
 
     # Permutate input planes
     p = [0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15, 16, 17]
