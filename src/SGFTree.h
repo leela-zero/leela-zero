@@ -78,8 +78,7 @@ private:
 
     bool m_initialized{false};
     KoState m_state;
-    bool m_loaded_timecontrol{false};
-    TimeControl m_timecontrol;
+    std::shared_ptr<TimeControl> m_timecontrol_ptr;
     FastBoard::vertex_t m_winner{FastBoard::INVAL};
     std::vector<SGFTree> m_children;
     PropertyMap m_properties;

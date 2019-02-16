@@ -81,8 +81,8 @@ GameState SGFTree::follow_mainline_state(unsigned int movenum) const {
     // sets up the game history.
     GameState result(get_state());
 
-    if (m_loaded_timecontrol) {
-        result.set_timecontrol(m_timecontrol);
+    if (m_timecontrol_ptr) {
+        result.set_timecontrol(*m_timecontrol_ptr);
     }
 
     for (unsigned int i = 0; i <= movenum && link != nullptr; i++) {
@@ -191,8 +191,8 @@ void SGFTree::populate_states() {
         const auto maintime = it->second;
         it = m_properties.find("OT");
         const auto byoyomi = (it != end(m_properties)) ? it->second : "";
-        m_timecontrol.set_from_text_sgf(maintime, byoyomi);
-        m_loaded_timecontrol = true;
+        m_timecontrol_ptr = std::make_shared<TimeControl>();
+        m_timecontrol_ptr->set_from_text_sgf(maintime, byoyomi);
     }
 
     // handicap
@@ -282,8 +282,7 @@ void SGFTree::populate_states() {
 void SGFTree::copy_state(const SGFTree& tree) {
     m_initialized = tree.m_initialized;
     m_state = tree.m_state;
-    m_loaded_timecontrol = tree.m_loaded_timecontrol;
-    m_timecontrol = tree.m_timecontrol;
+    m_timecontrol_ptr = tree.m_timecontrol_ptr;
 }
 
 void SGFTree::apply_move(int color, int move) {
