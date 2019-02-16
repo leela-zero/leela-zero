@@ -151,7 +151,7 @@ void SGFTree::populate_states() {
     // board size
     it = m_properties.find("SZ");
     if (it != end(m_properties)) {
-        std::string size = it->second;
+        const auto size = it->second;
         std::istringstream strm(size);
         int bsize;
         strm >> bsize;
@@ -167,13 +167,13 @@ void SGFTree::populate_states() {
     // komi
     it = m_properties.find("KM");
     if (it != end(m_properties)) {
-        std::string foo = it->second;
+        const auto foo = it->second;
         std::istringstream strm(foo);
         float komi;
         strm >> komi;
-        int handicap = m_state.get_handicap();
+        const auto handicap = m_state.get_handicap();
         // last ditch effort: if no GM or SZ, assume 19x19 Go here
-        int bsize = 19;
+        auto bsize = 19;
         if (valid_size) {
             bsize = m_state.board.get_boardsize();
         }
@@ -188,9 +188,9 @@ void SGFTree::populate_states() {
     // time
     it = m_properties.find("TM");
     if (it != end(m_properties)) {
-        std::string maintime = it->second;
+        const auto maintime = it->second;
         it = m_properties.find("OT");
-        std::string byoyomi = (it != end(m_properties)) ? it->second : "";
+        const auto byoyomi = (it != end(m_properties)) ? it->second : "";
         m_timecontrol.set_from_text_sgf(maintime, byoyomi);
         m_loaded_timecontrol = true;
     }
@@ -198,7 +198,7 @@ void SGFTree::populate_states() {
     // handicap
     it = m_properties.find("HA");
     if (it != end(m_properties)) {
-        std::string size = it->second;
+        const auto size = it->second;
         std::istringstream strm(size);
         float handicap;
         strm >> handicap;
@@ -209,7 +209,7 @@ void SGFTree::populate_states() {
     // result
     it = m_properties.find("RE");
     if (it != end(m_properties)) {
-        std::string result = it->second;
+        const auto result = it->second;
         if (boost::algorithm::find_first(result, "Time")) {
             // std::cerr << "Skipping: " << result << std::endl;
             m_winner = FastBoard::EMPTY;
@@ -240,22 +240,22 @@ void SGFTree::populate_states() {
     }
     // Loop through the stone list and apply
     for (auto pit = prop_pair_ab.first; pit != prop_pair_ab.second; ++pit) {
-        auto move = pit->second;
-        int vtx = string_to_vertex(move);
+        const auto move = pit->second;
+        const auto vtx = string_to_vertex(move);
         apply_move(FastBoard::BLACK, vtx);
     }
 
     // XXX: count handicap stones
     const auto& prop_pair_aw = m_properties.equal_range("AW");
     for (auto pit = prop_pair_aw.first; pit != prop_pair_aw.second; ++pit) {
-        auto move = pit->second;
-        int vtx = string_to_vertex(move);
+        const auto move = pit->second;
+        const auto vtx = string_to_vertex(move);
         apply_move(FastBoard::WHITE, vtx);
     }
 
     it = m_properties.find("PL");
     if (it != end(m_properties)) {
-        std::string who = it->second;
+        const auto who = it->second;
         if (who == "W") {
             m_state.set_to_move(FastBoard::WHITE);
         } else if (who == "B") {
@@ -270,7 +270,7 @@ void SGFTree::populate_states() {
 
         // XXX: maybe move this to the recursive call
         // get move for side to move
-        auto colored_move = child_state.get_colored_move();
+        const auto colored_move = child_state.get_colored_move();
         if (colored_move.first != FastBoard::INVAL) {
             child_state.apply_move(colored_move.first, colored_move.second);
         }

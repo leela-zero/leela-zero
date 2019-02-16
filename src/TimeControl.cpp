@@ -70,17 +70,19 @@ std::string TimeControl::to_text_sgf() const {
 }
 
 void TimeControl::set_from_text_sgf(const std::string& maintime,
-    const std::string& byoyomi) {
+                                    const std::string& byoyomi) {
     m_maintime = std::stoi(maintime) * 100;
     m_byotime = 0;
     m_byostones = 0;
     m_byoperiods = 0;
     if (!byoyomi.empty()) {
         std::smatch m;
-        if (std::regex_match(byoyomi, m, std::regex{"(\\d+)/(\\d+) Canadian"})) {
+        const auto re_canadian = std::regex{"(\\d+)/(\\d+) Canadian"};
+        const auto re_byoyomi = std::regex{"(\\d+)x(\\d+) byo-yomi"};
+        if (std::regex_match(byoyomi, m, re_canadian)) {
             m_byostones = std::stoi(m[1]);
             m_byotime = std::stoi(m[2]) * 100;
-        } else if (std::regex_match(byoyomi, m, std::regex{"(\\d+)x(\\d+) byo-yomi"})) {
+        } else if (std::regex_match(byoyomi, m, re_byoyomi)) {
             m_byoperiods = std::stoi(m[1]);
             m_byotime = std::stoi(m[2]) * 100;
         } else {

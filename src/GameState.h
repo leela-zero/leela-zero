@@ -71,7 +71,7 @@ public:
     const TimeControl& get_timecontrol() const;
     void set_timecontrol(const TimeControl& timecontrol);
     void set_timecontrol(int maintime, int byotime, int byostones,
-        int byoperiods);
+                         int byoperiods);
     void adjust_time(int color, int time, int stones);
 
     void display_state();
