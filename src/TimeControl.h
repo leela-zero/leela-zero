@@ -54,8 +54,13 @@ public:
     size_t opening_moves(int boardsize) const;
     std::string to_text_sgf() const;
     void set_from_text_sgf(const std::string& maintime,
-                           const std::string& byoyomi);
+                           const std::string& byoyomi,
+                           const std::string& black_time_left,
+                           const std::string& white_time_left,
+                           const std::string& black_moves_left,
+                           const std::string& white_moves_left);
 private:
+    std::string stones_left_to_text_sgf(const int color) const;
     void display_color_time(int color);
     int get_moves_expected(int boardsize, size_t movenum) const;
 

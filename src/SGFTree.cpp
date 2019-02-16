@@ -191,8 +191,18 @@ void SGFTree::populate_states() {
         const auto maintime = it->second;
         it = m_properties.find("OT");
         const auto byoyomi = (it != end(m_properties)) ? it->second : "";
+        it = m_properties.find("BL");
+        const auto black_time_left = (it != end(m_properties)) ? it->second : "";
+        it = m_properties.find("WL");
+        const auto white_time_left = (it != end(m_properties)) ? it->second : "";
+        it = m_properties.find("OB");
+        const auto black_moves_left = (it != end(m_properties)) ? it->second : "";
+        it = m_properties.find("OW");
+        const auto white_moves_left = (it != end(m_properties)) ? it->second : "";
         m_timecontrol_ptr = std::make_shared<TimeControl>();
-        m_timecontrol_ptr->set_from_text_sgf(maintime, byoyomi);
+        m_timecontrol_ptr->set_from_text_sgf(maintime, byoyomi,
+                                             black_time_left, white_time_left,
+                                             black_moves_left, white_moves_left);
     }
 
     // handicap

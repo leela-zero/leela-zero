@@ -51,26 +51,56 @@ TimeControl::TimeControl(int maintime, int byotime,
     reset_clocks();
 }
 
-std::string TimeControl::to_text_sgf() const {
-    if (m_byotime != 0 && m_byostones == 0 && m_byoperiods == 0) {
-        return ""; // infinite
-    }
-    auto s = "TM[" + std::to_string(m_maintime/100) + "]";
-    if (m_byotime) {
+std::string TimeControl::stones_left_to_text_sgf(const int color) const {
+    auto s = std::string{};
+    // we must be in byo-yomi before interpreting stones
+    if (m_inbyo[color]) {
+        const auto c = color == FastBoard::BLACK ? "OB[" : "OW[";
         if (m_byostones) {
-            s += "OT[" + std::to_string(m_byostones) + "/";
-            s += std::to_string(m_byotime/100) + " Canadian]";
-        } else {
-            assert(m_byoperiods);
-            s += "OT[" + std::to_string(m_byoperiods) + "x";
-            s += std::to_string(m_byotime/100) + " byo-yomi]";
+            s += c + std::to_string(m_stones_left[color]) + "]";
+        } else if (m_byoperiods) {
+            // KGS extension
+            s += c + std::to_string(m_periods_left[color]) + "]";
         }
     }
     return s;
 }
 
+std::string TimeControl::to_text_sgf() const {
+    if (m_byotime != 0 && m_byostones == 0 && m_byoperiods == 0) {
+        return ""; // infinite
+    }
+    auto s = "TM[" + std::to_string(m_maintime / 100) + "]";
+    if (m_byotime) {
+        if (m_byostones) {
+            s += "OT[" + std::to_string(m_byostones) + "/";
+            s += std::to_string(m_byotime / 100) + " Canadian]";
+        } else {
+            assert(m_byoperiods);
+            s += "OT[" + std::to_string(m_byoperiods) + "x";
+            s += std::to_string(m_byotime / 100) + " byo-yomi]";
+        }
+        s += stones_left_to_text_sgf(FastBoard::BLACK);
+        s += stones_left_to_text_sgf(FastBoard::WHITE);
+    }
+    // Generously round up to avoid a remaining time of 0 triggering byo-yomi
+    // to be started when the sgf is loaded. This happens because byo-yomi
+    // stones have to be only written to the sgf when actually in byo-yomi
+    // and this is interpretted in adjust_time() as a special case
+    // that starts byo-yomi.
+    const auto black_time_left = (m_remaining_time[FastBoard::BLACK] + 99) / 100;
+    const auto white_time_left = (m_remaining_time[FastBoard::WHITE] + 99) / 100;
+    s += "BL[" + std::to_string(black_time_left) + "]";
+    s += "WL[" + std::to_string(white_time_left) + "]";
+    return s;
+}
+
 void TimeControl::set_from_text_sgf(const std::string& maintime,
-                                    const std::string& byoyomi) {
+                                    const std::string& byoyomi,
+                                    const std::string& black_time_left,
+                                    const std::string& white_time_left,
+                                    const std::string& black_moves_left,
+                                    const std::string& white_moves_left) {
     m_maintime = std::stoi(maintime) * 100;
     m_byotime = 0;
     m_byostones = 0;
@@ -90,7 +120,18 @@ void TimeControl::set_from_text_sgf(const std::string& maintime,
         }
     }
     reset_clocks();
-    return;
+    if (!black_time_left.empty()) {
+        const auto time = std::stoi(black_time_left) * 100;
+        const auto stones = black_moves_left.empty() ?
+                            0 : std::stoi(black_moves_left);
+        adjust_time(FastBoard::BLACK, time, stones);
+    }
+    if (!white_time_left.empty()) {
+        const auto time = std::stoi(white_time_left) * 100;
+        const auto stones = white_moves_left.empty() ?
+                            0 : std::stoi(white_moves_left);
+        adjust_time(FastBoard::WHITE, time, stones);
+    }
 }
 
 void TimeControl::reset_clocks() {
