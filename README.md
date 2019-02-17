@@ -43,7 +43,7 @@ the distributed effort. But you can still play, especially if you are patient.
 
 ### Windows
 
-Head to the [Github releases page](https://github.com/gcp/leela-zero/releases),
+Head to the [Github releases page](https://github.com/leela-zero/leela-zero/releases),
 download the latest release, unzip, and launch autogtp.exe. It will connect to
 the server automatically and do its work in the background, uploading results
 after each game. You can just close the autogtp window to stop it.
