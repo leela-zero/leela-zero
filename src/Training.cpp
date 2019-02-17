@@ -169,8 +169,8 @@ void Training::record(Network & network, GameState& state, UCTNode& root) {
     step.to_move = state.board.get_to_move();
     step.planes = get_planes(&state);
 
-    auto result =
-        network.get_output(&state, Network::Ensemble::DIRECT, 0);
+    const auto result = network.get_output(
+        &state, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY);
     step.net_winrate = result.winrate;
 
     const auto& best_node = root.get_best_root_child(step.to_move);
