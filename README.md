@@ -1,6 +1,5 @@
-[![Linux Build Status](https://travis-ci.org/gcp/leela-zero.svg?branch=next)](https://travis-ci.org/gcp/leela-zero)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/pf1hcgly8f1a8iu0/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero/branch/next)
-
+[![Linux Build Status](https://travis-ci.org/leela-zero/leela-zero.svg?branch=next)](https://travis-ci.org/leela-zero/leela-zero)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/dcvp31x1e0yavrtf/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero-8arv1/branch/next)
 
 # What
 
@@ -43,7 +42,7 @@ the distributed effort. But you can still play, especially if you are patient.
 
 ### Windows
 
-Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
+Head to the Github releases page at https://github.com/leela-zero/leela-zero/releases,
 download the latest release, unzip, and launch autogtp.exe. It will connect to
 the server automatically and do its work in the background, uploading results
 after each game. You can just close the autogtp window to stop it.
@@ -70,7 +69,7 @@ There are community maintained instructions available here:
 Download the best known network weights file from [here](https://zero.sjeng.org/best-network), or, if you prefer a more human style,
 a (weaker) network trained from human games [here](https://sjeng.org/zero/best_v1.txt.zip).
 
-If you are on Windows, download an official release from [here](https://github.com/gcp/leela-zero/releases) and head to the [Usage](#usage-for-playing-or-analyzing-games)
+If you are on Windows, download an official release from [here](https://github.com/leela-zero/leela-zero/releases) and head to the [Usage](#usage-for-playing-or-analyzing-games)
 section of this README.
 
 If you are on Unix or macOS, you have to compile the program yourself. Follow
@@ -101,7 +100,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     sudo apt install clinfo && clinfo
 
     # Clone github repo
-    git clone https://github.com/gcp/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
@@ -121,7 +120,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 ## Example of compiling - macOS
 
     # Clone github repo
-    git clone https://github.com/gcp/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
@@ -141,7 +140,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 ## Example of compiling - Windows
 
     # Clone github repo
-    git clone https://github.com/gcp/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
