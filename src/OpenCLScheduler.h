@@ -33,23 +33,40 @@
 
 #include <list>
 #include <vector>
+#include <thread>
 
 #include "SMP.h"
 #include "ForwardPipe.h"
 #include "OpenCL.h"
 #include "ThreadPool.h"
 
+#ifndef NDEBUG
+struct batch_stats_t {
+    std::atomic<size_t> single_evals{0};
+    std::atomic<size_t> batch_evals{0};
+};
+extern batch_stats_t batch_stats;
+#endif
 
 template <typename net_t>
 class OpenCLScheduler : public ForwardPipe {
-    class ContextPoolEntry {
+    class ForwardQueueEntry {
     public:
-        size_t net_index;
-        OpenCLContext context;
-        ContextPoolEntry(size_t index) : net_index(index) {}
+        std::mutex mutex;
+        std::condition_variable cv;
+        const std::vector<float>& in;
+        std::vector<float>& out_p;
+        std::vector<float>& out_v;
+        ForwardQueueEntry(const std::vector<float>& input,
+                          std::vector<float>& output_pol,
+                          std::vector<float>& output_val)
+        : in(input), out_p(output_pol), out_v(output_val)
+          {}
     };
 public:
+    virtual ~OpenCLScheduler();
     OpenCLScheduler();
+
     virtual void initialize(const int channels);
     virtual void forward(const std::vector<float>& input,
                          std::vector<float>& output_pol,
@@ -60,14 +77,23 @@ public:
                               unsigned int outputs,
                               std::shared_ptr<const ForwardPipeWeights> weights);
 private:
+    bool m_running = true;
     std::vector<std::unique_ptr<OpenCL_Network<net_t>>> m_networks;
     std::vector<std::unique_ptr<OpenCL<net_t>>> m_opencl;
 
-    using ContextPoolQueue = std::list<std::shared_ptr<ContextPoolEntry>>;
-    std::vector<ContextPoolQueue> m_context_pool;
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
 
-    SMP::Mutex m_context_pool_mutex;
+    // start with 10 milliseconds : lock protected
+    int m_waittime{10};
 
+    // set to true when single (non-batch) eval is in progress
+    std::atomic<bool> m_single_eval_in_progress{false};
+
+    std::list<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
+    std::list<std::thread> m_worker_threads;
+
+    void batch_worker(const size_t gnum);
     void push_input_convolution(unsigned int filter_size,
                                 unsigned int channels,
                                 unsigned int outputs,

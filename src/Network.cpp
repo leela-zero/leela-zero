@@ -107,7 +107,7 @@ float Network::benchmark_time(int centiseconds) {
     get_output(&state, Ensemble::RANDOM_SYMMETRY, -1, false, true, true);
 
     const Time start;
-    for (auto i = 0; i < cpus; i++) {
+    for (auto i = size_t{0}; i < cpus; i++) {
         tg.add_task([this, &runcount, start, centiseconds, state]() {
             while (true) {
                 runcount++;
@@ -134,7 +134,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
     ThreadGroup tg(thread_pool);
     std::atomic<int> runcount{0};
 
-    for (auto i = 0; i < cpus; i++) {
+    for (auto i = size_t{0}; i < cpus; i++) {
         tg.add_task([this, &runcount, iterations, state]() {
             while (runcount < iterations) {
                 runcount++;
@@ -666,7 +666,7 @@ void Network::compare_net_outputs(const Netresult& data,
     error = std::sqrt(error);
 
     if (error > max_error || std::isnan(error)) {
-        printf("Error in OpenCL calculation: Update your GPU drivers "
+        printf("Error in OpenCL calculation: Update your device's OpenCL drivers "
                "or reduce the amount of games played simultaneously.\n");
         throw std::runtime_error("OpenCL self-check mismatch.");
     }

@@ -106,7 +106,7 @@ void Management::giveAssignments() {
     QTextStream(stdout) << "Starting tuning process, please wait..." << endl;
 
     Order tuneOrder = getWork(true);
-    QString tuneCmdLine("./leelaz --tune-only -w networks/");
+    QString tuneCmdLine("./leelaz -t 1 --tune-only -w networks/");
     tuneCmdLine.append(tuneOrder.parameters()["network"] + ".gz");
     if (m_gpusList.isEmpty()) {
         runTuningProcess(tuneCmdLine);
@@ -128,7 +128,7 @@ void Management::giveAssignments() {
                 myGpu = m_gpusList.at(gpu);
             }
             QTextStream(stdout) << "Starting thread " << game + 1 ;
-            QTextStream(stdout) << " on GPU " << gpu << endl;
+            QTextStream(stdout) << " on device " << gpu << endl;
             m_gamesThreads[thread_index] = new Worker(thread_index, myGpu, this);
             connect(m_gamesThreads[thread_index],
                     &Worker::resultReady,

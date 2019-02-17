@@ -91,7 +91,7 @@ Result ProductionJob::execute(){
         QTextStream(stdout) << "Game has ended." << endl;
         if (game.getScore()) {
             game.writeSgf();
-            game.fixSgf(m_engine.getNetworkFile(), false);
+            game.fixSgf(m_engine, false, true);
             game.dumpTraining();
             if (m_debug) {
                 game.dumpDebug();
@@ -175,8 +175,9 @@ Result ValidationJob::execute(){
             res.add("score", first.getResult());
             res.add("winner", first.getWinnerName());
             first.writeSgf();
-            first.fixSgf(m_engineSecond.getNetworkFile(),
-                (res.parameters()["score"] == "B+Resign"));
+            first.fixSgf(m_engineSecond,
+                (res.parameters()["score"] == "B+Resign"),
+                false);
             res.add("file", first.getFile());
         }
         res.type(Result::Win);

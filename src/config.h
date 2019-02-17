@@ -101,11 +101,6 @@ static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
 
 #endif
 
-/* Maximum supported batch size for OpenCL.
- */
-static constexpr auto MAX_BATCH = 1;
-static_assert(MAX_BATCH == 1, "MAX_BATCH != 1 not implemented");
-
 /*
  * USE_TUNER: Expose some extra command line parameters that allow tuning the
  * search algorithm.

@@ -59,7 +59,10 @@ UCTNode* UCTNode::get_first_child() const {
     return m_children.front().get();
 }
 
-void UCTNode::kill_superkos(const KoState& state) {
+void UCTNode::kill_superkos(const GameState& state) {
+    UCTNodePointer *pass_child = nullptr;
+    size_t valid_count = 0;
+
     for (auto& child : m_children) {
         auto move = child->get_move();
         if (move != FastBoard::PASS) {
@@ -70,7 +73,19 @@ void UCTNode::kill_superkos(const KoState& state) {
                 // Don't delete nodes for now, just mark them invalid.
                 child->invalidate();
             }
+        } else {
+            pass_child = &child;
         }
+        if (child->valid()) {
+            valid_count++;
+        }
+    }
+
+    if (valid_count > 1 && pass_child &&
+            !state.is_move_legal(state.get_to_move(), FastBoard::PASS)) {
+        // Remove the PASS node according to "avoid" -- but only if there are
+        // other valid nodes left.
+        (*pass_child)->invalidate();
     }
 
     // Now do the actual deletion.
