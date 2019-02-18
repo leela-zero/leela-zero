@@ -47,7 +47,7 @@ public:
     using BoardPlane = std::bitset<NUM_INTERSECTIONS>;
     using NNPlanes = std::vector<BoardPlane>;
     NNPlanes planes;
-    std::vector<float> probabilities;
+    std::array<float, POTENTIAL_MOVES> probabilities{{0}};
     int to_move;
     float net_winrate;
     float root_uct_winrate;
@@ -84,6 +84,8 @@ public:
     static void dump_debug(const std::string& out_filename);
     static void record(Network & network, GameState& state, UCTNode& node);
 
+    static void convert_elf(const std::string& json_name,
+                            const std::string& out_filename);
     static void dump_supervised(const std::string& sgf_file,
                                 const std::string& out_filename);
     static void save_training(const std::string& filename);
@@ -93,7 +95,8 @@ private:
     static TimeStep::NNPlanes get_planes(const GameState* const state);
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,
-                             OutputChunker& outchunker);
+                             OutputChunker& outchunker,
+                             std::vector<std::array<float, POTENTIAL_MOVES>>& policies);
     static void dump_training(int winner_color,
                               OutputChunker& outchunker);
     static void dump_debug(OutputChunker& outchunker);

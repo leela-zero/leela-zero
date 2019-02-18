@@ -1164,6 +1164,22 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             gtp_fail_printf(id, "syntax not understood");
         }
         return;
+    } else if (command.find("convert_elf") == 0) {
+        std::istringstream cmdstream(command);
+        std::string tmp, jsonname, outname;
+
+        // tmp will eat convert_elf
+        cmdstream >> tmp >> jsonname >> outname;
+
+        Training::convert_elf(jsonname, outname);
+
+        if (!cmdstream.fail()) {
+            gtp_printf(id, "");
+        }
+        else {
+            gtp_fail_printf(id, "syntax not understood");
+        }
+        return;
     } else if (command.find("lz-memory_report") == 0) {
         auto base_memory = get_base_memory();
         auto tree_size = add_overhead(UCTNodePointer::get_tree_size());

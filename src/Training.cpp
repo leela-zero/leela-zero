@@ -82,10 +82,10 @@ std::istream& operator>> (std::istream& stream, TimeStep& timestep) {
     }
     int prob_size;
     stream >> prob_size;
-    for (auto i = 0; i < prob_size; ++i) {
+    for (auto i = 0; i < prob_size && i < POTENTIAL_MOVES; ++i) {
         float prob;
         stream >> prob;
-        timestep.probabilities.push_back(prob);
+        timestep.probabilities[i] = prob;
     }
     stream >> timestep.to_move;
     stream >> timestep.net_winrate;
@@ -177,9 +177,7 @@ void Training::record(Network & network, GameState& state, UCTNode& root) {
     step.root_uct_winrate = root.get_eval(step.to_move);
     step.child_uct_winrate = best_node.get_eval(step.to_move);
     step.bestmove_visits = best_node.get_visits();
-
-    step.probabilities.resize(POTENTIAL_MOVES);
-
+    
     // Get total visit amount. We count rather
     // than trust the root to avoid ttable issues.
     auto sum_visits = 0.0;
@@ -313,7 +311,8 @@ void Training::dump_debug(OutputChunker& outchunk) {
 
 void Training::process_game(GameState& state, size_t& train_pos, int who_won,
                             const std::vector<int>& tree_moves,
-                            OutputChunker& outchunker) {
+                            OutputChunker& outchunker, 
+                            std::vector<std::array<float, POTENTIAL_MOVES>>& policies) {
     clear_training();
     auto counter = size_t{0};
     state.rewind();
@@ -342,18 +341,73 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         step.to_move = to_move;
         step.planes = get_planes(&state);
 
-        step.probabilities.resize(POTENTIAL_MOVES);
-        step.probabilities[move_idx] = 1.0f;
+        if (policies.size() == 0) {
+            step.probabilities[move_idx] = 1.0f;
+        } else {
+            step.probabilities = std::move(policies[counter]);
+        }
 
         train_pos++;
         m_data.emplace_back(step);
 
         counter++;
-    } while (state.forward_move() && counter < tree_moves.size());
+    } while (state.forward_move() && counter < tree_moves.size() && counter < policies.size());
 
     dump_training(who_won, outchunker);
 }
 
+void Training::convert_elf(const std::string& json_name,
+                           const std::string& out_filename) {
+    auto outchunker = OutputChunker{ out_filename, true };
+    auto games = SGFParser::chop_elf(json_name);
+    auto gametotal = games.size();
+    auto train_pos = size_t{0};
+
+    std::cout << "Total games in file: " << gametotal << std::endl;
+    // Shuffle games around
+    std::cout << "Shuffling...";
+    std::shuffle(begin(games), end(games), Random::get_Rng());
+    std::cout << "done." << std::endl;
+
+    Time start;
+    for (auto gamecount = size_t{0}; gamecount < gametotal; gamecount++) {
+        auto sgftree = std::make_unique<SGFTree>();
+        try {
+            sgftree->load_from_string(games[gamecount].sgf);
+        }
+        catch (...) {
+            continue;
+        };
+
+        if (gamecount > 0 && gamecount % 1000 == 0) {
+            Time elapsed;
+            auto elapsed_s = Time::timediff_seconds(start, elapsed);
+            Utils::myprintf(
+                "Game %5d, %5d positions in %5.2f seconds -> %d pos/s\n",
+                gamecount, train_pos, elapsed_s, int(train_pos / elapsed_s));
+        }
+
+        auto tree_moves = sgftree->get_mainline();
+        // Empty game or couldn't be parsed?
+        if (tree_moves.size() == 0) {
+            continue;
+        }
+
+        auto who_won = games[gamecount].reward > 0.0f ? FastBoard::BLACK : FastBoard::WHITE;
+
+        auto state =
+            std::make_unique<GameState>(sgftree->follow_mainline_state());
+        // Our board size is hardcoded in several places
+        if (state->board.get_boardsize() != BOARD_SIZE) {
+            continue;
+        }
+
+        process_game(*state, train_pos, who_won, tree_moves,
+                     outchunker, games[gamecount].policies);
+    }
+
+    std::cout << "Dumped " << train_pos << " training positions." << std::endl;
+}
 void Training::dump_supervised(const std::string& sgf_name,
                                const std::string& out_filename) {
     auto outchunker = OutputChunker{out_filename, true};
@@ -403,8 +457,9 @@ void Training::dump_supervised(const std::string& sgf_name,
             continue;
         }
 
+        std::vector<std::array<float, POTENTIAL_MOVES>> policies;
         process_game(*state, train_pos, who_won, tree_moves,
-                    outchunker);
+                     outchunker, policies);
     }
 
     std::cout << "Dumped " << train_pos << " training positions." << std::endl;

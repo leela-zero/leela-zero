@@ -38,6 +38,81 @@
 #include "SGFTree.h"
 #include "Utils.h"
 
+std::vector<SGFParser::ELF_Data> SGFParser::chop_elf(std::string filename,
+                                                     size_t stopat) {
+    std::ifstream ins(filename.c_str(), std::ifstream::binary | std::ifstream::in);
+
+    if (ins.fail()) {
+        throw std::runtime_error("Error opening file");
+    }
+
+    std::vector<ELF_Data> result;
+    std::string gamebuff;
+
+    auto constexpr MAX = std::numeric_limits<std::streamsize>::max();
+    std::string str;
+    char c;
+    int num_move;
+    int total_policy;
+
+    while (result.size() <= stopat) {
+        while (true) {
+            ins.ignore(MAX, '\"');
+            if ((ins.rdstate() & std::ifstream::eofbit) != 0) return result;
+            std::getline(ins, str, ':');
+            if (str == "content\"") break;
+        }
+        result.emplace_back(ELF_Data());
+        auto& data = result.back();
+        ins >> c; // eat "
+        str.clear();
+        std::getline(ins, str, '\"');
+        data.sgf = str;
+        ins.ignore(MAX, ':'); // eat ,"num_move":
+        str.clear();
+        std::getline(ins, str, ',');
+        num_move = std::stoi(str);
+        ins.ignore(MAX, '['); // eat "policies":[
+        data.policies.clear();
+        data.policies.reserve(num_move + 1);
+        while (true) {
+            ins >> c; // eat [ (assume there's at least one policy record)
+            str.clear();
+            std::getline(ins, str, ',');
+            data.policies.emplace_back(std::array<float, POTENTIAL_MOVES>());
+            auto& probs = data.policies.back();
+            probs[NUM_INTERSECTIONS] = total_policy = std::stoi(str);
+            for (auto i = 0; i < BOARD_SIZE; i++) ins.ignore(MAX, ',');
+            for (int i = BOARD_SIZE - 1; i >= 0; i--) {
+                ins.ignore(MAX, ',');
+                ins.ignore(MAX, ',');
+                for (auto j = 0; j < BOARD_SIZE; j++) {
+                    str.clear();
+                    std::getline(ins, str, ',');
+                    auto entry = std::stoi(str);
+                    total_policy += entry;
+                    probs[i * BOARD_SIZE + j] = entry;
+                }
+            }
+            for (auto& p : probs) p /= total_policy;
+            ins.ignore(MAX, ']');
+            ins >> c;
+            if (c == ']') break;
+        }
+        ins.ignore(MAX, ':'); // eat ,"reward":
+        str.clear();
+        std::getline(ins, str, ',');
+        data.reward = std::stof(str);
+        auto move_excess = (str.back() == '0') ? 1 : 0;
+        auto train_pos = data.policies.size();
+        if (train_pos != num_move + move_excess) {
+            Utils::myprintf("Spurious ELF data entry! ");
+            Utils::myprintf("Moves: %d, Policy records: %d, Reward: %s\n",
+                             num_move, train_pos, str.c_str(), str.back());
+        }
+    }
+}
+
 std::vector<std::string> SGFParser::chop_stream(std::istream& ins,
                                                 size_t stopat) {
     std::vector<std::string> result;
