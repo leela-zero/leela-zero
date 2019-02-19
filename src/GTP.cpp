@@ -858,8 +858,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             }
         } else if (symmetry == "average" || symmetry == "avg") {
             vec = s_network->get_output(
-                &game, Network::Ensemble::AVERAGE,
-                Network::NUM_SYMMETRIES, false);
+                &game, Network::Ensemble::AVERAGE, -1, false);
         } else {
             vec = s_network->get_output(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), false);

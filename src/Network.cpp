@@ -743,6 +743,7 @@ Network::Netresult Network::get_output(
         assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
         result = get_output_internal(state, symmetry);
     } else if (ensemble == AVERAGE) {
+        assert(symmetry == -1);
         for (auto sym = 0; sym < NUM_SYMMETRIES; ++sym) {
             auto tmpresult = get_output_internal(state, sym);
             result.winrate +=
