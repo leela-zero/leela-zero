@@ -310,7 +310,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
     // while that single eval was being processed, it means that we made
     // the wrong decision.  Wait 2ms longer next time.
 
-    auto pickup_task = [this, gnum] () {
+    auto pickup_task = [this] () {
         std::list<std::shared_ptr<ForwardQueueEntry>> inputs;
         size_t count = 0;
 
