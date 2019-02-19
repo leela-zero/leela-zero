@@ -31,7 +31,7 @@ This means that:
 * The code generally avoids any pointer passing and allows non-const references for parameters. Still, for new code it should be preferred to a) put input parameters first b) use return values over output parameters.
 * Function arguments that wrap are aligned.
 * Member variables in a class have an m_ prefix and are private. Members of POD structs don't and aren't.
-* Constants and enum values are ALLCAPS.
+* Constants and enum values are ALL_CAPS.
 * Variables are lowercase.
 * Function names are underscore_case.
 * Classes are CamelCase.
@@ -101,10 +101,10 @@ It makes sense to be thoughtful here, consider the responsibilities of both GUI 
 
 Experience and previous discussions can help understanding:
 
-* lz-analyze "avoid" and "allow" were added in pull request #1949.
-* lz-analyze got a side-to-move option in pull request #1872 and #1642.
-* lz-analyze got a "prior" tag in pull request #1836.
-* lz-analyze was added in pull request #1388.
-* lz-setoption was added in pull request #1741.
-* Pull request #2170 has some discussion regarding how to navigate SGF
+* lz-analyze "avoid" and "allow" were added in pull request [#1949](https://github.com/leela-zero/leela-zero/pull/1949).
+* lz-analyze got a side-to-move option in pull request [#1872](https://github.com/leela-zero/leela-zero/pull/1872) and [#1642](https://github.com/leela-zero/leela-zero/pull/1642).
+* lz-analyze got a "prior" tag in pull request [#1836](https://github.com/leela-zero/leela-zero/pull/1836).
+* lz-analyze was added in pull request [#1388](https://github.com/leela-zero/leela-zero/pull/1388).
+* lz-setoption was added in pull request [#1741](https://github.com/leela-zero/leela-zero/pull/1741).
+* Pull request [#2170](https://github.com/leela-zero/leela-zero/pull/2170) has some discussion regarding how to navigate SGF
   files that were parsed by the engine via GTP.
