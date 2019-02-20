@@ -47,7 +47,7 @@ public:
     using BoardPlane = std::bitset<NUM_INTERSECTIONS>;
     using NNPlanes = std::vector<BoardPlane>;
     NNPlanes planes;
-    std::array<float, POTENTIAL_MOVES> probabilities{{0}};
+    std::vector<float> probabilities;
     int to_move;
     float net_winrate;
     float root_uct_winrate;
@@ -84,6 +84,13 @@ public:
     static void dump_debug(const std::string& out_filename);
     static void record(Network & network, GameState& state, UCTNode& node);
 
+    struct ELF_Data {
+        std::string sgf;
+        float reward; // ELF original representation: 1.0/-1.0 for B/W+Resign, score for B+(score)/W+(-score)
+        std::vector<std::vector<float>> policies;
+    };
+    static std::vector<ELF_Data> chop_elf(std::string filename,
+                                          size_t stopat = SIZE_MAX);
     static void convert_elf(const std::string& json_name,
                             const std::string& out_filename);
     static void dump_supervised(const std::string& sgf_file,
@@ -96,7 +103,7 @@ private:
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,
                              OutputChunker& outchunker,
-                             std::vector<std::array<float, POTENTIAL_MOVES>>& policies);
+                             std::vector<std::vector<float>>& policies);
     static void dump_training(int winner_color,
                               OutputChunker& outchunker);
     static void dump_debug(OutputChunker& outchunker);

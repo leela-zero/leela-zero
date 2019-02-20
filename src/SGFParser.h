@@ -50,14 +50,6 @@ public:
     static std::vector<std::string> chop_stream(std::istream& ins,
                                                 size_t stopat = SIZE_MAX);
     static void parse(std::istringstream & strm, SGFTree * node);
-
-    struct ELF_Data {
-        std::string sgf;
-        float reward; // ELF original representation: 1.0/-1.0 for B/W+Resign, score for B+(score)/W+(-score)
-        std::vector<std::array<float, POTENTIAL_MOVES>> policies;
-    };
-    static std::vector<ELF_Data> chop_elf(std::string filename,
-                                          size_t stopat = SIZE_MAX);
 };
 
 

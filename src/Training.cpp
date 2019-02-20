@@ -82,10 +82,10 @@ std::istream& operator>> (std::istream& stream, TimeStep& timestep) {
     }
     int prob_size;
     stream >> prob_size;
-    for (auto i = 0; i < prob_size && i < POTENTIAL_MOVES; ++i) {
+    for (auto i = 0; i < prob_size; ++i) {
         float prob;
         stream >> prob;
-        timestep.probabilities[i] = prob;
+        timestep.probabilities.push_back(prob);
     }
     stream >> timestep.to_move;
     stream >> timestep.net_winrate;
@@ -177,7 +177,9 @@ void Training::record(Network & network, GameState& state, UCTNode& root) {
     step.root_uct_winrate = root.get_eval(step.to_move);
     step.child_uct_winrate = best_node.get_eval(step.to_move);
     step.bestmove_visits = best_node.get_visits();
-    
+
+    step.probabilities.resize(POTENTIAL_MOVES);
+
     // Get total visit amount. We count rather
     // than trust the root to avoid ttable issues.
     auto sum_visits = 0.0;
@@ -311,8 +313,8 @@ void Training::dump_debug(OutputChunker& outchunk) {
 
 void Training::process_game(GameState& state, size_t& train_pos, int who_won,
                             const std::vector<int>& tree_moves,
-                            OutputChunker& outchunker, 
-                            std::vector<std::array<float, POTENTIAL_MOVES>>& policies) {
+                            OutputChunker& outchunker,
+                            std::vector<std::vector<float>>& policies) {
     clear_training();
     auto counter = size_t{0};
     state.rewind();
@@ -341,7 +343,8 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         step.to_move = to_move;
         step.planes = get_planes(&state);
 
-        if (policies.size() == 0) {
+        if (policies.empty()) {
+            step.probabilities.resize(POTENTIAL_MOVES);
             step.probabilities[move_idx] = 1.0f;
         } else {
             step.probabilities = std::move(policies[counter]);
@@ -351,15 +354,97 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         m_data.emplace_back(step);
 
         counter++;
-    } while (state.forward_move() && counter < tree_moves.size() && counter < policies.size());
+    } while (state.forward_move() && counter < tree_moves.size());
+
+    if (counter < policies.size()) {
+        auto step = TimeStep{};
+        step.to_move = state.get_to_move();
+        step.planes = get_planes(&state);
+        step.probabilities = std::move(policies[counter]);
+        train_pos++;
+        m_data.emplace_back(step);
+    }
 
     dump_training(who_won, outchunker);
+}
+
+std::vector<Training::ELF_Data> Training::chop_elf(std::string filename,
+    size_t stopat) {
+    std::ifstream ins(filename.c_str(), std::ifstream::binary | std::ifstream::in);
+
+    if (ins.fail()) {
+        throw std::runtime_error("Error opening file");
+    }
+
+    std::vector<ELF_Data> result;
+    std::string gamebuff;
+
+    auto constexpr MAX = std::numeric_limits<std::streamsize>::max();
+    std::string str;
+    char c;
+    int num_move;
+    float total_policy;
+
+    while (result.size() <= stopat) {
+        do {
+            ins.ignore(MAX, '\"');
+            if ((ins.rdstate() & std::ifstream::eofbit) != 0) return result;
+            std::getline(ins, str, ':');
+        } while (str != "content\"");
+        result.emplace_back(ELF_Data());
+        auto& data = result.back();
+        ins >> c; // eat "
+        str.clear();
+        std::getline(ins, str, '\"');
+        data.sgf = str;
+        ins.ignore(MAX, ':'); // eat ,"num_move":
+        str.clear();
+        std::getline(ins, str, ',');
+        num_move = std::stoi(str);
+        ins.ignore(MAX, '['); // eat "policies":[
+        data.policies.clear();
+        data.policies.reserve(num_move + 1);
+        do {
+            ins >> c; // eat [ (assume there's at least one policy record)
+            str.clear();
+            std::getline(ins, str, ',');
+            data.policies.emplace_back(std::vector<float>(POTENTIAL_MOVES));
+            auto& probs = data.policies.back();
+            probs[NUM_INTERSECTIONS] = total_policy = static_cast<float>(std::stoi(str));
+            for (auto i = 0; i < BOARD_SIZE; i++) { ins.ignore(MAX, ','); }
+            for (int i = BOARD_SIZE - 1; i >= 0; i--) {
+                ins.ignore(MAX, ',');
+                ins.ignore(MAX, ','); // ignore two entries as 19x19 is padded to 21x21
+                for (auto j = 0; j < BOARD_SIZE; j++) {
+                    str.clear();
+                    std::getline(ins, str, ',');
+                    auto entry = static_cast<float>(std::stoi(str));
+                    total_policy += entry;
+                    probs[i * BOARD_SIZE + j] = entry;
+                }
+            }
+            for (auto& p : probs) { p /= total_policy; }
+            ins.ignore(MAX, ']');
+            ins >> c;
+        } while (c != ']');
+        ins.ignore(MAX, ':'); // eat ,"reward":
+        str.clear();
+        std::getline(ins, str, ',');
+        data.reward = std::stof(str);
+        auto move_excess = (str.back() == '0') ? 1 : 0;
+        auto train_pos = data.policies.size();
+        if (train_pos != num_move + move_excess) {
+            Utils::myprintf("Spurious ELF data entry! ");
+            Utils::myprintf("Moves: %d, Policy records: %d, Reward: %s\n",
+                num_move, train_pos, str.c_str());
+        }
+    }
 }
 
 void Training::convert_elf(const std::string& json_name,
                            const std::string& out_filename) {
     auto outchunker = OutputChunker{ out_filename, true };
-    auto games = SGFParser::chop_elf(json_name);
+    auto games = chop_elf(json_name);
     auto gametotal = games.size();
     auto train_pos = size_t{0};
 
@@ -457,7 +542,7 @@ void Training::dump_supervised(const std::string& sgf_name,
             continue;
         }
 
-        std::vector<std::array<float, POTENTIAL_MOVES>> policies;
+        std::vector<std::vector<float>> policies;
         process_game(*state, train_pos, who_won, tree_moves,
                      outchunker, policies);
     }

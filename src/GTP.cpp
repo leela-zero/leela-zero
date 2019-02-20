@@ -1175,8 +1175,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
 
         if (!cmdstream.fail()) {
             gtp_printf(id, "");
-        }
-        else {
+        } else {
             gtp_fail_printf(id, "syntax not understood");
         }
         return;
