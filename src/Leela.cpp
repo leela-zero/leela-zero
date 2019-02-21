@@ -118,6 +118,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("puct", po::value<float>())
         ("softmax_temp", po::value<float>())
         ("fpu_reduction", po::value<float>())
+        ("fpu_clamp", po::value<bool>())
         ;
 #endif
     // These won't be shown, we use them to catch incorrect usage of the
@@ -188,6 +189,9 @@ static void parse_commandline(int argc, char *argv[]) {
         cfg_fpu_reduction = vm["fpu_reduction"].as<float>();
     }
 #endif
+    if (vm.count("fpu_clamp")) {
+        cfg_fpu_clamp = true;
+    }
 
     if (vm.count("logfile")) {
         cfg_logfile = vm["logfile"].as<std::string>();

@@ -236,6 +236,8 @@ void UCTNode::accumulate_eval(float eval) {
     atomic_add(m_blackevals, double(eval));
 }
 
+int clamped = 0;
+
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     wait_expanded();
 
@@ -254,7 +256,14 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     const auto numerator = std::sqrt(double(parentvisits));
     const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction) * std::sqrt(total_visited_policy);
     // Estimated eval for unknown nodes = original parent NN eval - reduction
-    const auto fpu_eval = get_net_eval(color) - fpu_reduction;
+    auto fpu_eval = get_net_eval(color) - fpu_reduction;
+    // Clamp to legal (0 to 1) range.
+    if (cfg_fpu_clamp && fpu_eval < 0) {
+        fpu_eval = 0.0;
+        clamped++;
+        if (clamped % 100 == 0)
+            myprintf_error("Clamped %d\n", clamped);
+    }
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
