@@ -101,7 +101,10 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     git submodule update --init --recursive
 
     # Install build depedencies
-    sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+    sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev \
+                     libreadline-dev \
+                     opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev \
+                     zlib1g-dev
 
     # Use stand alone directory to keep source dir clean
     mkdir build && cd build
