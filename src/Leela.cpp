@@ -474,10 +474,9 @@ int main(int argc, char *argv[]) {
                 free(raw_input);
 
                 boost::trim(input);
-            }
-
-            if (!input.empty()) {
-                add_history(input.c_str());
+                if (!input.empty()) {
+                    add_history(input.c_str());
+                }
             }
 #else
             assert(false); // READLINE NOT AVAILABLE BUT USED?
