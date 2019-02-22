@@ -18,8 +18,10 @@
 
 #include "config.h"
 
+#include <cassert>
 #include <cstdint>
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
@@ -29,6 +31,11 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#ifdef HAVE_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
 
 #include "GTP.h"
 #include "GameState.h"
@@ -445,21 +452,51 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    auto use_readline = !cfg_gtp_mode;
+#ifndef HAVE_READLINE
+    use_readline = false;
+#endif
+
     for (;;) {
         if (!cfg_gtp_mode) {
             maingame->display_state();
-            std::cout << "Leela: ";
+        }
+        auto input = std::string{};
+        bool good = false;
+
+        if (use_readline) {
+#ifdef HAVE_READLINE
+            // Only used for non gtp mode in Linux.
+            char* raw_input = readline("Leela: ");
+            if (raw_input != NULL) {
+                good = true;
+                input = raw_input;
+                free(raw_input);
+
+                boost::trim(input);
+            }
+
+            if (!input.empty()) {
+                add_history(input.c_str());
+            }
+#else
+            assert(false); // READLINE NOT AVAILABLE BUT USED?
+#endif
+        } else {
+            if (!cfg_gtp_mode) {
+                std::cout << "Leela: ";
+            }
+            good = std::getline(std::cin, input).good();
         }
 
-        auto input = std::string{};
-        if (std::getline(std::cin, input)) {
-            Utils::log_input(input);
-            GTP::execute(*maingame, input);
-        } else {
+        if (!good) {
             // eof or other error
             std::cout << std::endl;
             break;
         }
+
+        Utils::log_input(input);
+        GTP::execute(*maingame, input);
 
         // Force a flush of the logfile
         if (cfg_logfile_handle) {

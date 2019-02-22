@@ -24,9 +24,11 @@
  * That code isn't portable, so select something appropriate for the system.
  */
 #ifdef _WIN32
+#undef HAVE_READLINE
 #undef HAVE_SELECT
 #define NOMINMAX
 #else
+#define HAVE_READLINE
 #define HAVE_SELECT
 #endif
 
