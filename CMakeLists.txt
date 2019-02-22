@@ -117,6 +117,12 @@ target_link_libraries(leelaz ${ZLIB_LIBRARIES})
 target_link_libraries(leelaz ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS leelaz DESTINATION ${CMAKE_INSTALL_BINDIR})
 
+if(NOT WIN32)
+find_package(Readline REQUIRED)
+target_link_libraries(leelaz ${Readline_LIBRARIES})
+endif()
+
+
 if(Qt5Core_FOUND)
     if(NOT Qt5Core_VERSION VERSION_LESS "5.3.0")
         add_subdirectory(autogtp)
