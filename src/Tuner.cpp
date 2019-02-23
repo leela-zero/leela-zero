@@ -386,15 +386,12 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
     build_from(topts, 1);
 
     // Don't use thread RNG or determinism will depend on whether tuner ran.
-    auto rng = std::default_random_engine{};
-    std::shuffle(valid_params.begin(), valid_params.end(), rng);
+    auto rng = Random{0};
+    std::shuffle(begin(valid_params), end(valid_params), rng);
 
     if (cfg_sgemm_exhaustive) {
         // Likely too many valid params, cut out some of them
         valid_params.resize(valid_params.size() / 16);
-    } else {
-        // Due to shuffling, we probably are close to an optimum anyway
-        valid_params.resize(valid_params.size() / 2);
     }
 
     return valid_params;
