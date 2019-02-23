@@ -11,22 +11,28 @@ before_install:
 jobs:
   include:
     - stage: test
-      script:
-      - docker build -f Dockerfiles/Dockerfile.gpu -t leela-zero:gpu .
-      - docker run leela-zero:gpu
     - script:
-      - docker build -f Dockerfiles/Dockerfile.gpu-blas -t leela-zero:gpu-blas .
-      - docker run leela-zero:gpu-blas
-    - script:
+      name: "cpu"
       - docker build -f Dockerfiles/Dockerfile.cpu -t leela-zero:cpu .
       - docker run leela-zero:cpu
     - script:
+      name: "cpu-blas"
       - docker build -f Dockerfiles/Dockerfile.cpu-blas -t leela-zero:cpu-blas .
       - docker run leela-zero:cpu-blas
     - script:
+      name: "gpu-blas"
+      - docker build -f Dockerfiles/Dockerfile.gpu -t leela-zero:gpu .
+      - docker run leela-zero:gpu
+    - script:
+      name: "gpu-blas"
+      - docker build -f Dockerfiles/Dockerfile.gpu-blas -t leela-zero:gpu-blas .
+      - docker run leela-zero:gpu-blas
+    - script:
+      name: "tests"
       - docker build -f Dockerfiles/Dockerfile.tests -t leela-zero:tests .
       - docker run leela-zero:tests
     - script:
+      name: "tests-blas"
       - docker build -f Dockerfiles/Dockerfile.tests-blas -t leela-zero:tests-blas .
       - docker run leela-zero:tests-blas
     - stage: style
