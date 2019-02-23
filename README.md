@@ -124,7 +124,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 ## Example of compiling - macOS
 
     # Clone github repo
-    git clone https://github.com/leela_zero/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
@@ -152,7 +152,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 ## Example of compiling - Windows
 
     # Clone github repo
-    git clone https://github.com/leela_zero/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
