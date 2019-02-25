@@ -368,7 +368,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
     } else if (command.find("komi") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        float komi = 7.5f;
+        float komi = KOMI;
         float old_komi = game.get_komi();
 
         cmdstream >> tmp;  // eat komi
