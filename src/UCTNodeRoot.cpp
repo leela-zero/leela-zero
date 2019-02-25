@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2018 Gian-Carlo Pascutto
+    Copyright (C) 2018-2019 Gian-Carlo Pascutto
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #include "config.h"
@@ -48,7 +59,10 @@ UCTNode* UCTNode::get_first_child() const {
     return m_children.front().get();
 }
 
-void UCTNode::kill_superkos(const KoState& state) {
+void UCTNode::kill_superkos(const GameState& state) {
+    UCTNodePointer *pass_child = nullptr;
+    size_t valid_count = 0;
+
     for (auto& child : m_children) {
         auto move = child->get_move();
         if (move != FastBoard::PASS) {
@@ -59,7 +73,19 @@ void UCTNode::kill_superkos(const KoState& state) {
                 // Don't delete nodes for now, just mark them invalid.
                 child->invalidate();
             }
+        } else {
+            pass_child = &child;
         }
+        if (child->valid()) {
+            valid_count++;
+        }
+    }
+
+    if (valid_count > 1 && pass_child &&
+            !state.is_move_legal(state.get_to_move(), FastBoard::PASS)) {
+        // Remove the PASS node according to "avoid" -- but only if there are
+        // other valid nodes left.
+        (*pass_child)->invalidate();
     }
 
     // Now do the actual deletion.

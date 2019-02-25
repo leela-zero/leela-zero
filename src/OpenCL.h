@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #ifndef OPENCL_H_INCLUDED
@@ -184,7 +195,8 @@ class OpenCL {
     friend class Tuner<net_t>;
 public:
     OpenCL(int gpu, bool silent = false);
-    void initialize(const int channels);
+
+    void initialize(const int channels, size_t batch_size = 1);
     void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
     bool has_fp16_compute();
@@ -197,19 +209,23 @@ private:
     void tune_sgemm();
     void process_tuners(std::string tuners);
 
+    size_t m_batch_size = 1;
     cl::Program m_program;
     std::string m_cl_args;
 
     struct sgemm_tuners {
         size_t mwg, nwg, kwg;
         size_t vwm, vwn;
+        size_t mdima, ndimb;
         size_t mdimc, ndimc;
+        size_t tce;
     };
     sgemm_tuners m_sgemm_tuners;
     size_t m_wavefront_size{0};
     size_t m_max_workgroup_size{0};
     std::vector<size_t> m_max_workgroup_dims;
     bool m_fp16_compute{false};
+    bool m_tensorcore{false};
     bool m_init_ok{false};
 };
 

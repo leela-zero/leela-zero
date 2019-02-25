@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #ifndef SGFTREE_H_INCLUDED
@@ -36,16 +47,17 @@ public:
     SGFTree() = default;
     void init_state();
 
-    KoState * get_state();
-    GameState follow_mainline_state(unsigned int movenum = 999);
-    std::vector<int> get_mainline();
+    const KoState * get_state() const;
+    GameState follow_mainline_state(unsigned int movenum = 999) const;
+    std::vector<int> get_mainline() const;
+
     void load_from_file(const std::string& filename, int index = 0);
     void load_from_string(const std::string& gamebuff);
 
     void add_property(std::string property, std::string value);
     SGFTree * add_child();
-    SGFTree * get_child(size_t count);
-    int get_move(int tomove);
+    const SGFTree * get_child(size_t count) const;
+    int get_move(int tomove) const;
     std::pair<int, int> get_colored_move() const;
     bool is_initialized() const {
         return m_initialized;

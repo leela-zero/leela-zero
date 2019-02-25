@@ -28,21 +28,6 @@
 #include "../autogtp/Game.h"
 #include "Results.h"
 
-class Engine {
-public:
-    Engine(const QString& network,
-           const QString& options,
-           const QStringList& commands = QStringList("time_settings 0 1 0"),
-           const QString& binary = QString("./leelaz")) :
-        m_binary(binary), m_options(options),
-        m_network(network), m_commands(commands) {}
-    Engine() = default;
-    QString m_binary;
-    QString m_options;
-    QString m_network;
-    QStringList m_commands;
-};
-
 class ValidationWorker : public QThread {
     Q_OBJECT
 public:

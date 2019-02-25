@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #include "config.h"
@@ -48,8 +59,8 @@ using namespace Utils;
 // Configuration flags
 bool cfg_gtp_mode;
 bool cfg_allow_pondering;
-int cfg_num_threads;
-int cfg_max_threads;
+unsigned int cfg_num_threads;
+unsigned int cfg_batch_size;
 int cfg_max_playouts;
 int cfg_max_visits;
 size_t cfg_max_memory;
@@ -73,6 +84,8 @@ precision_t cfg_precision;
 #endif
 #endif
 float cfg_puct;
+float cfg_logpuct;
+float cfg_logconst;
 float cfg_softmax_temp;
 float cfg_fpu_reduction;
 float cfg_fpu_root_reduction;
@@ -83,7 +96,201 @@ bool cfg_quiet;
 std::string cfg_options_str;
 bool cfg_benchmark;
 bool cfg_cpu_only;
-int cfg_analyze_interval_centis;
+AnalyzeTags cfg_analyze_tags;
+
+/* Parses tags for the lz-analyze GTP command and friends */
+AnalyzeTags::AnalyzeTags(std::istringstream& cmdstream, const GameState& game) {
+    std::string tag;
+
+    /* Default color is the current one */
+    m_who = game.board.get_to_move();
+
+    auto avoid_not_pass_resign_b = false, avoid_not_pass_resign_w = false;
+    auto allow_b = false, allow_w = false;
+
+    while (true) {
+        cmdstream >> std::ws;
+        if (isdigit(cmdstream.peek())) {
+            tag = "interval";
+        } else {
+            cmdstream >> tag;
+            if (cmdstream.fail() && cmdstream.eof()) {
+                /* Parsing complete */
+                m_invalid = false;
+                return;
+            }
+        }
+
+        if (tag == "avoid" || tag == "allow") {
+            std::string textcolor, textmoves;
+            size_t until_movenum;
+            cmdstream >> textcolor;
+            cmdstream >> textmoves;
+            cmdstream >> until_movenum;
+            if (cmdstream.fail()) {
+                return;
+            }
+
+            std::vector<int> moves;
+            std::istringstream movestream(textmoves);
+            while (!movestream.eof()) {
+                std::string textmove;
+                getline(movestream, textmove, ',');
+                auto sepidx = textmove.find_first_of(':');
+                if (sepidx != std::string::npos) {
+                    if (!(sepidx == 2 || sepidx == 3)) {
+                        moves.clear();
+                        break;
+                    }
+                    auto move1_compressed = game.board.text_to_move(
+                        textmove.substr(0, sepidx)
+                    );
+                    auto move2_compressed = game.board.text_to_move(
+                        textmove.substr(sepidx + 1)
+                    );
+                    if (move1_compressed == FastBoard::NO_VERTEX ||
+                        move1_compressed == FastBoard::PASS ||
+                        move1_compressed == FastBoard::RESIGN ||
+                        move2_compressed == FastBoard::NO_VERTEX ||
+                        move2_compressed == FastBoard::PASS ||
+                        move2_compressed == FastBoard::RESIGN)
+                    {
+                        moves.clear();
+                        break;
+                    }
+                    auto move1_xy = game.board.get_xy(move1_compressed);
+                    auto move2_xy = game.board.get_xy(move2_compressed);
+                    auto xmin = std::min(move1_xy.first, move2_xy.first);
+                    auto xmax = std::max(move1_xy.first, move2_xy.first);
+                    auto ymin = std::min(move1_xy.second, move2_xy.second);
+                    auto ymax = std::max(move1_xy.second, move2_xy.second);
+                    for (auto move_x = xmin; move_x <= xmax; move_x++) {
+                        for (auto move_y = ymin; move_y <= ymax; move_y++) {
+                            moves.push_back(game.board.get_vertex(move_x,move_y));
+                        }
+                    }
+                } else {
+                    auto move = game.board.text_to_move(textmove);
+                    if (move == FastBoard::NO_VERTEX) {
+                        moves.clear();
+                        break;
+                    }
+                    moves.push_back(move);
+                }
+            }
+            if (moves.empty()) {
+                return;
+            }
+
+            int color;
+            if (textcolor == "w" || textcolor == "white") {
+                color = FastBoard::WHITE;
+            } else if (textcolor == "b" || textcolor == "black") {
+                color = FastBoard::BLACK;
+            } else {
+                return;
+            }
+
+            if (until_movenum < 1) {
+                return;
+            }
+            until_movenum += game.get_movenum() - 1;
+
+            for (const auto& move : moves) {
+                if (tag == "avoid") {
+                    add_move_to_avoid(color, move, until_movenum);
+                    if (move != FastBoard::PASS && move != FastBoard::RESIGN) {
+                        if (color == FastBoard::BLACK) {
+                            avoid_not_pass_resign_b = true;
+                        } else {
+                            avoid_not_pass_resign_w = true;
+                        }
+                    }
+                } else {
+                    add_move_to_allow(color, move, until_movenum);
+                    if (color == FastBoard::BLACK) {
+                        allow_b = true;
+                    } else {
+                        allow_w = true;
+                    }
+                }
+            }
+            if ((allow_b && avoid_not_pass_resign_b) ||
+                (allow_w && avoid_not_pass_resign_w)) {
+                /* If "allow" is in use, it is illegal to use "avoid" with any
+                 * move that is not "pass" or "resign". */
+                return;
+            }
+        } else if (tag == "w" || tag == "white") {
+            m_who = FastBoard::WHITE;
+        } else if (tag == "b" || tag == "black") {
+            m_who = FastBoard::BLACK;
+        } else if (tag == "interval") {
+            cmdstream >> m_interval_centis;
+            if (cmdstream.fail()) {
+                return;
+            }
+        } else if (tag == "minmoves") {
+            cmdstream >> m_min_moves;
+            if (cmdstream.fail()) {
+                return;
+            }
+        } else {
+            return;
+        }
+    }
+}
+
+void AnalyzeTags::add_move_to_avoid(int color, int vertex, size_t until_move) {
+    m_moves_to_avoid.emplace_back(color, until_move, vertex);
+}
+
+void AnalyzeTags::add_move_to_allow(int color, int vertex, size_t until_move) {
+    m_moves_to_allow.emplace_back(color, until_move, vertex);
+}
+
+int AnalyzeTags::interval_centis() const {
+    return m_interval_centis;
+}
+
+int AnalyzeTags::invalid() const {
+    return m_invalid;
+}
+
+int AnalyzeTags::who() const {
+    return m_who;
+}
+
+size_t AnalyzeTags::post_move_count() const {
+    return m_min_moves;
+}
+
+bool AnalyzeTags::is_to_avoid(int color, int vertex, size_t movenum) const {
+    for (auto& move : m_moves_to_avoid) {
+        if (color == move.color && vertex == move.vertex && movenum <= move.until_move) {
+            return true;
+        }
+    }
+    if (vertex != FastBoard::PASS && vertex != FastBoard::RESIGN) {
+        auto active_allow = false;
+        for (auto& move : m_moves_to_allow) {
+            if (color == move.color && movenum <= move.until_move) {
+                active_allow = true;
+                if (vertex == move.vertex) {
+                    return false;
+                }
+            }
+        }
+        if (active_allow) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool AnalyzeTags::has_move_restrictions() const {
+    return !m_moves_to_avoid.empty() || !m_moves_to_allow.empty();
+}
 
 std::unique_ptr<Network> GTP::s_network;
 
@@ -101,22 +308,18 @@ void GTP::initialize(std::unique_ptr<Network>&& net) {
         myprintf("for the default settings on your system.\n");
         throw std::runtime_error("Error setting memory requirements.");
     }
-    myprintf(message.c_str());
-    myprintf("\n");
+    myprintf("%s\n", message.c_str());
 }
 
 void GTP::setup_default_parameters() {
     cfg_gtp_mode = false;
     cfg_allow_pondering = true;
-    cfg_max_threads = std::max(1, std::min(SMP::get_num_cpus(), MAX_CPUS));
-#ifdef USE_OPENCL
-    // If we will be GPU limited, using many threads won't help much.
-    // Multi-GPU is a different story, but we will assume that those people
-    // who do those stuff will know what they are doing.
-    cfg_num_threads = std::min(2, cfg_max_threads);
-#else
-    cfg_num_threads = cfg_max_threads;
-#endif
+
+    // we will re-calculate this on Leela.cpp
+    cfg_num_threads = 0;
+    // we will re-calculate this on Leela.cpp
+    cfg_batch_size = 0;
+
     cfg_max_memory = UCTSearch::DEFAULT_MAX_MEMORY;
     cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
     cfg_max_visits = UCTSearch::UNLIMITED_PLAYOUTS;
@@ -130,11 +333,14 @@ void GTP::setup_default_parameters() {
     cfg_gpus = { };
     cfg_sgemm_exhaustive = false;
     cfg_tune_only = false;
+
 #ifdef USE_HALF
     cfg_precision = precision_t::AUTO;
 #endif
 #endif
-    cfg_puct = 0.8f;
+    cfg_puct = 0.5f;
+    cfg_logpuct = 0.015f;
+    cfg_logconst = 1.7f;
     cfg_softmax_temp = 1.0f;
     cfg_fpu_reduction = 0.25f;
     // see UCTSearch::should_resign
@@ -154,7 +360,7 @@ void GTP::setup_default_parameters() {
     cfg_cpu_only = false;
 #endif
 
-    cfg_analyze_interval_centis = 0;
+    cfg_analyze_tags = AnalyzeTags{};
 
     // C++11 doesn't guarantee *anything* about how random this is,
     // and in MinGW it isn't random at all. But we can mix it in, which
@@ -187,6 +393,8 @@ const std::string GTP::s_commands[] = {
     "time_settings",
     "time_left",
     "fixed_handicap",
+    "last_move",
+    "move_history",
     "place_free_handicap",
     "set_free_handicap",
     "loadsgf",
@@ -199,6 +407,7 @@ const std::string GTP::s_commands[] = {
     "lz-genmove_analyze",
     "lz-memory_report",
     "lz-setoption",
+    "gomill-explain_last_move",
     ""
 };
 
@@ -406,19 +615,24 @@ void GTP::execute(GameState & game, const std::string& xinput) {
     } else if (command.find("genmove") == 0
                || command.find("lz-genmove_analyze") == 0) {
         auto analysis_output = command.find("lz-genmove_analyze") == 0;
-        auto interval = 0;
 
         std::istringstream cmdstream(command);
         std::string tmp;
-
         cmdstream >> tmp;  // eat genmove
-        cmdstream >> tmp;
-        if (analysis_output) {
-            cmdstream >> interval;
-        }
 
-        if (!cmdstream.fail()) {
-            int who;
+        int who;
+        AnalyzeTags tags;
+
+        if (analysis_output) {
+            tags = AnalyzeTags{cmdstream, game};
+            if (tags.invalid()) {
+                gtp_fail_printf(id, "cannot parse analyze tags");
+                return;
+            }
+            who = tags.who();
+        } else {
+            /* genmove command */
+            cmdstream >> tmp;
             if (tmp == "w" || tmp == "white") {
                 who = FastBoard::WHITE;
             } else if (tmp == "b" || tmp == "black") {
@@ -427,85 +641,63 @@ void GTP::execute(GameState & game, const std::string& xinput) {
                 gtp_fail_printf(id, "syntax error");
                 return;
             }
-            if (analysis_output) {
-                // Start of multi-line response
-                cfg_analyze_interval_centis = interval;
-                if (id != -1) gtp_printf_raw("=%d\n", id);
-                else gtp_printf_raw("=\n");
-            }
-            // start thinking
-            {
-                game.set_to_move(who);
-                // Outputs winrate and pvs for lz-genmove_analyze
-                int move = search->think(who);
-                game.play_move(move);
-
-                std::string vertex = game.move_to_text(move);
-                if (!analysis_output) {
-                    gtp_printf(id, "%s", vertex.c_str());
-                } else {
-                    gtp_printf_raw("play %s\n", vertex.c_str());
-                }
-            }
-            if (cfg_allow_pondering) {
-                // now start pondering
-                if (!game.has_resigned()) {
-                    // Outputs winrate and pvs through gtp for lz-genmove_analyze
-                    search->ponder();
-                }
-            }
-            if (analysis_output) {
-                // Terminate multi-line response
-                gtp_printf_raw("\n");
-            }
-        } else {
-            gtp_fail_printf(id, "syntax not understood");
         }
-        analysis_output = false;
+
+        if (analysis_output) {
+            // Start of multi-line response
+            cfg_analyze_tags = tags;
+            if (id != -1) gtp_printf_raw("=%d\n", id);
+            else gtp_printf_raw("=\n");
+        }
+        // start thinking
+        {
+            game.set_to_move(who);
+            // Outputs winrate and pvs for lz-genmove_analyze
+            int move = search->think(who);
+            game.play_move(move);
+
+            std::string vertex = game.move_to_text(move);
+            if (!analysis_output) {
+                gtp_printf(id, "%s", vertex.c_str());
+            } else {
+                gtp_printf_raw("play %s\n", vertex.c_str());
+            }
+        }
+
+        if (cfg_allow_pondering) {
+            // now start pondering
+            if (!game.has_resigned()) {
+                // Outputs winrate and pvs through gtp for lz-genmove_analyze
+                search->ponder();
+            }
+        }
+        if (analysis_output) {
+            // Terminate multi-line response
+            gtp_printf_raw("\n");
+        }
+        cfg_analyze_tags = {};
         return;
     } else if (command.find("lz-analyze") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        auto who = game.board.get_to_move();
 
         cmdstream >> tmp; // eat lz-analyze
-        cmdstream >> tmp; // eat side to move or interval
-        if (!cmdstream.fail()) {
-            if (tmp == "w" || tmp == "white") {
-                who = FastBoard::WHITE;
-            } else if (tmp == "b" || tmp == "black") {
-                who = FastBoard::BLACK;
-            } else {
-                // Not side to move, must be interval
-                try {
-                    cfg_analyze_interval_centis = std::stoi(tmp);
-                } catch(...) {
-                    gtp_fail_printf(id, "syntax not understood");
-                    return;
-                }
-            }
-            if (tmp == "w" || tmp == "b" || tmp == "white" || tmp == "black") {
-                // We got a color, so the interval must come now.
-                int interval;
-                cmdstream >> interval;
-                if (!cmdstream.fail()) {
-                    cfg_analyze_interval_centis = interval;
-                } else {
-                    gtp_fail_printf(id, "syntax not understood");
-                    return;
-                }
-            }
+        AnalyzeTags tags{cmdstream, game};
+        if (tags.invalid()) {
+            gtp_fail_printf(id, "cannot parse analyze tags");
+            return;
         }
         // Start multi-line response.
         if (id != -1) gtp_printf_raw("=%d\n", id);
         else gtp_printf_raw("=\n");
         // Now start pondering.
         if (!game.has_resigned()) {
+            cfg_analyze_tags = tags;
             // Outputs winrate and pvs through gtp
-            game.set_to_move(who);
+            game.set_to_move(tags.who());
             search->ponder();
         }
-        cfg_analyze_interval_centis = 0;
+        cfg_analyze_tags = {};
         // Terminate multi-line response
         gtp_printf_raw("\n");
         return;
@@ -637,7 +829,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         } while (game.get_passes() < 2 && !game.has_resigned());
 
         return;
-    } else if (command.find("go") == 0) {
+    } else if (command.find("go") == 0 && command.size() < 6) {
         int move = search->think(game.get_to_move());
         game.play_move(move);
 
@@ -657,20 +849,19 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             // Default = DIRECT with no symmetric change
             vec = s_network->get_output(
                 &game, Network::Ensemble::DIRECT,
-                Network::IDENTITY_SYMMETRY, true);
+                Network::IDENTITY_SYMMETRY, false);
         } else if (symmetry == "all") {
             for (auto s = 0; s < Network::NUM_SYMMETRIES; ++s) {
                 vec = s_network->get_output(
-                    &game, Network::Ensemble::DIRECT, s, true);
+                    &game, Network::Ensemble::DIRECT, s, false);
                 Network::show_heatmap(&game, vec, false);
             }
         } else if (symmetry == "average" || symmetry == "avg") {
             vec = s_network->get_output(
-                &game, Network::Ensemble::AVERAGE,
-                Network::NUM_SYMMETRIES, true);
+                &game, Network::Ensemble::AVERAGE, -1, false);
         } else {
             vec = s_network->get_output(
-                &game, Network::Ensemble::DIRECT, std::stoi(symmetry), true);
+                &game, Network::Ensemble::DIRECT, std::stoi(symmetry), false);
         }
 
         if (symmetry != "all") {
@@ -693,6 +884,35 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         } else {
             gtp_fail_printf(id, "Not a valid number of handicap stones");
         }
+        return;
+    } else if (command.find("last_move") == 0) {
+        auto last_move = game.get_last_move();
+        if (last_move == FastBoard::NO_VERTEX) {
+            gtp_fail_printf(id, "no previous move known");
+            return;
+        }
+        auto coordinate = game.move_to_text(last_move);
+        auto color = game.get_to_move() == FastBoard::WHITE ? "black" : "white";
+        gtp_printf(id, "%s %s", color, coordinate.c_str());
+        return;
+    } else if (command.find("move_history") == 0) {
+        if (game.get_movenum() == 0) {
+            gtp_printf_raw("= \n");
+        } else {
+            gtp_printf_raw("= ");
+        }
+        auto game_history = game.get_game_history();
+        // undone moves may still be present, so reverse the portion of the
+        // array we need and resize to trim it down for iteration.
+        std::reverse(begin(game_history),
+                     begin(game_history) + game.get_movenum() + 1);
+        game_history.resize(game.get_movenum());
+        for (const auto &state : game_history) {
+            auto coordinate = game.move_to_text(state->get_last_move());
+            auto color = state->get_to_move() == FastBoard::WHITE ? "black" : "white";
+            gtp_printf_raw("%s %s\n", color, coordinate.c_str());
+        }
+        gtp_printf_raw("\n");
         return;
     } else if (command.find("place_free_handicap") == 0) {
         std::istringstream cmdstream(command);
@@ -956,6 +1176,9 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         return;
     } else if (command.find("lz-setoption") == 0) {
         return execute_setoption(*search.get(), id, command);
+    } else if (command.find("gomill-explain_last_move") == 0) {
+        gtp_printf(id, "%s\n", search->explain_last_think().c_str());
+        return;
     }
     gtp_fail_printf(id, "unknown command");
     return;
@@ -1137,7 +1360,7 @@ void GTP::execute_setoption(UCTSearch & search,
         // Note that if the playouts are changed but no
         // explicit command to set memory usage is given,
         // we will stick with the initial guess we made on startup.
-        search.set_playout_limit(cfg_max_visits);
+        search.set_playout_limit(cfg_max_playouts);
 
         gtp_printf(id, "");
     } else if (name == "lagbuffer") {
