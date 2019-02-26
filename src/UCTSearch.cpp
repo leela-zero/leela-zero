@@ -34,6 +34,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -335,38 +336,33 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
     gtp_printf_raw("\n");
 }
 
-void tree_stats_helper(const UCTNode& node, size_t depth,
-                       size_t& nodes, size_t& non_leaf_nodes,
-                       size_t& depth_sum, size_t& max_depth,
-                       size_t& children_count) {
-    nodes += 1;
-    non_leaf_nodes += node.get_visits() > 1;
-    depth_sum += depth;
-    if (depth > max_depth) max_depth = depth;
-
-    for (const auto& child : node.get_children()) {
-        if (child.get_visits() > 0) {
-            children_count += 1;
-            tree_stats_helper(*(child.get()), depth+1,
-                              nodes, non_leaf_nodes, depth_sum,
-                              max_depth, children_count);
-        } else {
-            nodes += 1;
-            depth_sum += depth+1;
-            if (depth+1 > max_depth) max_depth = depth+1;
-        }
-    }
-}
-
 void UCTSearch::tree_stats(const UCTNode& node) {
     size_t nodes = 0;
     size_t non_leaf_nodes = 0;
     size_t depth_sum = 0;
     size_t max_depth = 0;
     size_t children_count = 0;
-    tree_stats_helper(node, 0,
-                      nodes, non_leaf_nodes, depth_sum,
-                      max_depth, children_count);
+
+    std::function<void(const UCTNode& node, size_t)> traverse =
+          [&](const UCTNode& node, size_t depth) {
+        nodes += 1;
+        non_leaf_nodes += node.get_visits() > 1;
+        depth_sum += depth;
+        if (depth > max_depth) max_depth = depth;
+
+        for (const auto& child : node.get_children()) {
+            if (child.get_visits() > 0) {
+                children_count += 1;
+                traverse(*(child.get()), depth+1);
+            } else {
+                nodes += 1;
+                depth_sum += depth+1;
+                if (depth >= max_depth) max_depth = depth+1;
+            }
+        }
+    };
+
+    traverse(node, 0);
 
     if (nodes > 0) {
         myprintf("%.1f average depth, %d max depth\n",
