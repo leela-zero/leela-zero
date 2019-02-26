@@ -368,12 +368,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
         };
     }
 
-    // Don't use thead Rng or determinism will depend
-    // on whether tuner ran.
-    auto rng = Random{0};
-
     auto valid_params = std::vector<Parameters>{};
-    auto build_from = [this, &rng, &valid_params](std::vector<Configurations> & opts, int tce) {
+    auto build_from = [this, &valid_params](std::vector<Configurations> & opts, int tce) {
         auto cfgs = 1;
         for (auto c = size_t{0}; c < opts.size(); c++) {
             cfgs *= opts[c].second.size();
@@ -382,17 +378,21 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
             Parameters param = get_parameters_by_int(opts, i);
             param["TCE"] = tce;
             if (valid_config_sgemm(param, cfg_sgemm_exhaustive)) {
-                if (cfg_sgemm_exhaustive) {
-                    if (rng.randfix<16>() != 0) {
-                        continue;
-                    }
-                }
                 valid_params.push_back(param);
             }
         }
     };
     build_from(opts, 0);
     build_from(topts, 1);
+
+    // Don't use thread RNG or determinism will depend on whether tuner ran.
+    auto rng = Random{0};
+    std::shuffle(begin(valid_params), end(valid_params), rng);
+
+    if (cfg_sgemm_exhaustive) {
+        // Likely too many valid params, cut out some of them
+        valid_params.resize(valid_params.size() / 16);
+    }
 
     return valid_params;
 }
