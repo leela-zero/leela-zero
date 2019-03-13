@@ -117,6 +117,12 @@ bool UCTNode::create_children(Network & network,
     //   - We do have at least five other legal moves.
     //     (So it's not likely that all our available moves
     //     are actually disastrous.)
+    //   - The "dumbpass" option is not turned on.
+    //     (Because, as per GCP's comment at
+    //     https://github.com/leela-zero/leela-zero/issues/2273#issuecomment-472398802 ,
+    //     enabling this heuristic is un-Zero-like and enabling
+    //     dumbpass is meant to suppress any such things that
+    //     affect passing.)
     // The magic numbers 0.75 and 5 are somewhat arbitrary and it seems
     // unlikely that their values make much difference.
     // This check prevents some serious evaluation errors but has a cost:
@@ -125,8 +131,9 @@ bool UCTNode::create_children(Network & network,
     // really bad position; the cost should not be large.
     if (state.get_passes() == 0
         || (to_move == FastBoard::WHITE ? 1.0f - m_net_eval : m_net_eval) < 0.75
-        || (to_move == FastBoard::WHITE ? -state.final_score() : state.final_score()) > 0
-        || nodelist.size() < 5) {
+        || nodelist.size() < 5
+        || cfg_dumbpass
+        || (to_move == FastBoard::WHITE ? -state.final_score() : state.final_score()) > 0) {
         nodelist.emplace_back(raw_netlist.policy_pass, FastBoard::PASS);
         legal_sum += raw_netlist.policy_pass;
     }
