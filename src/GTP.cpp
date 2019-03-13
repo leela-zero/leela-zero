@@ -316,9 +316,9 @@ void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
 
     // we will re-calculate this on Leela.cpp
-    cfg_num_threads = 0;
+    cfg_num_threads = 1;
     // we will re-calculate this on Leela.cpp
-    cfg_batch_size = 0;
+    cfg_batch_size = 1;
 
     cfg_max_memory = UCTSearch::DEFAULT_MAX_MEMORY;
     cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
@@ -577,7 +577,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
     } else if (command.find("komi") == 0) {
         std::istringstream cmdstream(command);
         std::string tmp;
-        float komi = 7.5f;
+        float komi = KOMI;
         float old_komi = game.get_komi();
 
         cmdstream >> tmp;  // eat komi
@@ -858,8 +858,7 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             }
         } else if (symmetry == "average" || symmetry == "avg") {
             vec = s_network->get_output(
-                &game, Network::Ensemble::AVERAGE,
-                Network::NUM_SYMMETRIES, false);
+                &game, Network::Ensemble::AVERAGE, -1, false);
         } else {
             vec = s_network->get_output(
                 &game, Network::Ensemble::DIRECT, std::stoi(symmetry), false);

@@ -53,6 +53,11 @@ static constexpr auto NUM_INTERSECTIONS = BOARD_SIZE * BOARD_SIZE;
 static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
 
 /*
+ * KOMI: Define the default komi to use when training.
+ */
+static constexpr auto KOMI = 7.5f;
+
+/*
  * Features
  *
  * USE_BLAS: Optionally use a basic linear algebra library.

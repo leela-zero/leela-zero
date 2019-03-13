@@ -99,7 +99,7 @@ float Network::benchmark_time(int centiseconds) {
     std::atomic<int> runcount{0};
 
     GameState state;
-    state.init_game(BOARD_SIZE, 7.5);
+    state.init_game(BOARD_SIZE, KOMI);
 
     // As a sanity run, try one run with self check.
     // Isn't enough to guarantee correctness but better than nothing,
@@ -743,6 +743,7 @@ Network::Netresult Network::get_output(
         assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
         result = get_output_internal(state, symmetry);
     } else if (ensemble == AVERAGE) {
+        assert(symmetry == -1);
         for (auto sym = 0; sym < NUM_SYMMETRIES; ++sym) {
             auto tmpresult = get_output_internal(state, sym);
             result.winrate +=
