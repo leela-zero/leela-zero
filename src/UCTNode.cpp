@@ -106,8 +106,6 @@ bool UCTNode::create_children(Network & network,
 
     // Add pass move. BUT don't do this if the following conditions
     // all obtain (see issue #2273, "Double-passing pathology"):
-    //   - The move played in order to reach this node was a pass.
-    //     (So another pass would end the game.)
     //   - The NN's evaluation of the current node is very good
     //     for the player whose move it is. (Say, 0.75 or better.)
     //     (So we don't want to end the game unless we win.)
@@ -126,11 +124,9 @@ bool UCTNode::create_children(Network & network,
     // The magic numbers 0.75 and 5 are somewhat arbitrary and it seems
     // unlikely that their values make much difference.
     // This check prevents some serious evaluation errors but has a cost:
-    // we make extra calls to final_score() at some nodes. But this is done
-    // only at nodes where the other player just passed despite having a
-    // really bad position; the cost should not be large.
-    if (state.get_passes() == 0
-        || (to_move == FastBoard::WHITE ? 1.0f - m_net_eval : m_net_eval) < 0.75
+    // we make extra calls to final_score() at some nodes. This is much
+    // cheaper than a single NN evaluation, and the cost should be negligible.
+    if (   (to_move == FastBoard::WHITE ? 1.0f - m_net_eval : m_net_eval) < 0.75
         || nodelist.size() < 5
         || cfg_dumbpass
         || (to_move == FastBoard::WHITE ? -state.final_score() : state.final_score()) > 0) {
