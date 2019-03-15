@@ -165,7 +165,7 @@ float FastState::final_score() const {
 }
 
 float FastState::final_score(int color) const {
-    return color==FastBoard::BLACK ? final_score() : -final_score();
+    return (color == FastBoard::BLACK) ? final_score() : -final_score();
 }
 
 float FastState::get_komi() const {
