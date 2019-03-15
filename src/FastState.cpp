@@ -164,6 +164,10 @@ float FastState::final_score() const {
     return board.area_score(get_komi() + get_handicap());
 }
 
+float FastState::final_score(int color) const {
+    return color==FastBoard::BLACK ? final_score() : -final_score();
+}
+
 float FastState::get_komi() const {
     return m_komi;
 }

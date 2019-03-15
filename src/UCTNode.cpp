@@ -107,13 +107,11 @@ bool UCTNode::create_children(Network & network,
 
     // Don't consider pass moves if they would be immediately losing and we "shouldn't"
     // accept that; see issue #2273. --dumbpass disables this heuristic.
-    float final_score_for_player = state.final_score();
-    if (to_move == FastBoard::WHITE) final_score_for_player = -final_score_for_player;
     bool suppress_passes =
-        winrate_for_player >= 0.75     // we should be winning
-        && nodelist.size() >= 5        // there are surely good alternatives
-        && !cfg_dumbpass               // allowed to be clever about passing
-        && final_score_for_player < 0; // passing => immediate loss
+        winrate_for_player >= 0.75         // we should be winning
+        && nodelist.size() >= 5            // there are surely good alternatives
+        && !cfg_dumbpass                   // allowed to be clever about passing
+        && state.final_score(to_move) < 0; // passing => immediate loss
     if (!suppress_passes) {
         nodelist.emplace_back(raw_netlist.policy_pass, FastBoard::PASS);
         legal_sum += raw_netlist.policy_pass;

@@ -57,6 +57,7 @@ public:
     void increment_passes();
 
     float final_score() const;
+    float final_score(int color) const;
     std::uint64_t get_symmetry_hash(int symmetry) const;
 
     size_t get_movenum() const;
