@@ -83,13 +83,15 @@ bool UCTNode::create_children(Network & network,
         &state, Network::Ensemble::RANDOM_SYMMETRY);
 
     // DCNN returns winrate as side to move
-    m_net_eval = raw_netlist.winrate;
-    const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
-    if (state.board.white_to_move()) {
-        m_net_eval = 1.0f - m_net_eval;
+    float winrate_for_player = raw_netlist.winrate;
+    const auto to_move = state.board.get_to_move();
+    if (to_move == FastBoard::WHITE) {
+      m_net_eval = eval = 1.0f - winrate_for_player;
     }
-    eval = m_net_eval;
+    else {
+      m_net_eval = eval = winrate_for_player;
+    }
 
     std::vector<Network::PolicyVertexPair> nodelist;
 
@@ -104,32 +106,16 @@ bool UCTNode::create_children(Network & network,
         }
     }
 
-    // Add pass move. BUT don't do this if the following conditions
-    // all obtain (see issue #2273, "Double-passing pathology"):
-    //   - The NN's evaluation of the current node is very good
-    //     for the player whose move it is. (Say, 0.75 or better.)
-    //     (So we don't want to end the game unless we win.)
-    //   - Ending the game now would actually lose the game for
-    //     the player whose move it is.
-    //     (So we don't want to end the game.)
-    //   - We do have at least five other legal moves.
-    //     (So it's not likely that all our available moves
-    //     are actually disastrous.)
-    //   - The "dumbpass" option is not turned on.
-    //     (Because, as per GCP's comment at
-    //     https://github.com/leela-zero/leela-zero/issues/2273#issuecomment-472398802 ,
-    //     enabling this heuristic is un-Zero-like and enabling
-    //     dumbpass is meant to suppress any such things that
-    //     affect passing.)
-    // The magic numbers 0.75 and 5 are somewhat arbitrary and it seems
-    // unlikely that their values make much difference.
-    // This check prevents some serious evaluation errors but has a cost:
-    // we make extra calls to final_score() at some nodes. This is much
-    // cheaper than a single NN evaluation, and the cost should be negligible.
-    if (   (to_move == FastBoard::WHITE ? 1.0f - m_net_eval : m_net_eval) < 0.75
-        || nodelist.size() < 5
-        || cfg_dumbpass
-        || (to_move == FastBoard::WHITE ? -state.final_score() : state.final_score()) > 0) {
+    // Don't consider pass moves if they would be immediately losing and we "shouldn't"
+    // accept that; see issue #2273. --dumbpass disables this heuristic.
+    float final_score_for_player = state.final_score();
+    if (to_move == FastBoard::WHITE) final_score_for_player = -final_score_for_player;
+    bool suppress_passes =
+        winrate_for_player >= 0.75     // we should be winning
+        && nodelist.size() >= 5        // there are surely good alternatives
+        && !cfg_dumbpass               // allowed to be clever about passing
+        && final_score_for_player < 0; // passing => immediate loss
+    if (!suppress_passes) {
         nodelist.emplace_back(raw_netlist.policy_pass, FastBoard::PASS);
         legal_sum += raw_netlist.policy_pass;
     }
