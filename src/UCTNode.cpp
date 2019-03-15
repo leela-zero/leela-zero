@@ -77,8 +77,7 @@ bool UCTNode::create_children(Network & network,
     const auto to_move = state.board.get_to_move();
     if (to_move == FastBoard::WHITE) {
       m_net_eval = eval = 1.0f - winrate_for_player;
-    }
-    else {
+    } else {
       m_net_eval = eval = winrate_for_player;
     }
 
