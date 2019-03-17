@@ -203,7 +203,7 @@ static void parse_commandline(int argc, char *argv[]) {
         ("logconst", po::value<float>())
         ("softmax_temp", po::value<float>())
         ("fpu_reduction", po::value<float>())
-        ("conf_z", po::value<float>())
+        ("ci_alpha", po::value<float>())
         ;
 #endif
     // These won't be shown, we use them to catch incorrect usage of the
@@ -279,8 +279,8 @@ static void parse_commandline(int argc, char *argv[]) {
     if (vm.count("fpu_reduction")) {
         cfg_fpu_reduction = vm["fpu_reduction"].as<float>();
     }
-    if (vm.count("conf_z")) {
-        cfg_conf_z = vm["conf_z"].as<float>();
+    if (vm.count("ci_alpha")) {
+        cfg_ci_alpha = vm["ci_alpha"].as<float>();
     }
 #endif
 
