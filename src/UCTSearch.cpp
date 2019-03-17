@@ -283,12 +283,12 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         tmpstate.play_move(node->get_move());
         auto pv = move + " " + get_pv(tmpstate, *node);
 
-        myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) (Var: %f) PV: %s\n",
+        myprintf("%4s -> %7d (V: %5.2f%%) (LCB: %5.2f%%) (N: %5.2f%%) PV: %s\n",
             move.c_str(),
             node->get_visits(),
             node->get_visits() ? node->get_raw_eval(color)*100.0f : 0.0f,
+            node->get_lcb(color) * 100.0f,
             node->get_policy() * 100.0f,
-            node->get_variance(),
             pv.c_str());
     }
     tree_stats(parent);

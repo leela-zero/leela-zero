@@ -89,6 +89,7 @@ float cfg_logconst;
 float cfg_softmax_temp;
 float cfg_fpu_reduction;
 float cfg_fpu_root_reduction;
+float cfg_conf_z;
 std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
@@ -347,6 +348,7 @@ void GTP::setup_default_parameters() {
     cfg_resignpct = -1;
     cfg_noise = false;
     cfg_fpu_root_reduction = cfg_fpu_reduction;
+    cfg_conf_z = 2.90f;
     cfg_random_cnt = 0;
     cfg_random_min_visits = 1;
     cfg_random_temp = 1.0f;

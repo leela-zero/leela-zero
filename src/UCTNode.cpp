@@ -180,11 +180,12 @@ void UCTNode::virtual_loss_undo() {
 }
 
 void UCTNode::update(float eval) {
-    // FIXME: possible race issues
+    // FIXME: possible race issues.
     float old_delta = m_visits > 0 ? eval - m_blackevals / m_visits : 0.0f;
     m_visits++;
     accumulate_eval(eval);
     float new_delta = eval - m_blackevals / m_visits;
+    // See Welford's online algorithm for calculating variance for explanation.
     m_squared_diff = m_squared_diff + old_delta * new_delta;
 }
 
@@ -211,12 +212,35 @@ void UCTNode::set_policy(float policy) {
     m_policy = policy;
 }
 
-float UCTNode::get_variance() const {
-    return m_squared_diff / (m_visits + 1);
+float UCTNode::get_variance(float default_var) const {
+    return m_visits > 1 ? m_squared_diff / (m_visits - 1) : default_var;
+}
+
+float UCTNode::get_stddev(float default_stddev) const {
+    return m_visits > 1 ? std::sqrt(get_variance()) : default_stddev;
 }
 
 int UCTNode::get_visits() const {
     return m_visits;
+}
+
+float approx_t(float v, float z) {
+    // Fast approximation to inverse CDF of student-t distribution.
+    if (v > 100) {
+        return z;
+    }
+    return z + 26.0f / v + 3.50f / (v * v * v);
+}
+
+float UCTNode::get_lcb(int color) const {
+    // Lower confidence bound of winrate.
+    int visits = get_visits();
+    float mean = get_raw_eval(color);
+    if (visits < 2) {
+        return mean - 1.0f;
+    }
+    float stddev = get_stddev(1.0f) / std::sqrt(visits);
+    return mean - approx_t(visits - 1, cfg_conf_z) * stddev;
 }
 
 float UCTNode::get_raw_eval(int tomove, int virtual_loss) const {
@@ -320,6 +344,17 @@ public:
                     const UCTNodePointer& b) {
         auto a_visit = a.get_visits();
         auto b_visit = b.get_visits();
+
+        // Calculate the lower confidence bound for each node.
+        if (a_visit && b_visit) {
+            float a_lb = a.get_lcb(m_color);
+            float b_lb = b.get_lcb(m_color);
+
+            // Sort on lower confidence bounds
+            if (a_lb != b_lb) {
+                return a_lb < b_lb;
+            }
+}
 
         // if visits are not same, sort on visits
         if (a_visit != b_visit) {
