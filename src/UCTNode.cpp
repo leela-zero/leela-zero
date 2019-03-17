@@ -180,8 +180,12 @@ void UCTNode::virtual_loss_undo() {
 }
 
 void UCTNode::update(float eval) {
+    // FIXME: possible race issues
+    float old_delta = m_visits > 0 ? eval - m_blackevals / m_visits : 0.0f;
     m_visits++;
     accumulate_eval(eval);
+    float new_delta = eval - m_blackevals / m_visits;
+    m_squared_diff = m_squared_diff + old_delta * new_delta;
 }
 
 bool UCTNode::has_children() const {
@@ -205,6 +209,10 @@ float UCTNode::get_policy() const {
 
 void UCTNode::set_policy(float policy) {
     m_policy = policy;
+}
+
+float UCTNode::get_variance() const {
+    return m_squared_diff / (m_visits + 1);
 }
 
 int UCTNode::get_visits() const {
