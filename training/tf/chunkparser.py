@@ -173,8 +173,11 @@ class ChunkParser:
         for plane in range(0, 16):
             # first 360 first bits are 90 hex chars, encoded MSB
             hex_string = text_item[plane][0:90]
-            array = np.unpackbits(np.frombuffer(
-                bytearray.fromhex(hex_string), dtype=np.uint8))
+            try:
+                array = np.unpackbits(np.frombuffer(
+                    bytearray.fromhex(hex_string), dtype=np.uint8))
+            except:
+                return False, None
             # Remaining bit that didn't fit. Encoded LSB so
             # it needs to be specially handled.
             last_digit = text_item[plane][90]
