@@ -232,7 +232,15 @@ float UCTNode::get_lcb(int color) const {
     if (visits < 2) {
         return mean - 1.0f;
     }
-    float stddev = get_stddev(1.0f) / std::sqrt(visits);
+
+    // Value head output is correlated, if a position is misevaluated it's
+    // likely for subsequent moves to also be misevaluated.
+    // We overestimate the confidence bounds if we don't correct for it.
+    // The problem is that we don't really know how it's correlated.
+    // Just empirically make the bound decrease slower by not counting full
+    // visits.
+    // Maybe this should apply to z calculation too?
+    float stddev = get_stddev(1.0f) / std::sqrt(cfg_value_correlation * visits);
 
     boost::math::students_t dist(visits - 1);
     auto z = boost::math::quantile(boost::math::complement(dist, cfg_ci_alpha));

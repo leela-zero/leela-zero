@@ -287,7 +287,7 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
             move.c_str(),
             node->get_visits(),
             node->get_visits() ? node->get_raw_eval(color)*100.0f : 0.0f,
-            node->get_lcb(color) * 100.0f,
+            std::max(0.0f, node->get_lcb(color) * 100.0f),
             node->get_policy() * 100.0f,
             pv.c_str());
     }
@@ -616,14 +616,19 @@ int UCTSearch::est_playouts_left(int elapsed_centis, int time_for_move) const {
                     static_cast<int>(std::ceil(playout_rate * time_left)));
 }
 
-size_t UCTSearch::prune_noncontenders(int elapsed_centis, int time_for_move, bool prune) {
+size_t UCTSearch::prune_noncontenders(int color, int elapsed_centis, int time_for_move, bool prune) {
+    auto lcb_max = std::numeric_limits<float>::min();
     auto Nfirst = 0;
     // There are no cases where the root's children vector gets modified
     // during a multithreaded search, so it is safe to walk it here without
     // taking the (root) node lock.
     for (const auto& node : m_root->get_children()) {
         if (node->valid()) {
-            Nfirst = std::max(Nfirst, node->get_visits());
+            const auto visits = node->get_visits();
+            if (visits > 0) {
+                lcb_max = std::max(lcb_max, node->get_lcb(color));
+            }
+            Nfirst = std::max(Nfirst, visits);
         }
     }
     const auto min_required_visits =
@@ -631,13 +636,17 @@ size_t UCTSearch::prune_noncontenders(int elapsed_centis, int time_for_move, boo
     auto pruned_nodes = size_t{0};
     for (const auto& node : m_root->get_children()) {
         if (node->valid()) {
+            const auto visits = node->get_visits();
             const auto has_enough_visits =
-                node->get_visits() >= min_required_visits;
+                visits >= min_required_visits;
+            const auto high_winrate = visits > 0 ?
+                node->get_raw_eval(color) >= lcb_max : false;
+            const auto prune_this_node = !(has_enough_visits || high_winrate);
 
             if (prune) {
-                node->set_active(has_enough_visits);
+                node->set_active(!prune_this_node);
             }
-            if (!has_enough_visits) {
+            if (prune_this_node) {
                 ++pruned_nodes;
             }
         }
@@ -651,9 +660,10 @@ bool UCTSearch::have_alternate_moves(int elapsed_centis, int time_for_move) {
     if (cfg_timemanage == TimeManagement::OFF) {
         return true;
     }
+    auto my_color = m_rootstate.get_to_move();
     // For self play use. Disables pruning of non-contenders to not bias the training data.
     auto prune = cfg_timemanage != TimeManagement::NO_PRUNING;
-    auto pruned = prune_noncontenders(elapsed_centis, time_for_move, prune);
+    auto pruned = prune_noncontenders(my_color, elapsed_centis, time_for_move, prune);
     if (pruned < m_root->get_children().size() - 1) {
         return true;
     }
@@ -662,7 +672,6 @@ bool UCTSearch::have_alternate_moves(int elapsed_centis, int time_for_move) {
     // which will cause Leela to quickly respond to obvious/forced moves.
     // That comes at the cost of some playing strength as she now cannot
     // think ahead about her next moves in the remaining time.
-    auto my_color = m_rootstate.get_to_move();
     auto tc = m_rootstate.get_timecontrol();
     if (!tc.can_accumulate_time(my_color)
         || m_maxplayouts < UCTSearch::UNLIMITED_PLAYOUTS) {
