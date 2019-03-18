@@ -121,7 +121,7 @@ static void calculate_thread_count_gpu(boost::program_options::variables_map & v
     }
 
     if (cfg_num_threads < cfg_batch_size) {
-        printf("Number of threads = %d must be larger than batch size = %d\n", cfg_num_threads, cfg_batch_size);
+        printf("Number of threads = %d must be no smaller than batch size = %d\n", cfg_num_threads, cfg_batch_size);
         exit(EXIT_FAILURE);
     }
 
