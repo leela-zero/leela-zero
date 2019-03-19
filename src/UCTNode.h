@@ -125,8 +125,9 @@ private:
     float m_policy;
     // Original net eval for this node (not children).
     float m_net_eval{0.0f};
-    // FIXME: Configurable initialization
-    std::atomic<float> m_squared_diff{0.1f};
+    // Initialize to prior of variance. Avoids accidental zero variances
+    // at low visits.
+    std::atomic<float> m_squared_diff{0.01f};
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
 

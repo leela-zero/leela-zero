@@ -180,13 +180,16 @@ void UCTNode::virtual_loss_undo() {
 }
 
 void UCTNode::update(float eval) {
-    // FIXME: possible race issues.
-    float old_delta = m_visits > 0 ? eval - m_blackevals / m_visits : 0.0f;
+    // Cache values to avoid race conditions.
+    auto old_eval = static_cast<float>(m_blackevals);
+    auto old_visits = static_cast<int>(m_visits);
+    auto old_delta = old_visits > 0 ? eval - old_eval / old_visits : 0.0f;
     m_visits++;
     accumulate_eval(eval);
-    float new_delta = eval - m_blackevals / m_visits;
-    // See Welford's online algorithm for calculating variance for explanation.
-    m_squared_diff = m_squared_diff + old_delta * new_delta;
+    auto new_delta = eval - (old_eval + eval) / (old_visits + 1);
+    // Welford's online algorithm for calculating variance.
+    auto delta = old_delta * new_delta;
+    atomic_add(m_squared_diff, delta);
 }
 
 bool UCTNode::has_children() const {
@@ -226,13 +229,13 @@ int UCTNode::get_visits() const {
 
 float UCTNode::get_lcb(int color) const {
     // Lower confidence bound of winrate.
-    int visits = get_visits();
-    float mean = get_raw_eval(color);
+    auto visits = get_visits();
     if (visits < 2) {
         return 0.0f;
     }
+    auto mean = get_raw_eval(color);
 
-    float stddev = std::sqrt(get_variance(1.0f) / visits);
+    auto stddev = std::sqrt(get_variance(1.0f) / visits);
     auto z = cached_t_quantile(visits - 1);
 
     return mean - z * stddev;
@@ -342,12 +345,12 @@ public:
 
         // Calculate the lower confidence bound for each node.
         if (a_visit && b_visit) {
-            float a_lb = a.get_lcb(m_color);
-            float b_lb = b.get_lcb(m_color);
+            auto a_lcb = a.get_lcb(m_color);
+            auto b_lcb = b.get_lcb(m_color);
 
             // Sort on lower confidence bounds
-            if (a_lb != b_lb) {
-                return a_lb < b_lb;
+            if (a_lcb != b_lcb) {
+                return a_lcb < b_lcb;
             }
 }
 

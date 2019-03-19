@@ -617,7 +617,7 @@ int UCTSearch::est_playouts_left(int elapsed_centis, int time_for_move) const {
 }
 
 size_t UCTSearch::prune_noncontenders(int color, int elapsed_centis, int time_for_move, bool prune) {
-    auto lcb_max = std::numeric_limits<float>::min();
+    auto lcb_max = 0.0f;
     auto Nfirst = 0;
     // There are no cases where the root's children vector gets modified
     // during a multithreaded search, so it is safe to walk it here without
@@ -639,6 +639,8 @@ size_t UCTSearch::prune_noncontenders(int color, int elapsed_centis, int time_fo
             const auto visits = node->get_visits();
             const auto has_enough_visits =
                 visits >= min_required_visits;
+            // Avoid pruning moves that could have the best lower confidence
+            // bound.
             const auto high_winrate = visits > 0 ?
                 node->get_raw_eval(color) >= lcb_max : false;
             const auto prune_this_node = !(has_enough_visits || high_winrate);
