@@ -40,6 +40,8 @@
 
 extern Utils::ThreadPool thread_pool;
 
+auto constexpr z_entries = 1000;
+
 namespace Utils {
     void myprintf_error(const char *fmt, ...);
     void myprintf(const char *fmt, ...);
@@ -67,6 +69,9 @@ namespace Utils {
     size_t ceilMultiple(size_t a, size_t b);
 
     const std::string leelaz_file(std::string file);
+
+    void create_z_table();
+    float cached_t_quantile(int v);
 }
 
 #endif

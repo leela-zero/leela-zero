@@ -204,7 +204,6 @@ static void parse_commandline(int argc, char *argv[]) {
         ("softmax_temp", po::value<float>())
         ("fpu_reduction", po::value<float>())
         ("ci_alpha", po::value<float>())
-        ("value_correlation", po::value<float>())
         ;
 #endif
     // These won't be shown, we use them to catch incorrect usage of the
@@ -282,9 +281,6 @@ static void parse_commandline(int argc, char *argv[]) {
     }
     if (vm.count("ci_alpha")) {
         cfg_ci_alpha = vm["ci_alpha"].as<float>();
-    }
-    if (vm.count("value_correlation")) {
-        cfg_value_correlation = vm["value_correlation"].as<float>();
     }
 #endif
 
@@ -501,6 +497,8 @@ void init_global_objects() {
     // Doing this here avoids mixing in the thread_id, which
     // improves reproducibility across platforms.
     Random::get_Rng().seedrandom(cfg_rng_seed);
+
+    Utils::create_z_table();
 
     initialize_network();
 }
