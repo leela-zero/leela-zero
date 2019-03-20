@@ -189,7 +189,7 @@ void UCTNode::update(float eval) {
     auto new_delta = eval - (old_eval + eval) / (old_visits + 1);
     // Welford's online algorithm for calculating variance.
     auto delta = old_delta * new_delta;
-    atomic_add(m_squared_diff, delta);
+    atomic_add(m_squared_eval_diff, delta);
 }
 
 bool UCTNode::has_children() const {
@@ -215,19 +215,15 @@ void UCTNode::set_policy(float policy) {
     m_policy = policy;
 }
 
-float UCTNode::get_variance(float default_var) const {
-    return m_visits > 1 ? m_squared_diff / (m_visits - 1) : default_var;
-}
-
-float UCTNode::get_stddev(float default_stddev) const {
-    return m_visits > 1 ? std::sqrt(get_variance()) : default_stddev;
+float UCTNode::get_eval_variance(float default_var) const {
+    return m_visits > 1 ? m_squared_eval_diff / (m_visits - 1) : default_var;
 }
 
 int UCTNode::get_visits() const {
     return m_visits;
 }
 
-float UCTNode::get_lcb(int color) const {
+float UCTNode::get_eval_lcb(int color) const {
     // Lower confidence bound of winrate.
     auto visits = get_visits();
     if (visits < 2) {
@@ -235,7 +231,7 @@ float UCTNode::get_lcb(int color) const {
     }
     auto mean = get_raw_eval(color);
 
-    auto stddev = std::sqrt(get_variance(1.0f) / visits);
+    auto stddev = std::sqrt(get_eval_variance(1.0f) / visits);
     auto z = cached_t_quantile(visits - 1);
 
     return mean - z * stddev;
@@ -345,14 +341,14 @@ public:
 
         // Calculate the lower confidence bound for each node.
         if (a_visit && b_visit) {
-            auto a_lcb = a.get_lcb(m_color);
-            auto b_lcb = b.get_lcb(m_color);
+            auto a_lcb = a.get_eval_lcb(m_color);
+            auto b_lcb = b.get_eval_lcb(m_color);
 
             // Sort on lower confidence bounds
             if (a_lcb != b_lcb) {
                 return a_lcb < b_lcb;
             }
-}
+        }
 
         // if visits are not same, sort on visits
         if (a_visit != b_visit) {

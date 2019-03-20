@@ -287,7 +287,7 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
             move.c_str(),
             node->get_visits(),
             node->get_visits() ? node->get_raw_eval(color)*100.0f : 0.0f,
-            std::max(0.0f, node->get_lcb(color) * 100.0f),
+            std::max(0.0f, node->get_eval_lcb(color) * 100.0f),
             node->get_policy() * 100.0f,
             pv.c_str());
     }
@@ -626,7 +626,7 @@ size_t UCTSearch::prune_noncontenders(int color, int elapsed_centis, int time_fo
         if (node->valid()) {
             const auto visits = node->get_visits();
             if (visits > 0) {
-                lcb_max = std::max(lcb_max, node->get_lcb(color));
+                lcb_max = std::max(lcb_max, node->get_eval_lcb(color));
             }
             Nfirst = std::max(Nfirst, visits);
         }

@@ -76,15 +76,14 @@ public:
     int get_visits() const;
     float get_policy() const;
     void set_policy(float policy);
-    float get_variance(float default_var = 0.0f) const;
-    float get_stddev(float default_stddev = 0.0f) const;
+    float get_eval_variance(float default_var = 0.0f) const;
     float get_eval(int tomove) const;
     float get_raw_eval(int tomove, int virtual_loss = 0) const;
     float get_net_eval(int tomove) const;
     void virtual_loss();
     void virtual_loss_undo();
     void update(float eval);
-    float get_lcb(int color) const;
+    float get_eval_lcb(int color) const;
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch
     void randomize_first_proportionally();
@@ -125,9 +124,10 @@ private:
     float m_policy;
     // Original net eval for this node (not children).
     float m_net_eval{0.0f};
-    // Initialize to prior of variance. Avoids accidental zero variances
+    // Variable used for calculating variance of evaluations.
+    // Initialized to small non-zero value to avoid accidental zero variances
     // at low visits.
-    std::atomic<float> m_squared_diff{0.01f};
+    std::atomic<float> m_squared_eval_diff{0.01f};
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
 

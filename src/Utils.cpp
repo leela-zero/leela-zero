@@ -66,9 +66,11 @@ float Utils::cached_t_quantile(int v) {
     }
     if (v < z_entries) {
         return z_lookup[v - 1];
-    } else {
-        return z_lookup[z_entries - 1];
     }
+    // z approaches constant when v is high enough.
+    // With default lookup table size the function is flat enough that we
+    // can just return the last entry for all v bigger than it.
+    return z_lookup[z_entries - 1];
 }
 
 bool Utils::input_pending() {
