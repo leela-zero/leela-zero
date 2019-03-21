@@ -58,9 +58,10 @@ constexpr int UCTSearch::UNLIMITED_PLAYOUTS;
 class OutputAnalysisData {
 public:
     OutputAnalysisData(const std::string& move, int visits,
-                       float winrate, float policy_prior, std::string pv)
+                       float winrate, float policy_prior, std::string pv,
+                       float lcb)
     : m_move(move), m_visits(visits), m_winrate(winrate),
-      m_policy_prior(policy_prior), m_pv(pv) {};
+      m_policy_prior(policy_prior), m_pv(pv), m_lcb(lcb) {};
 
     std::string get_info_string(int order) const {
         auto tmp = "info move " + m_move
@@ -78,6 +79,9 @@ public:
 
     friend bool operator<(const OutputAnalysisData& a,
                           const OutputAnalysisData& b) {
+        if (a.m_lcb != b.m_lcb) {
+            return a.m_lcb < b.m_lcb;
+        }
         if (a.m_visits == b.m_visits) {
             return a.m_winrate < b.m_winrate;
         }
@@ -90,6 +94,7 @@ private:
     float m_winrate;
     float m_policy_prior;
     std::string m_pv;
+    float m_lcb;
 };
 
 
@@ -318,9 +323,10 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         auto pv = move + (rest_of_pv.empty() ? "" : " " + rest_of_pv);
         auto move_eval = node->get_visits() ? node->get_raw_eval(color) : 0.0f;
         auto policy = node->get_policy();
+        auto lcb = node->get_eval_lcb(color);
         // Store data in array
         sortable_data.emplace_back(move, node->get_visits(),
-                                   move_eval, policy, pv);
+                                   move_eval, policy, pv, lcb);
     }
     // Sort array to decide order
     std::stable_sort(rbegin(sortable_data), rend(sortable_data));
