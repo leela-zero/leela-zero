@@ -60,7 +60,7 @@ public:
                          float min_psa_ratio = 0.0f);
 
     const std::vector<UCTNodePointer>& get_children() const;
-    void sort_children(int color);
+    void sort_children(int color, float lcb_min_visits);
     UCTNode& get_best_root_child(int color);
     UCTNode* uct_select_child(int color, bool is_root);
 

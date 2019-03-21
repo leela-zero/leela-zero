@@ -330,7 +330,8 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 class NodeComp : public std::binary_function<UCTNodePointer&,
                                              UCTNodePointer&, bool> {
 public:
-    NodeComp(int color) : m_color(color) {};
+    NodeComp(int color, float lcb_min_visits) : m_color(color),
+        m_lcb_min_visits(lcb_min_visits){};
 
     // WARNING : on very unusual cases this can be called on multithread
     // contexts (e.g., UCTSearch::get_pv()) so beware of race conditions
@@ -340,7 +341,7 @@ public:
         auto b_visit = b.get_visits();
 
         // Calculate the lower confidence bound for each node.
-        if (a_visit && b_visit) {
+        if ((a_visit > m_lcb_min_visits) && (b_visit > m_lcb_min_visits)) {
             auto a_lcb = a.get_eval_lcb(m_color);
             auto b_lcb = b.get_eval_lcb(m_color);
 
@@ -365,10 +366,11 @@ public:
     }
 private:
     int m_color;
+    float m_lcb_min_visits;
 };
 
-void UCTNode::sort_children(int color) {
-    std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color));
+void UCTNode::sort_children(int color, float lcb_min_visits) {
+    std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color, lcb_min_visits));
 }
 
 UCTNode& UCTNode::get_best_root_child(int color) {
@@ -376,8 +378,13 @@ UCTNode& UCTNode::get_best_root_child(int color) {
 
     assert(!m_children.empty());
 
+    auto max_visits = 0;
+    for (const auto& node : m_children) {
+        max_visits = std::max(max_visits, node.get_visits());
+    }
+
     auto ret = std::max_element(begin(m_children), end(m_children),
-                                NodeComp(color));
+                                NodeComp(color, cfg_lcb_min_visit_ratio * max_visits));
     ret->inflate();
 
     return *(ret->get());
