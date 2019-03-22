@@ -92,6 +92,9 @@ void TimeControl::stop(int color) {
 
     assert(elapsed_centis >= 0);
 
+    // because of GUI/network lag, cfg_lagbuffer_cs centisecond is lost on each move
+    elapsed_centis += cfg_lagbuffer_cs;
+
     m_remaining_time[color] -= elapsed_centis;
 
     if (m_inbyo[color]) {
@@ -192,10 +195,11 @@ int TimeControl::max_time_for_move(int boardsize,
         }
     }
 
-    // always keep a cfg_lagbugger_cs centisecond margin
+    // always keep a cfg_lagbuffer_cs centisecond margin
     // for network hiccups or GUI lag
-    auto base_time = std::max(time_remaining - cfg_lagbuffer_cs, 0) /
-                     std::max(moves_remaining, 1);
+    auto base_time = std::max(
+        (std::max(time_remaining, 0) / std::max(moves_remaining, 1)) -
+        cfg_lagbuffer_cs, 0);
     auto inc_time = std::max(extra_time_per_move - cfg_lagbuffer_cs, 0);
 
     return base_time + inc_time;
