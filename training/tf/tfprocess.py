@@ -122,6 +122,9 @@ class TFProcess:
         # Scale the loss to prevent gradient underflow
         self.loss_scale = 1 if self.model_dtype == tf.float32 else 128
 
+        # L2 regularization parameter applied to weights.
+        self.l2_scale = 1e-4
+
         # Set number of GPUs for training
         self.gpus_num = 1
 
@@ -337,13 +340,9 @@ class TFProcess:
             tf.reduce_mean(tf.squared_difference(z_, z_conv))
 
         # Regularizer
-        regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
         reg_variables = tf.get_collection(tf.GraphKeys.WEIGHTS)
-        reg_term = \
-            tf.contrib.layers.apply_regularization(regularizer, reg_variables)
-
-        if self.model_dtype != tf.float32:
-            reg_term = tf.cast(reg_term, tf.float32)
+        reg_term = self.l2_scale * tf.add_n(
+            [tf.cast(tf.nn.l2_loss(v), tf.float32) for v in reg_variables])
 
         # For training from a (smaller) dataset of strong players, you will
         # want to reduce the factor in front of self.mse_loss here.
