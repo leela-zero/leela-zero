@@ -1,6 +1,5 @@
-[![Linux Build Status](https://travis-ci.org/gcp/leela-zero.svg?branch=next)](https://travis-ci.org/gcp/leela-zero)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/pf1hcgly8f1a8iu0/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero/branch/next)
-
+[![Linux Build Status](https://travis-ci.org/leela-zero/leela-zero.svg?branch=next)](https://travis-ci.org/leela-zero/leela-zero)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/dcvp31x1e0yavrtf/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero-8arv1/branch/next)
 
 # What
 
@@ -43,7 +42,7 @@ the distributed effort. But you can still play, especially if you are patient.
 
 ### Windows
 
-Head to the Github releases page at https://github.com/gcp/leela-zero/releases,
+Head to the [Github releases page](https://github.com/leela-zero/leela-zero/releases),
 download the latest release, unzip, and launch autogtp.exe. It will connect to
 the server automatically and do its work in the background, uploading results
 after each game. You can just close the autogtp window to stop it.
@@ -70,7 +69,7 @@ There are community maintained instructions available here:
 Download the best known network weights file from [here](https://zero.sjeng.org/best-network), or, if you prefer a more human style,
 a (weaker) network trained from human games [here](https://sjeng.org/zero/best_v1.txt.zip).
 
-If you are on Windows, download an official release from [here](https://github.com/gcp/leela-zero/releases) and head to the [Usage](#usage-for-playing-or-analyzing-games)
+If you are on Windows, download an official release from [here](https://github.com/leela-zero/leela-zero/releases) and head to the [Usage](#usage-for-playing-or-analyzing-games)
 section of this README.
 
 If you are on Unix or macOS, you have to compile the program yourself. Follow
@@ -87,12 +86,14 @@ the compilation instructions below and then read the [Usage](#usage-for-playing-
 https://github.com/KhronosGroup/OpenCL-Headers/tree/master/CL)
 * OpenCL ICD loader (ocl-icd-libopencl1 on Debian/Ubuntu, or reference implementation at https://github.com/KhronosGroup/OpenCL-ICD-Loader)
 * An OpenCL capable device, preferably a very, very fast GPU, with recent
-drivers is strongly recommended (OpenCL 1.1 support is enough).
+drivers is strongly recommended (OpenCL 1.1 support is enough). Don't
+forget to install the OpenCL driver if this part is packaged seperately
+by the Linux distribution (e.g. nvidia-opencl-icd).
 If you do not have a GPU, add the define "USE_CPU_ONLY", for example
 by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 * Optional: BLAS Library: OpenBLAS (libopenblas-dev) or Intel MKL
 * The program has been tested on Windows, Linux and macOS.
-* [autogtp](/autogtp/README.md)
+* autogtp and leelaz binaries need to be in the same directory. The below instructions can compile leelaz, and optionally autogtp at the same time.
 
 ## Example of compiling - Ubuntu & similar
 
@@ -100,12 +101,15 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     sudo apt install clinfo && clinfo
 
     # Clone github repo
-    git clone https://github.com/gcp/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
-    # Install build depedencies
-    sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+    # Install leelaz build depedencies
+    sudo apt install cmake libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev curl
+    
+    # Optional : if you want to contribute to the distributed effort, you need these dependencies as well
+    sudo apt install qt5-default qt5-qmake
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
@@ -120,12 +124,20 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 ## Example of compiling - macOS
 
     # Clone github repo
-    git clone https://github.com/gcp/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
-    # Install build depedencies
-    brew install boost cmake
+    # Install leelaz build depedencies
+    brew install boost cmake zlib curl
+    
+    # Optional : if you want to contribute to the distributed effort, you need these dependencies as well
+    brew install qt5
+    # after qt5 install, then you also need to do the post install for mac, replace 5.x.x with your qt5 version
+    export QT5DIR=/usr/local/Cellar/qt/5.x.x
+    export CMAKE_MODULE_PATH=${QT5DIR}/lib/cmake:${CMAKE_MODULE_PATH}
+    export CMAKE_PREFIX_PATH=${QT5DIR}
+    PATH="$(brew --prefix qt5)/bin:$PATH"
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
@@ -140,7 +152,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 ## Example of compiling - Windows
 
     # Clone github repo
-    git clone https://github.com/gcp/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
@@ -151,16 +163,17 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 
 # Contributing
 
-For Windows, you can use a release package, see ["I want to help"](#windows).
+- For Windows, you can use a release package, see ["I want to help"](#windows).
 
-Unix and macOS, after finishing the compile and while in the build directory:
+- For Unix and macOS, after finishing the compile and while in the build directory:
 
-    # Copy leelaz binary to autogtp subdirectory
-    cp leelaz autogtp
+      # Copy leelaz binary to build/autogtp/ subdirectory, and go in that subdirectory
+      cp leelaz autogtp && cd autogtp
 
-    # Run AutoGTP to start contributing
-    ./autogtp/autogtp
+      # Run AutoGTP in build/autogtp/ subdirectory to start contributing
+      ./autogtp
 
+For more details about AutoGTP or for more advanced use, please see [the autogtp readme](/autogtp/README.md)
 
 # Usage for playing or analyzing games
 
@@ -179,6 +192,10 @@ capability.
 [LeelaSabaki](https://github.com/SabakiHQ/LeelaSabaki) is modified to
 show variations and winning statistics in the game tree, as well as a heatmap
 on the game board.
+
+[GoReviewPartner](https://github.com/pnprog/goreviewpartner) is a tool for
+automated review and analysis of games using bots (saved as .rsgf files),
+Leela Zero is supported.
 
 A lot of go software can interface to an engine via GTP,
 so look around.
@@ -319,8 +336,7 @@ If interrupted, training can be resumed with:
 # Todo
 
 - [ ] Further optimize Winograd transformations.
-- [ ] Implement GPU batching.
-- [ ] GTP extention to exclude moves from analysis.
+- [ ] Implement GPU batching in the search.
 - [ ] Root filtering for handicap play.
 - More backends:
 - [ ] MKL-DNN based backend.
@@ -351,3 +367,14 @@ https://github.com/LeelaChessZero/lc0
 # License
 
 The code is released under the GPLv3 or later, except for ThreadPool.h, cl2.hpp, half.hpp and the eigen and clblast_level3 subdirs, which have specific licenses (compatible with GPLv3) mentioned in those files.
+
+Additional permission under GNU GPL version 3 section 7
+
+If you modify this Program, or any covered work, by linking or
+combining it with NVIDIA Corporation's libraries from the
+NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+Network library and/or the NVIDIA TensorRT inference library
+(or a modified version of those libraries), containing parts covered
+by the terms of the respective license agreement, the licensors of
+this Program grant you additional permission to convey the resulting
+work.

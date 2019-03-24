@@ -11,11 +11,11 @@ the SGF and training data at the end of the game.
 * curl
 * gzip and gunzip
 
-## Example of compiling - Ubuntu
+## Compiling - Ubuntu and similar, macOS
 
-    sudo apt install qt5-default qt5-qmake curl
-    qmake -qt5
-    make
+Follow main page instructions to compile leelaz and autogtp binaries at the same time.
+
+For specific use, you can also compile the autogtp binary separately with qmake.
 
 ## Compiling under Visual Studio - Windows
 
@@ -30,10 +30,42 @@ directly.
 
 # Running
 
-Copy the compiled leelaz binary into the autogtp directory, and run
-autogtp.
+autogtp and leelaz binaries need to be in the same directory.
 
-    cp ../build/leelaz .
-    ./autogtp
+While autogtp is running, typing q+Enter will save the processed data and exit. 
+When autogtp runs next, autogtp will continue the game.
 
-While autogtp is running, typing q+Enter will save the processed data and exit. When autogtp runs next, autogtp will continue the game.
+# Help 
+
+For more details about AutoGTP, or for specific use (for example how to use multi GPU, 
+or any other setting), you can run, while in the directory where your autogtp executable is :
+- `./autogtp --help` on linux/mac
+- `autogtp.exe --help` on windows
+
+This will display a list of all possible settings and how to use them
+
+For your convenience, and for easier reference, a copy is provided below :
+
+```
+Usage: ./autogtp [options]
+
+Options:
+  -h, --help                            Displays this help.
+  -v, --version                         Displays version information.
+  -g, --gamesNum <num>                  Play 'gamesNum' games on one GPU at the
+                                        same time.
+  -u, --gpus <num>                      Index of the GPU to use for multiple
+                                        GPUs support.
+  -k, --keepSgf <output directory>      Save SGF files after each self-play
+                                        game.
+  -d, --debug <output directory>        Save training and extra debug files
+                                        after each self-play game.
+  -t, --timeout <time in minutes>       Save running games after the timeout
+                                        (in minutes) is passed and then exit.
+  -s, --single                          Exit after the first game is completed.
+  -m, --maxgames <max number of games>  Exit after the given number of games is
+                                        completed.
+  -e, --erase                           Erase old networks when new ones are
+                                        available.
+
+```
