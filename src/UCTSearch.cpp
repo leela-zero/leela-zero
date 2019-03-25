@@ -464,7 +464,8 @@ int UCTSearch::get_best_move(passflag_t passflag) {
             }
         }
     } else if (!cfg_dumbpass) {
-        const auto relative_score = (color == FastBoard::BLACK ? 1 : -1) * m_rootstate.final_score();
+        const auto relative_score =
+            (color == FastBoard::BLACK ? 1 : -1) * m_rootstate.final_score();
         if (bestmove == FastBoard::PASS) {
             // Either by forcing or coincidence passing is
             // on top...check whether passing loses instantly
