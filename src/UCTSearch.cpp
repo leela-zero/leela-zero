@@ -70,7 +70,9 @@ public:
                  + " winrate "
                  + std::to_string(static_cast<int>(m_winrate * 10000))
                  + " prior "
-                 + std::to_string(static_cast<int>(m_policy_prior * 10000.0f));
+                 + std::to_string(static_cast<int>(m_policy_prior * 10000.0f))
+                 + " lcb "
+                 + std::to_string(static_cast<int>(std::max(0.0f, m_lcb) * 10000));
         if (order >= 0) {
             tmp += " order " + std::to_string(order);
         }

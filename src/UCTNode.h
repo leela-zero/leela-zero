@@ -127,7 +127,7 @@ private:
     // Variable used for calculating variance of evaluations.
     // Initialized to small non-zero value to avoid accidental zero variances
     // at low visits.
-    std::atomic<float> m_squared_eval_diff{0.01f};
+    std::atomic<float> m_squared_eval_diff{1e-4f};
     std::atomic<double> m_blackevals{0.0};
     std::atomic<Status> m_status{ACTIVE};
 

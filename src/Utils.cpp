@@ -50,6 +50,7 @@
 
 Utils::ThreadPool thread_pool;
 
+auto constexpr z_entries = 1000;
 std::array<float, z_entries> z_lookup;
 
 void Utils::create_z_table() {

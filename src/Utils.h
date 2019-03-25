@@ -40,8 +40,6 @@
 
 extern Utils::ThreadPool thread_pool;
 
-auto constexpr z_entries = 1000;
-
 namespace Utils {
     void myprintf_error(const char *fmt, ...);
     void myprintf(const char *fmt, ...);
