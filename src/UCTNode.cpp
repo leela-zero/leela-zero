@@ -227,7 +227,8 @@ float UCTNode::get_eval_lcb(int color) const {
     // Lower confidence bound of winrate.
     auto visits = get_visits();
     if (visits < 2) {
-        return 0.0f;
+        // Return large negative value if not enough visits.
+        return -1e6f + visits;
     }
     auto mean = get_raw_eval(color);
 
@@ -339,6 +340,11 @@ public:
                     const UCTNodePointer& b) {
         auto a_visit = a.get_visits();
         auto b_visit = b.get_visits();
+
+        // Need at least 2 visits for LCB.
+        if (m_lcb_min_visits < 2) {
+            m_lcb_min_visits = 2;
+        }
 
         // Calculate the lower confidence bound for each node.
         if ((a_visit > m_lcb_min_visits) && (b_visit > m_lcb_min_visits)) {

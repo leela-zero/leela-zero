@@ -339,7 +339,9 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         auto policy = node->get_policy();
         auto lcb = node->get_eval_lcb(color);
         auto visits = node->get_visits();
-        auto lcb_ratio_exceeded = visits > max_visits * cfg_lcb_min_visit_ratio;
+        // Need at least 2 visits for valid LCB.
+        auto lcb_ratio_exceeded = visits > 2 &&
+            visits > max_visits * cfg_lcb_min_visit_ratio;
         // Store data in array
         sortable_data.emplace_back(move, visits,
                                    move_eval, policy, pv, lcb, lcb_ratio_exceeded);
