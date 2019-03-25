@@ -83,11 +83,13 @@ bool UCTNode::create_children(Network & network,
         &state, Network::Ensemble::RANDOM_SYMMETRY);
 
     // DCNN returns winrate as side to move
-    m_net_eval = raw_netlist.winrate;
+    const auto stm_eval = raw_netlist.winrate;
     const auto to_move = state.board.get_to_move();
     // our search functions evaluate from black's point of view
     if (to_move == FastBoard::WHITE) {
-        m_net_eval = 1.0f - m_net_eval;
+        m_net_eval = 1.0f - stm_eval;
+    } else {
+        m_net_eval = stm_eval;
     }
     eval = m_net_eval;
 
@@ -103,8 +105,24 @@ bool UCTNode::create_children(Network & network,
             legal_sum += raw_netlist.policy[i];
         }
     }
-    nodelist.emplace_back(raw_netlist.policy_pass, FastBoard::PASS);
-    legal_sum += raw_netlist.policy_pass;
+
+    // Always try passes if we're not trying to be clever.
+    auto allow_pass = cfg_dumbpass;
+
+    // If we're clever, only try passing if we're winning on the
+    // net score and on the board count.
+    if (!allow_pass && (stm_eval > 0.8f || nodelist.size() <= 20)) {
+        const auto relative_score =
+            (to_move == FastBoard::BLACK ? 1 : -1) * state.final_score();
+        if (relative_score >= 0) {
+            allow_pass = true;
+        }
+    }
+
+    if (allow_pass) {
+        nodelist.emplace_back(raw_netlist.policy_pass, FastBoard::PASS);
+        legal_sum += raw_netlist.policy_pass;
+    }
 
     if (legal_sum > std::numeric_limits<float>::min()) {
         // re-normalize after removing illegal moves.
