@@ -159,6 +159,10 @@ const TimeControl& GameState::get_timecontrol() const {
     return m_timecontrol;
 }
 
+void GameState::set_timecontrol(const TimeControl& timecontrol) {
+    m_timecontrol = timecontrol;
+}
+
 void GameState::set_timecontrol(int maintime, int byotime,
                                 int byostones, int byoperiods) {
     TimeControl timecontrol(maintime, byotime,
