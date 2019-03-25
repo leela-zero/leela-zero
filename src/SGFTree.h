@@ -39,6 +39,7 @@
 #include "FastBoard.h"
 #include "GameState.h"
 #include "KoState.h"
+#include "TimeControl.h"
 
 class SGFTree {
 public:
@@ -77,6 +78,7 @@ private:
 
     bool m_initialized{false};
     KoState m_state;
+    std::shared_ptr<TimeControl> m_timecontrol_ptr;
     FastBoard::vertex_t m_winner{FastBoard::INVAL};
     std::vector<SGFTree> m_children;
     PropertyMap m_properties;
