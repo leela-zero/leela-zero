@@ -42,7 +42,7 @@ the distributed effort. But you can still play, especially if you are patient.
 
 ### Windows
 
-Head to the Github releases page at https://github.com/leela-zero/leela-zero/releases,
+Head to the [Github releases page](https://github.com/leela-zero/leela-zero/releases),
 download the latest release, unzip, and launch autogtp.exe. It will connect to
 the server automatically and do its work in the background, uploading results
 after each game. You can just close the autogtp window to stop it.
@@ -104,8 +104,11 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     cd leela-zero
     git submodule update --init --recursive
 
-    # Install build depedencies
-    sudo apt install libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+    # Install leelaz build depedencies
+    sudo apt install cmake libboost-dev libboost-program-options-dev libboost-filesystem-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev zlib1g-dev
+    
+    # Optional : if you want to contribute to the distributed effort, you need these dependencies as well
+    sudo apt install qt5-default qt5-qmake
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
@@ -124,8 +127,16 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     cd leela-zero
     git submodule update --init --recursive
 
-    # Install build depedencies
+    # Install leelaz build depedencies
     brew install boost cmake zlib
+    
+    # Optional : if you want to contribute to the distributed effort,
+    # after qt5 install, then you also need to do the post install for mac,
+    # replace 5.x.x with your qt5 version :
+    export QT5DIR=/usr/local/Cellar/qt/5.x.x
+    export CMAKE_MODULE_PATH=${QT5DIR}/lib/cmake:${CMAKE_MODULE_PATH}
+    export CMAKE_PREFIX_PATH=${QT5DIR}
+    PATH="$(brew --prefix qt5)/bin:$PATH"
 
     # Use a stand alone build directory to keep source dir clean
     mkdir build && cd build
@@ -151,16 +162,17 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 
 # Contributing
 
-For Windows, you can use a release package, see ["I want to help"](#windows).
+- For Windows, you can use a release package, see ["I want to help"](#windows).
 
-Unix and macOS, after finishing the compile and while in the build directory:
+- For Unix and macOS, after finishing the compile and while in the build directory:
 
-    # Copy leelaz binary to autogtp subdirectory
-    cp leelaz autogtp
+      # Copy leelaz binary to build/autogtp/ subdirectory, and go in that subdirectory
+      cp leelaz autogtp && cd autogtp
 
-    # Run AutoGTP to start contributing
-    ./autogtp/autogtp
+      # Run AutoGTP in build/autogtp/ subdirectory to start contributing
+      ./autogtp
 
+For more details about AutoGTP or for more advanced use, please see [the autogtp readme](/autogtp/README.md)
 
 # Usage for playing or analyzing games
 
