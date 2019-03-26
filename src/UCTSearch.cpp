@@ -583,9 +583,7 @@ std::string UCTSearch::get_pv(FastState & state, UCTNode& parent) {
     return res;
 }
 
-std::string UCTSearch::get_analysis() {
-    auto playouts = m_playouts.load();
-
+std::string UCTSearch::get_analysis(int playouts) {
     FastState tempstate = m_rootstate;
     int color = tempstate.board.get_to_move();
 
@@ -754,7 +752,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         // check if we should still search
         if (!cfg_quiet && elapsed_centis - last_update > 250) {
             last_update = elapsed_centis;
-            myprintf("%s\n", get_analysis().c_str());
+            myprintf("%s\n", get_analysis(m_playouts.load()).c_str());
         }
         keeprunning  = is_running();
         keeprunning &= !stop_thinking(elapsed_centis, time_for_move);
@@ -810,7 +808,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
         % m_rootstate.get_movenum()
         % (color == FastBoard::BLACK ? 'B' : 'W')
         % m_rootstate.move_to_text(bestmove).c_str()
-        % get_analysis().c_str());
+        % get_analysis(m_root->get_visits()).c_str());
 
     // Copy the root state. Use to check for tree re-use in future calls.
     m_last_rootstate = std::make_unique<GameState>(m_rootstate);
