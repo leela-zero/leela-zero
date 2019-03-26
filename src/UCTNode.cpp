@@ -109,9 +109,14 @@ bool UCTNode::create_children(Network & network,
     // Always try passes if we're not trying to be clever.
     auto allow_pass = cfg_dumbpass;
 
+    // Less than 20 available intersections in a 19x19 game.
+    if (nodelist.size() <= std::max(5, BOARD_SIZE)) {
+        allow_pass = true;
+    }
+
     // If we're clever, only try passing if we're winning on the
     // net score and on the board count.
-    if (!allow_pass && (stm_eval > 0.8f || nodelist.size() <= 20)) {
+    if (!allow_pass && stm_eval > 0.8f) {
         const auto relative_score =
             (to_move == FastBoard::BLACK ? 1 : -1) * state.final_score();
         if (relative_score >= 0) {
