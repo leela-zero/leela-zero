@@ -58,9 +58,11 @@ constexpr int UCTSearch::UNLIMITED_PLAYOUTS;
 class OutputAnalysisData {
 public:
     OutputAnalysisData(const std::string& move, int visits,
-                       float winrate, float policy_prior, std::string pv)
+                       float winrate, float policy_prior, std::string pv,
+                       float lcb, bool lcb_ratio_exceeded)
     : m_move(move), m_visits(visits), m_winrate(winrate),
-      m_policy_prior(policy_prior), m_pv(pv) {};
+      m_policy_prior(policy_prior), m_pv(pv), m_lcb(lcb),
+      m_lcb_ratio_exceeded(lcb_ratio_exceeded) {};
 
     std::string get_info_string(int order) const {
         auto tmp = "info move " + m_move
@@ -68,7 +70,9 @@ public:
                  + " winrate "
                  + std::to_string(static_cast<int>(m_winrate * 10000))
                  + " prior "
-                 + std::to_string(static_cast<int>(m_policy_prior * 10000.0f));
+                 + std::to_string(static_cast<int>(m_policy_prior * 10000.0f))
+                 + " lcb "
+                 + std::to_string(static_cast<int>(std::max(0.0f, m_lcb) * 10000));
         if (order >= 0) {
             tmp += " order " + std::to_string(order);
         }
@@ -78,6 +82,11 @@ public:
 
     friend bool operator<(const OutputAnalysisData& a,
                           const OutputAnalysisData& b) {
+        if (a.m_lcb_ratio_exceeded && b.m_lcb_ratio_exceeded) {
+            if (a.m_lcb != b.m_lcb) {
+                return a.m_lcb < b.m_lcb;
+            }
+        }
         if (a.m_visits == b.m_visits) {
             return a.m_winrate < b.m_winrate;
         }
@@ -90,6 +99,8 @@ private:
     float m_winrate;
     float m_policy_prior;
     std::string m_pv;
+    float m_lcb;
+    bool m_lcb_ratio_exceeded;
 };
 
 
@@ -265,8 +276,13 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
 
     const int color = state.get_to_move();
 
+    auto max_visits = 0;
+    for (const auto& node : parent.get_children()) {
+        max_visits = std::max(max_visits, node->get_visits());
+    }
+
     // sort children, put best move on top
-    parent.sort_children(color);
+    parent.sort_children(color, cfg_lcb_min_visit_ratio * max_visits);
 
     if (parent.get_first_child()->first_visit()) {
         return;
@@ -283,10 +299,11 @@ void UCTSearch::dump_stats(FastState & state, UCTNode & parent) {
         tmpstate.play_move(node->get_move());
         auto pv = move + " " + get_pv(tmpstate, *node);
 
-        myprintf("%4s -> %7d (V: %5.2f%%) (N: %5.2f%%) PV: %s\n",
+        myprintf("%4s -> %7d (V: %5.2f%%) (LCB: %5.2f%%) (N: %5.2f%%) PV: %s\n",
             move.c_str(),
             node->get_visits(),
             node->get_visits() ? node->get_raw_eval(color)*100.0f : 0.0f,
+            std::max(0.0f, node->get_eval_lcb(color) * 100.0f),
             node->get_policy() * 100.0f,
             pv.c_str());
     }
@@ -303,6 +320,11 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
 
     const auto color = state.get_to_move();
 
+    auto max_visits = 0;
+    for (const auto& node : parent.get_children()) {
+        max_visits = std::max(max_visits, node->get_visits());
+    }
+
     for (const auto& node : parent.get_children()) {
         // Send only variations with visits, unless more moves were
         // requested explicitly.
@@ -317,9 +339,14 @@ void UCTSearch::output_analysis(FastState & state, UCTNode & parent) {
         auto pv = move + (rest_of_pv.empty() ? "" : " " + rest_of_pv);
         auto move_eval = node->get_visits() ? node->get_raw_eval(color) : 0.0f;
         auto policy = node->get_policy();
+        auto lcb = node->get_eval_lcb(color);
+        auto visits = node->get_visits();
+        // Need at least 2 visits for valid LCB.
+        auto lcb_ratio_exceeded = visits > 2 &&
+            visits > max_visits * cfg_lcb_min_visit_ratio;
         // Store data in array
-        sortable_data.emplace_back(move, node->get_visits(),
-                                   move_eval, policy, pv);
+        sortable_data.emplace_back(move, visits,
+                                   move_eval, policy, pv, lcb, lcb_ratio_exceeded);
     }
     // Sort array to decide order
     std::stable_sort(rbegin(sortable_data), rend(sortable_data));
@@ -429,8 +456,13 @@ bool UCTSearch::should_resign(passflag_t passflag, float besteval) {
 int UCTSearch::get_best_move(passflag_t passflag) {
     int color = m_rootstate.board.get_to_move();
 
+    auto max_visits = 0;
+    for (const auto& node : m_root->get_children()) {
+        max_visits = std::max(max_visits, node->get_visits());
+    }
+
     // Make sure best is first
-    m_root->sort_children(color);
+    m_root->sort_children(color,  cfg_lcb_min_visit_ratio * max_visits);
 
     // Check whether to randomize the best move proportional
     // to the playout counts, early game only.
@@ -614,14 +646,19 @@ int UCTSearch::est_playouts_left(int elapsed_centis, int time_for_move) const {
                     static_cast<int>(std::ceil(playout_rate * time_left)));
 }
 
-size_t UCTSearch::prune_noncontenders(int elapsed_centis, int time_for_move, bool prune) {
+size_t UCTSearch::prune_noncontenders(int color, int elapsed_centis, int time_for_move, bool prune) {
+    auto lcb_max = 0.0f;
     auto Nfirst = 0;
     // There are no cases where the root's children vector gets modified
     // during a multithreaded search, so it is safe to walk it here without
     // taking the (root) node lock.
     for (const auto& node : m_root->get_children()) {
         if (node->valid()) {
-            Nfirst = std::max(Nfirst, node->get_visits());
+            const auto visits = node->get_visits();
+            if (visits > 0) {
+                lcb_max = std::max(lcb_max, node->get_eval_lcb(color));
+            }
+            Nfirst = std::max(Nfirst, visits);
         }
     }
     const auto min_required_visits =
@@ -629,13 +666,19 @@ size_t UCTSearch::prune_noncontenders(int elapsed_centis, int time_for_move, boo
     auto pruned_nodes = size_t{0};
     for (const auto& node : m_root->get_children()) {
         if (node->valid()) {
+            const auto visits = node->get_visits();
             const auto has_enough_visits =
-                node->get_visits() >= min_required_visits;
+                visits >= min_required_visits;
+            // Avoid pruning moves that could have the best lower confidence
+            // bound.
+            const auto high_winrate = visits > 0 ?
+                node->get_raw_eval(color) >= lcb_max : false;
+            const auto prune_this_node = !(has_enough_visits || high_winrate);
 
             if (prune) {
-                node->set_active(has_enough_visits);
+                node->set_active(!prune_this_node);
             }
-            if (!has_enough_visits) {
+            if (prune_this_node) {
                 ++pruned_nodes;
             }
         }
@@ -649,9 +692,10 @@ bool UCTSearch::have_alternate_moves(int elapsed_centis, int time_for_move) {
     if (cfg_timemanage == TimeManagement::OFF) {
         return true;
     }
+    auto my_color = m_rootstate.get_to_move();
     // For self play use. Disables pruning of non-contenders to not bias the training data.
     auto prune = cfg_timemanage != TimeManagement::NO_PRUNING;
-    auto pruned = prune_noncontenders(elapsed_centis, time_for_move, prune);
+    auto pruned = prune_noncontenders(my_color, elapsed_centis, time_for_move, prune);
     if (pruned < m_root->get_children().size() - 1) {
         return true;
     }
@@ -660,7 +704,6 @@ bool UCTSearch::have_alternate_moves(int elapsed_centis, int time_for_move) {
     // which will cause Leela to quickly respond to obvious/forced moves.
     // That comes at the cost of some playing strength as she now cannot
     // think ahead about her next moves in the remaining time.
-    auto my_color = m_rootstate.get_to_move();
     auto tc = m_rootstate.get_timecontrol();
     if (!tc.can_accumulate_time(my_color)
         || m_maxplayouts < UCTSearch::UNLIMITED_PLAYOUTS) {
