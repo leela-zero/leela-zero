@@ -2,35 +2,32 @@ let
   pkgs = import <nixpkgs> {};
   stdenv = pkgs.stdenv;
 
-in stdenv.mkDerivation {
+in stdenv.mkDerivation (with pkgs; {
   name = "env";
   nativeBuildInputs = [
-    pkgs.cmake
+    cmake
   ];
 
   buildInputs = [
-    pkgs.zlib
-    pkgs.boost
-    pkgs.qt5.full
-    pkgs.opencl-headers
-    pkgs.ocl-icd
-    pkgs.python3
-    pkgs.python37Packages.tensorflow
-    pkgs.python37Packages.pymongo
-    pkgs.python37Packages.numpy
+    zlib
+    boost
+    qt5.full
+    opencl-headers
+    ocl-icd
+    python3
+    python37Packages.tensorflow
+    python37Packages.pymongo
+    python37Packages.numpy
   ];
 
-  cmakeFlags = with stdenv; [
+  cmakeFlags = [
     "-DCMAKE_BUILD_TYPE=Release"
-    "-DZLIB_INCLUDE_DIR=${pkgs.zlib.dev}/include"
-    "-DZLIB_LIBRARY=${pkgs.zlib}/lib/libz.so"
-    "-DOpenCL_LIBRARY=${pkgs.ocl-icd}/lib/libOpenCL.so"
-    "-DOpenCL_INCLUDE_DIR=${pkgs.opencl-headers}/include"
+    "-DZLIB_INCLUDE_DIR=${zlib}/include"
+    "-DZLIB_LIBRARY=${zlib}/lib/libz.so"
+    "-DOpenCL_LIBRARY=${ocl-icd}/lib/libOpenCL.so"
+    "-DOpenCL_INCLUDE_DIR=${opencl-headers}/include"
   ];
 
-  PKG_CONFIG_PATH = "${pkgs.zlib}/lib/pkgconfig";
-  BOOST_ROOT = "${pkgs.boost.dev}";
-  BOOST_INCLUDEDIR = "${pkgs.boost.dev}/include";
-  BOOST_LIBRARYDIR = "${pkgs.boost}/lib";
-  LIBRARY_PATH = "${pkgs.ocl-icd}/lib:${pkgs.boost}/lib:${pkgs.zlib}/lib";
-}
+  BOOST_ROOT = "${boost}";
+  LIBRARY_PATH = "${ocl-icd}/lib:${boost}/lib:${zlib}/lib:$LIBRARY_PATH";
+})
