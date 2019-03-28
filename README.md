@@ -139,6 +139,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
     Double-click the leela-zero2015.sln or leela-zero2017.sln corresponding
     to the Visual Studio version you have.
     # Build from Visual Studio 2015 or 2017
+    # You need to install Qt and Qt VS Tools if you want to compile autogtp yourself, it's not necessary for leela-zero
     # Download <https://zero.sjeng.org/best-network> to msvc\x64\Release
     msvc\x64\Release\leelaz.exe --weights best-network
 
