@@ -323,7 +323,7 @@ If interrupted, training can be resumed with:
 # Todo
 
 - [ ] Further optimize Winograd transformations.
-- [ ] Implement GPU batching in the search.
+- [ ] Improve GPU batching in the search.
 - [ ] Root filtering for handicap play.
 - More backends:
 - [ ] MKL-DNN based backend.
