@@ -200,13 +200,13 @@ public:
     void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
     bool has_fp16_compute();
+    bool has_tensor_cores();
 
     std::vector<size_t> get_sgemm_tuners();
 
     cl::Device m_device;
     cl::Context m_context;
 private:
-    void tune_sgemm();
     void process_tuners(std::string tuners);
 
     size_t m_batch_size = 1;

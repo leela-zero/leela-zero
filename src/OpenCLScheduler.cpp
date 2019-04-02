@@ -148,7 +148,7 @@ template<typename net_t>
 bool OpenCLScheduler<net_t>::needs_autodetect() {
     for (auto& opencl : m_opencl) {
         // If any card has no native fp16 compute, we'll have to benchmark.
-        if (!opencl->has_fp16_compute()) {
+        if (!opencl->has_fp16_compute() && !opencl->has_tensor_cores()) {
             return true;
         }
     }
