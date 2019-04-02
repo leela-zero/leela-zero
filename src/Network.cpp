@@ -408,11 +408,11 @@ void Network::select_precision(int channels) {
         auto fp16_net = std::make_unique<OpenCLScheduler<half_float::half>>();
         if (!fp16_net->needs_autodetect()) {
             try {
-                myprintf("OpenCL: using fp16/half compute support.\n");
+                myprintf("OpenCL: using fp16/half or tensor core compute support.\n");
                 m_forward = init_net(channels, std::move(fp16_net));
                 benchmark_time(1); // a sanity check run
             } catch (...) {
-                myprintf("OpenCL: fp16/half failed despite driver claiming support.\n");
+                myprintf("OpenCL: fp16/half or tensor core failed despite driver claiming support.\n");
                 myprintf("Falling back to single precision\n");
                 m_forward.reset();
                 m_forward = init_net(channels,
