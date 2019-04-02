@@ -923,6 +923,11 @@ bool OpenCL<net_t>::has_fp16_compute() {
 }
 
 template <typename net_t>
+bool OpenCL<net_t>::has_tensor_cores() {
+    return m_tensorcore;
+}
+
+template <typename net_t>
 std::string OpenCL<net_t>::get_device_name() {
     std::stringstream ss;
 
