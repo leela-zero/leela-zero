@@ -49,7 +49,9 @@
 #include "Timing.h"
 #include "Training.h"
 #include "Utils.h"
+#ifdef USE_OPENCL
 #include "OpenCLScheduler.h"
+#endif
 
 using namespace Utils;
 
