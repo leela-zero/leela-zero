@@ -208,6 +208,11 @@ static void parse_commandline(int argc, char *argv[]) {
 #endif
     // These won't be shown, we use them to catch incorrect usage of the
     // command line.
+    po::options_description ignore("Ignored options");
+#ifndef USE_OPENCL
+    ignore.add_options()
+        ("batchsize", po::value<unsigned int>()->default_value(1), "Max batch size.");
+#endif
     po::options_description h_desc("Hidden options");
     h_desc.add_options()
         ("arguments", po::value<std::vector<std::string>>());
@@ -224,7 +229,7 @@ static void parse_commandline(int argc, char *argv[]) {
 #endif
     // Parse both the above, we will check if any of the latter are present.
     po::options_description all;
-    all.add(visible).add(h_desc);
+    all.add(visible).add(ignore).add(h_desc);
     po::positional_options_description p_desc;
     p_desc.add("arguments", -1);
     po::variables_map vm;
