@@ -113,7 +113,7 @@ static constexpr auto KOMI = 7.5f;
 //#define USE_TUNER
 
 static constexpr auto PROGRAM_NAME = "Leela Zero";
-static constexpr auto PROGRAM_VERSION = "0.16";
+static constexpr auto PROGRAM_VERSION = "0.17";
 
 /*
  * OpenBLAS limitation: the default configuration on some Linuxes
