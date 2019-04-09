@@ -143,6 +143,12 @@ float UCTNodePointer::get_eval_lcb(int color) const {
     return read_ptr(v)->get_eval_lcb(color);
 }
 
+float UCTNodePointer::get_eval_variance(float default_var) const {
+    assert(is_inflated());
+    auto v = m_data.load();
+    return read_ptr(v)->get_eval_variance(default_var);
+}
+
 bool UCTNodePointer::active() const {
     auto v = m_data.load();
     if (is_inflated(v)) return read_ptr(v)->active();

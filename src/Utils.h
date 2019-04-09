@@ -70,6 +70,7 @@ namespace Utils {
 
     void create_z_table();
     float cached_t_quantile(int v);
+    float fast_erfc(float x);
 }
 
 #endif

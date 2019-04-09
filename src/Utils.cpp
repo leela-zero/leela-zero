@@ -74,6 +74,15 @@ float Utils::cached_t_quantile(int v) {
     return z_lookup[z_entries - 1];
 }
 
+float Utils::fast_erfc(float x) {
+    if (x < 0) {
+        return 1.0f - fast_erfc(-x);
+    }
+    auto z = 1.0f + 0.27f * x + 0.23f * x * x;
+    auto z4 = z * z * z * z;
+    return 1.0f / z4;
+}
+
 bool Utils::input_pending() {
 #ifdef HAVE_SELECT
     fd_set read_fds;
