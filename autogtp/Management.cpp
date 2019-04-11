@@ -106,7 +106,7 @@ void Management::giveAssignments() {
     QTextStream(stdout) << "Starting tuning process, please wait..." << endl;
 
     Order tuneOrder = getWork(true);
-    QString tuneCmdLine("./leelaz --tune-only -w networks/");
+    QString tuneCmdLine("./leelaz --batchsize=5 --tune-only -w networks/");
     tuneCmdLine.append(tuneOrder.parameters()["network"] + ".gz");
     if (m_gpusList.isEmpty()) {
         runTuningProcess(tuneCmdLine);
@@ -266,7 +266,8 @@ QString Management::getOptionsString(const QJsonObject &opt, const QString &rnd)
     options.append(getOption(opt, "visits", " -v ", ""));
     options.append(getOption(opt, "resignation_percent", " -r ", "1"));
     options.append(getOption(opt, "randomcnt", " -m ", "30"));
-    options.append(getOption(opt, "threads", " -t ", "1"));
+    options.append(getOption(opt, "threads", " -t ", "6"));
+    options.append(getOption(opt, "batchsize", " --batchsize ", "5"));
     options.append(getBoolOption(opt, "dumbpass", " -d ", true));
     options.append(getBoolOption(opt, "noise", " -n ", true));
     options.append(" --noponder ");

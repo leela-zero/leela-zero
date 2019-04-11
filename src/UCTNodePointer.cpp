@@ -137,6 +137,12 @@ float UCTNodePointer::get_policy() const {
     return read_policy(v);
 }
 
+float UCTNodePointer::get_eval_lcb(int color) const {
+    assert(is_inflated());
+    auto v = m_data.load();
+    return read_ptr(v)->get_eval_lcb(color);
+}
+
 bool UCTNodePointer::active() const {
     auto v = m_data.load();
     if (is_inflated(v)) return read_ptr(v)->active();

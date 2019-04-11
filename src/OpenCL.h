@@ -195,19 +195,21 @@ class OpenCL {
     friend class Tuner<net_t>;
 public:
     OpenCL(int gpu, bool silent = false);
-    void initialize(const int channels);
+
+    void initialize(const int channels, size_t batch_size = 1);
     void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
     bool has_fp16_compute();
+    bool has_tensor_cores();
 
     std::vector<size_t> get_sgemm_tuners();
 
     cl::Device m_device;
     cl::Context m_context;
 private:
-    void tune_sgemm();
     void process_tuners(std::string tuners);
 
+    size_t m_batch_size = 1;
     cl::Program m_program;
     std::string m_cl_args;
 

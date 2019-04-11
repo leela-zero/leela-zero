@@ -122,11 +122,11 @@ private:
     void dump_stats(FastState& state, UCTNode& parent);
     void tree_stats(const UCTNode& node);
     std::string get_pv(FastState& state, UCTNode& parent);
-    std::string get_analysis();
+    std::string get_analysis(int playouts);
     bool should_resign(passflag_t passflag, float besteval);
     bool have_alternate_moves(int elapsed_centis, int time_for_move);
     int est_playouts_left(int elapsed_centis, int time_for_move) const;
-    size_t prune_noncontenders(int elapsed_centis = 0, int time_for_move = 0,
+    size_t prune_noncontenders(int color, int elapsed_centis = 0, int time_for_move = 0,
                                bool prune = true);
     bool stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
     int get_best_move(passflag_t passflag);

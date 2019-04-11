@@ -99,7 +99,7 @@ float Network::benchmark_time(int centiseconds) {
     std::atomic<int> runcount{0};
 
     GameState state;
-    state.init_game(BOARD_SIZE, 7.5);
+    state.init_game(BOARD_SIZE, KOMI);
 
     // As a sanity run, try one run with self check.
     // Isn't enough to guarantee correctness but better than nothing,
@@ -107,7 +107,7 @@ float Network::benchmark_time(int centiseconds) {
     get_output(&state, Ensemble::RANDOM_SYMMETRY, -1, false, true, true);
 
     const Time start;
-    for (auto i = 0; i < cpus; i++) {
+    for (auto i = size_t{0}; i < cpus; i++) {
         tg.add_task([this, &runcount, start, centiseconds, state]() {
             while (true) {
                 runcount++;
@@ -134,7 +134,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
     ThreadGroup tg(thread_pool);
     std::atomic<int> runcount{0};
 
-    for (auto i = 0; i < cpus; i++) {
+    for (auto i = size_t{0}; i < cpus; i++) {
         tg.add_task([this, &runcount, iterations, state]() {
             while (runcount < iterations) {
                 runcount++;
@@ -278,7 +278,7 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
         if (!ok || it_line != line.cend()) {
             myprintf("\nFailed to parse weight file. Error on line %d.\n",
                     linecount + 2); //+1 from version line, +1 from 0-indexing
-            return {0,0};
+            return {0, 0};
         }
         if (linecount < plain_conv_wts) {
             if (linecount % 4 == 0) {
@@ -301,7 +301,14 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
                                    begin(m_bn_pol_w1)); break;
                 case  3: std::copy(cbegin(weights), cend(weights),
                                    begin(m_bn_pol_w2)); break;
-                case  4: std::copy(cbegin(weights), cend(weights),
+                case  4: if (weights.size() != OUTPUTS_POLICY
+                                               * NUM_INTERSECTIONS
+                                               * POTENTIAL_MOVES) {
+                             myprintf("The weights file is not for %dx%d boards.\n",
+                                      BOARD_SIZE, BOARD_SIZE);
+                             return {0, 0};
+                         }
+                         std::copy(cbegin(weights), cend(weights),
                                    begin(m_ip_pol_w)); break;
                 case  5: std::copy(cbegin(weights), cend(weights),
                                    begin(m_ip_pol_b)); break;
@@ -401,11 +408,11 @@ void Network::select_precision(int channels) {
         auto fp16_net = std::make_unique<OpenCLScheduler<half_float::half>>();
         if (!fp16_net->needs_autodetect()) {
             try {
-                myprintf("OpenCL: using fp16/half compute support.\n");
+                myprintf("OpenCL: using fp16/half or tensor core compute support.\n");
                 m_forward = init_net(channels, std::move(fp16_net));
                 benchmark_time(1); // a sanity check run
             } catch (...) {
-                myprintf("OpenCL: fp16/half failed despite driver claiming support.\n");
+                myprintf("OpenCL: fp16/half or tensor core failed despite driver claiming support.\n");
                 myprintf("Falling back to single precision\n");
                 m_forward.reset();
                 m_forward = init_net(channels,
@@ -743,6 +750,7 @@ Network::Netresult Network::get_output(
         assert(symmetry >= 0 && symmetry < NUM_SYMMETRIES);
         result = get_output_internal(state, symmetry);
     } else if (ensemble == AVERAGE) {
+        assert(symmetry == -1);
         for (auto sym = 0; sym < NUM_SYMMETRIES; ++sym) {
             auto tmpresult = get_output_internal(state, sym);
             result.winrate +=

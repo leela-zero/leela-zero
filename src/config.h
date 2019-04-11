@@ -53,6 +53,11 @@ static constexpr auto NUM_INTERSECTIONS = BOARD_SIZE * BOARD_SIZE;
 static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
 
 /*
+ * KOMI: Define the default komi to use when training.
+ */
+static constexpr auto KOMI = 7.5f;
+
+/*
  * Features
  *
  * USE_BLAS: Optionally use a basic linear algebra library.
@@ -101,11 +106,6 @@ static constexpr auto POTENTIAL_MOVES = NUM_INTERSECTIONS + 1; // including pass
 
 #endif
 
-/* Maximum supported batch size for OpenCL.
- */
-static constexpr auto MAX_BATCH = 1;
-static_assert(MAX_BATCH == 1, "MAX_BATCH != 1 not implemented");
-
 /*
  * USE_TUNER: Expose some extra command line parameters that allow tuning the
  * search algorithm.
@@ -113,7 +113,7 @@ static_assert(MAX_BATCH == 1, "MAX_BATCH != 1 not implemented");
 //#define USE_TUNER
 
 static constexpr auto PROGRAM_NAME = "Leela Zero";
-static constexpr auto PROGRAM_VERSION = "0.16";
+static constexpr auto PROGRAM_VERSION = "0.17";
 
 /*
  * OpenBLAS limitation: the default configuration on some Linuxes

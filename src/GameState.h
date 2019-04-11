@@ -60,6 +60,7 @@ public:
     bool undo_move();
     bool forward_move();
     const FullBoard& get_past_board(int moves_ago) const;
+    const std::vector<std::shared_ptr<const KoState>>& get_game_history() const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
@@ -68,6 +69,7 @@ public:
     void start_clock(int color);
     void stop_clock(int color);
     const TimeControl& get_timecontrol() const;
+    void set_timecontrol(const TimeControl& timecontrol);
     void set_timecontrol(int maintime, int byotime, int byostones,
                          int byoperiods);
     void adjust_time(int color, int time, int stones);

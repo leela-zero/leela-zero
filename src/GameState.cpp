@@ -159,6 +159,10 @@ const TimeControl& GameState::get_timecontrol() const {
     return m_timecontrol;
 }
 
+void GameState::set_timecontrol(const TimeControl& timecontrol) {
+    m_timecontrol = timecontrol;
+}
+
 void GameState::set_timecontrol(int maintime, int byotime,
                                 int byostones, int byoperiods) {
     TimeControl timecontrol(maintime, byotime,
@@ -311,4 +315,8 @@ const FullBoard& GameState::get_past_board(int moves_ago) const {
     assert(moves_ago >= 0 && (unsigned)moves_ago <= m_movenum);
     assert(m_movenum + 1 <= game_history.size());
     return game_history[m_movenum - moves_ago]->board;
+}
+
+const std::vector<std::shared_ptr<const KoState>>& GameState::get_game_history() const {
+    return game_history;
 }
