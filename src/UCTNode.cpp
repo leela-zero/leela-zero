@@ -300,9 +300,9 @@ void UCTNode::accumulate_eval(float eval) {
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     wait_expanded();
 
-    auto max_lcb = 0.0f;
     auto max_q = 0.0f;
     auto max_var = 0.0f;
+    auto max_psa = 0.0f;
 
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
@@ -312,11 +312,13 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
             parentvisits += child.get_visits();
             if (child.get_visits() > 0) {
                 total_visited_policy += child.get_policy();
-                auto lcb = child.get_eval_lcb(color);
-                if (lcb > max_lcb) {
-                    max_lcb = lcb;
-                    max_q = child.get_eval(color);
-                    max_var = child.get_eval_variance(1.0f) / child.get_visits();
+                max_psa = std::max(max_psa, child.get_policy());
+                if (child.get_visits() > cfg_lcb_pol_min_visits) {
+                    auto q = child.get_eval(color);
+                    if (q > max_q) {
+                        max_q = q;
+                        max_var = child.get_eval_variance(1.0f) / child.get_visits();
+                    }
                 }
             }
         }
@@ -344,13 +346,14 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
             winrate = -1.0f - fpu_reduction;
         } else if (child.get_visits() > 0) {
             winrate = child.get_eval(color);
-            if (child.get_visits() > 10) {
+            if (child.get_visits() > cfg_lcb_pol_min_visits) {
                 auto var = child.get_eval_variance(1.0f) / child.get_visits();
-                auto z = (winrate - max_q) / std::sqrt(max_var + var);
-                lcb_pol = 0.10f * 0.50f * fast_erfc(z);
+                auto z = (max_q - winrate) / std::sqrt(2 * (max_var + var));
+                lcb_pol = cfg_lcb_pol * fast_erfc(z);
             }
         }
-        const auto psa = child.get_policy() + lcb_pol;
+        auto psa = child.get_policy();
+        psa += (max_psa - psa) * lcb_pol;
         const auto denom = 1.0 + child.get_visits();
         const auto puct = cfg_puct * psa * (numerator / denom);
         const auto value = winrate + puct;
