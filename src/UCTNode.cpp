@@ -340,7 +340,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 
         const auto policyratio = psa / (psa + max_policy);
         //cfg_fpu_reduction is now interpreted as parent node stddev
-        const auto fpu_reduction = 2 * cfg_fpu_reduction 
+        const auto fpu_reduction = cfg_fpu_reduction 
                                 * erfinv_approx(1 - 2 * policyratio);                              
         // Estimated eval for unknown nodes = original parent NN eval - reduction
         auto winrate = parent_net_eval - fpu_reduction;
