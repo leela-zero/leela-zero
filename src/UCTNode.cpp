@@ -297,16 +297,6 @@ void UCTNode::accumulate_eval(float eval) {
     atomic_add(m_blackevals, double(eval));
 }
 
-float erfinv_approx(float x)
-{
-    float sign = x > 0 ? 1 : -1;
-    float tmp = (1 - x) * (1 + x);
-    float tt1 = 4.330747 + 0.5 * log(tmp);
-    float tt2 = log(tmp) / 0.147;
-    return sign * sqrt(-tt1 + sqrt(tt1 * tt1 - tt2));
-}
-
-
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     wait_expanded();
 
@@ -340,7 +330,8 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 
         const auto policyratio = psa / (psa + max_policy);
         //cfg_fpu_reduction is now interpreted as parent node stddev
-        const auto fpu_reduction = cfg_fpu_reduction * erfinv_approx(1 - 2 * policyratio);
+        const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction)
+                                    * Utils::erfinv_approx(1 - 2 * policyratio);
         // Estimated eval for unknown nodes = original parent NN eval - reduction
         auto winrate = parent_net_eval - fpu_reduction;
 
