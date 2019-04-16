@@ -301,7 +301,7 @@ float erfinv_approx(float x)
 {
     float sign = x > 0 ? 1 : -1;
     float tmp = (1 - x) * (1 + x);
-    float tt1 = 2 / (M_PI * 0.147) + 0.5 * log(tmp);
+    float tt1 = 4.330747 + 0.5 * log(tmp);
     float tt2 = log(tmp) / 0.147;
     return sign * sqrt(-tt1 + sqrt(tt1 * tt1 - tt2));
 }
