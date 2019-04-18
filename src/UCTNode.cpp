@@ -301,15 +301,15 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     wait_expanded();
 
     // Count parentvisits manually to avoid issues with transpositions.
-    auto total_visited_policy = 0.0f;
     auto parentvisits = size_t{0};
     auto max_policy = 0.0f;
+    auto max_unvisited_policy = 0.0f;
     for (const auto& child : m_children) {
         if (child.valid()) {
             parentvisits += child.get_visits();
             max_policy = std::max(max_policy, child.get_policy());
-            if (child.get_visits() > 0) {
-                total_visited_policy += child.get_policy();
+            if (child.get_visits() == 0) {
+                max_unvisited_policy = std::max(max_unvisited_policy, child.get_policy());
             }
         }
     }
@@ -317,6 +317,10 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     const auto numerator = std::sqrt(double(parentvisits) *
             std::log(cfg_logpuct * double(parentvisits) + cfg_logconst));
 
+    const auto policyratio = max_unvisited_policy / (max_unvisited_policy + max_policy);
+    //cfg_fpu_reduction is now interpreted as parent node stddev
+    const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction)
+                                * Utils::erfinv_approx(1 - 2 * policyratio);
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
@@ -328,10 +332,6 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
         const auto psa = child.get_policy();
 
-        const auto policyratio = psa / (psa + max_policy);
-        //cfg_fpu_reduction is now interpreted as parent node stddev
-        const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction)
-                                    * Utils::erfinv_approx(1 - 2 * policyratio);
         // Estimated eval for unknown nodes = original parent NN eval - reduction
         auto winrate = parent_net_eval - fpu_reduction;
 
