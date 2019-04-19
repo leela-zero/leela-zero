@@ -316,25 +316,21 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 
     const auto numerator = std::sqrt(double(parentvisits) *
             std::log(cfg_logpuct * double(parentvisits) + cfg_logconst));
-
     const auto policyratio = max_unvisited_policy / (max_unvisited_policy + max_policy);
-    //cfg_fpu_reduction is now interpreted as parent node stddev
     const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction)
                                 * Utils::erfinv_approx(1 - 2 * policyratio);
+    // Estimated eval for unknown nodes = original parent NN eval - reduction
+    const auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
-    auto parent_net_eval = get_net_eval(color);
 
     for (auto& child : m_children) {
         if (!child.active()) {
             continue;
         }
-        const auto psa = child.get_policy();
 
-        // Estimated eval for unknown nodes = original parent NN eval - reduction
-        auto winrate = parent_net_eval - fpu_reduction;
-
+        auto winrate = fpu_eval;
         if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
             // Someone else is expanding this node, never select it
             // if we can avoid so, because we'd block on it.
@@ -342,6 +338,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         } else if (child.get_visits() > 0) {
             winrate = child.get_eval(color);
         }
+        const auto psa = child.get_policy();
         const auto denom = 1.0 + child.get_visits();
         const auto puct = cfg_puct * psa * (numerator / denom);
         const auto value = winrate + puct;
