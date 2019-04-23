@@ -74,6 +74,7 @@ public:
 
     // Resize NNCache
     void resize(int size);
+    void clear();
 
     // Try and find an existing entry.
     bool lookup(std::uint64_t hash, Netresult & result);

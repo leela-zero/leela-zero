@@ -399,6 +399,7 @@ const std::string GTP::s_commands[] = {
     "fixed_handicap",
     "last_move",
     "move_history",
+    "clear_cache",
     "place_free_handicap",
     "set_free_handicap",
     "loadsgf",
@@ -917,6 +918,10 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             gtp_printf_raw("%s %s\n", color, coordinate.c_str());
         }
         gtp_printf_raw("\n");
+        return;
+    } else if (command.find("clear_cache") == 0) {
+        s_network->nncache_clear();
+        gtp_printf(id, "");
         return;
     } else if (command.find("place_free_handicap") == 0) {
         std::istringstream cmdstream(command);
