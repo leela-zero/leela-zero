@@ -21,25 +21,25 @@ R"(
 // Main entry point of the kernel. This is the regular full version.
 __kernel __attribute__((reqd_work_group_size(MDIMC, NDIMC, 1)))
 void XgemmBatched(const int kSizeM, const int kSizeN, const int kSizeK,
-                  const __global realM* restrict agm,
-                  const __global realN* restrict bgm,
-                  __global realM* restrict cgm) {
+                  const __global memM* restrict agm,
+                  const __global memN* restrict bgm,
+                  __global memM* restrict cgm) {
   const int batch = get_group_id(2);
 
   // Sets the offsets
   const int a_offset = kSizeM*kSizeK*batch;
   const int b_offset = kSizeK*kSizeN*batch;
   const int c_offset = kSizeM*kSizeN*batch;
-  const __global realM* restrict agm_ = &agm[a_offset / VWM];
-  const __global realN* restrict bgm_ = &bgm[b_offset / VWN];
-  __global realM* restrict cgm_ = &cgm[c_offset / VWM];
+  const __global memM* restrict agm_ = &agm[a_offset / VWM];
+  const __global memN* restrict bgm_ = &bgm[b_offset / VWN];
+  __global memM* restrict cgm_ = &cgm[c_offset / VWM];
 
   // Allocates workgroup-private memory (local memory)
   #if SA == 1
-    __local realM alm[KWG * MWG/VWM];
+    __local memM alm[KWG * MWG/VWM];
   #endif
   #if SB == 1
-    __local realN blm[KWG * NWG/VWN];
+    __local memN blm[KWG * NWG/VWN];
   #endif
 
   // Computes the matrix-multiplication and stores the result in global memory

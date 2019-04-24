@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2018-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 #include <gtest/gtest.h>
 
@@ -37,7 +48,7 @@
 
 using namespace Utils;
 
-void expect_regex(std::string s, std::string re, bool positive=true) {
+void expect_regex(std::string s, std::string re, bool positive = true) {
     auto m = std::regex_search(s, std::regex(re));
     if (positive && !m) {
         FAIL() << "Output:" << std::endl << s
@@ -69,10 +80,12 @@ public:
         // improves reproducibility across platforms.
         Random::get_Rng().seedrandom(cfg_rng_seed);
 
-        NNCache::get_NNCache().set_size_from_playouts(cfg_max_playouts);
-
         cfg_weightsfile = "../src/tests/0k.txt";
-        Network::initialize();
+
+        auto playouts = std::min(cfg_max_playouts, cfg_max_visits);
+        auto network = std::make_unique<Network>();
+        network->initialize(playouts, cfg_weightsfile);
+        GTP::initialize(std::move(network));
     }
     void TearDown() {}
 };
@@ -81,7 +94,7 @@ public:
 
 class LeelaTest: public ::testing::Test {
 public:
-    LeelaTest( ) {
+    LeelaTest() {
         // Reset engine parameters
         GTP::setup_default_parameters();
         cfg_max_playouts = 1;
@@ -101,6 +114,8 @@ public:
         return std::make_pair(testing::internal::GetCapturedStdout(),
                               testing::internal::GetCapturedStderr());
     }
+    void test_analyze_cmd(std::string cmd, bool valid, int who, int interval,
+            int avoidlen, int avoidcolor, int avoiduntil);
 
 private:
     std::unique_ptr<GameState> m_gamestate;
@@ -141,7 +156,7 @@ TEST_F(LeelaTest, Transposition) {
     EXPECT_EQ(ko_hash, maingame.board.get_ko_hash());
 }
 
-TEST_F(LeelaTest, KoSqNotSame) {
+TEST_F(LeelaTest, KoPntNotSame) {
     auto maingame = get_gamestate();
 
     testing::internal::CaptureStdout();
@@ -177,11 +192,11 @@ TEST_F(LeelaTest, KoSqNotSame) {
 
     // Board position is the same
     EXPECT_EQ(ko_hash, maingame.board.get_ko_hash());
-    // But ko (square) is not
+    // But ko (intersection) is not
     EXPECT_NE(hash, maingame.board.get_hash());
 }
 
-TEST_F(LeelaTest, MoveOnOccupiedSq) {
+TEST_F(LeelaTest, MoveOnOccupiedPnt) {
     auto maingame = get_gamestate();
     std::string output;
 
@@ -249,4 +264,123 @@ TEST_F(LeelaTest, TimeControl2) {
     result = gtp_execute("showboard");
     expect_regex(result.second, "Black time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
     expect_regex(result.second, "White time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
+}
+
+void LeelaTest::test_analyze_cmd(std::string cmd, bool valid, int who, int interval,
+        int avoidlen, int avoidcolor, int avoiduntil) {
+    // std::cout << "testing " << cmd << std::endl;
+    // avoid_until checks against the absolute game move number, indexed from 0
+    std::istringstream cmdstream(cmd);
+    auto maingame = get_gamestate();
+    AnalyzeTags result{cmdstream, maingame};
+    EXPECT_EQ(result.m_invalid, !valid);
+    if (!valid) return;
+    EXPECT_EQ(result.m_who, who);
+    EXPECT_EQ(result.m_interval_centis, interval);
+    EXPECT_EQ(result.m_moves_to_avoid.size(), avoidlen);
+    if (avoidlen) {
+        EXPECT_EQ(result.m_moves_to_avoid[0].color, avoidcolor);
+        EXPECT_EQ(result.m_moves_to_avoid[0].until_move, avoiduntil);
+    }
+}
+
+// Test parsing the lz-analyze command line
+TEST_F(LeelaTest, AnalyzeParse) {
+    gtp_execute("clear_board");
+
+    test_analyze_cmd("b 50",
+            true, FastBoard::BLACK, 50, 0, -1, -1);
+    test_analyze_cmd("50 b",
+            true, FastBoard::BLACK, 50, 0, -1, -1);
+    test_analyze_cmd("b interval 50",
+            true, FastBoard::BLACK, 50, 0, -1, -1);
+    test_analyze_cmd("interval 50 b",
+            true, FastBoard::BLACK, 50, 0, -1, -1);
+    test_analyze_cmd("b interval",
+            false, -1, -1, -1, -1, -1);
+    test_analyze_cmd("42 w",
+            true, FastBoard::WHITE, 42, 0, -1, -1);
+    test_analyze_cmd("1234",
+            true, FastBoard::BLACK, 1234, 0, -1, -1);
+    gtp_execute("play b q16");
+    test_analyze_cmd("1234",
+            true, FastBoard::WHITE, 1234, 0, -1, -1);
+    test_analyze_cmd("b 100 avoid b k10 1",
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 1);
+    test_analyze_cmd("b 100 avoid b k10 1 avoid b a1 1",
+            true, FastBoard::BLACK, 100, 2, FastBoard::BLACK, 1);
+    test_analyze_cmd("b 100 avoid w k10 8",
+            true, FastBoard::BLACK, 100, 1, FastBoard::WHITE, 8);
+    gtp_execute("play w q4");
+    test_analyze_cmd("b 100 avoid b k10 8",
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 9);
+    test_analyze_cmd("100 b avoid b k10 8",
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 9);
+    test_analyze_cmd("b avoid b k10 8 100",
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 9);
+    test_analyze_cmd("avoid b k10 8 100 b",
+            true, FastBoard::BLACK, 100, 1, FastBoard::BLACK, 9);
+    test_analyze_cmd("avoid b k10 8 100 w",
+            true, FastBoard::WHITE, 100, 1, FastBoard::BLACK, 9);
+    test_analyze_cmd("avoid b z10 8 100 w",
+            false, -1, -1, -1, -1, -1);
+    test_analyze_cmd("avoid b k10 8 100 w bogus",
+            false, -1, -1, -1, -1, -1);
+    test_analyze_cmd("avoid b k10 8 100 w avoid b pass 17",
+            true, FastBoard::WHITE, 100, 2, FastBoard::BLACK, 9);
+    test_analyze_cmd("avoid b k10 8 w avoid b pass 17",
+            true, FastBoard::WHITE, 0, 2, FastBoard::BLACK, 9);
+
+    gtp_execute("clear_board");
+    test_analyze_cmd("b avoid b a1 10 allow b t1 1",
+            false, -1, -1, -1, -1, -1);
+    test_analyze_cmd("b avoid w a1 10 allow b t1 1",
+            true, FastBoard::BLACK, 0, 1, FastBoard::WHITE, 9);
+    test_analyze_cmd("b avoid b pass 10 allow b t1 1",
+            true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 9);
+    test_analyze_cmd("b avoid b resign 10 allow b t1 1",
+            true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 9);
+    test_analyze_cmd("b avoid w c3,c4,d3,d4 2 avoid b pass 50",
+            true, FastBoard::BLACK, 0, 5, FastBoard::WHITE, 1);
+    test_analyze_cmd("b avoid w c3,c4,d3,d4, 2 avoid b pass 50",
+            false, -1, -1, -1, -1, -1);
+
+    gtp_execute("clear_board");
+    test_analyze_cmd("b avoid b q16 1",
+            true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 0);
+    test_analyze_cmd("b avoid b : 1",
+            false, -1, -1, -1, -1, -1);
+    test_analyze_cmd("b avoid b d4: 1",
+            false, -1, -1, -1, -1, -1);
+    test_analyze_cmd("b avoid b d14: 1",
+            false, -1, -1, -1, -1, -1);
+    test_analyze_cmd("b avoid b :e3 1",
+            false, -1, -1, -1, -1, -1);
+    test_analyze_cmd("b avoid b d:e3 1",
+            false, -1, -1, -1, -1, -1);
+    test_analyze_cmd("b avoid b q16:q16 20",
+            true, FastBoard::BLACK, 0, 1, FastBoard::BLACK, 19);
+    test_analyze_cmd("b avoid b q16:t19 1",
+            true, FastBoard::BLACK, 0, 16, FastBoard::BLACK, 0);
+    test_analyze_cmd("b avoid b t19:q16 1",
+            true, FastBoard::BLACK, 0, 16, FastBoard::BLACK, 0);
+    test_analyze_cmd("b avoid b t16:q19 1",
+            true, FastBoard::BLACK, 0, 16, FastBoard::BLACK, 0);
+    test_analyze_cmd("b avoid b q19:t16 1",
+            true, FastBoard::BLACK, 0, 16, FastBoard::BLACK, 0);
+    test_analyze_cmd("b avoid b a1:t19 1",
+            true, FastBoard::BLACK, 0, 361, FastBoard::BLACK, 0);
+    test_analyze_cmd("b avoid b a1:t19 1 avoid w pass 1 avoid w resign 1",
+            true, FastBoard::BLACK, 0, 363, FastBoard::BLACK, 0);
+    test_analyze_cmd("b avoid b a1:t19,pass,resign 1",
+            true, FastBoard::BLACK, 0, 363, FastBoard::BLACK, 0);
+}
+
+TEST_F(LeelaTest, AnalyzeParseMinmoves) {
+    gtp_execute("clear_board");
+    gtp_execute("lz-setoption name pondering value false");
+    gtp_execute("lz-setoption name playouts value 1");
+    auto result = gtp_execute("lz-analyze b interval 1 minmoves 5");
+    // Expect to see at least 5 move priors
+    expect_regex(result.first, "info.*?(prior\\s+\\d+\\s+.*?){5,}.*");
 }

@@ -1,6 +1,6 @@
 /*
     This file is part of Leela Zero.
-    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
+    Copyright (C) 2017-2019 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
+
+    Additional permission under GNU GPL version 3 section 7
+
+    If you modify this Program, or any covered work, by linking or
+    combining it with NVIDIA Corporation's libraries from the
+    NVIDIA CUDA Toolkit and/or the NVIDIA CUDA Deep Neural
+    Network library and/or the NVIDIA TensorRT inference library
+    (or a modified version of those libraries), containing parts covered
+    by the terms of the respective license agreement, the licensors of
+    this Program grant you additional permission to convey the resulting
+    work.
 */
 
 #ifndef GAMESTATE_H_INCLUDED
@@ -28,6 +39,8 @@
 #include "KoState.h"
 #include "TimeControl.h"
 
+class Network;
+
 class GameState : public KoState {
 public:
     explicit GameState() = default;
@@ -40,25 +53,25 @@ public:
     void reset_game();
     bool set_fixed_handicap(int stones);
     int set_fixed_handicap_2(int stones);
-    void place_free_handicap(int stones);
-    void anchor_game_history(void);
+    void place_free_handicap(int stones, Network & network);
+    void anchor_game_history();
 
-    void rewind(void); /* undo infinite */
-    bool undo_move(void);
-    bool forward_move(void);
+    void rewind(); /* undo infinite */
+    bool undo_move();
+    bool forward_move();
     const FullBoard& get_past_board(int moves_ago) const;
+    const std::vector<std::shared_ptr<const KoState>>& get_game_history() const;
 
     void play_move(int color, int vertex);
     void play_move(int vertex);
-    bool play_textmove(const std::string& color,
-                       const std::string& vertex);
+    bool play_textmove(std::string color, const std::string& vertex);
 
     void start_clock(int color);
     void stop_clock(int color);
-    TimeControl& get_timecontrol();
+    const TimeControl& get_timecontrol() const;
+    void set_timecontrol(const TimeControl& timecontrol);
     void set_timecontrol(int maintime, int byotime, int byostones,
                          int byoperiods);
-    void set_timecontrol(TimeControl tmc);
     void adjust_time(int color, int time, int stones);
 
     void display_state();

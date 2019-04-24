@@ -30,7 +30,7 @@
 #include <stdexcept>
 #include "Worker.h"
 
-constexpr int AUTOGTP_VERSION = 15;
+constexpr int AUTOGTP_VERSION = 18;
 
 class Management : public QObject {
     Q_OBJECT
@@ -82,6 +82,7 @@ private:
     int m_threadsLeft;
     bool m_delNetworks;
     QLockFile *m_lockFile;
+    QString m_leelaversion;
 
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);
@@ -89,11 +90,13 @@ private:
     QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
     QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
     QString getOptionsString(const QJsonObject &opt, const QString &rnd);
+    QString getGtpCommandsString(const QJsonValue &gtpCommands);
     void sendAllGames();
     void checkStoredGames();
     QFileInfo getNextStored();
-    bool networkExists(const QString &name);
-    void fetchNetwork(const QString &net);
+    bool networkExists(const QString &name, const QString &gzipHash);
+    void fetchNetwork(const QString &net, const QString &hash);
+    QString fetchGameData(const QString &name, const QString &extension);
     void printTimingInfo(float duration);
     void runTuningProcess(const QString &tuneCmdLine);
     void gzipFile(const QString &fileName);

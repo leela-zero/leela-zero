@@ -49,11 +49,11 @@ int main(int argc, char *argv[]) {
 
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
-              "Play 'gamesNum' games on one GPU at the same time.",
+              "Play 'gamesNum' games on one device (GPU/CPU) at the same time.",
               "num", "1");
     QCommandLineOption gpusOption(
         {"u", "gpus"},
-              "Index of the GPU to use for multiple GPUs support.",
+              "Index of the device(s) to use for multiple devices support.",
               "num");
     QCommandLineOption keepSgfOption(
         {"k", "keepSgf" },
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
         gpusNum = 1;
     }
     int maxNum = -1;
-    if(parser.isSet(maxOption)) {
+    if (parser.isSet(maxOption)) {
         maxNum = parser.value(maxOption).toInt();
         if (maxNum == 0) {
             maxNum = 1;
@@ -110,16 +110,16 @@ int main(int argc, char *argv[]) {
         }
         maxNum -= (gpusNum * gamesNum);
     }
-    if(parser.isSet(singleOption)) {
+    if (parser.isSet(singleOption)) {
         gamesNum = 1;
         gpusNum = 1;
-        maxNum = 0;      
+        maxNum = 0;
     }
 
     // Map streams
     QTextStream cerr(stderr, QIODevice::WriteOnly);
     cerr << "AutoGTP v" << AUTOGTP_VERSION << endl;
-    cerr << "Using " << gamesNum << " thread(s) for GPU(s)." << endl;
+    cerr << "Using " << gamesNum << " game thread(s) per device." << endl;
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
             cerr << "Couldn't create output directory for self-play SGF files!"
@@ -146,16 +146,16 @@ int main(int argc, char *argv[]) {
     QObject::connect(&app, &QCoreApplication::aboutToQuit, boss, &Management::storeGames);
     QTimer *timer = new QTimer();
     boss->giveAssignments();
-    if(parser.isSet(timeoutOption)) {
+    if (parser.isSet(timeoutOption)) {
         QObject::connect(timer, &QTimer::timeout, &app, &QCoreApplication::quit);
         timer->start(parser.value(timeoutOption).toInt() * 60000);
-    } else {
-        if (parser.isSet(singleOption) || parser.isSet(maxOption)) {
-            QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
-        } else {
-            cons = new Console();
-            QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
-        }
+    }
+    if (parser.isSet(singleOption) || parser.isSet(maxOption)) {
+        QObject::connect(boss, &Management::sendQuit, &app, &QCoreApplication::quit);
+    }
+    if (true) {
+        cons = new Console();
+        QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
     }
     return app.exec();
 }

@@ -28,7 +28,7 @@
 class Management;
 
 class Worker : public QThread {
-   Q_OBJECT
+    Q_OBJECT
 public:
     enum {
         RUNNING = 0,

@@ -447,6 +447,8 @@
 # undef CL_HPP_TARGET_OPENCL_VERSION
 # define CL_HPP_TARGET_OPENCL_VERSION 200
 #endif
+/* Forward target OpenCL version to C headers */
+#define CL_TARGET_OPENCL_VERSION CL_HPP_TARGET_OPENCL_VERSION
 
 #if !defined(CL_HPP_MINIMUM_OPENCL_VERSION)
 # define CL_HPP_MINIMUM_OPENCL_VERSION 200
@@ -1139,6 +1141,8 @@ inline cl_int getInfoHelper(Func f, cl_uint name, T* param, int, typename T::cl_
     F(cl_device_info, CL_DEVICE_MEM_BASE_ADDR_ALIGN, cl_uint) \
     F(cl_device_info, CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE, cl_uint) \
     F(cl_device_info, CL_DEVICE_SINGLE_FP_CONFIG, cl_device_fp_config) \
+    F(cl_device_info, CL_DEVICE_DOUBLE_FP_CONFIG, cl_device_fp_config) \
+    F(cl_device_info, CL_DEVICE_HALF_FP_CONFIG, cl_device_fp_config) \
     F(cl_device_info, CL_DEVICE_GLOBAL_MEM_CACHE_TYPE, cl_device_mem_cache_type) \
     F(cl_device_info, CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE, cl_uint)\
     F(cl_device_info, CL_DEVICE_GLOBAL_MEM_CACHE_SIZE, cl_ulong) \
@@ -1235,8 +1239,6 @@ inline cl_int getInfoHelper(Func f, cl_uint name, T* param, int, typename T::cl_
     F(cl_device_info, CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT, cl_uint) \
     F(cl_device_info, CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE, cl_uint) \
     F(cl_device_info, CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF, cl_uint) \
-    F(cl_device_info, CL_DEVICE_DOUBLE_FP_CONFIG, cl_device_fp_config) \
-    F(cl_device_info, CL_DEVICE_HALF_FP_CONFIG, cl_device_fp_config) \
     F(cl_device_info, CL_DEVICE_OPENCL_C_VERSION, string) \
     \
     F(cl_mem_info, CL_MEM_ASSOCIATED_MEMOBJECT, cl::Memory) \
@@ -2742,7 +2744,9 @@ public:
                     error = platforms[i].getDevices(type, &devices);
 
 #if defined(CL_HPP_ENABLE_EXCEPTIONS)
-                } catch (Error) {}
+                } catch (cl::Error& e) {
+                    error = e.err();
+                }
     // Catch if exceptions are enabled as we don't want to exit if first platform has no devices of type
     // We do error checking next anyway, and can throw there if needed
 #endif
@@ -5925,26 +5929,27 @@ public:
             );
     }
     
-    template<int index, int ArrayLength, class D, typename T0, typename... Ts>
-    void setSVMPointersHelper(std::array<void*, ArrayLength> &pointerList, const pointer<T0, D> &t0, Ts... ts)
+    template<int index, int ArrayLength, class D, typename T0, typename T1, typename... Ts>
+    void setSVMPointersHelper(std::array<void*, ArrayLength> &pointerList, const pointer<T0, D> &t0, const pointer<T1, D> &t1, Ts & ... ts)
     {
         pointerList[index] = static_cast<void*>(t0.get());
-        setSVMPointersHelper<index + 1, Ts...>(ts...);
+        setSVMPointersHelper<index + 1, ArrayLength>(pointerList, t1, ts...);
     }
 
-    template<int index, int ArrayLength, typename T0, typename... Ts>
+    template<int index, int ArrayLength, typename T0, typename T1, typename... Ts>
     typename std::enable_if<std::is_pointer<T0>::value, void>::type
-    setSVMPointersHelper(std::array<void*, ArrayLength> &pointerList, T0 t0, Ts... ts)
+    setSVMPointersHelper(std::array<void*, ArrayLength> &pointerList, T0 t0, T1 t1, Ts... ts)
     {
         pointerList[index] = static_cast<void*>(t0);
-        setSVMPointersHelper<index + 1, Ts...>(ts...);
+        setSVMPointersHelper<index + 1, ArrayLength>(pointerList, t1, ts...);
     }
-    
+
     template<int index, int ArrayLength, typename T0, class D>
     void setSVMPointersHelper(std::array<void*, ArrayLength> &pointerList, const pointer<T0, D> &t0)
     {
         pointerList[index] = static_cast<void*>(t0.get());
     }
+
 
     template<int index, int ArrayLength, typename T0>
     typename std::enable_if<std::is_pointer<T0>::value, void>::type
@@ -5954,7 +5959,7 @@ public:
     }
 
     template<typename T0, typename... Ts>
-    cl_int setSVMPointers(const T0 &t0, Ts... ts)
+    cl_int setSVMPointers(const T0 &t0, Ts & ... ts)
     {
         std::array<void*, 1 + sizeof...(Ts)> pointerList;
 
@@ -7206,7 +7211,7 @@ public:
 
         return err;
     }
-
+#if CL_HPP_TARGET_OPENCL_VERSION >= 110
     cl_int enqueueReadBufferRect(
         const Buffer& buffer,
         cl_bool blocking,
@@ -7321,7 +7326,7 @@ public:
 
         return err;
     }
-
+#endif // CL_HPP_TARGET_OPENCL_VERSION >= 110
 #if CL_HPP_TARGET_OPENCL_VERSION >= 120
     /**
      * Enqueue a command to fill a buffer object with a pattern
@@ -9531,7 +9536,7 @@ public:
     }
 
     template<typename T0, typename... T1s>
-    cl_int setSVMPointers(const T0 &t0, T1s... ts)
+    cl_int setSVMPointers(const T0 &t0, T1s &... ts)
     {
         return kernel_.setSVMPointers(t0, ts...);
     }
