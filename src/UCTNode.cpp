@@ -302,24 +302,6 @@ std::pair<float, float> UCTNode::get_beta_param(int tomove) const {
     }
 }
 
-std::pair<float, float> UCTNode::get_beta_param(int tomove) const {
-    auto virtual_loss = int{m_virtual_loss};
-    auto visits = get_visits() + virtual_loss;
-    assert(visits > 0);
-    auto blackeval = get_blackevals();
-    if (tomove == FastBoard::WHITE) {
-        blackeval += static_cast<double>(virtual_loss);
-    }
-    auto success = blackeval;
-    auto failure = visits - blackeval;
-    assert(failure >= 0.0f);
-    if (tomove == FastBoard::BLACK) {
-        return {success, failure};
-    } else {
-        return {failure, success};
-    }
-}
-
 float UCTNode::get_net_eval(int tomove) const {
     if (tomove == FastBoard::WHITE) {
         return 1.0f - m_net_eval;

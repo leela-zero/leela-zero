@@ -163,12 +163,6 @@ std::pair<float, float> UCTNodePointer::get_beta_param(int tomove) const {
     return read_ptr(v)->get_beta_param(tomove);
 }
 
-std::pair<float, float> UCTNodePointer::get_beta_param(int tomove) const {
-    // this can only be called if it is an inflated pointer
-    assert(is_inflated());
-    return read_ptr()->get_beta_param(tomove);
-}
-
 int UCTNodePointer::get_move() const {
     auto v = m_data.load();
     if (is_inflated(v)) return read_ptr(v)->get_move();
