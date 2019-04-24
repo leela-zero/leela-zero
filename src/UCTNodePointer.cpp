@@ -138,8 +138,8 @@ float UCTNodePointer::get_policy() const {
 }
 
 float UCTNodePointer::get_eval_lcb(int color) const {
-    assert(is_inflated());
     auto v = m_data.load();
+    assert(is_inflated(v));
     return read_ptr(v)->get_eval_lcb(color);
 }
 
@@ -159,7 +159,7 @@ float UCTNodePointer::get_eval(int tomove) const {
 std::pair<float, float> UCTNodePointer::get_beta_param(int tomove) const {
     // this can only be called if it is an inflated pointer
     auto v = m_data.load();
-    assert(is_inflated());
+    assert(is_inflated(v));
     return read_ptr(v)->get_beta_param(tomove);
 }
 
