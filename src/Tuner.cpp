@@ -401,9 +401,9 @@ template <typename net_t>
 std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
                               const int batch_size, const int runs) {
     // This needs to be at minimum the maximum (MNK/WG) values above.
-    auto m_max = std::max(64, m);
+    auto m_max = std::max(256, m);
     auto n_max = std::max(64, n);
-    auto k_max = std::max(32, k);
+    auto k_max = std::max(64, k);
 
     auto at_size = batch_size
         * next_power_of_two(k_max) * next_power_of_two(m_max);
