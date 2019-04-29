@@ -318,13 +318,13 @@ This requires a working installation of TensorFlow 1.4 or later:
     src/leelaz -w weights.txt
     dump_supervised bigsgf.sgf train.out
     exit
-    training/tf/parse.py train.out
+    training/tf/parse.py 6 128 train.out
 
-This will run and regularly dump Leela Zero weight files to disk, as
-well as snapshots of the learning state numbered by the batch number.
-If interrupted, training can be resumed with:
+This will run and regularly dump Leela Zero weight files (of networks with 6
+blocks and 128 filters) to disk, as well as snapshots of the learning state
+numbered by the batch number. If interrupted, training can be resumed with:
 
-    training/tf/parse.py train.out leelaz-model-batchnumber
+    training/tf/parse.py 6 128 train.out leelaz-model-batchnumber
 
 # Todo
 

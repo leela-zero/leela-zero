@@ -107,10 +107,18 @@ def split_chunks(chunks, test_ratio):
 def main():
     parser = argparse.ArgumentParser(
         description='Train network from game data.')
+    parser.add_argument("blockspref",
+        help="Number of blocks", nargs='?', type=int)
+    parser.add_argument("filterspref",
+        help="Number of filters", nargs='?', type=int)
     parser.add_argument("trainpref",
         help='Training file prefix', nargs='?', type=str)
     parser.add_argument("restorepref",
         help='Training snapshot prefix', nargs='?', type=str)
+    parser.add_argument("--blocks", '-b',
+        help="Number of blocks", type=int)
+    parser.add_argument("--filters", '-f',
+        help="Number of filters", type=int)
     parser.add_argument("--train", '-t',
         help="Training file prefix", type=str)
     parser.add_argument("--test", help="Test file prefix", type=str)
@@ -120,14 +128,16 @@ def main():
         help="Log file prefix (for tensorboard) (default: %(default)s)")
     parser.add_argument("--sample", default=DOWN_SAMPLE, type=int,
         help="Rate of data down-sampling to use (default: %(default)d)")
-    parser.add_argument("--blocks", '-b', default=6, type=int,
-        help="Number of blocks (default: %(default)d)")
-    parser.add_argument("--filters", '-f', default=128, type=int,
-        help="Number of filters (default: %(default)d)")
     args = parser.parse_args()
 
+    blocks = args.blocks or args.blockspref
+    filters = args.filters or args.filterspref
     train_data_prefix = args.train or args.trainpref
     restore_prefix = args.restore or args.restorepref
+
+    if not blocks or not filters:
+        print("Must supply number of blocks and filters")
+        return
 
     training = get_chunks(train_data_prefix)
     if not args.test:
@@ -154,7 +164,7 @@ def main():
                               sample=args.sample,
                               batch_size=RAM_BATCH_SIZE).parse()
 
-    tfprocess = TFProcess(args.blocks, args.filters)
+    tfprocess = TFProcess(blocks, filters)
     tfprocess.init(RAM_BATCH_SIZE,
                    logbase=args.logbase,
                    macrobatch=BATCH_SIZE // RAM_BATCH_SIZE)
