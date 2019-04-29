@@ -117,9 +117,13 @@ def main():
     parser.add_argument("--restore", type=str,
         help="Prefix of tensorflow snapshot to restore from")
     parser.add_argument("--logbase", default='leelalogs', type=str,
-        help="Log file prefix (for tensorboard)")
+        help="Log file prefix (for tensorboard) (default: %(default)s)")
     parser.add_argument("--sample", default=DOWN_SAMPLE, type=int,
-        help="Rate of data down-sampling to use")
+        help="Rate of data down-sampling to use (default: %(default)d)")
+    parser.add_argument("--blocks", '-b', default=6, type=int,
+        help="Number of blocks (default: %(default)d)")
+    parser.add_argument("--filters", '-f', default=128, type=int,
+        help="Number of filters (default: %(default)d)")
     args = parser.parse_args()
 
     train_data_prefix = args.train or args.trainpref
@@ -150,7 +154,7 @@ def main():
                               sample=args.sample,
                               batch_size=RAM_BATCH_SIZE).parse()
 
-    tfprocess = TFProcess()
+    tfprocess = TFProcess(args.blocks, args.filters)
     tfprocess.init(RAM_BATCH_SIZE,
                    logbase=args.logbase,
                    macrobatch=BATCH_SIZE // RAM_BATCH_SIZE)
