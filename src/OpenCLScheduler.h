@@ -115,6 +115,13 @@ private:
                        unsigned int channels,
                        unsigned int outputs,
                        const std::vector<float>& weights);
+
+    void push_se(unsigned int channels,
+                 unsigned int outputs,
+                 const std::vector<float>& se_fc1_w,
+                 const std::vector<float>& se_fc1_b,
+                 const std::vector<float>& se_fc2_w,
+                 const std::vector<float>& se_fc2_b);
 };
 
 #endif

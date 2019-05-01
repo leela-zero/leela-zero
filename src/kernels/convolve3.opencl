@@ -223,7 +223,8 @@ void out_transform_fused_bn(__global const net_t * restrict M,
                                      const int batch_size,
                                      __global const net_t * restrict residual,
                                      __constant const net_t * restrict means,
-                                     __constant const net_t * restrict stddivs) {
+                                     __constant const net_t * restrict stddivs,
+                                     const int relu) {
 
     const int W = BOARD_SIZE;
     const int H = BOARD_SIZE;
@@ -310,7 +311,9 @@ void out_transform_fused_bn(__global const net_t * restrict M,
             if (residual) {
                 acc += vload_net_t(out_idx, residual);
             }
-            acc = acc > ZERO ? acc : ZERO;
+            if (relu) {
+                acc = acc > ZERO ? acc : ZERO;
+            }
 
             vstore_net_t(acc, out_idx, Y);
         }

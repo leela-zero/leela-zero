@@ -57,6 +57,7 @@ private:
     bool is_input_convolution{false};
     bool is_residual_block{false};
     bool is_convolve1{false};
+    bool is_se_unit{false};
     std::vector<cl::Buffer> weights;
 };
 
@@ -70,12 +71,16 @@ private:
     cl::Kernel m_merge_kernel;
     cl::Kernel m_in_transform_kernel;
     cl::Kernel m_sgemm_kernel;
+    cl::Kernel m_sgemv_kernel;
     cl::Kernel m_out_transform_bn_kernel;
     cl::Kernel m_out_transform_bn_in_kernel;
+    cl::Kernel m_global_avg_pooling_kernel;
+    cl::Kernel m_apply_se_kernel;
     cl::Buffer m_inBuffer;
     cl::Buffer m_inBuffer2;
     cl::Buffer m_VBuffer;
     cl::Buffer m_MBuffer;
+    cl::Buffer m_pool_buffer;
     cl::Buffer m_pinnedOutBuffer_pol;
     cl::Buffer m_pinnedOutBuffer_val;
     bool m_buffers_allocated{false};
@@ -127,6 +132,22 @@ public:
         m_layers[layer].channels = channels;
     }
 
+    void push_se(unsigned int channels,
+                 unsigned int outputs,
+                 const std::vector<net_t>& se_fc1_w,
+                 const std::vector<net_t>& se_fc1_b,
+                 const std::vector<net_t>& se_fc2_w,
+                 const std::vector<net_t>& se_fc2_b) {
+        size_t layer = get_layer_count();
+        push_weights(layer, se_fc1_w);
+        push_weights(layer, se_fc1_b);
+        push_weights(layer, se_fc2_w);
+        push_weights(layer, se_fc2_b);
+        m_layers[layer].is_se_unit = true;
+        m_layers[layer].outputs = outputs;
+        m_layers[layer].channels = channels;
+    }
+
     void push_convolve(unsigned int filter_size,
                        unsigned int channels,
                        unsigned int outputs,
@@ -169,6 +190,26 @@ private:
                     weight_slice_t bn_weights,
                     bool skip_in_transform,
                     bool fuse_in_transform, bool store_inout,
+                    bool relu,
+                    int batch_size);
+
+    void squeeze_excitation(OpenCLContext & opencl_context,
+                    int channels,
+                    int fc_outputs,
+                    cl::Buffer& bufferIn,
+                    cl::Buffer& bufferTemp1,
+                    cl::Buffer& bufferTemp2,
+                    weight_slice_t weights,
+                    cl::Buffer& bufferResidual,
+                    int batch_size);
+
+    void innerproduct(OpenCLContext & opencl_context,
+                    const cl::Buffer& input,
+                    const cl::Buffer& weights,
+                    const cl::Buffer& biases,
+                    cl::Buffer& output,
+                    int inputs, int outputs,
+                    bool relu,
                     int batch_size);
 
     void convolve1(OpenCLContext & opencl_context,

@@ -107,10 +107,11 @@ public:
     void nncache_clear();
 
 private:
-    std::pair<int, int> load_v1_network(std::istream& wtfile);
+    std::pair<int, int> load_network(std::istream& wtfile, int version);
     std::pair<int, int> load_network_file(const std::string& filename);
 
     static std::vector<float> winograd_transform_f(const std::vector<float>& f,
+                                                   const std::vector<float>& gammas,
                                                    const int outputs, const int channels);
     static std::vector<float> zeropad_U(const std::vector<float>& U,
                                         const int outputs, const int channels,

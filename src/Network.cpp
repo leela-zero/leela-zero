@@ -159,6 +159,7 @@ void process_bn_var(container& weights) {
 }
 
 std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
+                                                 const std::vector<float>& gammas,
                                                  const int outputs,
                                                  const int channels) {
     // F(4x4, 3x3) Winograd filter transformation
@@ -193,7 +194,7 @@ std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
                     for (auto j = 0; j < 3; j++) {
                         auto acc = 0.0f;
                         for (auto k = 0; k < 3; k++) {
-                            acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j];
+                            acc += G[i*3 + k] * f[o*channels*9 + c*9 + k*3 + j] * gammas[o];
                         }
                         temp[i*3 + j] = acc;
                     }
@@ -224,15 +225,10 @@ std::vector<float> Network::winograd_transform_f(const std::vector<float>& f,
     return U;
 }
 
-std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
+std::pair<int, int> Network::load_network(std::istream& wtfile, int version) {
     // Count size of the network
     myprintf("Detecting residual layers...");
-    // We are version 1 or 2
-    if (m_value_head_not_stm) {
-        myprintf("v%d...", 2);
-    } else {
-        myprintf("v%d...", 1);
-    }
+    myprintf("v%d...", version);
     // First line was the version number
     auto linecount = size_t{1};
     auto channels = 0;
@@ -250,14 +246,21 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
         }
         linecount++;
     }
-    // 1 format id, 1 input layer (4 x weights), 14 ending weights,
-    // the rest are residuals, every residual has 8 x weight lines
-    auto residual_blocks = linecount - (1 + 4 + 14);
-    if (residual_blocks % 8 != 0) {
+    auto input_weights = size_t{4};
+    auto residual_block_weights = size_t{8};
+    auto ending_weights = size_t{14};
+    if (version == 3) {
+        input_weights = 5;
+        residual_block_weights = 14;
+    }
+    // 1 format id, 1 input layer, output heads.
+    // The rest are residuals.
+    auto residual_blocks = linecount - (1 + input_weights + ending_weights);
+    if (residual_blocks % residual_block_weights != 0) {
         myprintf("\nInconsistent number of weights in the file.\n");
         return {0, 0};
     }
-    residual_blocks /= 8;
+    residual_blocks /= residual_block_weights;
     myprintf("%d blocks.\n", residual_blocks);
 
     // Re-read file and process
@@ -267,8 +270,7 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
     // Get the file format id out of the way
     std::getline(wtfile, line);
 
-    const auto plain_conv_layers = 1 + (residual_blocks * 2);
-    const auto plain_conv_wts = plain_conv_layers * 4;
+    const auto plain_conv_wts = input_weights + residual_blocks * residual_block_weights;
     linecount = 0;
     while (std::getline(wtfile, line)) {
         std::vector<float> weights;
@@ -280,18 +282,98 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
                     linecount + 2); //+1 from version line, +1 from 0-indexing
             return {0, 0};
         }
-        if (linecount < plain_conv_wts) {
-            if (linecount % 4 == 0) {
+        if (linecount < input_weights && version == 3) {
+            // Need to hande input separately for version 3.
+            if (linecount == 0) {
                 m_fwd_weights->m_conv_weights.emplace_back(weights);
-            } else if (linecount % 4 == 1) {
-                // Redundant in our model, but they encode the
-                // number of outputs so we have to read them in.
-                m_fwd_weights->m_conv_biases.emplace_back(weights);
-            } else if (linecount % 4 == 2) {
+            } else if (linecount % input_weights == 1) {
+                m_fwd_weights->m_batchnorm_gammas.emplace_back(weights);
+            } else if (linecount == 2) {
+                m_fwd_weights->m_batchnorm_betas.emplace_back(weights);
+                // Zero biases
+                std::vector<float> biases(weights.size(), 0.0f);
+                m_fwd_weights->m_conv_biases.emplace_back(biases);
+            } else if (linecount == 3) {
                 m_fwd_weights->m_batchnorm_means.emplace_back(weights);
-            } else if (linecount % 4 == 3) {
+            } else if (linecount == 4) {
                 process_bn_var(weights);
                 m_fwd_weights->m_batchnorm_stddevs.emplace_back(weights);
+            }
+        } else if (linecount < plain_conv_wts) {
+            if (version == 1) {
+                if (linecount % 4 == 0) {
+                    m_fwd_weights->m_conv_weights.emplace_back(weights);
+                } else if (linecount % 4 == 1) {
+                    m_fwd_weights->m_conv_biases.emplace_back(weights);
+                } else if (linecount % 4 == 2) {
+                    m_fwd_weights->m_batchnorm_means.emplace_back(weights);
+                } else if (linecount % 4 == 3) {
+                    process_bn_var(weights);
+                    m_fwd_weights->m_batchnorm_stddevs.emplace_back(weights);
+                    // Add unit gammas.
+                    std::vector<float> gammas(weights.size(), 1.0f);
+                    m_fwd_weights->m_batchnorm_gammas.emplace_back(gammas);
+                    // Zero betas
+                    std::vector<float> betas(weights.size(), 0.0f);
+                    m_fwd_weights->m_batchnorm_betas.emplace_back(betas);
+                }
+            }
+            if (version == 3) {
+                switch ((linecount - input_weights) % residual_block_weights) {
+                    case 0:
+                        m_fwd_weights->m_conv_weights.emplace_back(weights); break;
+                    case 1:
+                        m_fwd_weights->m_batchnorm_gammas.emplace_back(weights);
+                        break;
+                    case 2:
+                        {
+                            m_fwd_weights->m_batchnorm_betas.emplace_back(weights);
+                            // Zero biases
+                            std::vector<float> biases(weights.size(), 0.0f);
+                            m_fwd_weights->m_conv_biases.emplace_back(biases);
+                            break;
+                        }
+                    case 3:
+                        m_fwd_weights->m_batchnorm_means.emplace_back(weights);
+                        break;
+                    case 4:
+                        process_bn_var(weights);
+                        m_fwd_weights->m_batchnorm_stddevs.emplace_back(weights);
+                        break;
+                    case 5:
+                        m_fwd_weights->m_conv_weights.emplace_back(weights);
+                        break;
+                    case 6:
+                        m_fwd_weights->m_batchnorm_gammas.emplace_back(weights);
+                        break;
+                    case 7:
+                        {
+                            m_fwd_weights->m_batchnorm_betas.emplace_back(weights);
+                            // Zero biases
+                            std::vector<float> biases(weights.size(), 0.0f);
+                            m_fwd_weights->m_conv_biases.emplace_back(biases);
+                            break;
+                        }
+                    case 8:
+                        m_fwd_weights->m_batchnorm_means.emplace_back(weights);
+                        break;
+                    case 9:
+                        process_bn_var(weights);
+                        m_fwd_weights->m_batchnorm_stddevs.emplace_back(weights);
+                        break;
+                    case 10:
+                        m_fwd_weights->m_se_fc1_w.emplace_back(weights);
+                        break;
+                    case 11:
+                        m_fwd_weights->m_se_fc1_b.emplace_back(weights);
+                        break;
+                    case 12:
+                        m_fwd_weights->m_se_fc2_w.emplace_back(weights);
+                        break;
+                    case 13:
+                        m_fwd_weights->m_se_fc2_b.emplace_back(weights);
+                        break;
+                    }
             }
         } else {
             switch (linecount - plain_conv_wts) {
@@ -368,19 +450,20 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
         auto iss = std::stringstream{line};
         // First line is the file format version id
         iss >> format_version;
-        if (iss.fail() || (format_version != 1 && format_version != 2)) {
+        if (iss.fail() || (format_version < 1 || format_version > 4)) {
             myprintf("Weights file is the wrong version.\n");
             return {0, 0};
         } else {
-            // Version 2 networks are identical to v1, except
+            // Even version networks are identical to 'version - 1', except
             // that they return the value for black instead of
-            // the player to move. This is used by ELF Open Go.
-            if (format_version == 2) {
+            // the player to move. This is used by ELF Open Go and minigo.
+            if (format_version % 2 == 0) {
                 m_value_head_not_stm = true;
+                format_version--;
             } else {
                 m_value_head_not_stm = false;
             }
-            return load_v1_network(buffer);
+            return load_network(buffer, format_version);
         }
     }
     return {0, 0};
@@ -523,6 +606,7 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     // Winograd transform convolution weights
     m_fwd_weights->m_conv_weights[weight_index] =
         winograd_transform_f(m_fwd_weights->m_conv_weights[weight_index],
+                             m_fwd_weights->m_batchnorm_gammas[weight_index],
                              channels, INPUT_CHANNELS);
     weight_index++;
 
@@ -530,31 +614,48 @@ void Network::initialize(int playouts, const std::string & weightsfile) {
     for (auto i = size_t{0}; i < residual_blocks * 2; i++) {
         m_fwd_weights->m_conv_weights[weight_index] =
             winograd_transform_f(m_fwd_weights->m_conv_weights[weight_index],
+                                 m_fwd_weights->m_batchnorm_gammas[weight_index],
                                  channels, channels);
         weight_index++;
     }
 
-    // Biases are not calculated and are typically zero but some networks might
-    // still have non-zero biases.
     // Move biases to batchnorm means to make the output match without having
     // to separately add the biases.
     auto bias_size = m_fwd_weights->m_conv_biases.size();
     for (auto i = size_t{0}; i < bias_size; i++) {
         auto means_size = m_fwd_weights->m_batchnorm_means[i].size();
         for (auto j = size_t{0}; j < means_size; j++) {
-            m_fwd_weights->m_batchnorm_means[i][j] -= m_fwd_weights->m_conv_biases[i][j];
+            // Move beta and bias to batchnorm mean
+            m_fwd_weights->m_batchnorm_means[i][j] *= m_fwd_weights->m_batchnorm_gammas[i][j];
+            m_fwd_weights->m_batchnorm_means[i][j] -= m_fwd_weights->m_batchnorm_betas[i][j] / (m_fwd_weights->m_batchnorm_stddevs[i][j]);
+            m_fwd_weights->m_batchnorm_means[i][j] -= m_fwd_weights->m_batchnorm_gammas[i][j] * m_fwd_weights->m_conv_biases[i][j];
+            m_fwd_weights->m_batchnorm_betas[i][j] = 0.0f;
             m_fwd_weights->m_conv_biases[i][j] = 0.0f;
         }
     }
 
-    for (auto i = size_t{0}; i < m_bn_val_w1.size(); i++) {
-        m_bn_val_w1[i] -= m_fwd_weights->m_conv_val_b[i];
-        m_fwd_weights->m_conv_val_b[i] = 0.0f;
-    }
+    if (m_fwd_weights->m_se_fc1_w.size() == 0) {
+        // conv_val_b is bias
+        for (auto i = size_t{0}; i < m_bn_val_w1.size(); i++) {
+            m_bn_val_w1[i] -= m_fwd_weights->m_conv_val_b[i];
+            m_fwd_weights->m_conv_val_b[i] = 0.0f;
+        }
 
-    for (auto i = size_t{0}; i < m_bn_pol_w1.size(); i++) {
-        m_bn_pol_w1[i] -= m_fwd_weights->m_conv_pol_b[i];
-        m_fwd_weights->m_conv_pol_b[i] = 0.0f;
+        for (auto i = size_t{0}; i < m_bn_pol_w1.size(); i++) {
+            m_bn_pol_w1[i] -= m_fwd_weights->m_conv_pol_b[i];
+            m_fwd_weights->m_conv_pol_b[i] = 0.0f;
+        }
+    } else {
+        // conv_val_b is batchnorm beta
+        for (auto i = size_t{0}; i < m_bn_val_w1.size(); i++) {
+            m_bn_val_w1[i] -= m_fwd_weights->m_conv_val_b[i] / m_bn_val_w2[i];
+            m_fwd_weights->m_conv_val_b[i] = 0.0f;
+        }
+
+        for (auto i = size_t{0}; i < m_bn_pol_w1.size(); i++) {
+            m_bn_pol_w1[i] -= m_fwd_weights->m_conv_pol_b[i] / m_bn_pol_w2[i];
+            m_fwd_weights->m_conv_pol_b[i] = 0.0f;
+        }
     }
 
 #ifdef USE_OPENCL

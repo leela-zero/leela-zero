@@ -22,15 +22,16 @@ import os
 import tensorflow as tf
 import time
 import unittest
+import gzip
 
 from mixprec import float32_variable_storage_getter, LossScalingOptimizer
 
-
 def weight_variable(name, shape, dtype):
-    """Xavier initialization"""
-    stddev = np.sqrt(2.0 / (sum(shape)))
-    # Do not use a constant as the initializer, that will cause the
-    # variable to be stored in wrong dtype.
+    if len(shape) == 4:
+        n = shape[0]*shape[1]*shape[2]
+    else:
+        n = shape[0]
+    stddev = np.sqrt(2.0 / n)
     weights = tf.get_variable(
         name, shape, dtype=dtype,
         initializer=tf.truncated_normal_initializer(stddev=stddev, dtype=dtype))
@@ -114,7 +115,8 @@ class TFProcess:
     def __init__(self):
         # Network structure
         self.RESIDUAL_FILTERS = 128
-        self.RESIDUAL_BLOCKS = 6
+        self.RESIDUAL_BLOCKS = 10
+        self.SE_ratio = 8
 
         # model type: full precision (fp32) or mixed precision (fp16)
         self.model_dtype = tf.float32
@@ -298,6 +300,8 @@ class TFProcess:
             os.path.join(os.getcwd(),
                          self.logbase + "/train"), self.session.graph)
 
+        self.save_ops = self.make_save_ops()
+
         # Build checkpoint saver
         self.saver = tf.train.Saver()
 
@@ -362,16 +366,7 @@ class TFProcess:
         for e, weights in enumerate(self.weights):
             if isinstance(weights, str):
                 weights = tf.get_default_graph().get_tensor_by_name(weights)
-            if weights.name.endswith('/batch_normalization/beta:0'):
-                # Batch norm beta is written as bias before the batch
-                # normalization in the weight file for backwards
-                # compatibility reasons.
-                bias = tf.constant(new_weights[e], shape=weights.shape)
-                # Weight file order: bias, means, variances
-                var = tf.constant(new_weights[e + 2], shape=weights.shape)
-                new_beta = tf.divide(bias, tf.sqrt(var + tf.constant(1e-5)))
-                self.assign(weights, new_beta)
-            elif weights.shape.ndims == 4:
+            if weights.shape.ndims == 4:
                 # Convolution weights need a transpose
                 #
                 # TF (kYXInputOutput)
@@ -466,7 +461,7 @@ class TFProcess:
                 save_path = self.saver.save(self.session, path,
                                             global_step=steps)
                 print("Model saved in file: {}".format(save_path))
-                leela_path = path + "-" + str(steps) + ".txt"
+                leela_path = path + "-" + str(steps) + ".txt.gz"
                 self.save_leelaz_weights(leela_path)
                 print("Leela weights saved to {}".format(leela_path))
                 # Things have likely changed enough
@@ -479,42 +474,40 @@ class TFProcess:
                                             global_step=steps)
                 print("Model saved in file: {}".format(save_path))
 
+    def make_save_ops(self):
+        ops = []
+        for weights in self.weights:
+            # Newline unless last line (single bias)
+            work_weights = None
+            if weights.shape.ndims == 4:
+                # Convolution weights need a transpose
+                #
+                # TF (kYXInputOutput)
+                # [filter_height, filter_width, in_channels, out_channels]
+                #
+                # Leela/cuDNN/Caffe (kOutputInputYX)
+                # [output, input, filter_size, filter_size]
+                work_weights = tf.transpose(weights, [3, 2, 0, 1])
+            elif weights.shape.ndims == 2:
+                # Fully connected layers are [in, out] in TF
+                #
+                # [out, in] in Leela
+                #
+                work_weights = tf.transpose(weights, [1, 0])
+            else:
+                # Biases, batchnorm etc
+                work_weights = weights
+            ops.append(work_weights)
+        return ops
+
     def save_leelaz_weights(self, filename):
-        with open(filename, "w") as file:
+        nparrays = self.session.run(self.save_ops)
+        with gzip.open(filename, "wt") as file:
             # Version tag
-            file.write("1")
-            for weights in self.weights:
-                # Newline unless last line (single bias)
-                file.write("\n")
-                work_weights = None
-                if weights.name.endswith('/batch_normalization/beta:0'):
-                    # Batch norm beta needs to be converted to biases before
-                    # the batch norm for backwards compatibility reasons
-                    var_key = weights.name.replace('beta', 'moving_variance')
-                    var = tf.get_default_graph().get_tensor_by_name(var_key)
-                    work_weights = tf.multiply(weights,
-                                               tf.sqrt(var + tf.constant(1e-5)))
-                elif weights.shape.ndims == 4:
-                    # Convolution weights need a transpose
-                    #
-                    # TF (kYXInputOutput)
-                    # [filter_height, filter_width, in_channels, out_channels]
-                    #
-                    # Leela/cuDNN/Caffe (kOutputInputYX)
-                    # [output, input, filter_size, filter_size]
-                    work_weights = tf.transpose(weights, [3, 2, 0, 1])
-                elif weights.shape.ndims == 2:
-                    # Fully connected layers are [in, out] in TF
-                    #
-                    # [out, in] in Leela
-                    #
-                    work_weights = tf.transpose(weights, [1, 0])
-                else:
-                    # Biases, batchnorm etc
-                    work_weights = weights
-                nparray = work_weights.eval(session=self.session)
-                wt_str = [str(wt) for wt in np.ravel(nparray)]
-                file.write(" ".join(wt_str))
+            file.write("3\n")
+            for nparray in nparrays:
+                wt_str = ['{:.4g}'.format(wt) for wt in np.ravel(nparray)]
+                file.write(" ".join(wt_str) + '\n')
 
     def get_batchnorm_key(self):
         result = "bn" + str(self.batch_norm_count)
@@ -534,7 +527,7 @@ class TFProcess:
             assert var.dtype.base_dtype == tf.float32
             self.weights.append(var)
 
-    def batch_norm(self, net):
+    def batch_norm(self, net, scale=True):
         # The weights are internal to the batchnorm layer, so apply
         # a unique scope that we can store, and use to look them back up
         # later on.
@@ -544,28 +537,58 @@ class TFProcess:
             net = tf.layers.batch_normalization(
                     net,
                     epsilon=1e-5, axis=1, fused=True,
-                    center=True, scale=False,
+                    center=True, scale=scale,
                     training=self.training,
                     reuse=self.reuse_var)
 
-        for v in ['beta', 'moving_mean', 'moving_variance' ]:
+        for v in ['gamma', 'beta', 'moving_mean', 'moving_variance' ]:
+            if v == 'gamma' and not scale:
+                continue
             name = "fp32_storage/" + scope + '/batch_normalization/' + v + ':0'
             var = tf.get_default_graph().get_tensor_by_name(name)
             self.add_weights(var)
 
         return net
 
-    def conv_block(self, inputs, filter_size, input_channels, output_channels, name):
-        W_conv = weight_variable(
-            name,
-            [filter_size, filter_size, input_channels, output_channels],
-            self.model_dtype)
+    def squeeze_excitation(self, x, channels, ratio, name):
 
-        self.add_weights(W_conv)
+        assert channels % ratio == 0
+
+        # NCHW format reduced to NC
+        net = tf.reduce_mean(x, axis=[2, 3])
+
+        W_fc1 = weight_variable(name + '_se_fc1_w', [channels, channels // ratio], self.model_dtype)
+        b_fc1 = bias_variable(name + '_se_fc1_b', [channels // ratio], self.model_dtype)
+        self.weights.append(W_fc1)
+        self.weights.append(b_fc1)
+
+        net = tf.nn.relu(tf.add(tf.matmul(net, W_fc1), b_fc1))
+
+        W_fc2 = weight_variable(name + '_se_fc2_w',
+            [channels // ratio, 2 * channels], self.model_dtype)
+        b_fc2 = bias_variable(name + '_se_fc2_b', [2 * channels], self.model_dtype)
+        self.weights.append(W_fc2)
+        self.weights.append(b_fc2)
+
+        net = tf.add(tf.matmul(net, W_fc2), b_fc2)
+        net = tf.reshape(net, [-1, 2 * channels, 1, 1])
+
+        # Split to scale and bias
+        gammas, betas = tf.split(net, 2, axis=1)
+
+        out = tf.nn.sigmoid(gammas) * x + betas
+
+        return out
+
+    def conv_block(self, inputs, filter_size, input_channels, output_channels,
+                   name, bn_scale=True):
+        W_conv = weight_variable(name, [filter_size, filter_size,
+                                  input_channels, output_channels], self.model_dtype)
+        self.weights.append(W_conv)
 
         net = inputs
         net = conv2d(net, W_conv)
-        net = self.batch_norm(net)
+        net = self.batch_norm(net, scale=bn_scale)
         net = tf.nn.relu(net)
         return net
 
@@ -574,21 +597,25 @@ class TFProcess:
         orig = tf.identity(net)
 
         # First convnet weights
-        W_conv_1 = weight_variable(name + "_conv_1", [3, 3, channels, channels],
-                                   self.model_dtype)
-        self.add_weights(W_conv_1)
+        W_conv_1 = weight_variable(name + "conv_1", [3, 3, channels, channels], self.model_dtype)
+        self.weights.append(W_conv_1)
 
         net = conv2d(net, W_conv_1)
-        net = self.batch_norm(net)
+        # Unused gamma for weight file
+        initial = tf.constant(1.0, shape=[self.RESIDUAL_FILTERS], dtype=self.model_dtype)
+        gamma = tf.Variable(initial, trainable=False, dtype=self.model_dtype)
+        self.weights.append(gamma)
+        net = self.batch_norm(net, scale=False)
         net = tf.nn.relu(net)
 
         # Second convnet weights
-        W_conv_2 = weight_variable(name + "_conv_2", [3, 3, channels, channels],
-                                   self.model_dtype)
-        self.add_weights(W_conv_2)
+        W_conv_2 = weight_variable(name + "conv_2", [3, 3, channels, channels], self.model_dtype)
+        self.weights.append(W_conv_2)
 
         net = conv2d(net, W_conv_2)
         net = self.batch_norm(net)
+        net = self.squeeze_excitation(net, channels, self.SE_ratio, name)
+
         net = tf.add(net, orig)
         net = tf.nn.relu(net)
 
@@ -614,7 +641,8 @@ class TFProcess:
         conv_pol = self.conv_block(flow, filter_size=1,
                                    input_channels=self.RESIDUAL_FILTERS,
                                    output_channels=2,
-                                   name="policy_head")
+                                   name="policy_head",
+                                   bn_scale=False)
         h_conv_pol_flat = tf.reshape(conv_pol, [-1, 2 * 19 * 19])
         W_fc1 = weight_variable("w_fc_1", [2 * 19 * 19, (19 * 19) + 1], self.model_dtype)
         b_fc1 = bias_variable("b_fc_1", [(19 * 19) + 1], self.model_dtype)
@@ -626,7 +654,8 @@ class TFProcess:
         conv_val = self.conv_block(flow, filter_size=1,
                                    input_channels=self.RESIDUAL_FILTERS,
                                    output_channels=1,
-                                   name="value_head")
+                                   name="value_head",
+                                   bn_scale=False)
         h_conv_val_flat = tf.reshape(conv_val, [-1, 19 * 19])
         W_fc2 = weight_variable("w_fc_2", [19 * 19, 256], self.model_dtype)
         b_fc2 = bias_variable("b_fc_2", [256], self.model_dtype)
@@ -676,7 +705,7 @@ class TFProcess:
             num = min(num, self.swa_max_n)
             self.swa_count.load(float(num), self.session)
 
-        swa_path = path + "-swa-" + str(int(num)) + "-" + str(steps) + ".txt"
+        swa_path = path + "-swa-" + str(int(num)) + "-" + str(steps) + ".txt.gz"
 
         # save the current network.
         self.snap_save()

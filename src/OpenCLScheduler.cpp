@@ -218,6 +218,22 @@ void OpenCLScheduler<net_t>::push_residual(unsigned int filter_size,
 }
 
 template <typename net_t>
+void OpenCLScheduler<net_t>::push_se(unsigned int channels,
+                                     unsigned int outputs,
+                                     const std::vector<float>& se_fc1_w,
+                                     const std::vector<float>& se_fc1_b,
+                                     const std::vector<float>& se_fc2_w,
+                                     const std::vector<float>& se_fc2_b) {
+    for (const auto& opencl_net : m_networks) {
+        opencl_net->push_se(channels, outputs,
+                            from_float(se_fc1_w),
+                            from_float(se_fc1_b),
+                            from_float(se_fc2_w),
+                            from_float(se_fc2_b));
+    }
+}
+
+template <typename net_t>
 void OpenCLScheduler<net_t>::push_convolve(unsigned int filter_size,
                                            unsigned int channels,
                                            unsigned int outputs,
@@ -254,6 +270,14 @@ void OpenCLScheduler<net_t>::push_weights(
                       weights->m_conv_weights[weight_index + 1],
                       weights->m_batchnorm_means[weight_index + 1],
                       weights->m_batchnorm_stddevs[weight_index + 1]);
+        if (weights->m_se_fc1_w.size() > 0) {
+            auto se_fc_outputs = weights->m_se_fc1_b[0].size();
+            push_se(outputs, se_fc_outputs,
+                    weights->m_se_fc1_w[i],
+                    weights->m_se_fc1_b[i],
+                    weights->m_se_fc2_w[i],
+                    weights->m_se_fc2_b[i]);
+        }
         weight_index += 2;
     }
 
