@@ -901,11 +901,9 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         gtp_printf(id, "%s %s", color, coordinate.c_str());
         return;
     } else if (command.find("move_history") == 0) {
-        if (game.get_movenum() == 0) {
-            gtp_printf_raw("= \n");
-        } else {
-            gtp_printf_raw("= ");
-        }
+        gtp_printf_raw("=%s %s",
+                       id == -1 ? "" : std::to_string(id).c_str(),
+                       game.get_movenum() == 0 ? "\n" : "");
         auto game_history = game.get_game_history();
         // undone moves may still be present, so reverse the portion of the
         // array we need and resize to trim it down for iteration.
