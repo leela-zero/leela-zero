@@ -136,16 +136,19 @@ class TFProcess:
         # Output weight file with averaged weights
         self.swa_enabled = True
 
-        # Net sampling rate (e.g 2 == every 2nd network).
-        self.swa_c = 1
-
         # Take an exponentially weighted moving average over this
         # many networks. Under the SWA assumptions, this will reduce
         # the distance to the optimal value by a factor of 1/sqrt(n)
         self.swa_max_n = 16
+        self.swa_steps = 1000
 
         # Recalculate SWA weight batchnorm means and variances
         self.swa_recalc_bn = True
+
+        # Batch renormalization
+        self.renorm = False
+        self.renorm_max_r = 3
+        self.renorm_max_d = 4
 
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
         config = tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)
@@ -233,12 +236,9 @@ class TFProcess:
         self.mean_grads = self.average_gradients(tower_grads)
 
         # Do swa after we contruct the net
-        if self.swa_enabled is True:
+        if self.swa_enabled:
             # Count of networks accumulated into SWA
             self.swa_count = tf.Variable(0., name='swa_count', trainable=False)
-            # Count of networks to skip
-            self.swa_skip = tf.Variable(self.swa_c, name='swa_skip',
-                trainable=False)
             # Build the SWA variables and accumulators
             accum=[]
             load=[]
@@ -440,6 +440,9 @@ class TFProcess:
                     tf.Summary(value=summaries), steps)
                 stats.clear()
 
+            if steps % self.swa_steps == 0 and self.swa_enabled:
+                self.update_swa()
+
             if steps % 8000 == 0:
                 test_stats = Stats()
                 test_batches = 800 # reduce sample mean variance by ~28x
@@ -464,11 +467,9 @@ class TFProcess:
                 leela_path = path + "-" + str(steps) + ".txt.gz"
                 self.save_leelaz_weights(leela_path)
                 print("Leela weights saved to {}".format(leela_path))
-                # Things have likely changed enough
-                # that stats are no longer valid.
-
                 if self.swa_enabled:
-                    self.save_swa_network(steps, path, leela_path, train_data)
+                    swa_path = path + "-swa-" + str(steps) + ".txt.gz"
+                    self.save_swa_network(swa_path, train_data)
 
                 save_path = self.saver.save(self.session, path,
                                             global_step=steps)
@@ -534,12 +535,29 @@ class TFProcess:
         scope = self.get_batchnorm_key()
         with tf.variable_scope(scope,
                                custom_getter=float32_variable_storage_getter):
-            net = tf.layers.batch_normalization(
-                    net,
-                    epsilon=1e-5, axis=1, fused=True,
-                    center=True, scale=scale,
-                    training=self.training,
-                    reuse=self.reuse_var)
+            if self.renorm:
+                clipping = {
+                            "rmin": 1.0/self.renorm_max_r,
+                            "rmax": self.renorm_max_r,
+                            "dmax": self.renorm_max_d
+                }
+
+                net = tf.layers.batch_normalization(
+                        tf.cast(net, tf.float32),
+                        epsilon=1e-5, axis=1, fused=True,
+                        center=True, scale=scale,
+                        training=self.training,
+                        renorm=True,
+                        renorm_clipping=clipping,
+                        reuse=self.reuse_var)
+                net = tf.cast(net, self.model_dtype)
+            else:
+                net = tf.layers.batch_normalization(
+                        net,
+                        epsilon=1e-5, axis=1, fused=True,
+                        center=True, scale=scale,
+                        training=self.training,
+                        reuse=self.reuse_var)
 
         for v in ['gamma', 'beta', 'moving_mean', 'moving_variance' ]:
             if v == 'gamma' and not scale:
@@ -559,16 +577,16 @@ class TFProcess:
 
         W_fc1 = weight_variable(name + '_se_fc1_w', [channels, channels // ratio], self.model_dtype)
         b_fc1 = bias_variable(name + '_se_fc1_b', [channels // ratio], self.model_dtype)
-        self.weights.append(W_fc1)
-        self.weights.append(b_fc1)
+        self.add_weights(W_fc1)
+        self.add_weights(b_fc1)
 
         net = tf.nn.relu(tf.add(tf.matmul(net, W_fc1), b_fc1))
 
         W_fc2 = weight_variable(name + '_se_fc2_w',
             [channels // ratio, 2 * channels], self.model_dtype)
         b_fc2 = bias_variable(name + '_se_fc2_b', [2 * channels], self.model_dtype)
-        self.weights.append(W_fc2)
-        self.weights.append(b_fc2)
+        self.add_weights(W_fc2)
+        self.add_weights(b_fc2)
 
         net = tf.add(tf.matmul(net, W_fc2), b_fc2)
         net = tf.reshape(net, [-1, 2 * channels, 1, 1])
@@ -584,7 +602,7 @@ class TFProcess:
                    name, bn_scale=True):
         W_conv = weight_variable(name, [filter_size, filter_size,
                                   input_channels, output_channels], self.model_dtype)
-        self.weights.append(W_conv)
+        self.add_weights(W_conv)
 
         net = inputs
         net = conv2d(net, W_conv)
@@ -598,19 +616,19 @@ class TFProcess:
 
         # First convnet weights
         W_conv_1 = weight_variable(name + "conv_1", [3, 3, channels, channels], self.model_dtype)
-        self.weights.append(W_conv_1)
+        self.add_weights(W_conv_1)
 
         net = conv2d(net, W_conv_1)
         # Unused gamma for weight file
-        initial = tf.constant(1.0, shape=[self.residual_filters], dtype=self.model_dtype)
-        gamma = tf.Variable(initial, trainable=False, dtype=self.model_dtype)
+        initial = tf.constant(1.0, shape=[self.residual_filters], dtype=tf.float32)
+        gamma = tf.Variable(initial, trainable=False, name=name + 'fixed_gamma')
         self.weights.append(gamma)
         net = self.batch_norm(net, scale=False)
         net = tf.nn.relu(net)
 
         # Second convnet weights
         W_conv_2 = weight_variable(name + "conv_2", [3, 3, channels, channels], self.model_dtype)
-        self.weights.append(W_conv_2)
+        self.add_weights(W_conv_2)
 
         net = conv2d(net, W_conv_2)
         net = self.batch_norm(net)
@@ -690,26 +708,14 @@ class TFProcess:
         # Restore variables in the current graph from the snapshot.
         self.session.run(self.restore_op)
 
-    def save_swa_network(self, steps, path, leela_path, data):
-        # Sample 1 in self.swa_c of the networks. Compute in this way so
-        # that it's safe to change the value of self.swa_c
-        rem = self.session.run(tf.assign_add(self.swa_skip, -1))
-        if rem > 0:
-            return
-        self.swa_skip.load(self.swa_c, self.session)
-
+    def update_swa(self):
         # Add the current weight vars to the running average.
         num = self.session.run(self.swa_accum_op)
+        num = min(num, self.swa_max_n)
+        self.swa_count.load(float(num), self.session)
 
-        if self.swa_max_n != None:
-            num = min(num, self.swa_max_n)
-            self.swa_count.load(float(num), self.session)
-
-        swa_path = path + "-swa-" + str(int(num)) + "-" + str(steps) + ".txt.gz"
-
-        # save the current network.
+    def save_swa_network(self, filename, data):
         self.snap_save()
-        # Copy the swa weights into the current network.
         self.session.run(self.swa_load_op)
         if self.swa_recalc_bn:
             print("Refining SWA batch normalization")
@@ -720,12 +726,9 @@ class TFProcess:
                     feed_dict={self.training: True,
                                self.planes: batch[0], self.probs: batch[1],
                                self.winner: batch[2]})
-
-        self.save_leelaz_weights(swa_path)
-        # restore the saved network.
+        self.save_leelaz_weights(filename)
         self.snap_restore()
-
-        print("Wrote averaged network to {}".format(swa_path))
+        print("Wrote averaged network to {}".format(filename))
 
 # Unit tests for TFProcess.
 def gen_block(size, f_in, f_out):

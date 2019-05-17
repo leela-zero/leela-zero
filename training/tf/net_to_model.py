@@ -9,7 +9,7 @@ with open(sys.argv[1], 'r') as f:
         if e == 0:
             #Version
             print("Version", line.strip())
-            if line != '1\n':
+            if line != '3\n':
                 raise ValueError("Unknown version {}".format(line.strip()))
         else:
             weights.append(list(map(float, line.split(' '))))
@@ -17,10 +17,10 @@ with open(sys.argv[1], 'r') as f:
             channels = len(line.split(' '))
             print("Channels", channels)
 
-    blocks = e - (4 + 14)
-    if blocks % 8 != 0:
+    blocks = e - (5 + 14)
+    if blocks % 14 != 0:
         raise ValueError("Inconsistent number of weights in the file")
-    blocks //= 8
+    blocks //= 14
     print("Blocks", blocks)
 
 tfprocess = TFProcess(blocks, channels)
