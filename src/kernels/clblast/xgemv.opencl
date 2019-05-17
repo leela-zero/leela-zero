@@ -108,14 +108,14 @@ void Xgemv(const int m, const int n,
       if (gid < m) {
 
         // The multiply-add function for the main part (divisable by WGS1)
-	    for (int kloop=0; kloop<WGS1; kloop+=UNROLL1) {
-		  #pragma unroll
-		  for (int _kunroll = 0; _kunroll < UNROLL1; _kunroll += 1) {
-		    const int k = kwg + kloop + _kunroll;
-		    real value = LoadMatrixA(agm, k, gid, a_ld, a_offset);
-	        MultiplyAdd(acc1[_w], xlm[kloop + _kunroll], value);
-		  }
-	    }
+        for (int kloop=0; kloop<WGS1; kloop+=UNROLL1) {
+          #pragma unroll
+          for (int _kunroll = 0; _kunroll < UNROLL1; _kunroll += 1) {
+            const int k = kwg + kloop + _kunroll;
+            real value = LoadMatrixA(agm, k, gid, a_ld, a_offset);
+            MultiplyAdd(acc1[_w], xlm[kloop + _kunroll], value);
+          }
+        }
       }
     }
 
@@ -139,9 +139,9 @@ void Xgemv(const int m, const int n,
 
       // Stores the final result
       real out = acc1[_w] + LoadValue(bias, gid + y_offset);
-	  if (relu) {
-	    out = out > 0.0f ? out : 0.0f;
-	  }
+      if (relu) {
+        out = out > 0.0f ? out : 0.0f;
+      }
       StoreValue(ygm, gid + y_offset + batch * m, out);
     }
   }

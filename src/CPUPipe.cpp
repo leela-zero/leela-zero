@@ -394,7 +394,7 @@ void batchnorm(const size_t channels,
     }
 }
 
-std::vector<float> innerproduct_(const size_t inputs,
+std::vector<float> innerproduct(const size_t inputs,
                                 const size_t outputs,
                                 const bool ReLU,
                                 const std::vector<float>& input,
@@ -452,14 +452,14 @@ void apply_se(const size_t channels,
     const auto lambda_ReLU = [](const auto val) { return (val > 0.0f) ?
                                                           val : 0.0f; };
 
-    const auto lambda_sigmoid = [](const auto val) { return 1.0f/(1.0f + exp(-val)); };
+    const auto lambda_sigmoid = [](const auto val) { return 1.0f/(1.0f + std::exp(-val)); };
 
     for (auto c = size_t{0}; c < channels; c++) {
-        auto gamma = lambda_sigmoid(scale[c]);
-        auto beta = scale[c + channels];
+        const auto gamma = lambda_sigmoid(scale[c]);
+        const auto beta = scale[c + channels];
         for (auto i = size_t{0}; i < NUM_INTERSECTIONS; i++) {
           output[c * NUM_INTERSECTIONS + i] = lambda_ReLU(gamma * input[c * NUM_INTERSECTIONS+ i] +
-                                                 beta + res[c * NUM_INTERSECTIONS + i]);
+                                              beta + res[c * NUM_INTERSECTIONS + i]);
         }
     }
 }
@@ -517,8 +517,8 @@ void CPUPipe::forward(const std::vector<float>& input,
             global_avg_pooling(output_channels, conv_in, pooling);
 
             auto fc_outputs = m_weights->m_se_fc1_w[block].size() / output_channels;
-            auto se1 = innerproduct_(output_channels, fc_outputs, true, pooling, m_weights->m_se_fc1_w[block], m_weights->m_se_fc1_b[block]);
-            auto se2 = innerproduct_(fc_outputs, 2 * output_channels, false, se1, m_weights->m_se_fc2_w[block], m_weights->m_se_fc2_b[block]);
+            auto se1 = innerproduct(output_channels, fc_outputs, true, pooling, m_weights->m_se_fc1_w[block], m_weights->m_se_fc1_b[block]);
+            auto se2 = innerproduct(fc_outputs, 2 * output_channels, false, se1, m_weights->m_se_fc2_w[block], m_weights->m_se_fc2_b[block]);
 
             apply_se(output_channels, conv_in, res, se2, conv_out);
         } else {
