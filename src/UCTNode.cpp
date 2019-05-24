@@ -298,6 +298,7 @@ void UCTNode::accumulate_eval(float eval) {
 }
 
 UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
+    (void)is_root;
     wait_expanded();
 
     // Count parentvisits manually to avoid issues with transpositions.
@@ -314,26 +315,36 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 
     const auto numerator = std::sqrt(double(parentvisits) *
             std::log(cfg_logpuct * double(parentvisits) + cfg_logconst));
-    const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction) * std::sqrt(total_visited_policy);
-    // Estimated eval for unknown nodes = original parent NN eval - reduction
-    const auto fpu_eval = get_net_eval(color) - fpu_reduction;
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
 
+    // Get winrates for visited children.
+    // This goes from best to worst policy value.
+    // An unvisited child gets the lowest winrate seen so far.
+    double winrates[m_children.size()];
+    int idx = -1;
+    double smallest_winrate = get_net_eval(color);
     for (auto& child : m_children) {
+        idx++;
+        if (child.get_visits() > 0) {
+            winrates[idx] = child.get_eval(color);
+            if (winrates[idx] < smallest_winrate) {
+                smallest_winrate = winrates[idx];
+            }
+        }
+        else {
+            winrates[idx] = smallest_winrate;
+        }
+    } // for
+
+    idx = -1;
+    for (auto& child : m_children) {
+        idx++;
         if (!child.active()) {
             continue;
         }
-
-        auto winrate = fpu_eval;
-        if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
-            // Someone else is expanding this node, never select it
-            // if we can avoid so, because we'd block on it.
-            winrate = -1.0f - fpu_reduction;
-        } else if (child.get_visits() > 0) {
-            winrate = child.get_eval(color);
-        }
+        auto winrate = winrates[idx];
         const auto psa = child.get_policy();
         const auto denom = 1.0 + child.get_visits();
         const auto puct = cfg_puct * psa * (numerator / denom);
@@ -341,10 +352,15 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         assert(value > std::numeric_limits<double>::lowest());
 
         if (value > best_value) {
-            best_value = value;
-            best = &child;
+            if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
+                // Someone else is expanding this node, never select it
+            }
+            else {
+                best_value = value;
+                best = &child;
+            }
         }
-    }
+    } // for
 
     assert(best != nullptr);
     best->inflate();
@@ -479,4 +495,3 @@ void UCTNode::wait_expanded() {
 #endif
     assert(v == ExpandState::EXPANDED);
 }
-
