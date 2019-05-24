@@ -73,7 +73,13 @@ a (weaker) network trained from human games [here](https://sjeng.org/zero/best_v
 If you are on Windows, download an official release from [here](https://github.com/leela-zero/leela-zero/releases) and head to the [Usage](#usage-for-playing-or-analyzing-games)
 section of this README.
 
-If you are on Unix or macOS, you have to compile the program yourself. Follow
+If you are on macOS, Leela Zero is available through [Homebrew](https://homebrew.sh), the de facto standard
+package manager. You can install it with:
+```
+brew install leela-zero
+```
+
+If you are on Unix, you have to compile the program yourself. Follow
 the compilation instructions below and then read the [Usage](#usage-for-playing-or-analyzing-games) section.
 
 # Compiling AutoGTP and/or Leela Zero
@@ -313,13 +319,13 @@ This requires a working installation of TensorFlow 1.4 or later:
     src/leelaz -w weights.txt
     dump_supervised bigsgf.sgf train.out
     exit
-    training/tf/parse.py train.out
+    training/tf/parse.py 6 128 train.out
 
-This will run and regularly dump Leela Zero weight files to disk, as
-well as snapshots of the learning state numbered by the batch number.
-If interrupted, training can be resumed with:
+This will run and regularly dump Leela Zero weight files (of networks with 6
+blocks and 128 filters) to disk, as well as snapshots of the learning state
+numbered by the batch number. If interrupted, training can be resumed with:
 
-    training/tf/parse.py train.out leelaz-model-batchnumber
+    training/tf/parse.py 6 128 train.out leelaz-model-batchnumber
 
 # Todo
 

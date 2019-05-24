@@ -86,6 +86,11 @@ void NNCache::resize(int size) {
     }
 }
 
+void NNCache::clear() {
+    m_cache.clear();
+    m_order.clear();
+}
+
 void NNCache::set_size_from_playouts(int max_playouts) {
     // cache hits are generally from last several moves so setting cache
     // size based on playouts increases the hit rate while balancing memory
