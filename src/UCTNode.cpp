@@ -301,15 +301,28 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     (void)is_root;
     wait_expanded();
 
-    // Count parentvisits manually to avoid issues with transpositions.
-    auto total_visited_policy = 0.0f;
+    // Children are sorted by descending policy.
+    // An unvisited child gets the lowest winrate to the left.
+    // We need the array because an unvisited child can be followed by visited ones.
+    // Also, cache everything to avoid potential threading inconsistencies.
+    // This is not paranoia. I tried.
+    float winrates[361]; // On the stack. No mallocs.
+    float visits[361];
+    float smallest_winrate = get_net_eval(color); // Important. Do no start with anything else.
     auto parentvisits = size_t{0};
-    for (const auto& child : m_children) {
+    int idx = -1;
+    for (auto& child : m_children) {
+        idx++;
+        visits[idx] = child.get_visits();
+        if (visits[idx] > 0) {
+            winrates[idx] = child.get_eval(color);
+            smallest_winrate = std::min( smallest_winrate, winrates[idx]);
+        }
+        else {
+            winrates[idx] = smallest_winrate;
+        }
         if (child.valid()) {
-            parentvisits += child.get_visits();
-            if (child.get_visits() > 0) {
-                total_visited_policy += child.get_policy();
-            }
+            parentvisits += visits[idx];
         }
     }
 
@@ -319,25 +332,6 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
 
-    // Get winrates for visited children.
-    // This goes from best to worst policy value.
-    // An unvisited child gets the lowest winrate seen so far.
-    double winrates[m_children.size()];
-    int idx = -1;
-    double smallest_winrate = get_net_eval(color);
-    for (auto& child : m_children) {
-        idx++;
-        if (child.get_visits() > 0) {
-            winrates[idx] = child.get_eval(color);
-            if (winrates[idx] < smallest_winrate) {
-                smallest_winrate = winrates[idx];
-            }
-        }
-        else {
-            winrates[idx] = smallest_winrate;
-        }
-    } // for
-
     idx = -1;
     for (auto& child : m_children) {
         idx++;
@@ -346,7 +340,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         }
         auto winrate = winrates[idx];
         const auto psa = child.get_policy();
-        const auto denom = 1.0 + child.get_visits();
+        const auto denom = 1.0 + visits[idx];
         const auto puct = cfg_puct * psa * (numerator / denom);
         const auto value = winrate + puct;
         assert(value > std::numeric_limits<double>::lowest());
@@ -360,7 +354,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
                 best = &child;
             }
         }
-    } // for
+    }
 
     assert(best != nullptr);
     best->inflate();
