@@ -302,20 +302,26 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     wait_expanded();
 
     // Children are sorted by descending policy.
-    // An unvisited child gets the lowest winrate to the left.
+    // An unvisited child gets the lowest winrate *to the left* .
     // We need the array because an unvisited child can be followed by visited ones.
-    // Also, cache everything to avoid potential threading inconsistencies.
+    // Also, cache everything to minimize threading inconsistencies.
     // This is not paranoia. I tried.
     float winrates[361]; // On the stack. No mallocs.
     float visits[361];
-    float smallest_winrate = get_net_eval(color); // Important. Do no start with anything else.
-    auto parentvisits = size_t{0};
     int idx = -1;
+    // Do this as quickly as possible. Ideally we should lock the node.
     for (auto& child : m_children) {
         idx++;
         visits[idx] = child.get_visits();
+        if (visits[idx]) { winrates[idx] = child.get_eval(color); }
+    }
+
+    float smallest_winrate = get_net_eval(color); // Important. Do no start with anything else.
+    auto parentvisits = size_t{0};
+    idx = -1;
+    for (auto& child : m_children) {
+        idx++;
         if (visits[idx] > 0) {
-            winrates[idx] = child.get_eval(color);
             smallest_winrate = std::min( smallest_winrate, winrates[idx]);
         }
         else {
