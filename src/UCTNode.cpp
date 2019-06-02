@@ -306,18 +306,20 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     // We need the array because an unvisited child can be followed by visited ones.
     // Also, cache everything to minimize threading inconsistencies.
     // This is not paranoia. I tried.
-    float winrates[361]; // On the stack. No mallocs.
-    float visits[361];
+    float winrates[362]; // On the stack. No mallocs.
+    int visits[362];
     int idx = -1;
     // Do this as quickly as possible. Ideally we should lock the node.
     for (auto& child : m_children) {
         idx++;
         visits[idx] = child.get_visits();
-        if (visits[idx]) { winrates[idx] = child.get_eval(color); }
+        if (visits[idx]) {
+            winrates[idx] = child.get_eval(color);
+        }
     }
 
     float smallest_winrate = get_net_eval(color); // Important. Do no start with anything else.
-    auto parentvisits = size_t{0};
+    int parentvisits = 0;
     idx = -1;
     for (auto& child : m_children) {
         idx++;
@@ -344,11 +346,10 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         if (!child.active()) {
             continue;
         }
-        auto winrate = winrates[idx];
         const auto psa = child.get_policy();
         const auto denom = 1.0 + visits[idx];
         const auto puct = cfg_puct * psa * (numerator / denom);
-        const auto value = winrate + puct;
+        const auto value = winrates[idx] + puct;
         assert(value > std::numeric_limits<double>::lowest());
 
         if (value > best_value) {
