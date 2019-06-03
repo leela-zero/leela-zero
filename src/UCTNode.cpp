@@ -331,8 +331,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
                     smallest_winrate = std::min( smallest_winrate, winrates[idx]);
                 }
             }
-        }
-        else {
+        } else {
             winrates[idx] = smallest_winrate;
         }
         if (child.valid()) {
@@ -361,8 +360,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         if (value > best_value) {
             if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
                 // Someone else is expanding this node, never select it
-            }
-            else {
+            } else {
                 best_value = value;
                 best = &child;
             }
