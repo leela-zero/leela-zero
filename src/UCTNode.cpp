@@ -328,7 +328,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
                 if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
                     // // Someone else is expanding this node, do nothing
                 } else {
-                    smallest_winrate = std::min( smallest_winrate, winrates[idx]);
+                    smallest_winrate = std::min(smallest_winrate, winrates[idx]);
                 }
             }
         } else {
