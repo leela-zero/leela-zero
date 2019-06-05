@@ -51,7 +51,7 @@ public:
     void adjust_time(int color, int time, int stones);
     void display_times();
     void reset_clocks();
-    bool can_accumulate_time(int color) const;
+    bool should_accumulate_time(int color) const;
     size_t opening_moves(int boardsize) const;
     std::string to_text_sgf() const;
     static std::shared_ptr<TimeControl> make_from_text_sgf(

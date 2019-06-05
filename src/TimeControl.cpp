@@ -324,9 +324,9 @@ int TimeControl::get_moves_expected(int boardsize, size_t movenum) const {
 }
 
 // Returns true if we are in a time control where we
-// can save up time. If not, we should not move quickly
+// should save up time. If not, we should not move quickly
 // even if certain of our move, but plough ahead.
-bool TimeControl::can_accumulate_time(int color) const {
+bool TimeControl::should_accumulate_time(int color) const {
     if (m_inbyo[color]) {
         // Cannot accumulate in Japanese byo yomi
         if (m_byoperiods) {
@@ -338,12 +338,23 @@ bool TimeControl::can_accumulate_time(int color) const {
         if (m_byostones && m_stones_left[color] == 1) {
             return false;
         }
-    } else {
-        // If there is a base time, we should expect
-        // to be able to accumulate. This may be somewhat
-        // of an illusion if the base time is tiny and byo
-        // yomi time is big.
     }
 
-    return true;
+    // If there is a base time, we should expect it to be able to accumulate.
+    // However when the main time is going to exhaust, leelaz should not play
+    // too quickly but adjust its pace for byoyomi. So we'll ensure leelaz has
+    // a minimal thinking time that grows up from 0 to byotime as main time is
+    // used up
+
+    auto elapsed_centis = Time::timediff_centis(m_times[color], Time());
+    auto used_time = float(m_maintime - m_remaining_time[color]);
+    auto factor = used_time / m_maintime;
+    auto byotime = float(m_byotime);
+    if (m_byostones) {
+        // Canadian style byoyomi
+        byotime /= m_byostones;
+    } else {
+        assert(m_byoperiods);
+    }
+    return elapsed_centis > factor * byotime;
 }
