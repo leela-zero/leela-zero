@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import os
 import sys
+import gzip
 from tfprocess import TFProcess
 
-with open(sys.argv[1], 'r') as f:
+with gzip.open(sys.argv[1], 'rb') as f:
     weights = []
     for e, line in enumerate(f):
+        line = line.decode('utf-8')
         if e == 0:
             #Version
             print("Version", line.strip())
