@@ -1,6 +1,5 @@
 [![Linux Build Status](https://travis-ci.org/leela-zero/leela-zero.svg?branch=next)](https://travis-ci.org/leela-zero/leela-zero)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/pf1hcgly8f1a8iu0/branch/next?svg=true)](https://ci.appveyor.com/project/leela-zero/leela-zero/branch/next)
-
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/dcvp31x1e0yavrtf/branch/next?svg=true)](https://ci.appveyor.com/project/gcp/leela-zero-8arv1/branch/next)
 
 # What
 
@@ -127,7 +126,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 ## Example of compiling - macOS
 
     # Clone github repo
-    git clone https://github.com/leela_zero/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
@@ -147,7 +146,7 @@ by adding -DUSE_CPU_ONLY=1 to the cmake command line.
 ## Example of compiling - Windows
 
     # Clone github repo
-    git clone https://github.com/leela_zero/leela-zero
+    git clone https://github.com/leela-zero/leela-zero
     cd leela-zero
     git submodule update --init --recursive
 
