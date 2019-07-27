@@ -836,12 +836,21 @@ OpenCL<net_t>::OpenCL(int gpu, bool silent) {
     }
 
     myprintf("Tensor Core support: ");
-    try {
-        cl::Program(m_context, sourceCode_tensorcore_test).build(m_cl_args.c_str());
-        m_tensorcore = true;
-        myprintf("Yes.\n");
-    } catch (...) {
-        myprintf("No.\n");
+    {
+        // if this is a nvidia GPU, test-compile a sample inline assembly code with
+        // tensor wmma instructions. if not, don't bother trying
+        std::string this_vendor = m_device.getInfo<CL_DEVICE_VENDOR>();
+        if (boost::icontains(this_vendor, "nvidia")) {
+            try {
+                cl::Program(m_context, sourceCode_tensorcore_test).build(m_cl_args.c_str());
+                m_tensorcore = true;
+                myprintf("Yes.\n");
+            } catch (...) {
+                myprintf("No.\n");
+            }
+        } else {
+            myprintf("No.\n");
+        }
     }
 }
 
