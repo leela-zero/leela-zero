@@ -77,7 +77,7 @@ UCTNodePointer::UCTNodePointer(std::int16_t vertex, float policy) {
     auto i_vertex = static_cast<std::uint16_t>(vertex);
     std::memcpy(&i_policy, &policy, sizeof(i_policy));
 
-    m_data =  (static_cast<std::uint64_t>(i_policy)  << 32)
+    m_data =  (static_cast<std::uint64_t>(i_policy) << 32)
             | (static_cast<std::uint64_t>(i_vertex) << 16);
     increment_tree_size(sizeof(UCTNodePointer));
 }
@@ -105,8 +105,9 @@ void UCTNodePointer::inflate() const {
         if (is_inflated(v)) return;
 
         auto v2 = reinterpret_cast<std::uint64_t>(
-            new UCTNode(read_vertex(v), read_policy(v))
-        ) | POINTER;
+            new UCTNode(read_vertex(v), read_policy(v)));
+        assert((v2 & 3ULL) == 0);
+        v2 |= POINTER;
         bool success = m_data.compare_exchange_strong(v, v2);
         if (success) {
             increment_tree_size(sizeof(UCTNode));
