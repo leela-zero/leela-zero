@@ -188,6 +188,15 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
         if (p["NDIMC"] < p["NDIMB"]) {
             return false;
         }
+        if (p["MWG"] < 32) {
+            return false;
+        }
+        if (p["NWG"] < 32) {
+            return false;
+        }
+        if (p["KWG"] < 32) {
+            return false;
+        }
         // VWM / VWN has no meaning if we don't do SA / SB.
         // Only test VWM / VWN == 2
         if (p["SA"] == 0 && p["VWM"] != 2) {
@@ -335,8 +344,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
     if (cfg_sgemm_exhaustive) {
         topts = {
             {"MWG", {32, 64, 128, 256}},
-            {"NWG", {8, 16, 32, 64}},
-            {"KWG", {16, 32, 64}},
+            {"NWG", {8, 16, 32, 64, 128, 256}},
+            {"KWG", {16, 32, 64, 128, 256}},
             {"MDIMC", {8, 16, 32, 64}},
             {"NDIMC", {8, 16, 32, 64}},
             {"MDIMA", {8, 16, 32}},
@@ -352,8 +361,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
     } else {
         topts = {
             {"MWG", {32, 64, 128}},
-            {"NWG", {8, 16, 32}},
-            {"KWG", {16, 32}},
+            {"NWG", {16, 32, 64, 128}},
+            {"KWG", {16, 32, 64, 128}},
             {"MDIMC", {8, 16, 32}},
             {"NDIMC", {8, 16, 32}},
             {"MDIMA", {8, 16, 32}},
@@ -402,8 +411,8 @@ std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
                               const int batch_size, const int runs) {
     // This needs to be at minimum the maximum (MNK/WG) values above.
     auto m_max = std::max(256, m);
-    auto n_max = std::max(64, n);
-    auto k_max = std::max(64, k);
+    auto n_max = std::max(256, n);
+    auto k_max = std::max(256, k);
 
     auto at_size = batch_size
         * next_power_of_two(k_max) * next_power_of_two(m_max);
