@@ -97,6 +97,7 @@ FILE* cfg_logfile_handle;
 bool cfg_quiet;
 std::string cfg_options_str;
 bool cfg_benchmark;
+bool cfg_use_logitQ;
 bool cfg_cpu_only;
 AnalyzeTags cfg_analyze_tags;
 
@@ -358,6 +359,7 @@ void GTP::setup_default_parameters() {
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
     cfg_benchmark = false;
+    cfg_use_logitQ = false;
 #ifdef USE_CPU_ONLY
     cfg_cpu_only = true;
 #else

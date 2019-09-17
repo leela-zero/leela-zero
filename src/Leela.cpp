@@ -161,6 +161,8 @@ static void parse_commandline(int argc, char *argv[]) {
         ("noponder", "Disable thinking on opponent's time.")
         ("benchmark", "Test network and exit. Default args:\n-v3200 --noponder "
                       "-m0 -t1 -s1.")
+        ("use-logitQ", "Flag for using logit Q transformation")
+
 #ifndef USE_CPU_ONLY
         ("cpu-only", "Use CPU-only implementation and do not use OpenCL device(s).")
 #endif
@@ -466,6 +468,10 @@ static void parse_commandline(int argc, char *argv[]) {
         if (!vm.count("playouts") && !vm.count("visits")) {
             cfg_max_visits = 3200; // Default to self-play and match values.
         }
+    }
+
+    if (vm.count("use-logitQ")) {
+        cfg_use_logitQ = true;
     }
 
     // Do not lower the expected eval for root moves that are likely not
