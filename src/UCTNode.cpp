@@ -316,11 +316,11 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
             std::log(cfg_logpuct * double(parentvisits) + cfg_logconst));
     const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction) * std::sqrt(total_visited_policy);
     // Estimated eval for unknown nodes = original parent NN eval - reduction
-    const auto net_eval_transformed = 2.0 * get_net_eval(color) - 1;
+    const auto net_eval_transformed = 2.0 * get_net_eval(color) - 1.0;
     const auto fpu_eval = (cfg_use_logitQ && (net_eval_transformed > -1.0 && net_eval_transformed < 1.0) ?
-      get_net_eval(color) - fpu_reduction
+      // get_net_eval(color) - fpu_reduction
       // treating fpu_reduction properly needs higher fpu_reduction value for extreme Q
-      // 0.5 + 0.5 * (net_eval_transformed - tanh(fpu_reduction)) / (1 - net_eval_transformed * tanh(fpu_reduction))
+      0.5 + 0.5 * (net_eval_transformed - tanh(fpu_reduction)) / (1.0 - net_eval_transformed * tanh(fpu_reduction))
       : get_net_eval(color) - fpu_reduction);
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
@@ -343,7 +343,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         const auto denom = 1.0 + child.get_visits();
         const auto puct = cfg_puct * psa * (numerator / denom);
         const auto value = (cfg_use_logitQ && (winrate > 0.0 && winrate < 1.0) ?
-          0.5 + 0.5 * ((2.0 * winrate - 1) + tanh(puct)) / (1 + (2.0 * winrate - 1) * tanh(puct))
+          0.5 + 0.5 * ((2.0 * winrate - 1.0) + tanh(puct)) / (1.0 + (2.0 * winrate - 1.0) * tanh(puct))
           : winrate + puct);
         assert(value > std::numeric_limits<double>::lowest());
 
