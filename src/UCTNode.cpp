@@ -303,21 +303,31 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     // Count parentvisits manually to avoid issues with transpositions.
     auto total_visited_policy = 0.0f;
     auto parentvisits = size_t{0};
+    // Get highest child eval for fpu_reduction
+    auto eval = 0.0f;
+    auto best_eval = std::numeric_limits<double>::lowest();
     for (const auto& child : m_children) {
         if (child.valid()) {
             parentvisits += child.get_visits();
             if (child.get_visits() > 0) {
                 total_visited_policy += child.get_policy();
+                eval = child.get_eval(color);
+                if (eval > best_eval) {
+                    best_eval = eval;
+                }
             }
         }
+    }
+    if (parentvisits == 0) {
+        best_eval = get_net_eval(color);
     }
 
     const auto numerator = std::sqrt(double(parentvisits) *
             std::log(cfg_logpuct * double(parentvisits) + cfg_logconst));
     const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction) * std::sqrt(total_visited_policy);
     // Estimated eval for unknown nodes = original parent NN eval - reduction
-    const auto fpu_eval = get_net_eval(color) - fpu_reduction;
-
+    const auto fpu_eval = best_eval - fpu_reduction;
+    // use eval of best child instead of net_eval
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
 
@@ -479,4 +489,3 @@ void UCTNode::wait_expanded() {
 #endif
     assert(v == ExpandState::EXPANDED);
 }
-
