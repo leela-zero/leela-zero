@@ -321,6 +321,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
       // get_net_eval(color) - fpu_reduction
       // treating fpu_reduction properly needs higher fpu_reduction value for extreme Q
       0.5 + 0.5 * (net_eval_transformed - tanh(fpu_reduction)) / (1.0 - net_eval_transformed * tanh(fpu_reduction))
+      // this is a simplification of tanh(atanh(Q)-fpu), scaled from Q in [-1,1] to winrate in [0,1]
       : get_net_eval(color) - fpu_reduction);
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
@@ -344,6 +345,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
         const auto puct = cfg_puct * psa * (numerator / denom);
         const auto value = (cfg_use_logitQ && (winrate > 0.0 && winrate < 1.0) ?
           0.5 + 0.5 * ((2.0 * winrate - 1.0) + tanh(puct)) / (1.0 + (2.0 * winrate - 1.0) * tanh(puct))
+          // this is a simplification of tanh(atanh(Q)+puct), scaled from Q in [-1,1] to winrate in [0,1]
           : winrate + puct);
         assert(value > std::numeric_limits<double>::lowest());
 
