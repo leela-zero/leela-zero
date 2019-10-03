@@ -78,6 +78,7 @@ public:
                               std::shared_ptr<const ForwardPipeWeights> weights);
 private:
     bool m_running = true;
+    std::atomic<bool> m_draining{false};
     std::vector<std::unique_ptr<OpenCL_Network<net_t>>> m_networks;
     std::vector<std::unique_ptr<OpenCL<net_t>>> m_opencl;
 
@@ -115,6 +116,9 @@ private:
                        unsigned int channels,
                        unsigned int outputs,
                        const std::vector<float>& weights);
+
+    virtual void drain();
+    virtual void resume();
 };
 
 #endif

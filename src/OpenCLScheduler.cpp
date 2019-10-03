@@ -278,6 +278,10 @@ void OpenCLScheduler<net_t>::forward(const std::vector<float>& input,
     }
     m_cv.notify_one();
     entry->cv.wait(lk);
+
+    if (m_draining) {
+        throw NetworkHaltException();
+    }
 }
 
 #ifndef NDEBUG
@@ -407,6 +411,38 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
             m_single_eval_in_progress = false;
         }
     }
+}
+
+template <typename net_t>
+void OpenCLScheduler<net_t>::drain() {
+    // When signaled to drain requests, this method picks up all pending requests and
+    // wakes them up.  Throws exception once the woken up request sees m_draining.
+    m_draining = true;
+
+    std::list<std::shared_ptr<ForwardQueueEntry>> fq;
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+        std::move(m_forward_queue.begin(),
+                  m_forward_queue.end(),
+                  std::back_inserter(fq));
+        m_forward_queue.clear();
+    }
+
+    for (auto & x : fq) {
+        {
+            // dummy lock/unlock to make sure thread in forward() is sleeping
+            std::unique_lock<std::mutex> lk(x->mutex);
+        }
+        x->cv.notify_all();
+    }
+}
+
+template <typename net_t>
+void OpenCLScheduler<net_t>::resume() {
+    // UCTNode::think() should wait for all child threads to complete before resuming.
+    assert(m_forward_queue.empty());
+
+    m_draining = false;
 }
 
 template class OpenCLScheduler<float>;

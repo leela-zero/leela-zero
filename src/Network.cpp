@@ -1037,3 +1037,11 @@ void Network::nncache_resize(int max_count) {
 void Network::nncache_clear() {
     m_nncache.clear();
 }
+
+void Network::drain_evals() {
+    m_forward->drain();
+}
+
+void Network::resume_evals() {
+    m_forward->resume();
+}
