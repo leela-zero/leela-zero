@@ -63,6 +63,9 @@ constexpr auto WINOGRAD_TILE = WINOGRAD_ALPHA * WINOGRAD_ALPHA;
 constexpr auto WINOGRAD_P = WINOGRAD_WTILES * WINOGRAD_WTILES;
 constexpr auto SQ2 = 1.4142135623730951f; // Square root of 2
 
+// See drain_evals() / resume_evals() for details
+class NetworkHaltException : public std::exception {};
+
 class Network {
     using ForwardPipeWeights = ForwardPipe::ForwardPipeWeights;
 public:
@@ -106,6 +109,13 @@ public:
     void nncache_resize(int max_count);
     void nncache_clear();
 
+    // 'drain' evaluations.  Threads with an evaluation will throw a NetworkHaltException
+    // if possible, or will just proceed and drain ASAP.  New evaluation requests will
+    // also result in a NetworkHaltException.
+    virtual void drain_evals();
+
+    // flag the network to be open for business
+    virtual void resume_evals();
 private:
     std::pair<int, int> load_v1_network(std::istream& wtfile);
     std::pair<int, int> load_network_file(const std::string& filename);

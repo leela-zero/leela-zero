@@ -64,6 +64,9 @@ public:
                               unsigned int channels,
                               unsigned int outputs,
                               std::shared_ptr<const ForwardPipeWeights> weights) = 0;
+
+    virtual void drain() {}
+    virtual void resume() {}
 };
 
 #endif
