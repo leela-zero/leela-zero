@@ -41,9 +41,10 @@ def weight_variable(name, shape, dtype):
 # Bias weights for layers not followed by BatchNorm
 # We do not regularlize biases, so they are not
 # added to the regularlizer collection
-def bias_variable(name, shape, dtype):
+def bias_variable(name, shape, dtype, trainable=True, initializer=tf.zeros_initializer):
     bias = tf.get_variable(name, shape, dtype=dtype,
-                           initializer=tf.zeros_initializer())
+                           initializer=initializer(),
+                           trainable=trainable)
     return bias
 
 
@@ -620,9 +621,10 @@ class TFProcess:
 
         net = conv2d(net, W_conv_1)
         # Unused gamma for weight file
-        initial = tf.constant(1.0, shape=[self.residual_filters], dtype=tf.float32)
-        gamma = tf.Variable(initial, trainable=False, name=name + 'fixed_gamma')
-        self.weights.append(gamma)
+        gamma = bias_variable(name + 'fixed_gamma', [channels], self.model_dtype,
+                initializer=tf.ones_initializer,
+                trainable=False)
+        self.add_weights(gamma)
         net = self.batch_norm(net, scale=False)
         net = tf.nn.relu(net)
 
