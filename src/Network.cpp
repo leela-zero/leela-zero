@@ -152,7 +152,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
 
 template<class container>
 void process_bn_var(container& weights) {
-    constexpr float epsilon = 1e-5f;
+    constexpr auto epsilon = 1e-5f;
     for (auto&& w : weights) {
         w = 1.0f / std::sqrt(w + epsilon);
     }
