@@ -110,7 +110,7 @@ bool UCTNode::create_children(Network & network,
     auto allow_pass = cfg_dumbpass;
 
     // Less than 20 available intersections in a 19x19 game.
-    if (nodelist.size() <= std::max(5, BOARD_SIZE)) {
+    if (int(nodelist.size()) <= std::max(5, BOARD_SIZE)) {
         allow_pass = true;
     }
 
