@@ -74,6 +74,14 @@ float Utils::cached_t_quantile(int v) {
     return z_lookup[z_entries - 1];
 }
 
+float Utils::erfinv_approx(float x) {
+    const auto sign = x > 0.0f ? 1.0f : -1.0f;
+    const auto tmp = (1.0f - x) * (1.0f + x);
+    const auto tt1 = 4.330747f + 0.5f * std::log(tmp);
+    const auto tt2 = std::log(tmp) / 0.147f;
+    return sign * std::sqrt(-tt1 + std::sqrt(tt1 * tt1 - tt2));
+}
+
 bool Utils::input_pending() {
 #ifdef HAVE_SELECT
     fd_set read_fds;
