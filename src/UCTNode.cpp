@@ -315,8 +315,8 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
     const auto numerator = std::sqrt(double(parentvisits) *
             std::log(cfg_logpuct * double(parentvisits) + cfg_logconst));
     const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction) * std::sqrt(total_visited_policy);
-    // Estimated eval for unknown nodes = original parent NN eval - reduction
-    const auto fpu_eval = get_net_eval(color) - fpu_reduction;
+    // Estimated eval for unknown nodes = parent (not NN) eval - reduction
+    const auto fpu_eval = get_raw_eval(color) - fpu_reduction;
 
     auto best = static_cast<UCTNodePointer*>(nullptr);
     auto best_value = std::numeric_limits<double>::lowest();
@@ -479,4 +479,3 @@ void UCTNode::wait_expanded() {
 #endif
     assert(v == ExpandState::EXPANDED);
 }
-
