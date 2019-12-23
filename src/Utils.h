@@ -67,6 +67,9 @@ namespace Utils {
     size_t ceilMultiple(size_t a, size_t b);
 
     const std::string leelaz_file(std::string file);
+
+    void create_z_table();
+    float cached_t_quantile(int v);
 }
 
 #endif

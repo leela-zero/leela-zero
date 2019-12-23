@@ -24,8 +24,6 @@
 // literal). Comment-out this line for syntax-highlighting when developing.
 
 R"(
-#define USE_TC
-
 #ifndef SA
 #define SA 1
 #endif
@@ -153,7 +151,6 @@ void HgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
     }
 
     int k, m, n, mb, nb, kb, kwg;
-#ifdef USE_TC
     int zero_pair;
     asm("{\n"
         ".reg .b16 xh;\n"
@@ -182,18 +179,6 @@ void HgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
             c3[mb][nb] = zero_pair;
         }
     }
-#else
-    float acc[MWG/MDIMC][NWG/NDIMC][2][4];
-    for(mb = 0; mb < MWG / MDIMC; mb += 1) {
-        for(nb = 0; nb < NWG / NDIMC; nb += 1) {
-            for(m=0; m<2; m++) {
-                for(int n=0; n<4; n++) {
-                    acc[mb][nb][m][n] = 0.0f;
-                }
-            }
-        }
-    }
-#endif
     for(kwg = 0; kwg < kSizeK; kwg += KWG) {
 #if SA == 1
         GlobalToLocalA(get_local_id(0) + get_local_id(1) * WARP_SIZE * MDIMC / MDIMA, kSizeM,
@@ -216,77 +201,75 @@ void HgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
 
 #pragma unroll
         for(kb = 0; kb < KWG; kb += 16) {
+#pragma promote_to_registers
+            int b[NWG/NDIMC][8];
+            for(nb = 0; nb < NWG / NDIMC; nb += 1) {
+#if SB == 1
+                const int block_loc_n = (get_local_id(1)) % (NDIMC/NDIMB);
+                const int bgm_stride = NWG;
+                const __local half * b_bgm_ = (const __local half *)(blm + (nb + block_loc_n * (NWG/NDIMC)) * NDIMB);
+                const __local half * bb_bgm_ = b_bgm_ + bgm_stride * kb;
+#else
+                const int bgm_stride = kSizeN;
+                const __global half * b_bgm_ = bgm_ + nb * NDIMB;
+                const __global half * bb_bgm_ = b_bgm_ + kSizeN * (kb + kwg);
+#endif
+                asm("{\n"
+#if SB == 1
+                    "wmma.load.b.sync.aligned." WMMA_SHAPE ".shared.row.f16 {%0,%1,%2,%3,%4,%5,%6,%7}, [%8], %9;\n"
+#else
+                    "wmma.load.b.sync.aligned." WMMA_SHAPE ".row.f16 {%0,%1,%2,%3,%4,%5,%6,%7}, [%8], %9;\n"
+#endif
+                "}": "=r"(b[nb][0]), "=r"(b[nb][1]), "=r"(b[nb][2]), "=r"(b[nb][3]), "=r"(b[nb][4]), "=r"(b[nb][5]), "=r"(b[nb][6]), "=r"(b[nb][7]) : "l"(bb_bgm_), "r"(bgm_stride));
+            }
 #pragma unroll
             for(mb = 0; mb < MWG / MDIMC; mb += 1) {
+#pragma promote_to_registers
+                int a[8];
+#if SA == 1
+                const int block_loc_m = (get_local_id(0)/WARP_SIZE) % (MDIMC/MDIMA);
+                const int agm_stride = MWG;
+                const __local half * b_agm_ = (const __local half *)(alm + (mb + block_loc_m * (MWG/MDIMC)) * MDIMA);
+                const __local half * bb_agm_ = b_agm_ + agm_stride * kb;
+#else
+                const int agm_stride = kSizeM;
+                const __global half * b_agm_ = agm_ + mb * MDIMA;
+                const __global half * bb_agm_ = b_agm_ + kSizeM * (kb + kwg);
+#endif
+                asm("{\n"
+#if SA == 1
+                    "wmma.load.a.sync.aligned." WMMA_SHAPE ".shared.col.f16 {%0,%1,%2,%3,%4,%5,%6,%7}, [%8], %9;\n"
+#else
+                    "wmma.load.a.sync.aligned." WMMA_SHAPE ".col.f16 {%0,%1,%2,%3,%4,%5,%6,%7}, [%8], %9;\n"
+#endif
+                    "}": "=r"(a[0]), "=r"(a[1]), "=r"(a[2]), "=r"(a[3]), "=r"(a[4]), "=r"(a[5]), "=r"(a[6]), "=r"(a[7]) : "l"(bb_agm_), "r"(agm_stride));
+
 #pragma unroll
                 for(nb = 0; nb < NWG / NDIMC; nb += 1) {
-#if SA == 1
-                    const int block_loc_m = (get_local_id(0)/WARP_SIZE) % (MDIMC/MDIMA);
-                    const int agm_stride = MWG;
-                    const __local half * b_agm_ = (const __local half *)(alm + (mb + block_loc_m * (MWG/MDIMC)) * MDIMA);
-                    const __local half * bb_agm_ = b_agm_ + agm_stride * kb;
-#else
-                    const int agm_stride = kSizeM;
-                    const __global half * b_agm_ = agm_ + mb * MDIMA;
-                    const __global half * bb_agm_ = b_agm_ + kSizeM * (kb + kwg);
-#endif
-
-#if SB == 1
-                    const int block_loc_n = (get_local_id(1)) % (NDIMC/NDIMB);
-                    const int bgm_stride = NWG;
-                    const __local half * b_bgm_ = (const __local half *)(blm + (nb + block_loc_n * (NWG/NDIMC)) * NDIMB);
-                    const __local half * bb_bgm_ = b_bgm_ + bgm_stride * kb;
-#else
-                    const int bgm_stride = kSizeN;
-                    const __global half * b_bgm_ = bgm_ + nb * NDIMB;
-                    const __global half * bb_bgm_ = b_bgm_ + kSizeN * (kb + kwg);
-#endif
-#ifdef USE_TC
                     int d0_, d1_, d2_, d3_;
                     int c0_ = c0[mb][nb];
                     int c1_ = c1[mb][nb];
                     int c2_ = c2[mb][nb];
                     int c3_ = c3[mb][nb];
                     asm("{\n"
-                        ".reg .b32 a0, a1, a2, a3, a4, a5, a6, a7;\n"
-                        ".reg .b32 b0, b1, b2, b3, b4, b5, b6, b7;\n"
-#if SA == 1
-                        "wmma.load.a.sync.aligned." WMMA_SHAPE ".shared.col.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%4], %6;\n"
-#else
-                        "wmma.load.a.sync.aligned." WMMA_SHAPE ".col.f16 {a0,a1,a2,a3,a4,a5,a6,a7}, [%4], %6;\n"
-#endif
-#if SB == 1
-                        "wmma.load.b.sync.aligned." WMMA_SHAPE ".shared.row.f16 {b0,b1,b2,b3,b4,b5,b6,b7}, [%5], %7;\n"
-#else
-                        "wmma.load.b.sync.aligned." WMMA_SHAPE ".row.f16 {b0,b1,b2,b3,b4,b5,b6,b7}, [%5], %7;\n"
-#endif
                         "wmma.mma.sync.aligned.col.row." WMMA_SHAPE ".f16.f16 "
                         "    {%0,%1,%2,%3},\n"
-                        "    {a0,a1,a2,a3,a4,a5,a6,a7},\n"
-                        "    {b0,b1,b2,b3,b4,b5,b6,b7},\n"
-                        "    {%8,%9,%10,%11};\n"
-                        "}": "=r"(d0_), "=r"(d1_), "=r"(d2_), "=r"(d3_) : "l"(bb_agm_), "l"(bb_bgm_), "r"(agm_stride), "r"(bgm_stride), "r"(c0_), "r"(c1_), "r"(c2_), "r"(c3_));
+                        "    {%8,%9,%10,%11,%12,%13,%14,%15},\n"
+                        "    {%16,%17,%18,%19,%20,%21,%22,%23},\n"
+                        "    {%4,%5,%6,%7};\n"
+                        "}": "=r"(d0_), "=r"(d1_), "=r"(d2_), "=r"(d3_) : "r"(c0_), "r"(c1_), "r"(c2_), "r"(c3_),
+                            "r"(a[0]), "r"(a[1]), "r"(a[2]), "r"(a[3]), "r"(a[4]), "r"(a[5]), "r"(a[6]), "r"(a[7]),
+                            "r"(b[nb][0]), "r"(b[nb][1]), "r"(b[nb][2]), "r"(b[nb][3]), "r"(b[nb][4]), "r"(b[nb][5]), "r"(b[nb][6]), "r"(b[nb][7])
+                    );
                     c0[mb][nb] = d0_;
                     c1[mb][nb] = d1_;
                     c2[mb][nb] = d2_;
                     c3[mb][nb] = d3_;
-#else
-                    for(m = offset_m; m < MDIMA; m += MDIMA/2) {
-                        for(n = offset_n; n < NDIMB; n += NDIMB/4) {
-                            float a = 0.0f;
-                            for(k = 0; k < 16; k++) {
-                                a += vload_half(agm_stride * k + m, bb_agm_) * vload_half(bgm_stride * k + n, bb_bgm_);
-                            }
-                            acc[mb][nb][m/(MDIMA/2)][n/(NDIMB/4)] += a;
-                        }
-                    }
-#endif
                 }
             }
         }
     }
 
-#ifdef USE_TC
 #pragma unroll
     for(mb = 0; mb < MWG / MDIMC; mb += 1) {
 #pragma unroll
@@ -301,17 +284,6 @@ void HgemmBody(const int kSizeM, const int kSizeN, const int kSizeK,
                 "}" : : "r"(c0_), "r"(c1_), "r"(c2_), "r"(c3_), "l"(b_cgm_), "r"(kSizeM));
         }
     }
-#else
-    for(mb = 0; mb < MWG / MDIMC; mb += 1) {
-        for(nb = 0; nb < NWG / NDIMC; nb += 1) {
-            for(m = offset_m; m < MDIMA; m += MDIMA/2) {
-                for(n = offset_n; n < NDIMB; n += NDIMB/4) {
-                    vstore_half(acc[mb][nb][m/(MDIMA/2)][n/(NDIMB/4)], kSizeM * (nb * NDIMB + n) + mb * MDIMA + m, cgm_);
-                }
-            }
-        }
-    }
-#endif
 }
 
 struct alm_t {short alm[KWG * MWG];} __attribute__((aligned(32)));

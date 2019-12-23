@@ -188,6 +188,15 @@ bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
         if (p["NDIMC"] < p["NDIMB"]) {
             return false;
         }
+        if (p["MWG"] < 32) {
+            return false;
+        }
+        if (p["NWG"] < 32) {
+            return false;
+        }
+        if (p["KWG"] < 32) {
+            return false;
+        }
         // VWM / VWN has no meaning if we don't do SA / SB.
         // Only test VWM / VWN == 2
         if (p["SA"] == 0 && p["VWM"] != 2) {
@@ -335,8 +344,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
     if (cfg_sgemm_exhaustive) {
         topts = {
             {"MWG", {32, 64, 128, 256}},
-            {"NWG", {8, 16, 32, 64}},
-            {"KWG", {16, 32, 64}},
+            {"NWG", {8, 16, 32, 64, 128, 256}},
+            {"KWG", {16, 32, 64, 128, 256}},
             {"MDIMC", {8, 16, 32, 64}},
             {"NDIMC", {8, 16, 32, 64}},
             {"MDIMA", {8, 16, 32}},
@@ -352,8 +361,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
     } else {
         topts = {
             {"MWG", {32, 64, 128}},
-            {"NWG", {8, 16, 32}},
-            {"KWG", {16, 32}},
+            {"NWG", {16, 32, 64, 128}},
+            {"KWG", {16, 32, 64, 128}},
             {"MDIMC", {8, 16, 32}},
             {"NDIMC", {8, 16, 32}},
             {"MDIMA", {8, 16, 32}},
@@ -368,12 +377,8 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
         };
     }
 
-    // Don't use thead Rng or determinism will depend
-    // on whether tuner ran.
-    auto rng = Random{0};
-
     auto valid_params = std::vector<Parameters>{};
-    auto build_from = [this, &rng, &valid_params](std::vector<Configurations> & opts, int tce) {
+    auto build_from = [this, &valid_params](std::vector<Configurations> & opts, int tce) {
         auto cfgs = 1;
         for (auto c = size_t{0}; c < opts.size(); c++) {
             cfgs *= opts[c].second.size();
@@ -382,17 +387,21 @@ std::vector<Parameters> Tuner<net_t>::build_valid_params() {
             Parameters param = get_parameters_by_int(opts, i);
             param["TCE"] = tce;
             if (valid_config_sgemm(param, cfg_sgemm_exhaustive)) {
-                if (cfg_sgemm_exhaustive) {
-                    if (rng.randfix<16>() != 0) {
-                        continue;
-                    }
-                }
                 valid_params.push_back(param);
             }
         }
     };
     build_from(opts, 0);
     build_from(topts, 1);
+
+    // Don't use thread RNG or determinism will depend on whether tuner ran.
+    auto rng = Random{0};
+    std::shuffle(begin(valid_params), end(valid_params), rng);
+
+    if (cfg_sgemm_exhaustive) {
+        // Likely too many valid params, cut out some of them
+        valid_params.resize(valid_params.size() / 16);
+    }
 
     return valid_params;
 }
@@ -401,9 +410,9 @@ template <typename net_t>
 std::string Tuner<net_t>::tune_sgemm(const int m, const int n, const int k,
                               const int batch_size, const int runs) {
     // This needs to be at minimum the maximum (MNK/WG) values above.
-    auto m_max = std::max(64, m);
-    auto n_max = std::max(64, n);
-    auto k_max = std::max(32, k);
+    auto m_max = std::max(256, m);
+    auto n_max = std::max(256, n);
+    auto k_max = std::max(256, k);
 
     auto at_size = batch_size
         * next_power_of_two(k_max) * next_power_of_two(m_max);

@@ -152,7 +152,7 @@ void Network::benchmark(const GameState* const state, const int iterations) {
 
 template<class container>
 void process_bn_var(container& weights) {
-    constexpr float epsilon = 1e-5f;
+    constexpr auto epsilon = 1e-5f;
     for (auto&& w : weights) {
         w = 1.0f / std::sqrt(w + epsilon);
     }
@@ -278,7 +278,7 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
         if (!ok || it_line != line.cend()) {
             myprintf("\nFailed to parse weight file. Error on line %d.\n",
                     linecount + 2); //+1 from version line, +1 from 0-indexing
-            return {0,0};
+            return {0, 0};
         }
         if (linecount < plain_conv_wts) {
             if (linecount % 4 == 0) {
@@ -301,7 +301,14 @@ std::pair<int, int> Network::load_v1_network(std::istream& wtfile) {
                                    begin(m_bn_pol_w1)); break;
                 case  3: std::copy(cbegin(weights), cend(weights),
                                    begin(m_bn_pol_w2)); break;
-                case  4: std::copy(cbegin(weights), cend(weights),
+                case  4: if (weights.size() != OUTPUTS_POLICY
+                                               * NUM_INTERSECTIONS
+                                               * POTENTIAL_MOVES) {
+                             myprintf("The weights file is not for %dx%d boards.\n",
+                                      BOARD_SIZE, BOARD_SIZE);
+                             return {0, 0};
+                         }
+                         std::copy(cbegin(weights), cend(weights),
                                    begin(m_ip_pol_w)); break;
                 case  5: std::copy(cbegin(weights), cend(weights),
                                    begin(m_ip_pol_b)); break;
@@ -401,11 +408,11 @@ void Network::select_precision(int channels) {
         auto fp16_net = std::make_unique<OpenCLScheduler<half_float::half>>();
         if (!fp16_net->needs_autodetect()) {
             try {
-                myprintf("OpenCL: using fp16/half compute support.\n");
+                myprintf("OpenCL: using fp16/half or tensor core compute support.\n");
                 m_forward = init_net(channels, std::move(fp16_net));
                 benchmark_time(1); // a sanity check run
             } catch (...) {
-                myprintf("OpenCL: fp16/half failed despite driver claiming support.\n");
+                myprintf("OpenCL: fp16/half or tensor core failed despite driver claiming support.\n");
                 myprintf("Falling back to single precision\n");
                 m_forward.reset();
                 m_forward = init_net(channels,
@@ -1034,4 +1041,8 @@ size_t Network::get_estimated_cache_size() {
 
 void Network::nncache_resize(int max_count) {
     return m_nncache.resize(max_count);
+}
+
+void Network::nncache_clear() {
+    m_nncache.clear();
 }

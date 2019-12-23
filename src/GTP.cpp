@@ -89,6 +89,8 @@ float cfg_logconst;
 float cfg_softmax_temp;
 float cfg_fpu_reduction;
 float cfg_fpu_root_reduction;
+float cfg_ci_alpha;
+float cfg_lcb_min_visit_ratio;
 std::string cfg_weightsfile;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
@@ -316,9 +318,9 @@ void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
 
     // we will re-calculate this on Leela.cpp
-    cfg_num_threads = 0;
+    cfg_num_threads = 1;
     // we will re-calculate this on Leela.cpp
-    cfg_batch_size = 0;
+    cfg_batch_size = 1;
 
     cfg_max_memory = UCTSearch::DEFAULT_MAX_MEMORY;
     cfg_max_playouts = UCTSearch::UNLIMITED_PLAYOUTS;
@@ -347,6 +349,8 @@ void GTP::setup_default_parameters() {
     cfg_resignpct = -1;
     cfg_noise = false;
     cfg_fpu_root_reduction = cfg_fpu_reduction;
+    cfg_ci_alpha = 1e-5f;
+    cfg_lcb_min_visit_ratio = 0.10f;
     cfg_random_cnt = 0;
     cfg_random_min_visits = 1;
     cfg_random_temp = 1.0f;
@@ -395,6 +399,7 @@ const std::string GTP::s_commands[] = {
     "fixed_handicap",
     "last_move",
     "move_history",
+    "clear_cache",
     "place_free_handicap",
     "set_free_handicap",
     "loadsgf",
@@ -896,11 +901,9 @@ void GTP::execute(GameState & game, const std::string& xinput) {
         gtp_printf(id, "%s %s", color, coordinate.c_str());
         return;
     } else if (command.find("move_history") == 0) {
-        if (game.get_movenum() == 0) {
-            gtp_printf_raw("= \n");
-        } else {
-            gtp_printf_raw("= ");
-        }
+        gtp_printf_raw("=%s %s",
+                       id == -1 ? "" : std::to_string(id).c_str(),
+                       game.get_movenum() == 0 ? "\n" : "");
         auto game_history = game.get_game_history();
         // undone moves may still be present, so reverse the portion of the
         // array we need and resize to trim it down for iteration.
@@ -913,6 +916,10 @@ void GTP::execute(GameState & game, const std::string& xinput) {
             gtp_printf_raw("%s %s\n", color, coordinate.c_str());
         }
         gtp_printf_raw("\n");
+        return;
+    } else if (command.find("clear_cache") == 0) {
+        s_network->nncache_clear();
+        gtp_printf(id, "");
         return;
     } else if (command.find("place_free_handicap") == 0) {
         std::istringstream cmdstream(command);
