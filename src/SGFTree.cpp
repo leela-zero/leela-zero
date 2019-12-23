@@ -55,7 +55,7 @@ void SGFTree::init_state() {
     // Initialize with defaults.
     // The SGF might be missing boardsize or komi
     // which means we'll never initialize properly.
-    m_state.init_game(std::min(BOARD_SIZE, 19), KOMI);
+    m_state.init_game(std::min(BOARD_SIZE, 19), TRAINED_UNIT_KOMI);
 }
 
 const KoState * SGFTree::get_state(void) const {
@@ -157,7 +157,7 @@ void SGFTree::populate_states() {
         strm >> bsize;
         if (bsize == BOARD_SIZE) {
             // Assume default komi in config.h if not specified
-            m_state.init_game(bsize, KOMI);
+            m_state.init_game(bsize, TRAINED_UNIT_KOMI);
             valid_size = true;
         } else {
             throw std::runtime_error("Board size not supported.");
