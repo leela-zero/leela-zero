@@ -2,6 +2,8 @@
 /.qmake.stash
 /autogtp
 /*.sgf
+/*.train
+/storefile*.bin
 /*.gz
 /moc_*.cpp
 /moc_*.h
