@@ -90,6 +90,14 @@ static const std::string sourceCode_convolve3 =
     #include "kernels/convolve3.opencl"
 ;
 
+static std::string sourceCode_global_avg_pooling =
+    #include "kernels/pooling.opencl"
+;
+
+static std::string sourceCode_apply_se =
+    #include "kernels/apply_se.opencl"
+;
+
 const std::string sourceCode_sgemm =
     "#if TCE == 1\n" // Enable tensorcore
     #include "kernels/clblast/hgemm_tensorcore.opencl"
@@ -100,6 +108,11 @@ const std::string sourceCode_sgemm =
     #include "kernels/clblast/xgemm_batched.opencl"
     "\n#endif\n"
 ;
+
+const std::string sourceCode_sgemv =
+    #include "kernels/clblast/xgemv.opencl"
+;
+
 
 template <typename net_t>
 void OpenCL<net_t>::ensure_context_initialized(OpenCLContext& opencl_context) {
@@ -115,9 +128,15 @@ void OpenCL<net_t>::ensure_context_initialized(OpenCLContext& opencl_context) {
             cl::Kernel(m_program, "XgemmBatched");
         opencl_context.m_out_transform_bn_kernel =
             cl::Kernel(m_program, "out_transform_fused_bn");
+        opencl_context.m_sgemv_kernel =
+            cl::Kernel(m_program, "Xgemv");
         opencl_context.m_out_transform_bn_in_kernel =
             cl::Kernel(m_program, "out_transform_fused_bn_in");
         opencl_context.m_commandqueue = cl::CommandQueue(m_context, m_device);
+        opencl_context.m_global_avg_pooling_kernel =
+            cl::Kernel(m_program, "global_avg_pooling");
+        opencl_context.m_apply_se_kernel =
+            cl::Kernel(m_program, "apply_se");
         opencl_context.m_is_initialized = true;
     }
 }
@@ -170,6 +189,8 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
 
         const auto alloc_inSize = getOpenCL().m_batch_size * NUM_INTERSECTIONS
                                   * max_channels * sizeof(net_t);
+        const auto alloc_pool_size =
+            getOpenCL().m_batch_size * 2 * max_channels * sizeof(net_t);
         const auto alloc_vm_size = getOpenCL().m_batch_size * WINOGRAD_TILE
                                    * m_ceil * n_ceil * sizeof(net_t);
 
@@ -178,13 +199,18 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
         opencl_context.m_inBuffer = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
+
         opencl_context.m_inBuffer2 = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE, alloc_inSize);
+
+        // Zero pad the unused areas in V.
+        // Zeros must not be overwritten or convolution gives incorrect results.
         opencl_context.m_VBuffer = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR,
             alloc_vm_size, v_zeros.data(), nullptr);
+
         opencl_context.m_MBuffer = cl::Buffer(
             m_opencl.m_context,
             CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, alloc_vm_size);
@@ -198,6 +224,10 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
             CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR,
             getOpenCL().m_batch_size * finalSize_val);
 
+        opencl_context.m_pool_buffer = cl::Buffer(
+            m_opencl.m_context,
+            CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, alloc_pool_size);
+
         opencl_context.m_buffers_allocated = true;
     }
 
@@ -209,6 +239,7 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
 
     std::vector<net_t> net_t_input(input.size());
     std::copy(begin(input), end(input), begin(net_t_input));
+    cl::Buffer& pool_buffer = opencl_context.m_pool_buffer;
 
     const auto inSize = sizeof(net_t) * input.size();
     queue.enqueueWriteBuffer(inBuffer, CL_FALSE, 0, inSize, net_t_input.data());
@@ -243,16 +274,19 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                       nullptr,
                       bn_weights,
                       skip_in_trans, skip_next_in_trans, true,
+                      true,
                       batch_size);
 
             skip_in_trans = skip_next_in_trans;
         } else if (layer.is_residual_block) {
             assert(layer.channels == layer.outputs);
             assert(niter != cend(m_layers));
+
             auto conv1_weights = begin(layer.weights);
             auto   bn1_weights = begin(layer.weights) + 1;
             auto conv2_weights = begin(layer.weights) + 3;
             auto   bn2_weights = begin(layer.weights) + 4;
+
             convolve3(opencl_context,
                       layer.channels,
                       layer.outputs,
@@ -264,25 +298,60 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
                       nullptr,
                       bn1_weights,
                       skip_in_trans, use_inout, false,
+                      true,
                       batch_size);
 
             auto skip_next_in_trans = false;
             if (niter->is_residual_block) {
                 skip_next_in_trans = use_inout;
             }
-            convolve3(opencl_context,
-                      layer.channels,
-                      layer.outputs,
-                      inBuffer2,
-                      inBuffer,
-                      VBuffer,
-                      MBuffer,
-                      conv2_weights,
-                      &inBuffer,
-                      bn2_weights,
-                      use_inout, skip_next_in_trans, true,
-                      batch_size);
+
+            if (niter->is_se_unit) {
+                // Residual connection and relu are applied in SE-unit.
+                convolve3(opencl_context,
+                          layer.channels,
+                          layer.outputs,
+                          inBuffer2,
+                          inBuffer2,
+                          VBuffer,
+                          MBuffer,
+                          conv2_weights,
+                          nullptr,
+                          bn2_weights,
+                          use_inout, skip_next_in_trans, false,
+                          false,
+                          batch_size);
+            } else {
+                 convolve3(opencl_context,
+                           layer.channels,
+                           layer.outputs,
+                           inBuffer2,
+                           inBuffer,
+                           VBuffer,
+                           MBuffer,
+                           conv2_weights,
+                           &inBuffer,
+                           bn2_weights,
+                           use_inout, skip_next_in_trans, true,
+                           true,
+                           batch_size);
+            }
+
             skip_in_trans = skip_next_in_trans;
+        } else if (layer.is_se_unit) {
+            assert(layer.channels == layer.outputs);
+            assert(niter != cend(m_layers));
+            auto se_weights = begin(layer.weights);
+
+            squeeze_excitation(opencl_context,
+                               layer.channels,
+                               layer.outputs,
+                               inBuffer2,
+                               pool_buffer,
+                               MBuffer,
+                               se_weights,
+                               inBuffer,
+                               batch_size);
         } else {
             assert(layer.is_convolve1);
 
@@ -329,6 +398,105 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
 }
 
 template <typename net_t>
+void OpenCL_Network<net_t>::squeeze_excitation(OpenCLContext& opencl_context,
+                                               const int channels,
+                                               const int fc_outputs,
+                                               cl::Buffer& bufferIn,
+                                               cl::Buffer& bufferTemp1,
+                                               cl::Buffer& bufferTemp2,
+                                               const weight_slice_t weights,
+                                               cl::Buffer& bufferResidual,
+                                               const int batch_size) {
+
+    cl::Kernel& pooling_kernel = opencl_context.m_global_avg_pooling_kernel;
+    cl::Kernel& apply_se_kernel = opencl_context.m_apply_se_kernel;
+    cl::CommandQueue& queue = opencl_context.m_commandqueue;
+
+    try {
+        pooling_kernel.setArg(0, batch_size * channels);
+        pooling_kernel.setArg(1, bufferIn);
+        pooling_kernel.setArg(2, bufferTemp1);
+
+        queue.enqueueNDRangeKernel(
+            pooling_kernel, cl::NullRange,
+            cl::NDRange(BOARD_SIZE, batch_size * channels),
+            cl::NDRange(BOARD_SIZE, 1));
+    } catch (const cl::Error& e) {
+        std::cerr << "Error in squeeze_excitation: " << e.what() << ": "
+                  << e.err() << std::endl;
+        throw;
+    }
+
+    innerproduct(opencl_context, bufferTemp1, weights[0], weights[1],
+                 bufferTemp2, channels, fc_outputs, true, batch_size);
+
+    innerproduct(opencl_context, bufferTemp2, weights[2], weights[3],
+                 bufferTemp1, fc_outputs, 2 * channels, false, batch_size);
+
+    try {
+        apply_se_kernel.setArg(0, channels);
+        apply_se_kernel.setArg(1, batch_size);
+        apply_se_kernel.setArg(2, bufferIn);
+        apply_se_kernel.setArg(3, bufferResidual);
+        apply_se_kernel.setArg(4, bufferTemp1);
+
+        queue.enqueueNDRangeKernel(
+            apply_se_kernel, cl::NullRange,
+            cl::NDRange(BOARD_SIZE, batch_size * channels));
+    } catch (const cl::Error& e) {
+        std::cerr << "Error in squeeze_excitation: " << e.what() << ": "
+                  << e.err() << std::endl;
+        throw;
+    }
+}
+
+template <typename net_t>
+void OpenCL_Network<net_t>::innerproduct(OpenCLContext& opencl_context,
+                                         const cl::Buffer& input,
+                                         const cl::Buffer& weights,
+                                         const cl::Buffer& biases,
+                                         cl::Buffer& output,
+                                         const int inputs, const int outputs,
+                                         const bool relu,
+                                         const int batch_size) {
+
+    auto sgemv_kernel = opencl_context.m_sgemv_kernel;
+    cl::CommandQueue& queue = opencl_context.m_commandqueue;
+
+    // TODO: Tune these
+    const auto wgs1 = size_t{32};
+    const auto wpt1 = size_t{1};
+
+    const auto m_ceil = int(ceilMultiple(outputs, wgs1 * wpt1));
+    const auto global_size = m_ceil / wpt1;
+    const auto local_size = wgs1;
+
+    try {
+        // Sets the kernel arguments
+        sgemv_kernel.setArg(0, outputs);
+        sgemv_kernel.setArg(1, inputs);
+        sgemv_kernel.setArg(2, weights);
+        sgemv_kernel.setArg(3, 0);
+        sgemv_kernel.setArg(4, inputs);
+        sgemv_kernel.setArg(5, input);
+        sgemv_kernel.setArg(6, 0);
+        sgemv_kernel.setArg(7, output);
+        sgemv_kernel.setArg(8, 0);
+        sgemv_kernel.setArg(9, biases);
+        sgemv_kernel.setArg(10, static_cast<int>(relu));
+
+        queue.enqueueNDRangeKernel(sgemv_kernel, cl::NullRange,
+                                   cl::NDRange(global_size, batch_size),
+                                   cl::NDRange(local_size, 1));
+    } catch (const cl::Error& e) {
+        std::cerr << "Error in innerproduct: " << e.what() << ": "
+                  << e.err() << std::endl;
+        throw;
+    }
+}
+
+
+template <typename net_t>
 void OpenCL_Network<net_t>::convolve3(OpenCLContext& opencl_context,
                                       const int channels, const int outputs,
                                       cl::Buffer& bufferIn,
@@ -341,6 +509,7 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext& opencl_context,
                                       const bool skip_in_transform,
                                       const bool fuse_in_transform,
                                       const bool store_inout,
+                                      const bool relu,
                                       const int batch_size) {
 
     cl::Kernel& in_transform_kernel = opencl_context.m_in_transform_kernel;
@@ -392,6 +561,9 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext& opencl_context,
             in_transform_kernel.setArg(4, n_ceil);
             in_transform_kernel.setArg(5, batch_size);
 
+            // No relu not implemented
+            assert(relu);
+
             queue.enqueueNDRangeKernel(in_transform_kernel, cl::NullRange,
                                        cl::NDRange(wgs, channels));
         } catch (const cl::Error& e) {
@@ -432,6 +604,7 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext& opencl_context,
 
     try {
         if (fuse_in_transform) {
+            assert(relu);
             // TODO : Eventually this might also be something tuneable?
             // Needs to match OUTIN_KWG in kernel
             constexpr auto dim_size = 2;
@@ -474,6 +647,7 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext& opencl_context,
             }
             out_transform_bn_kernel.setArg(7, bn_weights[0]);
             out_transform_bn_kernel.setArg(8, bn_weights[1]);
+            out_transform_bn_kernel.setArg(9, static_cast<int>(relu));
 
             // Needs to match OUT_KWG, OUT_BWG in the kernel.
             // This could be tuned.
@@ -862,10 +1036,11 @@ void OpenCL<net_t>::initialize(const int channels, const size_t batch_size) {
     m_batch_size = batch_size;
     // Make program of the source code in the context
     try {
-        m_program = cl::Program(m_context, sourceCode_common + sourceCode_config
-                                               + sourceCode_convolve1
-                                               + sourceCode_convolve3
-                                               + sourceCode_sgemm);
+        m_program = cl::Program(
+            m_context, sourceCode_common + sourceCode_config
+                           + sourceCode_convolve1 + sourceCode_convolve3
+                           + sourceCode_sgemm + sourceCode_global_avg_pooling
+                           + sourceCode_sgemv + sourceCode_apply_se);
     } catch (const cl::Error& e) {
         myprintf("Error getting kernels: %s: %d", e.what(), e.err());
         throw std::runtime_error("Error getting OpenCL kernels.");

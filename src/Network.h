@@ -117,11 +117,13 @@ public:
     virtual void resume_evals();
 
 private:
-    std::pair<int, int> load_v1_network(std::istream& wtfile);
+    std::pair<int, int> load_network(std::istream& wtfile, int version);
     std::pair<int, int> load_network_file(const std::string& filename);
 
-    static std::vector<float> winograd_transform_f(const std::vector<float>& f,
-                                                   int outputs, int channels);
+    static std::vector<float> winograd_transform_f(
+        const std::vector<float>& f,
+        const std::vector<float>& gammas,
+        int outputs, int channels);
     static std::vector<float> zeropad_U(const std::vector<float>& U,
                                         int outputs, int channels,
                                         int outputs_pad, int channels_pad);

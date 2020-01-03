@@ -18,6 +18,56 @@ def deduped(names):
     names = [re.sub('_\d+', '', name) for name in names]
     return sorted([(n, names.count(n)) for n in set(names)])
 
+def merge_gammas(weights):
+    out_weights = []
+    skip = 0
+    for e, (name, w) in enumerate(weights):
+        if skip > 0:
+            skip -= 1
+            continue
+
+        if matches(name, ('conv2d', 'kernel')) and 'gamma' in weights[e+2][0]:
+            kernel = w
+            bias = weights[e+1][1]
+            gamma = weights[e+2][1]
+            beta = weights[e+3][1]
+            mean = weights[e+4][1]
+            var = weights[e+5][1]
+
+            new_kernel = kernel * np.reshape(gamma, (1, 1, 1, -1))
+            new_bias = gamma * bias + beta * np.sqrt(var + 1e-5)
+            new_mean = mean * gamma
+
+            out_weights.append(new_kernel)
+            out_weights.append(new_bias)
+            out_weights.append(new_mean)
+            out_weights.append(var)
+
+            skip = 5
+        else:
+            out_weights.append(w)
+
+    return out_weights
+
+def nhwc_to_nchw(weights):
+    out_weights = []
+    for name, w in weights:
+        if matches(name, ('dense', 'kernel')):
+            # Minigo uses channels last order while LZ uses channels first,
+            # Do some surgery for the dense layers to make the output match.
+            planes = w.shape[0] // 361
+            if planes > 0 and w.shape[0] % 361 == 0:
+                w1 = np.reshape(w, [19, 19, planes, -1])
+                w2 = np.transpose(w1, [2, 0, 1, 3])
+                new_kernel = np.reshape(w2, [361*planes, -1])
+                out_weights.append(new_kernel)
+            else:
+                out_weights.append(w)
+        else:
+            out_weights.append(w)
+
+    return out_weights
+
 def getMinigoWeightsV1(model):
     """Load and massage Minigo weights to Leela format.
 
@@ -48,26 +98,20 @@ def getMinigoWeightsV1(model):
     for w in weights:
         nparray = w.eval(session=sess)
         weights_v2_format.append((w.name, nparray))
-    return weights_v2_format
+    return nhwc_to_nchw(merge_gammas(weights_v2_format)), 2
 
 def getMinigoWeightsV2(model):
     """Load and massage Minigo weights to Leela format.
-
-    This version works on older models (v9 or before)
-    But was broken when conv bias was removed in v10
-    See: https://github.com/tensorflow/minigo/pull/292 and
-         https://github.com/gcp/leela-zero/issues/2020
     """
     var_names = tf.train.load_checkpoint(model).get_variable_to_dtype_map()
 
     # count() overcounts by 3 from policy/value head and each layer has two convolutions.
     layers = (max([count for n, count in deduped(var_names)]) - 3) // 2
-    print (layers, 'layers')
+    print(layers, 'layers')
 
     has_conv_bias = any(matches(name, ('conv2d', 'bias')) for name in var_names.keys())
     if not has_conv_bias:
         print('Did not find conv bias in this model, using all zeros')
-    empty_conv_bias = tf.constant([], name='placeholder_for_conv_bias')
 
     # 2 * layer copies of
     #   6*n + 0: conv2d/kernel:0
@@ -125,58 +169,83 @@ def getMinigoWeightsV2(model):
         else:
             w = tf.train.load_variable(model, name)
 
-#        print ("{:45} {} {}".format(name, type(w), w.shape))
         weights.append((name, w))
-    return weights
+    return nhwc_to_nchw(merge_gammas(weights)), 2
 
-def merge_gammas(weights):
-    out_weights = []
-    skip = 0
-    for e, (name, w) in enumerate(weights):
-        if skip > 0:
-            skip -= 1
-            continue
+def getMinigoWeightsV3(model):
+    """Load and massage Minigo weights to Leela format.
 
-        if matches(name, ('conv2d', 'kernel')) and 'gamma' in weights[e+2][0]:
-            kernel = w
-            bias = weights[e+1][1]
-            gamma = weights[e+2][1]
-            beta = weights[e+3][1]
-            mean = weights[e+4][1]
-            var = weights[e+5][1]
+    Converts weights with SE-units.
+    """
+    var_names = tf.train.load_checkpoint(model).get_variable_to_dtype_map()
 
-            new_kernel = kernel * np.reshape(gamma, (1, 1, 1, -1))
-            new_bias = gamma * bias + beta * np.sqrt(var + 1e-5)
-            new_mean = mean * gamma
+    # count() overcounts by 3 from policy/value head and each layer has two convolutions.
+    layers = (max([count for n, count in deduped(var_names)]) - 3) // 2
+    print(layers, 'layers')
 
-            out_weights.append(new_kernel)
-            out_weights.append(new_bias)
-            out_weights.append(new_mean)
-            out_weights.append(var)
+    has_conv_bias = any(matches(name, ('conv2d', 'bias')) for name in var_names.keys())
+    if has_conv_bias:
+        raise ValueError('Unexpected convolution biases')
 
-            skip = 5
+    weight_names = []
 
-        elif matches(name, ('dense', 'kernel')):
-            # Minigo uses channels last order while LZ uses channels first,
-            # Do some surgery for the dense layers to make the output match.
-            planes = w.shape[0] // 361
-            if planes > 0:
-                w1 = np.reshape(w, [19, 19, planes, -1])
-                w2 = np.transpose(w1, [2, 0, 1, 3])
-                new_kernel = np.reshape(w2, [361*planes, -1])
-                out_weights.append(new_kernel)
-            else:
-                out_weights.append(w)
+    def tensor_number(number):
+        return '' if number ==0 else '_' + str(number)
+
+    def add_conv(number, with_gamma=True):
+        number = tensor_number(number)
+        weight_names.append('conv2d{}/kernel:0'.format(number))
+        if with_gamma:
+            weight_names.append('batch_normalization{}/gamma:0'.format(number))
+            weight_names.append('batch_normalization{}/beta:0'.format(number))
         else:
-            out_weights.append(w)
+            # Minigo is missing betas in head 1x1 convolutions.
+            weight_names.append('conv2d{}/bias:0'.format(number))
+        weight_names.append('batch_normalization{}/moving_mean:0'.format(number))
+        weight_names.append('batch_normalization{}/moving_variance:0'.format(number))
 
-    return out_weights
+    def add_dense(number):
+        number = tensor_number(number)
+        weight_names.append('dense{}/kernel:0'.format(number))
+        weight_names.append('dense{}/bias:0'.format(number))
 
-def save_leelaz_weights(filename, weights):
+    # This blindly builds the correct names for the tensors.
+
+    # Input convolution
+    add_conv(0)
+
+    # Residual blocks
+    for l in range(1, layers + 1):
+        add_conv(2 * l - 1)
+        add_conv(2 * l)
+        # SE-units.
+        add_dense(2 * l - 2)
+        add_dense(2 * l - 1)
+
+    # Policy head
+    add_conv(2 * layers + 1, with_gamma=False)
+    add_dense(2 * layers)
+    # Value head
+    add_conv(2 * layers + 2, with_gamma=False)
+    add_dense(2 * layers + 1)
+    add_dense(2 * layers + 2)
+
+    # This tries to load the data for each tensors.
+    weights = []
+    for i, name in enumerate(weight_names):
+        if matches(name, ('conv2d', 'bias')):
+            w = np.zeros(weights[-1][1].shape[-1:])
+        else:
+            w = tf.train.load_variable(model, name)
+
+        weights.append((name, w))
+    return nhwc_to_nchw(weights), 4
+
+def save_leelaz_weights(filename, weights, version):
     with gzip.open(filename, 'wb') as f_out:
         # Version tag
         # Minigo outputs winrate from blacks point of view (same as ELF)
-        f_out.write(b'2')
+        f_out.write(bytes(str(version).encode('utf-8')))
         for e, w in enumerate(weights):
             # Newline unless last line (single bias)
             f_out.write(b'\n')
@@ -222,12 +291,15 @@ def main():
 
     model = sys.argv[1]
 
-    print ('loading ', model)
-    print ()
+    print('Loading ', model)
+    print()
 
     # Can be used for v9 or before models.
-    # weights = getMinigoWeightsV1(model)
-    weights = getMinigoWeightsV2(model)
+    #weights, ver = getMinigoWeightsV1(model)
+    # v9 - v16 models
+    #weights, ver = getMinigoWeightsV2(model)
+    # v17 -> models (SE-units)
+    weights,ver = getMinigoWeightsV3(model)
     if 0:
         for name, variables in [
                 ('load_checkpoint', var_names.keys()),
@@ -238,7 +310,7 @@ def main():
             print (deduped(variables))
             print ()
 
-    save_leelaz_weights(model + '_converted.txt.gz', merge_gammas(weights))
+    save_leelaz_weights(model + '_converted.txt.gz', weights, ver)
 
 if __name__ == "__main__":
     main()

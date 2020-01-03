@@ -44,6 +44,8 @@ public:
         std::vector<std::vector<float>> m_conv_biases;
         std::vector<std::vector<float>> m_batchnorm_means;
         std::vector<std::vector<float>> m_batchnorm_stddevs;
+        std::vector<std::vector<float>> m_batchnorm_gammas;
+        std::vector<std::vector<float>> m_batchnorm_betas;
 
         // Policy head
         std::vector<float> m_conv_pol_w;
@@ -51,6 +53,12 @@ public:
 
         std::vector<float> m_conv_val_w;
         std::vector<float> m_conv_val_b;
+
+        // SE-units
+        std::vector<std::vector<float>> m_se_fc1_w;
+        std::vector<std::vector<float>> m_se_fc1_b;
+        std::vector<std::vector<float>> m_se_fc2_w;
+        std::vector<std::vector<float>> m_se_fc2_b;
     };
 
     virtual ~ForwardPipe() = default;
