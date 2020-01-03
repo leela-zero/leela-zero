@@ -97,6 +97,7 @@ public:
     static void show_heatmap(const FastState* state, const Netresult& netres,
                              bool topmoves);
 
+    static float get_normalised_komi(const GameState* state);
     static std::vector<float> gather_features(const GameState* state,
                                               int symmetry);
     static std::pair<int, int> get_symmetry(const std::pair<int, int>& vertex,

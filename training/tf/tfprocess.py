@@ -163,11 +163,12 @@ class TFProcess:
 
         # Mini-batches come as raw packed strings. Decode
         # into tensors to feed into network.
-        planes = tf.decode_raw(self.planes, tf.uint8)
+        planes = tf.decode_raw(self.planes, tf.float32)
         probs = tf.decode_raw(self.probs, tf.float32)
         winner = tf.decode_raw(self.winner, tf.float32)
 
-        planes = tf.cast(planes, self.model_dtype)
+        if self.model_dtype != tf.float32:
+            planes = tf.cast(planes, self.model_dtype)
 
         planes = tf.reshape(planes, (batch_size, 18, 19*19))
         probs = tf.reshape(probs, (batch_size, 19*19 + 1))
