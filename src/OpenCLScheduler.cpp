@@ -41,7 +41,7 @@ using Utils::myprintf;
 
 class from_float{
 public:
-    from_float(const std::vector<float> & f) : m_f(f) {}
+    from_float(const std::vector<float>& f) : m_f(f) {}
 
     operator const std::vector<float>&() {
         return m_f;
@@ -115,7 +115,7 @@ void OpenCLScheduler<net_t>::initialize(const int channels) {
     // so that we can at least concurrently schedule something to the GPU.
     auto num_worker_threads = cfg_num_threads / cfg_batch_size / (m_opencl.size() + 1) + 1;
     auto gnum = 0;
-    for (auto & opencl : m_opencl) {
+    for (auto& opencl : m_opencl) {
         opencl->initialize(channels, cfg_batch_size);
 
         for (auto i = unsigned{0}; i < num_worker_threads; i++) {
@@ -139,7 +139,7 @@ OpenCLScheduler<net_t>::~OpenCLScheduler() {
         m_running = false;
     }
     m_cv.notify_all();
-    for (auto & x : m_worker_threads) {
+    for (auto& x : m_worker_threads) {
         x.join();
     }
 }
@@ -222,7 +222,7 @@ void OpenCLScheduler<net_t>::push_convolve(unsigned int filter_size,
                                            unsigned int channels,
                                            unsigned int outputs,
                                            const std::vector<float>& weights) {
-    for (const auto & opencl_net : m_networks) {
+    for (const auto& opencl_net : m_networks) {
         opencl_net->push_convolve(filter_size, channels, outputs,
                                   from_float(weights));
     }
@@ -384,7 +384,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
         batch_output_val.resize(out_val_size * count);
 
         auto index = size_t{0};
-        for (auto & x : inputs) {
+        for (auto& x : inputs) {
             std::unique_lock<std::mutex> lk(x->mutex);
             std::copy(begin(x->in), end(x->in), begin(batch_input) + in_size * index);
             index++;
@@ -396,7 +396,7 @@ void OpenCLScheduler<net_t>::batch_worker(const size_t gnum) {
 
         // Get output and copy back
         index = 0;
-        for (auto & x : inputs) {
+        for (auto& x : inputs) {
             std::copy(begin(batch_output_pol) + out_pol_size * index,
                       begin(batch_output_pol) + out_pol_size * (index + 1),
                       begin(x->out_p));
@@ -428,7 +428,7 @@ void OpenCLScheduler<net_t>::drain() {
         m_forward_queue.clear();
     }
 
-    for (auto & x : fq) {
+    for (auto& x : fq) {
         {
             // dummy lock/unlock to make sure thread in forward() is sleeping
             std::unique_lock<std::mutex> lk(x->mutex);
