@@ -233,6 +233,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                                         UCTNode* const node) {
     const auto color = currstate.get_to_move();
     auto result = SearchResult{};
+    auto new_node = false;
 
     node->virtual_loss();
 
@@ -256,6 +257,7 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
                                       get_min_psa_ratio());
             if (!had_children && success) {
                 result = SearchResult::from_eval(eval);
+                new_node = true;
             }
         }
     }
@@ -272,7 +274,8 @@ SearchResult UCTSearch::play_simulation(GameState & currstate,
         }
     }
 
-    if (result.valid()) {
+    // New node was updated in create_children.
+    if (result.valid() && !new_node) {
         node->update(result.eval());
     }
 
