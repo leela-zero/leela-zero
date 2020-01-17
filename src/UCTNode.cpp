@@ -149,6 +149,8 @@ bool UCTNode::create_children(Network & network,
     }
 
     link_nodelist(nodecount, nodelist, min_psa_ratio);
+    // Increment visit and assign eval.
+    update(eval);
     expand_done();
     return true;
 }
