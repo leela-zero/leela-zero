@@ -343,7 +343,7 @@ https://zero.sjeng.org
 * GUI and study tool for Leela Zero:
 https://github.com/featurecat/lizzie
 * Watch Leela Zero's training games live in a GUI:
-https://github.com/fsparv/LeelaWatcher
+https://github.com/barrybecker4/LeelaWatcher
 * Original Alpha Go (Lee Sedol) paper:
 https://storage.googleapis.com/deepmind-media/alphago/AlphaGoNaturePaper.pdf
 * Alpha Go Zero paper:
