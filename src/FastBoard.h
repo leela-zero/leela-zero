@@ -38,6 +38,9 @@
 #include <utility>
 #include <vector>
 
+#include "FastBoardSerializer.h"
+
+
 class FastBoard {
     friend class FastState;
 public:
@@ -74,11 +77,12 @@ public:
     };
 
     int get_boardsize() const;
+    int update_board(const int color, const int i);
+
     vertex_t get_state(int x, int y) const;
     vertex_t get_state(int vertex) const ;
+
     int get_vertex(int x, int y) const;
-    void set_state(int x, int y, vertex_t content);
-    void set_state(int vertex, vertex_t content);
     std::pair<int, int> get_xy(int vertex) const;
 
     bool is_suicide(int i, int color) const;
@@ -101,16 +105,14 @@ public:
 
     void reset_board(int size);
     void display_board(int lastmove = -1);
+    std::string serialize_board(int lastmove = -1);
 
-    static bool starpoint(int size, int point);
-    static bool starpoint(int size, int x, int y);
 
 protected:
     /*
         bit masks to detect eyes on neighbors
     */
     static const std::array<int,      2> s_eyemask;
-    static const std::array<vertex_t, 4> s_cinvert; /* color inversion */
 
     std::array<vertex_t, NUM_VERTICES>         m_state;      /* board contents */
     std::array<unsigned short, NUM_VERTICES+1> m_next;       /* next stone in string */
@@ -130,13 +132,17 @@ protected:
     int m_boardsize;
     int m_sidevertices;
 
+    FastBoardSerializer *m_serializer;
+
+    int remove_string(int i);
+    virtual void record_position(int pos);
+    virtual void record_captures(int color, int captured_stones);
     int calc_reach_color(int color) const;
 
     int count_neighbours(const int color, const int i) const;
     void merge_strings(const int ip, const int aip);
     void add_neighbour(const int i, const int color);
     void remove_neighbour(const int i, const int color);
-    void print_columns();
 };
 
 #endif

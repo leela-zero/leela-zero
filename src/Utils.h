@@ -64,6 +64,7 @@ namespace Utils {
         return c >= 0 && c <= 127;
     }
 
+    /* Returns the smallest multiple of b that is larger than or equal to a */
     size_t ceilMultiple(size_t a, size_t b);
 
     const std::string leelaz_file(std::string file);

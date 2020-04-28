@@ -32,12 +32,14 @@
 #include <cassert>
 #include <cctype>
 #include <algorithm>
+#include <boost/format.hpp>
 #include <array>
 #include <iostream>
 #include <queue>
 #include <sstream>
 #include <string>
 
+#include "FastBoardSerializer.h"
 #include "Utils.h"
 #include "config.h"
 
@@ -54,12 +56,112 @@ const std::array<int, 2> FastBoard::s_eyemask = {
     4 * (1 << (NBR_SHIFT * WHITE))
 };
 
-const std::array<FastBoard::vertex_t, 4> FastBoard::s_cinvert = {
-    WHITE, BLACK, EMPTY, INVAL
-};
-
 int FastBoard::get_boardsize() const {
     return m_boardsize;
+}
+
+// return NO_VERTEX if not ko, else return the position of the captured stone.
+int FastBoard::update_board(const int color, const int i) {
+    assert(i != FastBoard::PASS);
+    assert(m_state[i] == EMPTY);
+    assert(i >= 0 && i < m_numvertices);
+    assert(color == BLACK || color == WHITE);
+
+    record_position(i);
+    m_state[i] = vertex_t(color);
+    m_next[i] = i;
+    m_parent[i] = i;
+    m_libs[i] = count_pliberties(i);
+    m_stones[i] = 1;
+    record_position(i);
+
+    /* update neighbor liberties (they all lose 1) */
+    add_neighbour(i, color);
+
+    /* did we play into an opponent eye? */
+    auto eyeplay = (m_neighbours[i] & s_eyemask[!color]);
+
+    auto captured_stones = 0;
+    int captured_vtx;
+
+    for (int k = 0; k < 4; k++) {
+        int ai = i + m_dirs[k];
+
+        if (m_state[ai] == !color) {
+            if (m_libs[m_parent[ai]] <= 0) {
+                int this_captured = remove_string(ai);
+                captured_vtx = ai;
+                captured_stones += this_captured;
+            }
+        } else if (m_state[ai] == color) {
+            int ip = m_parent[i];
+            int aip = m_parent[ai];
+
+            if (ip != aip) {
+                if (m_stones[ip] >= m_stones[aip]) {
+                    merge_strings(ip, aip);
+                } else {
+                    merge_strings(aip, ip);
+                }
+            }
+        }
+    }
+
+    record_captures(color, captured_stones);
+
+    /* move last vertex in list to our position */
+    auto lastvertex = m_empty[--m_empty_cnt];
+    m_empty_idx[lastvertex] = m_empty_idx[i];
+    m_empty[m_empty_idx[i]] = lastvertex;
+
+    /* check whether we still live (i.e. detect suicide) */
+    if (m_libs[m_parent[i]] == 0) {
+        assert(captured_stones == 0);
+        remove_string(i);
+    }
+
+    /* check for possible simple ko */
+    if (captured_stones == 1 && eyeplay) {
+        assert(get_state(captured_vtx) == FastBoard::EMPTY
+               && !is_suicide(captured_vtx, !color));
+        return captured_vtx;
+    }
+
+    // No ko
+    return NO_VERTEX;
+}
+
+int FastBoard::remove_string(int i) {
+    int pos = i;
+    int removed = 0;
+    int color = m_state[i];
+
+    do {
+        record_position(pos);
+        m_state[pos] = EMPTY;
+        m_parent[pos] = NUM_VERTICES;
+
+        remove_neighbour(pos, color);
+
+        m_empty_idx[pos]      = m_empty_cnt;
+        m_empty[m_empty_cnt]  = pos;
+        m_empty_cnt++;
+
+        record_position(pos);
+        removed++;
+        pos = m_next[pos];
+    } while (pos != i);
+
+    return removed;
+}
+
+
+void FastBoard::record_position(int pos) {
+    (void)pos; // does nothing in FastBoard, but FullBoard will update Zobrist here
+}
+
+void FastBoard::record_captures(const int color, const int captured_stones) {
+    m_prisoners[color] += captured_stones;
 }
 
 int FastBoard::get_vertex(int x, int y) const {
@@ -94,20 +196,8 @@ FastBoard::vertex_t FastBoard::get_state(int vertex) const {
     return m_state[vertex];
 }
 
-void FastBoard::set_state(int vertex, FastBoard::vertex_t content) {
-    assert(vertex >= 0 && vertex < NUM_VERTICES);
-    assert(vertex >= 0 && vertex < m_numvertices);
-    assert(content >= BLACK && content <= INVAL);
-
-    m_state[vertex] = content;
-}
-
 FastBoard::vertex_t FastBoard::get_state(int x, int y) const {
     return get_state(get_vertex(x, y));
-}
-
-void FastBoard::set_state(int x, int y, FastBoard::vertex_t content) {
-    set_state(get_vertex(x, y), content);
 }
 
 void FastBoard::reset_board(int size) {
@@ -123,6 +213,8 @@ void FastBoard::reset_board(int size) {
     m_dirs[1] = +1;
     m_dirs[2] = +m_sidevertices;
     m_dirs[3] = -1;
+
+    m_serializer = new FastBoardSerializer(this);
 
     for (int i = 0; i < m_numvertices; i++) {
         m_state[i]     = INVAL;
@@ -293,46 +385,11 @@ float FastBoard::area_score(float komi) const {
 }
 
 void FastBoard::display_board(int lastmove) {
-    int boardsize = get_boardsize();
-
-    myprintf("\n   ");
-    print_columns();
-    for (int j = boardsize-1; j >= 0; j--) {
-        myprintf("%2d", j+1);
-        if (lastmove == get_vertex(0, j))
-            myprintf("(");
-        else
-            myprintf(" ");
-        for (int i = 0; i < boardsize; i++) {
-            if (get_state(i,j) == WHITE) {
-                myprintf("O");
-            } else if (get_state(i,j) == BLACK)  {
-                myprintf("X");
-            } else if (starpoint(boardsize, i, j)) {
-                myprintf("+");
-            } else {
-                myprintf(".");
-            }
-            if (lastmove == get_vertex(i, j)) myprintf(")");
-            else if (i != boardsize-1 && lastmove == get_vertex(i, j)+1) myprintf("(");
-            else myprintf(" ");
-        }
-        myprintf("%2d\n", j+1);
-    }
-    myprintf("   ");
-    print_columns();
-    myprintf("\n");
+    myprintf("%s", m_serializer->serialize_board(lastmove).c_str());
 }
 
-void FastBoard::print_columns() {
-    for (int i = 0; i < get_boardsize(); i++) {
-        if (i < 25) {
-            myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
-        } else {
-            myprintf("%c ", (('A' + (i - 25) < 'I') ? 'A' + (i - 25) : 'A' + (i - 25) + 1));
-        }
-    }
-    myprintf("\n");
+std::string FastBoard::serialize_board(int lastmove) {
+    return m_serializer->serialize_board(lastmove).c_str();
 }
 
 void FastBoard::merge_strings(const int ip, const int aip) {
@@ -414,133 +471,15 @@ bool FastBoard::is_eye(const int color, const int i) const {
 }
 
 std::string FastBoard::move_to_text(int move) const {
-    std::ostringstream result;
-
-    int column = move % m_sidevertices;
-    int row = move / m_sidevertices;
-
-    column--;
-    row--;
-
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (column >= 0 && column < m_boardsize));
-
-    if (move >= 0 && move <= m_numvertices) {
-        result << static_cast<char>(column < 8 ? 'A' + column : 'A' + column + 1);
-        result << (row + 1);
-    } else if (move == FastBoard::PASS) {
-        result << "pass";
-    } else if (move == FastBoard::RESIGN) {
-        result << "resign";
-    } else {
-        result << "error";
-    }
-
-    return result.str();
+    return m_serializer->move_to_text(move);
 }
 
 int FastBoard::text_to_move(std::string move) const {
-    transform(cbegin(move), cend(move), begin(move), tolower);
-
-    if (move == "pass") {
-        return PASS;
-    } else if (move == "resign") {
-        return RESIGN;
-    } else if (move.size() < 2 || !std::isalpha(move[0]) || !std::isdigit(move[1]) || move[0] == 'i') {
-        return NO_VERTEX;
-    }
-
-    auto column = move[0] - 'a';
-    if (move[0] > 'i') {
-        --column;
-    }
-
-    int row;
-    std::istringstream parsestream(move.substr(1));
-    parsestream >> row;
-    --row;
-
-    if (row >= m_boardsize || column >= m_boardsize) {
-        return NO_VERTEX;
-    }
-
-    return get_vertex(column, row);
+    return m_serializer->text_to_move(move);
 }
 
 std::string FastBoard::move_to_text_sgf(int move) const {
-    std::ostringstream result;
-
-    int column = move % m_sidevertices;
-    int row = move / m_sidevertices;
-
-    column--;
-    row--;
-
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
-           || (column >= 0 && column < m_boardsize));
-
-    // SGF inverts rows
-    row = m_boardsize - row - 1;
-
-    if (move >= 0 && move <= m_numvertices) {
-        if (column <= 25) {
-            result << static_cast<char>('a' + column);
-        } else {
-            result << static_cast<char>('A' + column - 26);
-        }
-        if (row <= 25) {
-            result << static_cast<char>('a' + row);
-        } else {
-            result << static_cast<char>('A' + row - 26);
-        }
-    } else if (move == FastBoard::PASS) {
-        result << "tt";
-    } else if (move == FastBoard::RESIGN) {
-        result << "tt";
-    } else {
-        result << "error";
-    }
-
-    return result.str();
-}
-
-bool FastBoard::starpoint(int size, int point) {
-    int stars[3];
-    int points[2];
-    int hits = 0;
-
-    if (size % 2 == 0 || size < 9) {
-        return false;
-    }
-
-    stars[0] = size >= 13 ? 3 : 2;
-    stars[1] = size / 2;
-    stars[2] = size - 1 - stars[0];
-
-    points[0] = point / size;
-    points[1] = point % size;
-
-    for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 3; j++) {
-            if (points[i] == stars[j]) {
-                hits++;
-            }
-        }
-    }
-
-    return hits >= 2;
-}
-
-bool FastBoard::starpoint(int size, int x, int y) {
-    return starpoint(size, y * size + x);
+    return m_serializer->move_to_text_sgf(move);
 }
 
 int FastBoard::get_prisoners(int side)  const {
