@@ -59,13 +59,13 @@ class Validation : public QObject {
     Q_OBJECT
 
 public:
-    Validation(const int gpus, const int games,
+    Validation(int gpus, int games,
                const QStringList& gpusList,
                QVector<Engine>& engines,
                const QString& keep,
                QMutex* mutex,
-               const float& h0,
-               const float& h1);
+               float h0,
+               float h1);
     ~Validation() = default;
     void startGames();
     void wait();

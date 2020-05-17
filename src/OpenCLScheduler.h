@@ -67,7 +67,7 @@ public:
     virtual ~OpenCLScheduler();
     OpenCLScheduler();
 
-    virtual void initialize(const int channels);
+    virtual void initialize(int channels);
     virtual void forward(const std::vector<float>& input,
                          std::vector<float>& output_pol,
                          std::vector<float>& output_val);
@@ -94,7 +94,7 @@ private:
     std::list<std::shared_ptr<ForwardQueueEntry>> m_forward_queue;
     std::list<std::thread> m_worker_threads;
 
-    void batch_worker(const size_t gnum);
+    void batch_worker(size_t gnum);
     void push_input_convolution(unsigned int filter_size,
                                 unsigned int channels,
                                 unsigned int outputs,

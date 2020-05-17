@@ -58,12 +58,12 @@ void SGFTree::init_state() {
     m_state.init_game(std::min(BOARD_SIZE, 19), KOMI);
 }
 
-const KoState * SGFTree::get_state(void) const {
+const KoState* SGFTree::get_state() const {
     assert(m_initialized);
     return &m_state;
 }
 
-const SGFTree * SGFTree::get_child(size_t count) const {
+const SGFTree* SGFTree::get_child(size_t count) const {
     if (count < m_children.size()) {
         assert(m_initialized);
         return &(m_children[count]);

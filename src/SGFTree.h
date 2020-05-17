@@ -48,7 +48,7 @@ public:
     SGFTree() = default;
     void init_state();
 
-    const KoState * get_state() const;
+    const KoState* get_state() const;
     GameState follow_mainline_state(unsigned int movenum = 999) const;
     std::vector<int> get_mainline() const;
 
@@ -56,8 +56,8 @@ public:
     void load_from_string(const std::string& gamebuff);
 
     void add_property(std::string property, std::string value);
-    SGFTree * add_child();
-    const SGFTree * get_child(size_t count) const;
+    SGFTree* add_child();
+    const SGFTree* get_child(size_t count) const;
     int get_move(int tomove) const;
     std::pair<int, int> get_colored_move() const;
     bool is_initialized() const {
