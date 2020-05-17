@@ -126,8 +126,8 @@ Validation::Validation(const int gpus,
                        QVector<Engine>& engines,
                        const QString& keep,
                        QMutex* mutex,
-                       const float& h0,
-                       const float& h1) :
+                       const float h0,
+                       const float h1) :
 
     m_mainMutex(mutex),
     m_syncMutex(),

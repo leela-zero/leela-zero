@@ -58,7 +58,7 @@ public:
     std::uint64_t randuint64();
 
     // Random number from [0, max - 1]
-    std::uint64_t randuint64(const std::uint64_t max);
+    std::uint64_t randuint64(std::uint64_t max);
 
     // return the thread local RNG
     static Random& get_Rng();

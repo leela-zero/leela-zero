@@ -35,12 +35,12 @@ constexpr int AUTOGTP_VERSION = 18;
 class Management : public QObject {
     Q_OBJECT
 public:
-    Management(const int gpus,
-               const int games,
+    Management(int gpus,
+               int games,
                const QStringList& gpuslist,
-               const int ver,
-               const int maxGame,
-               const bool delNetworks,
+               int ver,
+               int maxGame,
+               bool delNetworks,
                const QString& keep,
                const QString& debug);
     ~Management() = default;
