@@ -77,6 +77,8 @@ public:
     using PolicyVertexPair = std::pair<float,int>;
     using Netresult = NNCache::Netresult;
 
+    virtual ~Network() = default;
+
     Netresult get_output(const GameState* const state,
                          const Ensemble ensemble,
                          const int symmetry = -1,
