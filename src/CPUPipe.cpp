@@ -72,7 +72,7 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
 
     constexpr auto buffersize = 32;
 
-    std::array<std::array<float, Wpad>, Wpad> in_pad{0.0f};
+    std::array<std::array<float, Wpad>, Wpad> in_pad{{{0.0f}}};
 
     std::array<float, buffersize * WINOGRAD_ALPHA * WINOGRAD_ALPHA> buffer;
     auto buffer_offset = 0;
