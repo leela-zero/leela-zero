@@ -149,7 +149,7 @@ public:
             std::vector<float>& output_pol,
             std::vector<float>& output_val,
             OpenCLContext & opencl_context,
-            const int batch_size = 1);
+            int batch_size = 1);
 
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
@@ -196,7 +196,7 @@ class OpenCL {
 public:
     OpenCL(int gpu, bool silent = false);
 
-    void initialize(const int channels, size_t batch_size = 1);
+    void initialize(int channels, size_t batch_size = 1);
     void ensure_context_initialized(OpenCLContext & opencl_context);
     std::string get_device_name();
     bool has_fp16_compute();

@@ -41,10 +41,10 @@ public:
         }
     }
     Engine() = default;
-    QString getCmdLine(void) const {
+    QString getCmdLine() const {
         return m_binary + " " + m_options + " " + m_network;
     }
-    QString getNetworkFile(void) const {
+    QString getNetworkFile() const {
         return QFileInfo(m_network).baseName();
     }
     QString m_binary;
@@ -59,19 +59,19 @@ public:
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version,
                    const QString &sgf = QString(),
-                   const int moves = 0);
+                   int moves = 0);
     void move();
     bool waitForMove() { return waitReady(); }
     bool readMove();
     bool nextMove();
     bool getScore();
     bool loadSgf(const QString &fileName);
-    bool loadSgf(const QString &fileName, const int moves);
+    bool loadSgf(const QString &fileName, int moves);
     bool writeSgf();
     bool loadTraining(const QString &fileName);
     bool saveTraining();
-    bool fixSgf(const Engine& whiteEngine, const bool resignation,
-        const bool isSelfPlay);
+    bool fixSgf(const Engine& whiteEngine, bool resignation,
+        bool isSelfPlay);
     bool dumpTraining();
     bool dumpDebug();
     void gameQuit();
@@ -115,8 +115,8 @@ private:
     void error(int errnum);
     void fixSgfPlayer(QString& sgfData, const Engine& whiteEngine);
     void fixSgfComment(QString& sgfData, const Engine& whiteEngine,
-        const bool isSelfPlay);
-    void fixSgfResult(QString& sgfData, const bool resignation);
+        bool isSelfPlay);
+    void fixSgfResult(QString& sgfData, bool resignation);
 };
 
 #endif /* GAME_H */

@@ -212,7 +212,7 @@ size_t Utils::ceilMultiple(size_t a, size_t b) {
     return ret;
 }
 
-const std::string Utils::leelaz_file(std::string file) {
+std::string Utils::leelaz_file(std::string file) {
 #if defined(_WIN32) || defined(__ANDROID__)
     boost::filesystem::path dir(boost::filesystem::current_path());
 #else

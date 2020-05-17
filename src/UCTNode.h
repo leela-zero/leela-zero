@@ -67,9 +67,9 @@ public:
     size_t count_nodes_and_clear_expand_state();
     bool first_visit() const;
     bool has_children() const;
-    bool expandable(const float min_psa_ratio = 0.0f) const;
+    bool expandable(float min_psa_ratio = 0.0f) const;
     void invalidate();
-    void set_active(const bool active);
+    void set_active(bool active);
     bool valid() const;
     bool active() const;
     int get_move() const;
@@ -93,7 +93,7 @@ public:
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
-    std::unique_ptr<UCTNode> find_child(const int move);
+    std::unique_ptr<UCTNode> find_child(int move);
     void inflate_all_children();
 
     void clear_expand_state();

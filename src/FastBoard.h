@@ -82,8 +82,8 @@ public:
     std::pair<int, int> get_xy(int vertex) const;
 
     bool is_suicide(int i, int color) const;
-    int count_pliberties(const int i) const;
-    bool is_eye(const int color, const int vtx) const;
+    int count_pliberties(int i) const;
+    bool is_eye(int color, int vtx) const;
 
     float area_score(float komi) const;
 
@@ -132,10 +132,10 @@ protected:
 
     int calc_reach_color(int color) const;
 
-    int count_neighbours(const int color, const int i) const;
-    void merge_strings(const int ip, const int aip);
-    void add_neighbour(const int i, const int color);
-    void remove_neighbour(const int i, const int color);
+    int count_neighbours(int color, int i) const;
+    void merge_strings(int ip, int aip);
+    void add_neighbour(int i, int color);
+    void remove_neighbour(int i, int color);
     void print_columns();
 };
 
