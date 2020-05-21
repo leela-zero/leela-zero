@@ -67,7 +67,7 @@ TEST(UtilsTest, CeilMultiple) {
     EXPECT_EQ(ceilMultiple(99, 100), (size_t)100);
 }
 
-double randomlyDistributedProbability(std::vector<short> values, double expected) {
+double randomlyDistributedProbability(const std::vector<short>& values, const double expected) {
     auto count = values.size();
 
     // h0: each number had a (1 / count) chance
@@ -90,7 +90,7 @@ double randomlyDistributedProbability(std::vector<short> values, double expected
     return boost::math::gamma_p(degrees_of_freedom / 2.0, x / 2.0);
 }
 
-bool rngBucketsLookRandom(double p, double alpha) {
+bool rngBucketsLookRandom(const double p, const double alpha) {
     return p >= (alpha/2) && p <= (1-alpha/2);
 }
 

@@ -48,7 +48,7 @@
 
 using namespace Utils;
 
-void expect_regex(std::string s, std::string re, bool positive = true) {
+void expect_regex(const std::string& s, const std::string& re, const bool positive = true) {
     auto m = std::regex_search(s, std::regex(re));
     if (positive && !m) {
         FAIL() << "Output:" << std::endl << s
@@ -107,14 +107,14 @@ public:
     GameState& get_gamestate() {
         return *m_gamestate;
     }
-    std::pair<std::string, std::string> gtp_execute(std::string cmd) {
+    std::pair<std::string, std::string> gtp_execute(const std::string& cmd) {
         testing::internal::CaptureStdout();
         testing::internal::CaptureStderr();
         GTP::execute(get_gamestate(), cmd);
         return std::make_pair(testing::internal::GetCapturedStdout(),
                               testing::internal::GetCapturedStderr());
     }
-    void test_analyze_cmd(std::string cmd, bool valid, int who, int interval,
+    void test_analyze_cmd(const std::string& cmd, bool valid, int who, int interval,
             int avoidlen, int avoidcolor, int avoiduntil);
 
 private:
@@ -266,8 +266,8 @@ TEST_F(LeelaTest, TimeControl2) {
     expect_regex(result.second, "White time: 00:02:00, 1 period\\(s\\) of 120 seconds left");
 }
 
-void LeelaTest::test_analyze_cmd(std::string cmd, bool valid, int who, int interval,
-        int avoidlen, int avoidcolor, int avoiduntil) {
+void LeelaTest::test_analyze_cmd(const std::string& cmd, const bool valid, const int who, const int interval,
+        const int avoidlen, const int avoidcolor, const int avoiduntil) {
     // std::cout << "testing " << cmd << std::endl;
     // avoid_until checks against the absolute game move number, indexed from 0
     std::istringstream cmdstream(cmd);

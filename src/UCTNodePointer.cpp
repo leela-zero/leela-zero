@@ -42,11 +42,11 @@ size_t UCTNodePointer::get_tree_size() {
     return m_tree_size.load();
 }
 
-void UCTNodePointer::increment_tree_size(size_t sz) {
+void UCTNodePointer::increment_tree_size(const size_t sz) {
     m_tree_size += sz;
 }
 
-void UCTNodePointer::decrement_tree_size(size_t sz) {
+void UCTNodePointer::decrement_tree_size(const size_t sz) {
     assert(UCTNodePointer::m_tree_size >= sz);
     m_tree_size -= sz;
 }
@@ -72,7 +72,7 @@ UCTNodePointer::UCTNodePointer(UCTNodePointer&& n) {
     increment_tree_size(sizeof(UCTNodePointer));
 }
 
-UCTNodePointer::UCTNodePointer(std::int16_t vertex, float policy) {
+UCTNodePointer::UCTNodePointer(const std::int16_t vertex, const float policy) {
     std::uint32_t i_policy;
     auto i_vertex = static_cast<std::uint16_t>(vertex);
     std::memcpy(&i_policy, &policy, sizeof(i_policy));
@@ -138,7 +138,7 @@ float UCTNodePointer::get_policy() const {
     return read_policy(v);
 }
 
-float UCTNodePointer::get_eval_lcb(int color) const {
+float UCTNodePointer::get_eval_lcb(const int color) const {
     auto v = m_data.load();
     assert(is_inflated(v));
     return read_ptr(v)->get_eval_lcb(color);
@@ -150,7 +150,7 @@ bool UCTNodePointer::active() const {
     return true;
 }
 
-float UCTNodePointer::get_eval(int tomove) const {
+float UCTNodePointer::get_eval(const int tomove) const {
     // this can only be called if it is an inflated pointer
     auto v = m_data.load();
     assert(is_inflated(v));

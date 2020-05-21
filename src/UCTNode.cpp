@@ -51,7 +51,7 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(int vertex, float policy) : m_move(vertex), m_policy(policy) {
+UCTNode::UCTNode(const int vertex, const float policy) : m_move(vertex), m_policy(policy) {
 }
 
 bool UCTNode::first_visit() const {
@@ -62,7 +62,7 @@ bool UCTNode::create_children(Network & network,
                               std::atomic<int>& nodecount,
                               GameState& state,
                               float& eval,
-                              float min_psa_ratio) {
+                              const float min_psa_ratio) {
     // no successors in final state
     if (state.get_passes() >= 2) {
         return false;
@@ -157,7 +157,7 @@ bool UCTNode::create_children(Network & network,
 
 void UCTNode::link_nodelist(std::atomic<int>& nodecount,
                             std::vector<Network::PolicyVertexPair>& nodelist,
-                            float min_psa_ratio) {
+                            const float min_psa_ratio) {
     assert(min_psa_ratio < m_min_psa_ratio_children);
 
     if (nodelist.empty()) {
@@ -210,7 +210,7 @@ void UCTNode::virtual_loss_undo() {
     m_virtual_loss -= VIRTUAL_LOSS_COUNT;
 }
 
-void UCTNode::update(float eval) {
+void UCTNode::update(const float eval) {
     // Cache values to avoid race conditions.
     auto old_eval = static_cast<float>(m_blackevals);
     auto old_visits = static_cast<int>(m_visits);
@@ -242,11 +242,11 @@ float UCTNode::get_policy() const {
     return m_policy;
 }
 
-void UCTNode::set_policy(float policy) {
+void UCTNode::set_policy(const float policy) {
     m_policy = policy;
 }
 
-float UCTNode::get_eval_variance(float default_var) const {
+float UCTNode::get_eval_variance(const float default_var) const {
     return m_visits > 1 ? m_squared_eval_diff / (m_visits - 1) : default_var;
 }
 
@@ -254,7 +254,7 @@ int UCTNode::get_visits() const {
     return m_visits;
 }
 
-float UCTNode::get_eval_lcb(int color) const {
+float UCTNode::get_eval_lcb(const int color) const {
     // Lower confidence bound of winrate.
     auto visits = get_visits();
     if (visits < 2) {
@@ -269,7 +269,7 @@ float UCTNode::get_eval_lcb(int color) const {
     return mean - z * stddev;
 }
 
-float UCTNode::get_raw_eval(int tomove, int virtual_loss) const {
+float UCTNode::get_raw_eval(const int tomove, const int virtual_loss) const {
     auto visits = get_visits() + virtual_loss;
     assert(visits > 0);
     auto blackeval = get_blackevals();
@@ -283,14 +283,14 @@ float UCTNode::get_raw_eval(int tomove, int virtual_loss) const {
     return eval;
 }
 
-float UCTNode::get_eval(int tomove) const {
+float UCTNode::get_eval(const int tomove) const {
     // Due to the use of atomic updates and virtual losses, it is
     // possible for the visit count to change underneath us. Make sure
     // to return a consistent result to the caller by caching the values.
     return get_raw_eval(tomove, m_virtual_loss);
 }
 
-float UCTNode::get_net_eval(int tomove) const {
+float UCTNode::get_net_eval(const int tomove) const {
     if (tomove == FastBoard::WHITE) {
         return 1.0f - m_net_eval;
     }
@@ -301,11 +301,11 @@ double UCTNode::get_blackevals() const {
     return m_blackevals;
 }
 
-void UCTNode::accumulate_eval(float eval) {
+void UCTNode::accumulate_eval(const float eval) {
     atomic_add(m_blackevals, double(eval));
 }
 
-UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
+UCTNode* UCTNode::uct_select_child(const int color, const bool is_root) {
     wait_expanded();
 
     // Count parentvisits manually to avoid issues with transpositions.
@@ -362,7 +362,7 @@ UCTNode* UCTNode::uct_select_child(int color, bool is_root) {
 class NodeComp : public std::binary_function<UCTNodePointer&,
                                              UCTNodePointer&, bool> {
 public:
-    NodeComp(int color, float lcb_min_visits) : m_color(color),
+    NodeComp(const int color, const float lcb_min_visits) : m_color(color),
         m_lcb_min_visits(lcb_min_visits){};
 
     // WARNING : on very unusual cases this can be called on multithread
@@ -406,11 +406,11 @@ private:
     float m_lcb_min_visits;
 };
 
-void UCTNode::sort_children(int color, float lcb_min_visits) {
+void UCTNode::sort_children(const int color, const float lcb_min_visits) {
     std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color, lcb_min_visits));
 }
 
-UCTNode& UCTNode::get_best_root_child(int color) {
+UCTNode& UCTNode::get_best_root_child(const int color) const {
     wait_expanded();
 
     assert(!m_children.empty());
@@ -479,7 +479,7 @@ void UCTNode::expand_cancel() {
 #endif
     assert(v == ExpandState::EXPANDING);
 }
-void UCTNode::wait_expanded() {
+void UCTNode::wait_expanded() const {
     while (m_expand_state.load() == ExpandState::EXPANDING) {}
     auto v = m_expand_state.load();
 #ifdef NDEBUG

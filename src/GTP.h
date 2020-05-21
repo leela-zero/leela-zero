@@ -45,11 +45,11 @@ struct MoveToAvoid {
     size_t until_move;
     int vertex;
 
-    MoveToAvoid(int color, size_t until_move, int vertex)
+    MoveToAvoid(const int color, const size_t until_move, const int vertex)
         : color(color), until_move(until_move), vertex(vertex)
     {}
 
-    bool operator==(const MoveToAvoid other) const {
+    bool operator==(const MoveToAvoid& other) const {
         return color == other.color &&
             until_move == other.until_move && vertex == other.vertex;
     }
@@ -153,8 +153,8 @@ private:
 
     // Memory estimation helpers
     static size_t get_base_memory();
-    static size_t add_overhead(size_t s) { return s * 11LL / 10LL; }
-    static size_t remove_overhead(size_t s) { return s * 10LL / 11LL; }
+    static size_t add_overhead(const size_t s) { return s * 11LL / 10LL; }
+    static size_t remove_overhead(const size_t s) { return s * 10LL / 11LL; }
 };
 
 

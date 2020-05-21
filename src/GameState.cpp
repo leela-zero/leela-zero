@@ -43,7 +43,7 @@
 #include "KoState.h"
 #include "UCTSearch.h"
 
-void GameState::init_game(int size, float komi) {
+void GameState::init_game(const int size, const float komi) {
     KoState::init_game(size, komi);
 
     game_history.clear();
@@ -94,11 +94,11 @@ void GameState::rewind() {
     m_movenum = 0;
 }
 
-void GameState::play_move(int vertex) {
+void GameState::play_move(const int vertex) {
     play_move(get_to_move(), vertex);
 }
 
-void GameState::play_move(int color, int vertex) {
+void GameState::play_move(const int color, const int vertex) {
     if (vertex == FastBoard::RESIGN) {
         m_resigned = color;
     } else {
@@ -133,11 +133,11 @@ bool GameState::play_textmove(std::string color, const std::string& vertex) {
     return true;
 }
 
-void GameState::stop_clock(int color) {
+void GameState::stop_clock(const int color) {
     m_timecontrol.stop(color);
 }
 
-void GameState::start_clock(int color) {
+void GameState::start_clock(const int color) {
     m_timecontrol.start(color);
 }
 
@@ -163,15 +163,15 @@ void GameState::set_timecontrol(const TimeControl& timecontrol) {
     m_timecontrol = timecontrol;
 }
 
-void GameState::set_timecontrol(int maintime, int byotime,
-                                int byostones, int byoperiods) {
+void GameState::set_timecontrol(const int maintime, const int byotime,
+                                const int byostones, const int byoperiods) {
     TimeControl timecontrol(maintime, byotime,
                             byostones, byoperiods);
 
     m_timecontrol = timecontrol;
 }
 
-void GameState::adjust_time(int color, int time, int stones) {
+void GameState::adjust_time(const int color, const int time, const int stones) {
     m_timecontrol.adjust_time(color, time, stones);
 }
 
@@ -182,7 +182,7 @@ void GameState::anchor_game_history() {
     game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
-bool GameState::set_fixed_handicap(int handicap) {
+bool GameState::set_fixed_handicap(const int handicap) {
     if (!valid_handicap(handicap)) {
         return false;
     }
@@ -228,7 +228,7 @@ bool GameState::set_fixed_handicap(int handicap) {
     return true;
 }
 
-int GameState::set_fixed_handicap_2(int handicap) {
+int GameState::set_fixed_handicap_2(const int handicap) {
     int board_size = board.get_boardsize();
     int low = board_size >= 13 ? 3 : 2;
     int mid = board_size / 2;
@@ -260,7 +260,7 @@ int GameState::set_fixed_handicap_2(int handicap) {
     return placed;
 }
 
-bool GameState::valid_handicap(int handicap) {
+bool GameState::valid_handicap(const int handicap) {
     int board_size = board.get_boardsize();
 
     if (handicap < 2 || handicap > 9) {
@@ -311,7 +311,7 @@ void GameState::place_free_handicap(int stones, Network & network) {
     set_handicap(orgstones);
 }
 
-const FullBoard& GameState::get_past_board(int moves_ago) const {
+const FullBoard& GameState::get_past_board(const int moves_ago) const {
     assert(moves_ago >= 0 && (unsigned)moves_ago <= m_movenum);
     assert(m_movenum + 1 <= game_history.size());
     return game_history[m_movenum - moves_ago]->board;

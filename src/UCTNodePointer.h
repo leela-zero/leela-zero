@@ -70,17 +70,17 @@ private:
     // (C-style bit fields and unions are not portable)
     mutable std::atomic<std::uint64_t> m_data{INVALID};
 
-    UCTNode * read_ptr(uint64_t v) const {
+    UCTNode * read_ptr(const uint64_t v) const {
         assert((v & 3ULL) == POINTER);
         return reinterpret_cast<UCTNode*>(v & ~(0x3ULL));
     }
 
-    std::int16_t read_vertex(uint64_t v) const {
+    std::int16_t read_vertex(const uint64_t v) const {
         assert((v & 3ULL) == UNINFLATED);
         return static_cast<std::int16_t>(v >> 16);
     }
 
-    float read_policy(uint64_t v) const {
+    float read_policy(const uint64_t v) const {
         static_assert(sizeof(float) == 4,
             "This code assumes floats are 32-bit");
         assert((v & 3ULL) == UNINFLATED);
@@ -91,7 +91,7 @@ private:
         return ret;
     }
 
-    bool is_inflated(uint64_t v) const {
+    bool is_inflated(const uint64_t v) const {
         return (v & 3ULL) == POINTER;
     }
 

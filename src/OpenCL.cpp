@@ -123,9 +123,9 @@ void OpenCL<net_t>::ensure_context_initialized(OpenCLContext &opencl_context) {
 }
 
 template <typename net_t>
-void OpenCL_Network<net_t>::add_weights(size_t layer,
-                                 size_t size,
-                                 const net_t * weights) {
+void OpenCL_Network<net_t>::add_weights(const size_t layer,
+                                        const size_t size,
+                                        const net_t* const weights) {
     if (layer >= m_layers.size()) {
         m_layers.push_back(Layer());
     }
@@ -331,19 +331,19 @@ void OpenCL_Network<net_t>::forward(const std::vector<float>& input,
 }
 
 template <typename net_t>
-void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
-                              int channels, int outputs,
-                              cl::Buffer& bufferIn,
-                              cl::Buffer& bufferOut,
-                              cl::Buffer& bufferV,
-                              cl::Buffer& bufferM,
-                              weight_slice_t weights,
-                              cl::Buffer* bufferResidual,
-                              weight_slice_t bn_weights,
-                              bool skip_in_transform,
-                              bool fuse_in_transform,
-                              bool store_inout,
-                              int batch_size) {
+void OpenCL_Network<net_t>::convolve3(OpenCLContext& opencl_context,
+                                      const int channels, const int outputs,
+                                      cl::Buffer& bufferIn,
+                                      cl::Buffer& bufferOut,
+                                      cl::Buffer& bufferV,
+                                      cl::Buffer& bufferM,
+                                      const weight_slice_t weights,
+                                      cl::Buffer* const bufferResidual,
+                                      const weight_slice_t bn_weights,
+                                      const bool skip_in_transform,
+                                      const bool fuse_in_transform,
+                                      const bool store_inout,
+                                      const int batch_size) {
 
     cl::Kernel & in_transform_kernel = opencl_context.m_in_transform_kernel;
     cl::Kernel & sgemm_kernel = opencl_context.m_sgemm_kernel;
@@ -496,13 +496,13 @@ void OpenCL_Network<net_t>::convolve3(OpenCLContext & opencl_context,
 }
 
 template <typename net_t>
-void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
-                              int channels, int outputs,
-                              cl::Buffer& bufferInput,
-                              cl::Buffer& bufferOutput,
-                              cl::Buffer& bufferMerge,
-                              weight_slice_t weights,
-                              int batch_size) {
+void OpenCL_Network<net_t>::convolve1(OpenCLContext& opencl_context,
+                                      const int channels, const int outputs,
+                                      cl::Buffer& bufferInput,
+                                      cl::Buffer& bufferOutput,
+                                      cl::Buffer& bufferMerge,
+                                      const weight_slice_t weights,
+                                      const int batch_size) {
     // The size of the board is defined at compile time
     constexpr int width = BOARD_SIZE;
     constexpr int boardsize = NUM_INTERSECTIONS;
@@ -570,7 +570,7 @@ void OpenCL_Network<net_t>::convolve1(OpenCLContext & opencl_context,
 }
 
 template<class T>
-static std::string opencl_dev_type_to_string(T type) {
+static std::string opencl_dev_type_to_string(const T type) {
     if (type == CL_DEVICE_TYPE_CPU) {
         return "CPU";
     } else if (type == CL_DEVICE_TYPE_GPU) {
@@ -706,7 +706,7 @@ std::vector<size_t> OpenCL<net_t>::get_sgemm_tuners() {
 }
 
 template <typename net_t>
-OpenCL<net_t>::OpenCL(int gpu, bool silent) {
+OpenCL<net_t>::OpenCL(const int gpu, const bool silent) {
     std::vector<cl::Platform> platforms;
     try {
         cl::Platform::get(&platforms);
@@ -855,7 +855,7 @@ OpenCL<net_t>::OpenCL(int gpu, bool silent) {
 }
 
 template <typename net_t>
-void OpenCL<net_t>::initialize(const int channels, size_t batch_size) {
+void OpenCL<net_t>::initialize(const int channels, const size_t batch_size) {
     m_batch_size = batch_size;
     // Make program of the source code in the context
     try {

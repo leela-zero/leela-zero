@@ -40,9 +40,9 @@ const int NNCache::MAX_CACHE_COUNT;
 const int NNCache::MIN_CACHE_COUNT;
 const size_t NNCache::ENTRY_SIZE;
 
-NNCache::NNCache(int size) : m_size(size) {}
+NNCache::NNCache(const int size) : m_size(size) {}
 
-bool NNCache::lookup(std::uint64_t hash, Netresult & result) {
+bool NNCache::lookup(const std::uint64_t hash, Netresult& result) {
     std::lock_guard<std::mutex> lock(m_mutex);
     ++m_lookups;
 
@@ -59,7 +59,7 @@ bool NNCache::lookup(std::uint64_t hash, Netresult & result) {
     return true;
 }
 
-void NNCache::insert(std::uint64_t hash,
+void NNCache::insert(const std::uint64_t hash,
                      const Netresult& result) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -78,7 +78,7 @@ void NNCache::insert(std::uint64_t hash,
     }
 }
 
-void NNCache::resize(int size) {
+void NNCache::resize(const int size) {
     m_size = size;
     while (m_order.size() > m_size) {
         m_cache.erase(m_order.front());
@@ -91,7 +91,7 @@ void NNCache::clear() {
     m_order.clear();
 }
 
-void NNCache::set_size_from_playouts(int max_playouts) {
+void NNCache::set_size_from_playouts(const int max_playouts) {
     // cache hits are generally from last several moves so setting cache
     // size based on playouts increases the hit rate while balancing memory
     // usage for low playout instances. 150'000 cache entries is ~208 MiB
