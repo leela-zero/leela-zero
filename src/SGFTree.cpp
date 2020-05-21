@@ -63,7 +63,7 @@ const KoState* SGFTree::get_state() const {
     return &m_state;
 }
 
-const SGFTree* SGFTree::get_child(size_t count) const {
+const SGFTree* SGFTree::get_child(const size_t count) const {
     if (count < m_children.size()) {
         assert(m_initialized);
         return &(m_children[count]);
@@ -75,7 +75,7 @@ const SGFTree* SGFTree::get_child(size_t count) const {
 // This follows the entire line, and doesn't really need the intermediate
 // states, just the moves. As a consequence, states that contain more than
 // just moves won't have any effect.
-GameState SGFTree::follow_mainline_state(unsigned int movenum) const {
+GameState SGFTree::follow_mainline_state(const unsigned int movenum) const {
     const auto* link = this;
     // This initializes a starting state from a KoState and
     // sets up the game history.
@@ -121,7 +121,7 @@ void SGFTree::load_from_string(const std::string& gamebuff) {
 }
 
 // load a single game from a file
-void SGFTree::load_from_file(const std::string& filename, int index) {
+void SGFTree::load_from_file(const std::string& filename, const int index) {
     auto gamebuff = SGFParser::chop_from_file(filename, index);
 
     //myprintf("Parsing: %s\n", gamebuff.c_str());
@@ -296,7 +296,7 @@ void SGFTree::copy_state(const SGFTree& tree) {
     m_timecontrol_ptr = tree.m_timecontrol_ptr;
 }
 
-void SGFTree::apply_move(int color, int move) {
+void SGFTree::apply_move(const int color, const int move) {
     if (move != FastBoard::PASS && move != FastBoard::RESIGN) {
         auto vtx_state = m_state.board.get_state(move);
         if (vtx_state == !color || vtx_state == FastBoard::INVAL) {
@@ -312,7 +312,7 @@ void SGFTree::apply_move(int color, int move) {
     m_state.play_move(color, move);
 }
 
-void SGFTree::apply_move(int move) {
+void SGFTree::apply_move(const int move) {
     auto color = m_state.get_to_move();
     apply_move(color, move);
 }
@@ -374,7 +374,7 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
     return vtx;
 }
 
-int SGFTree::get_move(int tomove) const {
+int SGFTree::get_move(const int tomove) const {
     std::string colorstring;
 
     if (tomove == FastBoard::BLACK) {
@@ -428,7 +428,7 @@ std::vector<int> SGFTree::get_mainline() const {
     return moves;
 }
 
-std::string SGFTree::state_to_string(GameState& pstate, int compcolor) {
+std::string SGFTree::state_to_string(GameState& pstate, const int compcolor) {
     auto state = std::make_unique<GameState>();
 
     // make a working copy

@@ -50,10 +50,10 @@ public:
     SearchResult() = default;
     bool valid() const { return m_valid;  }
     float eval() const { return m_eval;  }
-    static SearchResult from_eval(float eval) {
+    static SearchResult from_eval(const float eval) {
         return SearchResult(eval);
     }
-    static SearchResult from_score(float board_score) {
+    static SearchResult from_score(const float board_score) {
         if (board_score > 0.0f) {
             return SearchResult(1.0f);
         } else if (board_score < 0.0f) {
@@ -63,7 +63,7 @@ public:
         }
     }
 private:
-    explicit SearchResult(float eval)
+    explicit SearchResult(const float eval)
         : m_valid(true), m_eval(eval) {}
     bool m_valid{false};
     float m_eval{0.0f};
@@ -119,9 +119,9 @@ public:
 
 private:
     float get_min_psa_ratio() const;
-    void dump_stats(FastState& state, UCTNode& parent);
+    void dump_stats(const FastState& state, UCTNode& parent);
     void tree_stats(const UCTNode& node);
-    std::string get_pv(FastState& state, UCTNode& parent);
+    std::string get_pv(FastState& state, const UCTNode& parent);
     std::string get_analysis(int playouts);
     bool should_resign(passflag_t passflag, float besteval);
     bool have_alternate_moves(int elapsed_centis, int time_for_move);
@@ -132,7 +132,7 @@ private:
     int get_best_move(passflag_t passflag);
     void update_root();
     bool advance_to_new_rootstate();
-    void output_analysis(FastState & state, UCTNode & parent);
+    void output_analysis(const FastState& state, const UCTNode& parent);
 
     GameState & m_rootstate;
     std::unique_ptr<GameState> m_last_rootstate;
@@ -151,7 +151,7 @@ private:
 
 class UCTWorker {
 public:
-    UCTWorker(GameState & state, UCTSearch * search, UCTNode * root)
+    UCTWorker(GameState& state, UCTSearch* const search, UCTNode* const root)
       : m_rootstate(state), m_search(search), m_root(root) {}
     void operator()();
 private:

@@ -42,8 +42,8 @@
 
 using namespace Utils;
 
-TimeControl::TimeControl(int maintime, int byotime,
-                         int byostones, int byoperiods)
+TimeControl::TimeControl(const int maintime, const int byotime,
+                         const int byostones, const int byoperiods)
     : m_maintime(maintime),
       m_byotime(byotime),
       m_byostones(byostones),
@@ -152,11 +152,11 @@ void TimeControl::reset_clocks() {
     }
 }
 
-void TimeControl::start(int color) {
+void TimeControl::start(const int color) {
     m_times[color] = Time();
 }
 
-void TimeControl::stop(int color) {
+void TimeControl::stop(const int color) {
     Time stop;
     int elapsed_centis = Time::timediff_centis(m_times[color], stop);
 
@@ -191,7 +191,7 @@ void TimeControl::stop(int color) {
     }
 }
 
-void TimeControl::display_color_time(int color) {
+void TimeControl::display_color_time(const int color) {
     auto rem = m_remaining_time[color] / 100;  /* centiseconds to seconds */
     auto minuteDiv = std::div(rem, 60);
     auto hourDiv = std::div(minuteDiv.quot, 60);
@@ -217,8 +217,8 @@ void TimeControl::display_times() {
     myprintf("\n");
 }
 
-int TimeControl::max_time_for_move(int boardsize,
-                                   int color, size_t movenum) const {
+int TimeControl::max_time_for_move(const int boardsize,
+                                   const int color, const size_t movenum) const {
     // default: no byo yomi (absolute)
     auto time_remaining = m_remaining_time[color];
     auto moves_remaining = get_moves_expected(boardsize, movenum);
@@ -271,7 +271,7 @@ int TimeControl::max_time_for_move(int boardsize,
     return base_time + inc_time;
 }
 
-void TimeControl::adjust_time(int color, int time, int stones) {
+void TimeControl::adjust_time(const int color, const int time, const int stones) {
     m_remaining_time[color] = time;
     // From pachi: some GTP things send 0 0 at the end of main time
     if (!time && !stones) {
@@ -296,13 +296,13 @@ void TimeControl::adjust_time(int color, int time, int stones) {
     }
 }
 
-size_t TimeControl::opening_moves(int boardsize) const {
+size_t TimeControl::opening_moves(const int boardsize) const {
     auto num_intersections = boardsize * boardsize;
     auto fast_moves = num_intersections / 6;
     return fast_moves;
 }
 
-int TimeControl::get_moves_expected(int boardsize, size_t movenum) const {
+int TimeControl::get_moves_expected(const int boardsize, const size_t movenum) const {
     auto board_div = 5;
     if (cfg_timemanage != TimeManagement::OFF) {
         // We will take early exits with time management on, so
@@ -326,7 +326,7 @@ int TimeControl::get_moves_expected(int boardsize, size_t movenum) const {
 // Returns true if we are in a time control where we
 // can save up time. If not, we should not move quickly
 // even if certain of our move, but plough ahead.
-bool TimeControl::can_accumulate_time(int color) const {
+bool TimeControl::can_accumulate_time(const int color) const {
     if (m_inbyo[color]) {
         // Cannot accumulate in Japanese byo yomi
         if (m_byoperiods) {

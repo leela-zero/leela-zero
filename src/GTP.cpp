@@ -243,11 +243,11 @@ AnalyzeTags::AnalyzeTags(std::istringstream& cmdstream, const GameState& game) {
     }
 }
 
-void AnalyzeTags::add_move_to_avoid(int color, int vertex, size_t until_move) {
+void AnalyzeTags::add_move_to_avoid(const int color, const int vertex, const size_t until_move) {
     m_moves_to_avoid.emplace_back(color, until_move, vertex);
 }
 
-void AnalyzeTags::add_move_to_allow(int color, int vertex, size_t until_move) {
+void AnalyzeTags::add_move_to_allow(const int color, const int vertex, const size_t until_move) {
     m_moves_to_allow.emplace_back(color, until_move, vertex);
 }
 
@@ -267,7 +267,7 @@ size_t AnalyzeTags::post_move_count() const {
     return m_min_moves;
 }
 
-bool AnalyzeTags::is_to_avoid(int color, int vertex, size_t movenum) const {
+bool AnalyzeTags::is_to_avoid(const int color, const int vertex, const size_t movenum) const {
     for (auto& move : m_moves_to_avoid) {
         if (color == move.color && vertex == move.vertex && movenum <= move.until_move) {
             return true;
@@ -429,7 +429,7 @@ const std::string GTP::s_options[] = {
     ""
 };
 
-std::string GTP::get_life_list(const GameState & game, bool live) {
+std::string GTP::get_life_list(const GameState& game, const bool live) {
     std::vector<std::string> stringlist;
     std::string result;
     const auto& board = game.board;
@@ -1217,7 +1217,7 @@ size_t GTP::get_base_memory() {
 }
 
 std::pair<bool, std::string> GTP::set_max_memory(size_t max_memory,
-    int cache_size_ratio_percent) {
+    const int cache_size_ratio_percent) {
     if (max_memory == 0) {
         max_memory = UCTSearch::DEFAULT_MAX_MEMORY;
     }
@@ -1265,8 +1265,8 @@ std::pair<bool, std::string> GTP::set_max_memory(size_t max_memory,
         " MiB.");
 }
 
-void GTP::execute_setoption(UCTSearch & search,
-                            int id, const std::string &command) {
+void GTP::execute_setoption(UCTSearch& search,
+                            const int id, const std::string& command) {
     std::istringstream cmdstream(command);
     std::string tmp, name_token;
 

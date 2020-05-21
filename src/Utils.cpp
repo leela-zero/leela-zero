@@ -61,7 +61,7 @@ void Utils::create_z_table() {
     }
 }
 
-float Utils::cached_t_quantile(int v) {
+float Utils::cached_t_quantile(const int v) {
     if (v < 1) {
         return z_lookup[0];
     }
@@ -118,7 +118,7 @@ bool Utils::input_pending() {
 
 static std::mutex IOmutex;
 
-static void myprintf_base(const char *fmt, va_list ap) {
+static void myprintf_base(const char* const fmt, va_list ap) {
     va_list ap2;
     va_copy(ap2, ap);
 
@@ -131,7 +131,7 @@ static void myprintf_base(const char *fmt, va_list ap) {
     va_end(ap2);
 }
 
-void Utils::myprintf(const char *fmt, ...) {
+void Utils::myprintf(const char* const fmt, ...) {
     if (cfg_quiet) {
         return;
     }
@@ -142,22 +142,22 @@ void Utils::myprintf(const char *fmt, ...) {
     va_end(ap);
 }
 
-void Utils::myprintf_error(const char *fmt, ...) {
+void Utils::myprintf_error(const char* const fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     myprintf_base(fmt, ap);
     va_end(ap);
 }
 
-static void gtp_fprintf(FILE* file, const std::string& prefix,
-                        const char *fmt, va_list ap) {
+static void gtp_fprintf(FILE* const file, const std::string& prefix,
+                        const char* const fmt, va_list ap) {
     fprintf(file, "%s ", prefix.c_str());
     vfprintf(file, fmt, ap);
     fprintf(file, "\n\n");
 }
 
-static void gtp_base_printf(int id, std::string prefix,
-                            const char *fmt, va_list ap) {
+static void gtp_base_printf(const int id, std::string prefix,
+                            const char* const fmt, va_list ap) {
     if (id != -1) {
         prefix += std::to_string(id);
     }
@@ -168,14 +168,14 @@ static void gtp_base_printf(int id, std::string prefix,
     }
 }
 
-void Utils::gtp_printf(int id, const char *fmt, ...) {
+void Utils::gtp_printf(const int id, const char* const fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     gtp_base_printf(id, "=", fmt, ap);
     va_end(ap);
 }
 
-void Utils::gtp_printf_raw(const char *fmt, ...) {
+void Utils::gtp_printf_raw(const char* const fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stdout, fmt, ap);
@@ -189,7 +189,7 @@ void Utils::gtp_printf_raw(const char *fmt, ...) {
     }
 }
 
-void Utils::gtp_fail_printf(int id, const char *fmt, ...) {
+void Utils::gtp_fail_printf(const int id, const char* const fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     gtp_base_printf(id, "?", fmt, ap);
@@ -203,7 +203,7 @@ void Utils::log_input(const std::string& input) {
     }
 }
 
-size_t Utils::ceilMultiple(size_t a, size_t b) {
+size_t Utils::ceilMultiple(const size_t a, const size_t b) {
     if (a % b == 0) {
         return a;
     }
@@ -212,7 +212,7 @@ size_t Utils::ceilMultiple(size_t a, size_t b) {
     return ret;
 }
 
-std::string Utils::leelaz_file(std::string file) {
+std::string Utils::leelaz_file(const std::string& file) {
 #if defined(_WIN32) || defined(__ANDROID__)
     boost::filesystem::path dir(boost::filesystem::current_path());
 #else

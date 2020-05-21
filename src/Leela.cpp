@@ -129,7 +129,7 @@ static void calculate_thread_count_gpu(boost::program_options::variables_map & v
 }
 #endif
 
-static void parse_commandline(int argc, char *argv[]) {
+static void parse_commandline(const int argc, const char* const argv[]) {
     namespace po = boost::program_options;
     // Declare the supported options.
     po::options_description gen_desc("Generic options");
