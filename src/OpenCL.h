@@ -89,13 +89,13 @@ public:
         return m_opencl;
     }
 
-    void push_input_convolution(unsigned int filter_size,
-                       unsigned int channels,
-                       unsigned int outputs,
-                       const std::vector<net_t>& weights,
-                       const std::vector<net_t>& means,
-                       const std::vector<net_t>& variances) {
-        size_t layer = get_layer_count();
+    void push_input_convolution(const unsigned int filter_size,
+                                const unsigned int channels,
+                                const unsigned int outputs,
+                                const std::vector<net_t>& weights,
+                                const std::vector<net_t>& means,
+                                const std::vector<net_t>& variances) {
+        const auto layer = get_layer_count();
         push_weights(layer, weights);
         push_weights(layer, means);
         push_weights(layer, variances);
@@ -105,16 +105,16 @@ public:
         m_layers[layer].channels = channels;
     }
 
-    void push_residual(unsigned int filter_size,
-                       unsigned int channels,
-                       unsigned int outputs,
+    void push_residual(const unsigned int filter_size,
+                       const unsigned int channels,
+                       const unsigned int outputs,
                        const std::vector<net_t>& weights_1,
                        const std::vector<net_t>& means_1,
                        const std::vector<net_t>& variances_1,
                        const std::vector<net_t>& weights_2,
                        const std::vector<net_t>& means_2,
                        const std::vector<net_t>& variances_2) {
-        size_t layer = get_layer_count();
+        const auto layer = get_layer_count();
         push_weights(layer, weights_1);
         push_weights(layer, means_1);
         push_weights(layer, variances_1);
@@ -127,14 +127,14 @@ public:
         m_layers[layer].channels = channels;
     }
 
-    void push_convolve(unsigned int filter_size,
-                       unsigned int channels,
-                       unsigned int outputs,
+    void push_convolve(const unsigned int filter_size,
+                       const unsigned int channels,
+                       const unsigned int outputs,
                        const std::vector<net_t>& weights) {
         (void)filter_size;
         assert(filter_size == 1);
 
-        size_t layer = get_layer_count();
+        const auto layer = get_layer_count();
         push_weights(layer, weights);
         m_layers[layer].is_convolve1 = true;
         m_layers[layer].outputs = outputs;
@@ -154,7 +154,7 @@ public:
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
 
-    void push_weights(size_t layer, const std::vector<net_t>& weights) {
+    void push_weights(const size_t layer, const std::vector<net_t>& weights) {
         add_weights(layer, weights.size(), weights.data());
     }
     void add_weights(size_t layer, size_t size, const net_t* weights);

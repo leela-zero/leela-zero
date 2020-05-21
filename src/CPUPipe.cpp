@@ -88,8 +88,8 @@ void CPUPipe::winograd_transform_in(const std::vector<float>& in,
     //            0.0f,  SQ2/2.0f, -1.0f/2.0f, -SQ2,       1.0f, 0.0f,
     //            0.0f,  1.0f,      0.0f,      -5.0f/2.0f, 0.0f, 1.0f};
     auto multiply_bt = [](
-        float & o0, float & o1, float & o2, float & o3, float & o4, float & o5,
-        float i0, float i1, float i2, float i3, float i4, float i5
+        float& o0, float& o1, float& o2, float& o3, float& o4, float& o5,
+        const float i0, const float i1, const float i2, const float i3, const float i4, const float i5
     ) {
         auto i3m1 = i1 * -SQ2 + i3 * (SQ2 / 2.0f);
         auto i4m2 = i2 * -2.0f + i4 * 1.0f;
@@ -224,8 +224,8 @@ void CPUPipe::winograd_transform_out(const std::vector<float>& M,
     //        0.0f, 1.0f/2.0f, 1.0f/2.0f,  2.0f,      2.0f,     0.0f,
     //        0.0f, SQ2/4.0f, -SQ2/4.0f,   2.0f*SQ2, -2.0f*SQ2, 1.0f};
     auto multiply_at = [](
-        float & o0, float & o1, float & o2, float & o3,
-        float i0, float i1, float i2, float i3, float i4, float i5
+        float& o0, float& o1, float& o2, float& o3,
+        const float i0, const float i1, const float i2, const float i3, const float i4, const float i5
     ) {
         auto t1p2 = (i1 + i2) * (1.0f / 2.0f);
         auto t1m2 = (i1 - i2) * (SQ2/4.0f);
@@ -426,9 +426,9 @@ void CPUPipe::forward(const std::vector<float>& input,
     convolve<1>(Network::OUTPUTS_VALUE, conv_out, m_conv_val_w, m_conv_val_b, output_val);
 }
 
-void CPUPipe::push_weights(unsigned int /*filter_size*/,
-                           unsigned int /*channels*/,
-                           unsigned int outputs,
+void CPUPipe::push_weights(const unsigned int /*filter_size*/,
+                           const unsigned int /*channels*/,
+                           const unsigned int outputs,
                            std::shared_ptr<const ForwardPipeWeights> weights) {
 
     m_weights = weights;

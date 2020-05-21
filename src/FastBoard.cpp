@@ -62,7 +62,7 @@ int FastBoard::get_boardsize() const {
     return m_boardsize;
 }
 
-int FastBoard::get_vertex(int x, int y) const {
+int FastBoard::get_vertex(const int x, const int y) const {
     assert(x >= 0 && x < BOARD_SIZE);
     assert(y >= 0 && y < BOARD_SIZE);
     assert(x >= 0 && x < m_boardsize);
@@ -75,7 +75,7 @@ int FastBoard::get_vertex(int x, int y) const {
     return vertex;
 }
 
-std::pair<int, int> FastBoard::get_xy(int vertex) const {
+std::pair<int, int> FastBoard::get_xy(const int vertex) const {
     //int vertex = ((y + 1) * (get_boardsize() + 2)) + (x + 1);
     int x = (vertex % m_sidevertices) - 1;
     int y = (vertex / m_sidevertices) - 1;
@@ -87,14 +87,14 @@ std::pair<int, int> FastBoard::get_xy(int vertex) const {
     return std::make_pair(x, y);
 }
 
-FastBoard::vertex_t FastBoard::get_state(int vertex) const {
+FastBoard::vertex_t FastBoard::get_state(const int vertex) const {
     assert(vertex >= 0 && vertex < NUM_VERTICES);
     assert(vertex >= 0 && vertex < m_numvertices);
 
     return m_state[vertex];
 }
 
-void FastBoard::set_state(int vertex, FastBoard::vertex_t content) {
+void FastBoard::set_state(const int vertex, const FastBoard::vertex_t content) {
     assert(vertex >= 0 && vertex < NUM_VERTICES);
     assert(vertex >= 0 && vertex < m_numvertices);
     assert(content >= BLACK && content <= INVAL);
@@ -102,15 +102,15 @@ void FastBoard::set_state(int vertex, FastBoard::vertex_t content) {
     m_state[vertex] = content;
 }
 
-FastBoard::vertex_t FastBoard::get_state(int x, int y) const {
+FastBoard::vertex_t FastBoard::get_state(const int x, const int y) const {
     return get_state(get_vertex(x, y));
 }
 
-void FastBoard::set_state(int x, int y, FastBoard::vertex_t content) {
+void FastBoard::set_state(const int x, const int y, const FastBoard::vertex_t content) {
     set_state(get_vertex(x, y), content);
 }
 
-void FastBoard::reset_board(int size) {
+void FastBoard::reset_board(const int size) {
     m_boardsize = size;
     m_sidevertices = size + 2;
     m_numvertices = m_sidevertices * m_sidevertices;
@@ -163,7 +163,7 @@ void FastBoard::reset_board(int size) {
     assert(m_state[NO_VERTEX] == INVAL);
 }
 
-bool FastBoard::is_suicide(int i, int color) const {
+bool FastBoard::is_suicide(const int i, const int color) const {
     // If there are liberties next to us, it is never suicide
     if (count_pliberties(i)) {
         return false;
@@ -254,7 +254,7 @@ void FastBoard::remove_neighbour(const int vtx, const int color) {
     }
 }
 
-int FastBoard::calc_reach_color(int color) const {
+int FastBoard::calc_reach_color(const int color) const {
     auto reachable = 0;
     auto bd = std::vector<bool>(m_numvertices, false);
     auto open = std::queue<int>();
@@ -286,13 +286,13 @@ int FastBoard::calc_reach_color(int color) const {
 }
 
 // Needed for scoring passed out games not in MC playouts
-float FastBoard::area_score(float komi) const {
+float FastBoard::area_score(const float komi) const {
     auto white = calc_reach_color(WHITE);
     auto black = calc_reach_color(BLACK);
     return black - white - komi;
 }
 
-void FastBoard::display_board(int lastmove) {
+void FastBoard::display_board(const int lastmove) {
     int boardsize = get_boardsize();
 
     myprintf("\n   ");
@@ -413,7 +413,7 @@ bool FastBoard::is_eye(const int color, const int i) const {
     return true;
 }
 
-std::string FastBoard::move_to_text(int move) const {
+std::string FastBoard::move_to_text(const int move) const {
     std::ostringstream result;
 
     int column = move % m_sidevertices;
@@ -471,7 +471,7 @@ int FastBoard::text_to_move(std::string move) const {
     return get_vertex(column, row);
 }
 
-std::string FastBoard::move_to_text_sgf(int move) const {
+std::string FastBoard::move_to_text_sgf(const int move) const {
     std::ostringstream result;
 
     int column = move % m_sidevertices;
@@ -512,7 +512,7 @@ std::string FastBoard::move_to_text_sgf(int move) const {
     return result.str();
 }
 
-bool FastBoard::starpoint(int size, int point) {
+bool FastBoard::starpoint(const int size, const int point) {
     int stars[3];
     int points[2];
     int hits = 0;
@@ -539,11 +539,11 @@ bool FastBoard::starpoint(int size, int point) {
     return hits >= 2;
 }
 
-bool FastBoard::starpoint(int size, int x, int y) {
+bool FastBoard::starpoint(const int size, const int x, const int y) {
     return starpoint(size, y * size + x);
 }
 
-int FastBoard::get_prisoners(int side)  const {
+int FastBoard::get_prisoners(const int side) const {
     assert(side == WHITE || side == BLACK);
 
     return m_prisoners[side];
@@ -561,11 +561,11 @@ bool FastBoard::white_to_move() const {
     return m_tomove == WHITE;
 }
 
-void FastBoard::set_to_move(int tomove) {
+void FastBoard::set_to_move(const int tomove) {
     m_tomove = tomove;
 }
 
-std::string FastBoard::get_string(int vertex) const {
+std::string FastBoard::get_string(const int vertex) const {
     std::string result;
 
     int start = m_parent[vertex];

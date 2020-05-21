@@ -92,7 +92,7 @@ using ConstEigenMatrixMap =
 static std::array<std::array<int, NUM_INTERSECTIONS>,
                   Network::NUM_SYMMETRIES> symmetry_nn_idx_table;
 
-float Network::benchmark_time(int centiseconds) {
+float Network::benchmark_time(const int centiseconds) {
     const auto cpus = cfg_num_threads;
 
     ThreadGroup tg(thread_pool);
@@ -386,7 +386,7 @@ std::pair<int, int> Network::load_network_file(const std::string& filename) {
     return {0, 0};
 }
 
-std::unique_ptr<ForwardPipe>&& Network::init_net(int channels,
+std::unique_ptr<ForwardPipe>&& Network::init_net(const int channels,
     std::unique_ptr<ForwardPipe>&& pipe) {
 
     pipe->initialize(channels);
@@ -396,7 +396,7 @@ std::unique_ptr<ForwardPipe>&& Network::init_net(int channels,
 }
 
 #ifdef USE_HALF
-void Network::select_precision(int channels) {
+void Network::select_precision(const int channels) {
     if (cfg_precision == precision_t::AUTO) {
         auto score_fp16 = float{-1.0};
         auto score_fp32 = float{-1.0};
@@ -473,7 +473,7 @@ void Network::select_precision(int channels) {
 }
 #endif
 
-void Network::initialize(int playouts, const std::string & weightsfile) {
+void Network::initialize(const int playouts, const std::string& weightsfile) {
 #ifdef USE_BLAS
 #ifndef __APPLE__
 #ifdef USE_OPENBLAS
@@ -1030,7 +1030,7 @@ size_t Network::get_estimated_cache_size() {
     return m_nncache.get_estimated_size();
 }
 
-void Network::nncache_resize(int max_count) {
+void Network::nncache_resize(const int max_count) {
     return m_nncache.resize(max_count);
 }
 

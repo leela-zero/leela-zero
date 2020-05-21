@@ -157,9 +157,9 @@ bool OpenCLScheduler<net_t>::needs_autodetect() {
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::push_input_convolution(
-    unsigned int filter_size,
-    unsigned int channels,
-    unsigned int outputs,
+    const unsigned int filter_size,
+    const unsigned int channels,
+    const unsigned int outputs,
     const std::vector<float>& weights,
     const std::vector<float>& means,
     const std::vector<float>& variances) {
@@ -185,9 +185,9 @@ void OpenCLScheduler<net_t>::push_input_convolution(
 }
 
 template <typename net_t>
-void OpenCLScheduler<net_t>::push_residual(unsigned int filter_size,
-                                           unsigned int channels,
-                                           unsigned int outputs,
+void OpenCLScheduler<net_t>::push_residual(const unsigned int filter_size,
+                                           const unsigned int channels,
+                                           const unsigned int outputs,
                                            const std::vector<float>& weights_1,
                                            const std::vector<float>& means_1,
                                            const std::vector<float>& variances_1,
@@ -218,9 +218,9 @@ void OpenCLScheduler<net_t>::push_residual(unsigned int filter_size,
 }
 
 template <typename net_t>
-void OpenCLScheduler<net_t>::push_convolve(unsigned int filter_size,
-                                           unsigned int channels,
-                                           unsigned int outputs,
+void OpenCLScheduler<net_t>::push_convolve(const unsigned int filter_size,
+                                           const unsigned int channels,
+                                           const unsigned int outputs,
                                            const std::vector<float>& weights) {
     for (const auto& opencl_net : m_networks) {
         opencl_net->push_convolve(filter_size, channels, outputs,
@@ -230,9 +230,9 @@ void OpenCLScheduler<net_t>::push_convolve(unsigned int filter_size,
 
 template <typename net_t>
 void OpenCLScheduler<net_t>::push_weights(
-    unsigned int filter_size,
-    unsigned int channels,
-    unsigned int outputs,
+    const unsigned int filter_size,
+    const unsigned int channels,
+    const unsigned int outputs,
     std::shared_ptr<const ForwardPipeWeights> weights) {
 
     auto weight_index = size_t{0};

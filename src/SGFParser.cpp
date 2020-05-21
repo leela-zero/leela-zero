@@ -39,7 +39,7 @@
 #include "Utils.h"
 
 std::vector<std::string> SGFParser::chop_stream(std::istream& ins,
-                                                size_t stopat) {
+                                                const size_t stopat) {
     std::vector<std::string> result;
     std::string gamebuff;
 
@@ -96,8 +96,8 @@ std::vector<std::string> SGFParser::chop_stream(std::istream& ins,
     return result;
 }
 
-std::vector<std::string> SGFParser::chop_all(std::string filename,
-                                             size_t stopat) {
+std::vector<std::string> SGFParser::chop_all(const std::string& filename,
+                                             const size_t stopat) {
     std::ifstream ins(filename.c_str(), std::ifstream::binary | std::ifstream::in);
 
     if (ins.fail()) {
@@ -111,12 +111,12 @@ std::vector<std::string> SGFParser::chop_all(std::string filename,
 }
 
 // scan the file and extract the game with number index
-std::string SGFParser::chop_from_file(std::string filename, size_t index) {
+std::string SGFParser::chop_from_file(const std::string& filename, const size_t index) {
     auto vec = chop_all(filename, index);
     return vec[index];
 }
 
-std::string SGFParser::parse_property_name(std::istringstream & strm) {
+std::string SGFParser::parse_property_name(std::istringstream& strm) {
     std::string result;
 
     char c;

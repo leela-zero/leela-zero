@@ -96,7 +96,7 @@ void UCTNode::kill_superkos(const GameState& state) {
     );
 }
 
-void UCTNode::dirichlet_noise(float epsilon, float alpha) {
+void UCTNode::dirichlet_noise(const float epsilon, const float alpha) {
     auto child_cnt = m_children.size();
 
     auto dirichlet_vector = std::vector<float>{};
@@ -203,7 +203,7 @@ void UCTNode::inflate_all_children() {
     }
 }
 
-void UCTNode::prepare_root_node(Network & network, int color,
+void UCTNode::prepare_root_node(Network& network, const int color,
                                 std::atomic<int>& nodes,
                                 GameState& root_state) {
     float root_eval;

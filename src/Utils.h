@@ -50,7 +50,7 @@ namespace Utils {
     bool input_pending();
 
     template<class T>
-    void atomic_add(std::atomic<T> &f, T d) {
+    void atomic_add(std::atomic<T> &f, const T d) {
         T old = f.load();
         while (!f.compare_exchange_weak(old, old + d));
     }
@@ -60,13 +60,13 @@ namespace Utils {
         return (x << k) | (x >> (std::numeric_limits<T>::digits - k));
     }
 
-    inline bool is7bit(int c) {
+    inline bool is7bit(const int c) {
         return c >= 0 && c <= 127;
     }
 
     size_t ceilMultiple(size_t a, size_t b);
 
-    std::string leelaz_file(std::string file);
+    std::string leelaz_file(const std::string& file);
 
     void create_z_table();
     float cached_t_quantile(int v);

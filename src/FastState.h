@@ -62,7 +62,7 @@ public:
     size_t get_movenum() const;
     int get_last_move() const;
     void display_state();
-    std::string move_to_text(int move);
+    std::string move_to_text(int move) const;
 
     FullBoard board;
 

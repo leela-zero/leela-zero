@@ -164,7 +164,7 @@ TimeStep::NNPlanes Training::get_planes(const GameState* const state) {
     return planes;
 }
 
-void Training::record(Network & network, GameState& state, UCTNode& root) {
+void Training::record(Network& network, const GameState& state, const UCTNode& root) {
     auto step = TimeStep{};
     step.to_move = state.board.get_to_move();
     step.planes = get_planes(&state);
@@ -209,7 +209,7 @@ void Training::record(Network & network, GameState& state, UCTNode& root) {
     m_data.emplace_back(step);
 }
 
-void Training::dump_training(int winner_color, const std::string& filename) {
+void Training::dump_training(const int winner_color, const std::string& filename) {
     auto chunker = OutputChunker{filename, true};
     dump_training(winner_color, chunker);
 }
@@ -242,7 +242,7 @@ void Training::load_training(std::ifstream& in) {
     }
 }
 
-void Training::dump_training(int winner_color, OutputChunker& outchunk) {
+void Training::dump_training(const int winner_color, OutputChunker& outchunk) {
     auto training_str = std::string{};
     for (const auto& step : m_data) {
         auto out = std::stringstream{};
@@ -311,7 +311,7 @@ void Training::dump_debug(OutputChunker& outchunk) {
     outchunk.append(debug_str);
 }
 
-void Training::process_game(GameState& state, size_t& train_pos, int who_won,
+void Training::process_game(GameState& state, size_t& train_pos, const int who_won,
                             const std::vector<int>& tree_moves,
                             OutputChunker& outchunker) {
     clear_training();

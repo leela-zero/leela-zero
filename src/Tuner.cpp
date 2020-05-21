@@ -133,7 +133,7 @@ static bool IsMultiple(const size_t a, const size_t b) {
 }
 
 template <typename net_t>
-bool Tuner<net_t>::valid_config_sgemm(Parameters p, bool exhaustive) {
+bool Tuner<net_t>::valid_config_sgemm(Parameters p, const bool exhaustive) {
     if (p["TCE"] == 0) {
         if (!IsMultiple(p["MWG"], p["MDIMC"]*p["VWM"])) {
             return false;
