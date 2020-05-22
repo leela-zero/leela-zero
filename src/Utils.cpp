@@ -28,22 +28,22 @@
 */
 
 #include "config.h"
-#include "Utils.h"
-
-#include <mutex>
-#include <cstdarg>
-#include <cstdio>
 
 #include <boost/filesystem.hpp>
 #include <boost/math/distributions/students_t.hpp>
+#include <cstdarg>
+#include <cstdio>
+#include <mutex>
+
+#include "Utils.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #else
-#include <sys/select.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <pwd.h>
+#include <sys/select.h>
+#include <sys/types.h>
+#include <unistd.h>
 #endif
 
 #include "GTP.h"
@@ -56,7 +56,8 @@ std::array<float, z_entries> z_lookup;
 void Utils::create_z_table() {
     for (auto i = 1; i < z_entries + 1; i++) {
         boost::math::students_t dist(i);
-        auto z = boost::math::quantile(boost::math::complement(dist, cfg_ci_alpha));
+        auto z =
+            boost::math::quantile(boost::math::complement(dist, cfg_ci_alpha));
         z_lookup[i - 1] = z;
     }
 }
@@ -78,9 +79,9 @@ bool Utils::input_pending() {
 #ifdef HAVE_SELECT
     fd_set read_fds;
     FD_ZERO(&read_fds);
-    FD_SET(0,&read_fds);
-    struct timeval timeout{0,0};
-    select(1,&read_fds,nullptr,nullptr,&timeout);
+    FD_SET(0, &read_fds);
+    struct timeval timeout{0, 0};
+    select(1, &read_fds, nullptr, nullptr, &timeout);
     return FD_ISSET(0, &read_fds);
 #else
     static int init = 0, pipe;
@@ -92,7 +93,8 @@ bool Utils::input_pending() {
         inh = GetStdHandle(STD_INPUT_HANDLE);
         pipe = !GetConsoleMode(inh, &dw);
         if (!pipe) {
-            SetConsoleMode(inh, dw & ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT));
+            SetConsoleMode(inh,
+                           dw & ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT));
             FlushConsoleInputBuffer(inh);
         }
     }
@@ -217,10 +219,11 @@ std::string Utils::leelaz_file(const std::string& file) {
     boost::filesystem::path dir(boost::filesystem::current_path());
 #else
     // https://stackoverflow.com/a/26696759
-    const char *homedir;
+    const char* homedir;
     if ((homedir = getenv("HOME")) == nullptr) {
-        struct passwd *pwd;
-        if ((pwd = getpwuid(getuid())) == nullptr) { // NOLINT(runtime/threadsafe_fn)
+        struct passwd* pwd;
+        // NOLINTNEXTLINE(runtime/threadsafe_fn)
+        if ((pwd = getpwuid(getuid())) == nullptr) {
             return std::string();
         }
         homedir = pwd->pw_dir;

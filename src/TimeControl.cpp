@@ -27,14 +27,14 @@
     work.
 */
 
-#include "TimeControl.h"
-
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <memory>
 #include <regex>
 #include <sstream>
+
+#include "TimeControl.h"
 
 #include "GTP.h"
 #include "Timing.h"
@@ -89,8 +89,10 @@ std::string TimeControl::to_text_sgf() const {
     // stones have to be only written to the sgf when actually in byo-yomi
     // and this is interpreted in adjust_time() as a special case
     // that starts byo-yomi.
-    const auto black_time_left = (m_remaining_time[FastBoard::BLACK] + 99) / 100;
-    const auto white_time_left = (m_remaining_time[FastBoard::WHITE] + 99) / 100;
+    const auto black_time_left =
+        (m_remaining_time[FastBoard::BLACK] + 99) / 100;
+    const auto white_time_left =
+        (m_remaining_time[FastBoard::WHITE] + 99) / 100;
     s += "BL[" + std::to_string(black_time_left) + "]";
     s += "WL[" + std::to_string(white_time_left) + "]";
     return s;
@@ -118,20 +120,18 @@ std::shared_ptr<TimeControl> TimeControl::make_from_text_sgf(
             // Unrecognised byo-yomi syntax.
         }
     }
-    const auto timecontrol_ptr = std::make_shared<TimeControl>(maintime_centis,
-                                                               byotime,
-                                                               byostones,
-                                                               byoperiods);
+    const auto timecontrol_ptr = std::make_shared<TimeControl>(
+        maintime_centis, byotime, byostones, byoperiods);
     if (!black_time_left.empty()) {
         const auto time = std::stoi(black_time_left) * 100;
-        const auto stones = black_moves_left.empty() ?
-                            0 : std::stoi(black_moves_left);
+        const auto stones =
+            black_moves_left.empty() ? 0 : std::stoi(black_moves_left);
         timecontrol_ptr->adjust_time(FastBoard::BLACK, time, stones);
     }
     if (!white_time_left.empty()) {
         const auto time = std::stoi(white_time_left) * 100;
-        const auto stones = white_moves_left.empty() ?
-                            0 : std::stoi(white_moves_left);
+        const auto stones =
+            white_moves_left.empty() ? 0 : std::stoi(white_moves_left);
         timecontrol_ptr->adjust_time(FastBoard::WHITE, time, stones);
     }
     return timecontrol_ptr;
@@ -192,7 +192,7 @@ void TimeControl::stop(const int color) {
 }
 
 void TimeControl::display_color_time(const int color) {
-    auto rem = m_remaining_time[color] / 100;  /* centiseconds to seconds */
+    auto rem = m_remaining_time[color] / 100; /* centiseconds to seconds */
     auto minuteDiv = std::div(rem, 60);
     auto hourDiv = std::div(minuteDiv.quot, 60);
     auto seconds = minuteDiv.rem;
@@ -217,8 +217,8 @@ void TimeControl::display_times() {
     myprintf("\n");
 }
 
-int TimeControl::max_time_for_move(const int boardsize,
-                                   const int color, const size_t movenum) const {
+int TimeControl::max_time_for_move(const int boardsize, const int color,
+                                   const size_t movenum) const {
     // default: no byo yomi (absolute)
     auto time_remaining = m_remaining_time[color];
     auto moves_remaining = get_moves_expected(boardsize, movenum);
@@ -264,14 +264,15 @@ int TimeControl::max_time_for_move(const int boardsize,
 
     // always keep a cfg_lagbugger_cs centisecond margin
     // for network hiccups or GUI lag
-    auto base_time = std::max(time_remaining - cfg_lagbuffer_cs, 0) /
-                     std::max(moves_remaining, 1);
+    auto base_time = std::max(time_remaining - cfg_lagbuffer_cs, 0)
+                     / std::max(moves_remaining, 1);
     auto inc_time = std::max(extra_time_per_move - cfg_lagbuffer_cs, 0);
 
     return base_time + inc_time;
 }
 
-void TimeControl::adjust_time(const int color, const int time, const int stones) {
+void TimeControl::adjust_time(const int color, const int time,
+                              const int stones) {
     m_remaining_time[color] = time;
     // From pachi: some GTP things send 0 0 at the end of main time
     if (!time && !stones) {
@@ -302,7 +303,8 @@ size_t TimeControl::opening_moves(const int boardsize) const {
     return fast_moves;
 }
 
-int TimeControl::get_moves_expected(const int boardsize, const size_t movenum) const {
+int TimeControl::get_moves_expected(const int boardsize,
+                                    const size_t movenum) const {
     auto board_div = 5;
     if (cfg_timemanage != TimeManagement::OFF) {
         // We will take early exits with time management on, so

@@ -33,6 +33,7 @@
 #include <cassert>
 
 #include "FullBoard.h"
+
 #include "Network.h"
 #include "Utils.h"
 #include "Zobrist.h"
@@ -53,8 +54,8 @@ int FullBoard::remove_string(const int i) {
 
         remove_neighbour(pos, color);
 
-        m_empty_idx[pos]      = m_empty_cnt;
-        m_empty[m_empty_cnt]  = pos;
+        m_empty_idx[pos] = m_empty_cnt;
+        m_empty[m_empty_cnt] = pos;
         m_empty_cnt++;
 
         m_hash    ^= Zobrist::zobrist[m_state[pos]][pos];
@@ -80,7 +81,7 @@ std::uint64_t FullBoard::calc_ko_hash() const {
     return res;
 }
 
-template<class Function>
+template <class Function>
 std::uint64_t FullBoard::calc_hash(const int komove, Function transform) const {
     auto res = Zobrist::zobrist_empty;
 
@@ -107,12 +108,14 @@ std::uint64_t FullBoard::calc_hash(const int komove) const {
     return calc_hash(komove, [](const auto vertex) { return vertex; });
 }
 
-std::uint64_t FullBoard::calc_symmetry_hash(const int komove, const int symmetry) const {
+std::uint64_t FullBoard::calc_symmetry_hash(const int komove,
+                                            const int symmetry) const {
     return calc_hash(komove, [this, symmetry](const auto vertex) {
         if (vertex == NO_VERTEX) {
             return NO_VERTEX;
         } else {
-            const auto newvtx = Network::get_symmetry(get_xy(vertex), symmetry, m_boardsize);
+            const auto newvtx =
+                Network::get_symmetry(get_xy(vertex), symmetry, m_boardsize);
             return get_vertex(newvtx.first, newvtx.second);
         }
     });
@@ -199,7 +202,7 @@ int FullBoard::update_board(const int color, const int i) {
     /* check for possible simple ko */
     if (captured_stones == 1 && eyeplay) {
         assert(get_state(captured_vtx) == FastBoard::EMPTY
-                && !is_suicide(captured_vtx, !color));
+               && !is_suicide(captured_vtx, !color));
         return captured_vtx;
     }
 

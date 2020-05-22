@@ -31,7 +31,9 @@
 #define FULLBOARD_H_INCLUDED
 
 #include "config.h"
+
 #include <cstdint>
+
 #include "FastBoard.h"
 
 class FullBoard : public FastBoard {
@@ -54,7 +56,7 @@ public:
     std::uint64_t m_ko_hash;
 
 private:
-    template<class Function>
+    template <class Function>
     std::uint64_t calc_hash(int komove, Function transform) const;
 };
 

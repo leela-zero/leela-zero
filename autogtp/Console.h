@@ -22,32 +22,29 @@
 #include <QObject>
 #include <QSocketNotifier>
 #include <QTextStream>
-#include "stdio.h"
-
+#include <cstdio>
 
 #ifdef Q_OS_WIN
-    #include <QWinEventNotifier>
-    #include <windows.h>
-    typedef QWinEventNotifier Notifier;
+#include <QWinEventNotifier>
+#include <windows.h>
+typedef QWinEventNotifier Notifier;
 #else
-    #include <QSocketNotifier>
-    typedef QSocketNotifier Notifier;
+#include <QSocketNotifier>
+typedef QSocketNotifier Notifier;
 #endif
 
-
-class Console : public QObject
-{
+class Console : public QObject {
     Q_OBJECT
 public:
-    Console(QObject *parent = nullptr)
+    Console(QObject* parent = nullptr)
         : QObject(parent),
 #ifdef Q_OS_WIN
           m_notifier(GetStdHandle(STD_INPUT_HANDLE)) {
 #else
           m_notifier(fileno(stdin), Notifier::Read) {
 #endif
-            connect(&m_notifier, &Notifier::activated, this, &Console::readInput);
-        }
+        connect(&m_notifier, &Notifier::activated, this, &Console::readInput);
+    }
     ~Console() = default;
 
 signals:
@@ -61,6 +58,7 @@ public slots:
             emit sendQuit();
         }
     }
+
 private:
     Notifier m_notifier;
 };

@@ -30,9 +30,9 @@
 #ifndef SGFPARSER_H_INCLUDED
 #define SGFPARSER_H_INCLUDED
 
+#include <climits>
 #include <cstddef>
 #include <cstdint>
-#include <climits>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -41,16 +41,18 @@
 
 class SGFParser {
 private:
-    static std::string parse_property_name(std::istringstream & strm);
-    static bool parse_property_value(std::istringstream & strm, std::string & result);
+    static std::string parse_property_name(std::istringstream& strm);
+    static bool parse_property_value(std::istringstream& strm,
+                                     std::string& result);
+
 public:
-    static std::string chop_from_file(const std::string& filename, size_t index);
+    static std::string chop_from_file(const std::string& filename,
+                                      size_t index);
     static std::vector<std::string> chop_all(const std::string& filename,
                                              size_t stopat = SIZE_MAX);
     static std::vector<std::string> chop_stream(std::istream& ins,
                                                 size_t stopat = SIZE_MAX);
-    static void parse(std::istringstream & strm, SGFTree * node);
+    static void parse(std::istringstream& strm, SGFTree* node);
 };
-
 
 #endif

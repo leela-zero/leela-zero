@@ -27,10 +27,9 @@
     work.
 */
 
-#include "Timing.h"
-
 #include <chrono>
 
+#include "Timing.h"
 
 int Time::timediff_centis(const Time start, const Time end) {
     return std::chrono::duration_cast<std::chrono::milliseconds>

@@ -28,12 +28,13 @@
 */
 
 #include "config.h"
-#include "Random.h"
 
 #include <climits>
 #include <cstdint>
-#include <thread>
 #include <random>
+#include <thread>
+
+#include "Random.h"
 
 #include "GTP.h"
 #include "Utils.h"
@@ -91,4 +92,3 @@ void Random::seedrandom(const std::uint64_t seed) {
     m_s[0] = splitmix64(seed);
     m_s[1] = splitmix64(m_s[0]);
 }
-

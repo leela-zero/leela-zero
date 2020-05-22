@@ -16,54 +16,49 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <QUuid>
 #include <QFile>
-#include <QTextStream>
-#include <QRegularExpression>
 #include <QFileInfo>
+#include <QRegularExpression>
+#include <QTextStream>
+#include <QUuid>
+
 #include "Game.h"
 
-Game::Game(const Engine& engine) :
-    QProcess(),
-    m_engine(engine),
-    m_isHandicap(false),
-    m_resignation(false),
-    m_blackToMove(true),
-    m_blackResigned(false),
-    m_passes(0),
-    m_moveNum(0)
-{
+Game::Game(const Engine& engine)
+    : QProcess(),
+      m_engine(engine),
+      m_isHandicap(false),
+      m_resignation(false),
+      m_blackToMove(true),
+      m_blackResigned(false),
+      m_passes(0),
+      m_moveNum(0) {
     m_fileName = QUuid::createUuid().toRfc4122().toHex();
 }
 
 bool Game::checkGameEnd() {
-    return (m_resignation ||
-            m_passes > 1 ||
-            m_moveNum > (19 * 19 * 2));
+    return (m_resignation || m_passes > 1 || m_moveNum > (19 * 19 * 2));
 }
 
 void Game::error(int errnum) {
     QTextStream(stdout) << "*ERROR*: ";
     switch (errnum) {
         case Game::NO_LEELAZ:
-            QTextStream(stdout)
-                << "No 'leelaz' binary found." << endl;
+            QTextStream(stdout) << "No 'leelaz' binary found." << endl;
             break;
         case Game::PROCESS_DIED:
             QTextStream(stdout)
                 << "The 'leelaz' process died unexpected." << endl;
             break;
         case Game::WRONG_GTP:
-            QTextStream(stdout)
-                << "Error in GTP response." << endl;
+            QTextStream(stdout) << "Error in GTP response." << endl;
             break;
         case Game::LAUNCH_FAILURE:
             QTextStream(stdout)
                 << "Could not talk to engine after launching." << endl;
             break;
         default:
-            QTextStream(stdout)
-                << "Unexpected error." << endl;
+            QTextStream(stdout) << "Unexpected error." << endl;
             break;
     }
 }
@@ -104,7 +99,7 @@ bool Game::sendGtpCommand(QString cmd) {
     return true;
 }
 
-void Game::checkVersion(const VersionTuple &min_version) {
+void Game::checkVersion(const VersionTuple& min_version) {
     write(qPrintable("version\n"));
     waitForBytesWritten(-1);
     if (!waitReady()) {
@@ -113,10 +108,10 @@ void Game::checkVersion(const VersionTuple &min_version) {
     }
     char readBuffer[256];
     int readCount = readLine(readBuffer, 256);
-    //If it is a GTP comment just print it and wait for the real answer
-    //this happens with the winogard tuning
+    // If it is a GTP comment just print it and wait for the real answer
+    // this happens with the winogard tuning
     if (readBuffer[0] == '#') {
-        readBuffer[readCount-1] = 0;
+        readBuffer[readCount - 1] = 0;
         QTextStream(stdout) << readBuffer << endl;
         if (!waitReady()) {
             error(Game::PROCESS_DIED);
@@ -141,16 +136,15 @@ void Game::checkVersion(const VersionTuple &min_version) {
     if (version_list.size() < 3) {
         version_list.append("0");
     }
-    int versionCount = (version_list[0].toInt() - std::get<0>(min_version)) * 10000;
+    int versionCount =
+        (version_list[0].toInt() - std::get<0>(min_version)) * 10000;
     versionCount += (version_list[1].toInt() - std::get<1>(min_version)) * 100;
     versionCount += version_list[2].toInt() - std::get<2>(min_version);
     if (versionCount < 0) {
-        QTextStream(stdout)
-            << "Leela version is too old, saw " << version_buff
-            << " but expected "
-            << std::get<0>(min_version) << "."
-            << std::get<1>(min_version) << "."
-            << std::get<2>(min_version)  << endl;
+        QTextStream(stdout) << "Leela version is too old, saw " << version_buff
+                            << " but expected " << std::get<0>(min_version)
+                            << "." << std::get<1>(min_version) << "."
+                            << std::get<2>(min_version) << endl;
         QTextStream(stdout)
             << "Check https://github.com/gcp/leela-zero for updates." << endl;
         exit(EXIT_FAILURE);
@@ -161,8 +155,7 @@ void Game::checkVersion(const VersionTuple &min_version) {
     }
 }
 
-bool Game::gameStart(const VersionTuple &min_version,
-                     const QString &sgf,
+bool Game::gameStart(const VersionTuple& min_version, const QString& sgf,
                      const int moves) {
     start(m_engine.getCmdLine());
     if (!waitForStarted()) {
@@ -173,12 +166,12 @@ bool Game::gameStart(const VersionTuple &min_version,
     // check any return values.
     checkVersion(min_version);
     QTextStream(stdout) << "Engine has started." << endl;
-    //If there is an sgf file to start playing from then it will contain
-    //whether there is handicap in use. If there is no sgf file then instead,
-    //check whether there are any handicap commands to send (these fail
-    //if the board is not empty).
-    //Then send the rest of the GTP commands after any SGF has been loaded so
-    //that they can override any settings loaded from the SGF.
+    // If there is an sgf file to start playing from then it will contain
+    // whether there is handicap in use. If there is no sgf file then instead,
+    // check whether there are any handicap commands to send (these fail
+    // if the board is not empty).
+    // Then send the rest of the GTP commands after any SGF has been loaded so
+    // that they can override any settings loaded from the SGF.
     if (!sgf.isEmpty()) {
         QFile sgfFile(sgf + ".sgf");
         if (!sgfFile.exists()) {
@@ -200,8 +193,7 @@ bool Game::gameStart(const VersionTuple &min_version,
     } else {
         for (auto command : m_engine.m_commands.filter("handicap")) {
             QTextStream(stdout) << command << endl;
-            if (!sendGtpCommand(command))
-            {
+            if (!sendGtpCommand(command)) {
                 QTextStream(stdout) << "GTP failed on: " << command << endl;
                 exit(EXIT_FAILURE);
             }
@@ -212,8 +204,7 @@ bool Game::gameStart(const VersionTuple &min_version,
     const auto re = QRegularExpression("^((?!handicap).)*$");
     for (auto command : m_engine.m_commands.filter(re)) {
         QTextStream(stdout) << command << endl;
-        if (!sendGtpCommand(command))
-        {
+        if (!sendGtpCommand(command)) {
             QTextStream(stdout) << "GTP failed on: " << command << endl;
             exit(EXIT_FAILURE);
         }
@@ -236,9 +227,10 @@ void Game::move() {
 
 void Game::setMovesCount(int moves) {
     m_moveNum = moves;
-    //The game always starts at move 0 (GTP states that handicap stones are not part
-    //of the move history), so if there is no handicap then black moves on even
-    //numbered turns but if there is handicap then black moves on odd numbered turns.
+    // The game always starts at move 0 (GTP states that handicap stones are not
+    // part of the move history), so if there is no handicap then black moves on
+    // even numbered turns but if there is handicap then black moves on odd
+    // numbered turns.
     m_blackToMove = (moves % 2) == (m_isHandicap ? 1 : 0);
 }
 
@@ -277,11 +269,10 @@ bool Game::readMove() {
     QTextStream(stdout) << m_moveNum << " (";
     QTextStream(stdout) << (m_blackToMove ? "B " : "W ") << m_moveDone << ") ";
     QTextStream(stdout).flush();
-    if (m_moveDone.compare(QStringLiteral("pass"),
-                          Qt::CaseInsensitive) == 0) {
+    if (m_moveDone.compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
         m_passes++;
-    } else if (m_moveDone.compare(QStringLiteral("resign"),
-                                 Qt::CaseInsensitive) == 0) {
+    } else if (m_moveDone.compare(QStringLiteral("resign"), Qt::CaseInsensitive)
+               == 0) {
         m_resignation = true;
         m_blackResigned = m_blackToMove;
     } else {
@@ -296,13 +287,15 @@ bool Game::setMove(const QString& m) {
     }
     m_moveNum++;
     QStringList moves = m.split(" ");
-    if (moves.at(2)
-        .compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
+    if (moves.at(2).compare(QStringLiteral("pass"), Qt::CaseInsensitive) == 0) {
         m_passes++;
-    } else if (moves.at(2)
-               .compare(QStringLiteral("resign"), Qt::CaseInsensitive) == 0) {
+    } else if (moves.at(2).compare(QStringLiteral("resign"),
+                                   Qt::CaseInsensitive)
+               == 0) {
         m_resignation = true;
-        m_blackResigned = (moves.at(1).compare(QStringLiteral("black"), Qt::CaseInsensitive) == 0);
+        m_blackResigned =
+            (moves.at(1).compare(QStringLiteral("black"), Qt::CaseInsensitive)
+             == 0);
     } else {
         m_passes = 0;
     }
@@ -329,7 +322,7 @@ bool Game::getScore() {
             m_result = "B+Resign ";
             QTextStream(stdout) << "Score: " << m_result << endl;
         }
-    } else{
+    } else {
         write("final_score\n");
         waitForBytesWritten(-1);
         if (!waitReady()) {
@@ -370,26 +363,26 @@ bool Game::writeSgf() {
     return sendGtpCommand(qPrintable("printsgf " + m_fileName + ".sgf"));
 }
 
-bool Game::loadTraining(const QString &fileName) {
+bool Game::loadTraining(const QString& fileName) {
     QTextStream(stdout) << "Loading " << fileName + ".train" << endl;
     return sendGtpCommand(qPrintable("load_training " + fileName + ".train"));
-
 }
 
 bool Game::saveTraining() {
-     QTextStream(stdout) << "Saving " << m_fileName + ".train" << endl;
-     return sendGtpCommand(qPrintable("save_training " + m_fileName + ".train"));
+    QTextStream(stdout) << "Saving " << m_fileName + ".train" << endl;
+    return sendGtpCommand(qPrintable("save_training " + m_fileName + ".train"));
 }
 
-
-bool Game::loadSgf(const QString &fileName) {
+bool Game::loadSgf(const QString& fileName) {
     QTextStream(stdout) << "Loading " << fileName + ".sgf" << endl;
     return sendGtpCommand(qPrintable("loadsgf " + fileName + ".sgf"));
 }
 
-bool Game::loadSgf(const QString &fileName, const int moves) {
-    QTextStream(stdout) << "Loading " << fileName + ".sgf with " << moves << " moves" << endl;
-    return sendGtpCommand(qPrintable("loadsgf " + fileName + ".sgf " + QString::number(moves + 1)));
+bool Game::loadSgf(const QString& fileName, const int moves) {
+    QTextStream(stdout) << "Loading " << fileName + ".sgf with " << moves
+                        << " moves" << endl;
+    return sendGtpCommand(qPrintable("loadsgf " + fileName + ".sgf "
+                                     + QString::number(moves + 1)));
 }
 
 void Game::fixSgfPlayer(QString& sgfData, const Engine& whiteEngine) {
@@ -407,7 +400,7 @@ void Game::fixSgfPlayer(QString& sgfData, const Engine& whiteEngine) {
 }
 
 void Game::fixSgfComment(QString& sgfData, const Engine& whiteEngine,
-    const bool isSelfPlay) {
+                         const bool isSelfPlay) {
     QRegularExpression oldComment("(C\\[Leela Zero)( options:.*)\\]");
     QString comment("\\1");
     if (!isSelfPlay) {
@@ -446,7 +439,7 @@ void Game::fixSgfResult(QString& sgfData, const bool resignation) {
 }
 
 bool Game::fixSgf(const Engine& whiteEngine, const bool resignation,
-    const bool isSelfPlay) {
+                  const bool isSelfPlay) {
     QFile sgfFile(m_fileName + ".sgf");
     if (!sgfFile.open(QIODevice::Text | QIODevice::ReadOnly)) {
         return false;

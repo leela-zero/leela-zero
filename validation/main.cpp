@@ -17,24 +17,24 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <QtCore/QCoreApplication>
-#include <QtCore/QTimer>
-#include <QtCore/QTextStream>
-#include <QtCore/QStringList>
 #include <QCommandLineParser>
-#include <QProcess>
-#include <QFile>
-#include <QDir>
 #include <QDebug>
+#include <QDir>
+#include <QFile>
+#include <QProcess>
+#include <QtCore/QCoreApplication>
+#include <QtCore/QStringList>
+#include <QtCore/QTextStream>
+#include <QtCore/QTimer>
 #include <chrono>
-#include <QCommandLineParser>
-#include "../autogtp/Game.h"
+
 #include "../autogtp/Console.h"
+#include "../autogtp/Game.h"
 #include "Validation.h"
 
 constexpr int VALIDATION_VERSION = 1;
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
     app.setApplicationName("validation");
     app.setApplicationVersion(QString("v%1").arg(VALIDATION_VERSION));
@@ -44,34 +44,34 @@ int main(int argc, char *argv[]) {
 
     QCommandLineOption networkOption(
         {"n", "network"},
-            "Networks to use as players in competition mode (two are needed).",
-            "filename");
+        "Networks to use as players in competition mode (two are needed).",
+        "filename");
     QCommandLineOption optionsOption(
         {"o", "options"},
-            "Options for the binary given by -b (default \"-g -v 3200 --noponder -t 1 -q -d -r 0 -w\").",
-            "opt_string");
+        "Options for the binary given by -b (default \"-g -v 3200 --noponder "
+        "-t 1 -q -d -r 0 -w\").",
+        "opt_string");
     QCommandLineOption gtpCommandOption(
-        {"c", "gtp-command" },
-            "GTP command to send to the binary on startup (default \"time_settings 0 1 0\").\n"
-            "Multiple commands are sent in the order they are specified.\n"
-            "Commands apply to the preceeding binary or both if specified before all binaries.",
-            "command");
+        {"c", "gtp-command"},
+        "GTP command to send to the binary on startup (default \"time_settings "
+        "0 1 0\").\n"
+        "Multiple commands are sent in the order they are specified.\n"
+        "Commands apply to the preceeding binary or both if specified before "
+        "all binaries.",
+        "command");
     QCommandLineOption sprtOption(
-        {"s", "sprt"},
-            "Set the SPRT hypothesis (default '0.0:35.0').",
-            "lower:upper", "0.0:35.0");
+        {"s", "sprt"}, "Set the SPRT hypothesis (default '0.0:35.0').",
+        "lower:upper", "0.0:35.0");
     QCommandLineOption gamesNumOption(
         {"g", "gamesNum"},
-            "Play 'gamesNum' games on one device (GPU/CPU) at the same time.",
-            "num", "1");
+        "Play 'gamesNum' games on one device (GPU/CPU) at the same time.",
+        "num", "1");
     QCommandLineOption gpusOption(
         {"u", "gpus"},
-            "Index of the device(s) to use for multiple devices support.",
-            "num");
+        "Index of the device(s) to use for multiple devices support.", "num");
     QCommandLineOption keepSgfOption(
-        {"k", "keepSgf" },
-            "Save SGF files after each self-play game.",
-            "output directory");
+        {"k", "keepSgf"}, "Save SGF files after each self-play game.",
+        "output directory");
 
     parser.addOption(gamesNumOption);
     parser.addOption(gpusOption);
@@ -114,8 +114,9 @@ int main(int argc, char *argv[]) {
     auto const keepPath = parser.value(keepSgfOption);
     if (parser.isSet(keepSgfOption)) {
         if (!QDir().mkpath(parser.value(keepSgfOption))) {
-            QTextStream(stdout) << "Couldn't create output directory for self-play SGF files!"
-                 << endl;
+            QTextStream(stdout)
+                << "Couldn't create output directory for self-play SGF files!"
+                << endl;
             return EXIT_FAILURE;
         }
     }
@@ -141,16 +142,18 @@ int main(int argc, char *argv[]) {
     }
 
     QMutex mutex;
-    QTextStream(stdout) << "SPRT : " << sprtOpt << " h0 " << h0 << " h1 " << h1 << endl;
+    QTextStream(stdout) << "SPRT : " << sprtOpt << " h0 " << h0 << " h1 " << h1
+                        << endl;
 
-    Console *cons = nullptr;
-    Validation *validate = new Validation(gpusNum, gamesNum, gpusList,
-                                          engines, keepPath, &mutex,
-                                          h0, h1);
-    QObject::connect(&app, &QCoreApplication::aboutToQuit, validate, &Validation::storeSprt);
+    Console* cons = nullptr;
+    Validation* validate = new Validation(gpusNum, gamesNum, gpusList, engines,
+                                          keepPath, &mutex, h0, h1);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, validate,
+                     &Validation::storeSprt);
     validate->loadSprt();
     validate->startGames();
-    QObject::connect(validate, &Validation::sendQuit, &app, &QCoreApplication::quit);
+    QObject::connect(validate, &Validation::sendQuit, &app,
+                     &QCoreApplication::quit);
     cons = new Console();
     QObject::connect(cons, &Console::sendQuit, &app, &QCoreApplication::quit);
     return app.exec();
