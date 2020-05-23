@@ -27,12 +27,13 @@ using VersionTuple = std::tuple<int, int, int>;
 
 class Engine {
 public:
-    Engine(const QString& network,
-           const QString& options,
+    Engine(const QString& network, const QString& options,
            const QStringList& commands = QStringList("time_settings 0 1 0"),
-           const QString& binary = QString("./leelaz")) :
-        m_binary(binary), m_options(options),
-        m_network(network), m_commands(commands) {
+           const QString& binary = QString("./leelaz"))
+        : m_binary(binary),
+          m_options(options),
+          m_network(network),
+          m_commands(commands) {
 #ifdef WIN32
         m_binary.append(".exe");
 #endif
@@ -58,33 +59,45 @@ public:
     Game(const Engine& engine);
     ~Game() = default;
     bool gameStart(const VersionTuple& min_version,
-                   const QString &sgf = QString(),
-                   int moves = 0);
+                   const QString& sgf = QString(), int moves = 0);
     void move();
-    bool waitForMove() { return waitReady(); }
+    bool waitForMove() {
+        return waitReady();
+    }
     bool readMove();
     bool nextMove();
     bool getScore();
-    bool loadSgf(const QString &fileName);
-    bool loadSgf(const QString &fileName, int moves);
+    bool loadSgf(const QString& fileName);
+    bool loadSgf(const QString& fileName, int moves);
     bool writeSgf();
-    bool loadTraining(const QString &fileName);
+    bool loadTraining(const QString& fileName);
     bool saveTraining();
-    bool fixSgf(const Engine& whiteEngine, bool resignation,
-        bool isSelfPlay);
+    bool fixSgf(const Engine& whiteEngine, bool resignation, bool isSelfPlay);
     bool dumpTraining();
     bool dumpDebug();
     void gameQuit();
-    QString getMove() const { return m_moveDone; }
-    QString getFile() const { return m_fileName; }
+    QString getMove() const {
+        return m_moveDone;
+    }
+    QString getFile() const {
+        return m_fileName;
+    }
     bool setMove(const QString& m);
     bool checkGameEnd();
     int getWinner();
-    QString getWinnerName() const { return m_winner; }
-    int getMovesCount() const { return m_moveNum; }
+    QString getWinnerName() const {
+        return m_winner;
+    }
+    int getMovesCount() const {
+        return m_moveNum;
+    }
     void setMovesCount(int moves);
-    int getToMove() const { return m_blackToMove ? BLACK : WHITE; }
-    QString getResult() const { return m_result.trimmed(); }
+    int getToMove() const {
+        return m_blackToMove ? BLACK : WHITE;
+    }
+    QString getResult() const {
+        return m_result.trimmed();
+    }
     enum {
         BLACK = 0,
         WHITE = 1,
@@ -109,13 +122,13 @@ private:
     int m_passes;
     int m_moveNum;
     bool sendGtpCommand(QString cmd);
-    void checkVersion(const VersionTuple &min_version);
+    void checkVersion(const VersionTuple& min_version);
     bool waitReady();
     bool eatNewLine();
     void error(int errnum);
     void fixSgfPlayer(QString& sgfData, const Engine& whiteEngine);
     void fixSgfComment(QString& sgfData, const Engine& whiteEngine,
-        bool isSelfPlay);
+                       bool isSelfPlay);
     void fixSgfResult(QString& sgfData, bool resignation);
 };
 

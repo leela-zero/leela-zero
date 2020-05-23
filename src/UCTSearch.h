@@ -30,26 +30,29 @@
 #ifndef UCTSEARCH_H_INCLUDED
 #define UCTSEARCH_H_INCLUDED
 
-#include <list>
 #include <atomic>
+#include <future>
+#include <list>
 #include <memory>
 #include <string>
 #include <tuple>
-#include <future>
 
-#include "ThreadPool.h"
 #include "FastBoard.h"
 #include "FastState.h"
 #include "GameState.h"
-#include "UCTNode.h"
 #include "Network.h"
-
+#include "ThreadPool.h"
+#include "UCTNode.h"
 
 class SearchResult {
 public:
     SearchResult() = default;
-    bool valid() const { return m_valid;  }
-    float eval() const { return m_eval;  }
+    bool valid() const {
+        return m_valid;
+    }
+    float eval() const {
+        return m_eval;
+    }
     static SearchResult from_eval(const float eval) {
         return SearchResult(eval);
     }
@@ -62,9 +65,9 @@ public:
             return SearchResult(0.5f);
         }
     }
+
 private:
-    explicit SearchResult(const float eval)
-        : m_valid(true), m_eval(eval) {}
+    explicit SearchResult(const float eval) : m_valid(true), m_eval(eval) {}
     bool m_valid{false};
     float m_eval{0.0f};
 };
@@ -107,7 +110,7 @@ public:
     static constexpr auto UNLIMITED_PLAYOUTS =
         std::numeric_limits<int>::max() / 2;
 
-    UCTSearch(GameState& g, Network & network);
+    UCTSearch(GameState& g, Network& network);
     int think(int color, passflag_t passflag = NORMAL);
     void set_playout_limit(int playouts);
     void set_visit_limit(int visits);
@@ -126,15 +129,15 @@ private:
     bool should_resign(passflag_t passflag, float besteval);
     bool have_alternate_moves(int elapsed_centis, int time_for_move);
     int est_playouts_left(int elapsed_centis, int time_for_move) const;
-    size_t prune_noncontenders(int color, int elapsed_centis = 0, int time_for_move = 0,
-                               bool prune = true);
+    size_t prune_noncontenders(int color, int elapsed_centis = 0,
+                               int time_for_move = 0, bool prune = true);
     bool stop_thinking(int elapsed_centis = 0, int time_for_move = 0) const;
     int get_best_move(passflag_t passflag);
     void update_root();
     bool advance_to_new_rootstate();
     void output_analysis(const FastState& state, const UCTNode& parent);
 
-    GameState & m_rootstate;
+    GameState& m_rootstate;
     std::unique_ptr<GameState> m_last_rootstate;
     std::unique_ptr<UCTNode> m_root;
     std::atomic<int> m_nodes{0};
@@ -146,18 +149,19 @@ private:
 
     std::list<Utils::ThreadGroup> m_delete_futures;
 
-    Network & m_network;
+    Network& m_network;
 };
 
 class UCTWorker {
 public:
     UCTWorker(GameState& state, UCTSearch* const search, UCTNode* const root)
-      : m_rootstate(state), m_search(search), m_root(root) {}
+        : m_rootstate(state), m_search(search), m_root(root) {}
     void operator()();
+
 private:
-    GameState & m_rootstate;
-    UCTSearch * m_search;
-    UCTNode * m_root;
+    GameState& m_rootstate;
+    UCTSearch* m_search;
+    UCTNode* m_root;
 };
 
 #endif

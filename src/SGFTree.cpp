@@ -28,17 +28,18 @@
 */
 
 #include "config.h"
-#include "SGFTree.h"
 
-#include <cassert>
-#include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
+#include <cassert>
 #include <ctime>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+
+#include "SGFTree.h"
 
 #include "FullBoard.h"
 #include "GTP.h"
@@ -93,7 +94,7 @@ GameState SGFTree::follow_mainline_state(const unsigned int movenum) const {
                 if (colored_move.second != FastBoard::PASS
                     && colored_move.second != FastBoard::EMPTY
                     && result.board.get_state(colored_move.second)
-                       != FastBoard::EMPTY) {
+                           != FastBoard::EMPTY) {
                     // Fail loading
                     return result;
                 }
@@ -124,7 +125,7 @@ void SGFTree::load_from_string(const std::string& gamebuff) {
 void SGFTree::load_from_file(const std::string& filename, const int index) {
     auto gamebuff = SGFParser::chop_from_file(filename, index);
 
-    //myprintf("Parsing: %s\n", gamebuff.c_str());
+    // myprintf("Parsing: %s\n", gamebuff.c_str());
 
     load_from_string(gamebuff);
 }
@@ -192,18 +193,20 @@ void SGFTree::populate_states() {
         it = m_properties.find("OT");
         const auto byoyomi = (it != end(m_properties)) ? it->second : "";
         it = m_properties.find("BL");
-        const auto black_time_left = (it != end(m_properties)) ? it->second : "";
+        const auto black_time_left =
+            (it != end(m_properties)) ? it->second : "";
         it = m_properties.find("WL");
-        const auto white_time_left = (it != end(m_properties)) ? it->second : "";
+        const auto white_time_left =
+            (it != end(m_properties)) ? it->second : "";
         it = m_properties.find("OB");
-        const auto black_moves_left = (it != end(m_properties)) ? it->second : "";
+        const auto black_moves_left =
+            (it != end(m_properties)) ? it->second : "";
         it = m_properties.find("OW");
-        const auto white_moves_left = (it != end(m_properties)) ? it->second : "";
-        m_timecontrol_ptr = TimeControl::make_from_text_sgf(maintime, byoyomi,
-                                                            black_time_left,
-                                                            white_time_left,
-                                                            black_moves_left,
-                                                            white_moves_left);
+        const auto white_moves_left =
+            (it != end(m_properties)) ? it->second : "";
+        m_timecontrol_ptr = TimeControl::make_from_text_sgf(
+            maintime, byoyomi, black_time_left, white_time_left,
+            black_moves_left, white_moves_left);
     }
 
     // handicap
@@ -231,7 +234,8 @@ void SGFTree::populate_states() {
                 m_winner = FastBoard::BLACK;
             } else {
                 m_winner = FastBoard::INVAL;
-                // std::cerr << "Could not parse game result: " << result << std::endl;
+                // std::cerr << "Could not parse game result: " << result <<
+                // std::endl;
             }
         }
     } else {
@@ -321,7 +325,7 @@ void SGFTree::add_property(std::string property, std::string value) {
     m_properties.emplace(property, value);
 }
 
-SGFTree * SGFTree::add_child() {
+SGFTree* SGFTree::add_child() {
     // first allocation is better small
     if (m_children.size() == 0) {
         m_children.reserve(1);
@@ -364,8 +368,7 @@ int SGFTree::string_to_vertex(const std::string& movestring) const {
     }
 
     // catch illegal SGF
-    if (cc1 < 0 || cc1 >= bsize
-        || cc2 < 0 || cc2 >= bsize) {
+    if (cc1 < 0 || cc1 >= bsize || cc2 < 0 || cc2 >= bsize) {
         throw std::runtime_error("Illegal SGF move");
     }
 
@@ -483,7 +486,8 @@ std::string SGFTree::state_to_string(GameState& pstate, const int compcolor) {
 
             if (vtx_state == FastBoard::BLACK) {
                 handicap++;
-                handicapstr.append("[" + state->board.move_to_text_sgf(vertex) + "]");
+                handicapstr.append("[" + state->board.move_to_text_sgf(vertex)
+                                   + "]");
             }
         }
     }
@@ -529,7 +533,8 @@ std::string SGFTree::state_to_string(GameState& pstate, const int compcolor) {
         }
     }
 
-    header.append("\nC[" + std::string{PROGRAM_NAME} + " options:" + cfg_options_str + "]");
+    header.append("\nC[" + std::string{PROGRAM_NAME}
+                  + " options:" + cfg_options_str + "]");
 
     std::string result(header);
     result.append("\n");

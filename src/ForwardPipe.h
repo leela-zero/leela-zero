@@ -30,10 +30,10 @@
 #ifndef FORWARDPIPE_H_INCLUDED
 #define FORWARDPIPE_H_INCLUDED
 
+#include "config.h"
+
 #include <memory>
 #include <vector>
-
-#include "config.h"
 
 class ForwardPipe {
 public:
@@ -56,14 +56,15 @@ public:
     virtual ~ForwardPipe() = default;
 
     virtual void initialize(int channels) = 0;
-    virtual bool needs_autodetect() { return false; };
+    virtual bool needs_autodetect() {
+        return false;
+    };
     virtual void forward(const std::vector<float>& input,
                          std::vector<float>& output_pol,
                          std::vector<float>& output_val) = 0;
-    virtual void push_weights(unsigned int filter_size,
-                              unsigned int channels,
-                              unsigned int outputs,
-                              std::shared_ptr<const ForwardPipeWeights> weights) = 0;
+    virtual void push_weights(
+        unsigned int filter_size, unsigned int channels, unsigned int outputs,
+        std::shared_ptr<const ForwardPipeWeights> weights) = 0;
 
     virtual void drain() {}
     virtual void resume() {}

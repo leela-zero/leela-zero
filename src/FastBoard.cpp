@@ -27,19 +27,20 @@
     work.
 */
 
-#include "FastBoard.h"
+#include "config.h"
 
-#include <cassert>
-#include <cctype>
 #include <algorithm>
 #include <array>
+#include <cassert>
+#include <cctype>
 #include <iostream>
 #include <queue>
 #include <sstream>
 #include <string>
 
+#include "FastBoard.h"
+
 #include "Utils.h"
-#include "config.h"
 
 using namespace Utils;
 
@@ -76,7 +77,7 @@ int FastBoard::get_vertex(const int x, const int y) const {
 }
 
 std::pair<int, int> FastBoard::get_xy(const int vertex) const {
-    //int vertex = ((y + 1) * (get_boardsize() + 2)) + (x + 1);
+    // int vertex = ((y + 1) * (get_boardsize() + 2)) + (x + 1);
     int x = (vertex % m_sidevertices) - 1;
     int y = (vertex / m_sidevertices) - 1;
 
@@ -106,7 +107,8 @@ FastBoard::vertex_t FastBoard::get_state(const int x, const int y) const {
     return get_state(get_vertex(x, y));
 }
 
-void FastBoard::set_state(const int x, const int y, const FastBoard::vertex_t content) {
+void FastBoard::set_state(const int x, const int y,
+                          const FastBoard::vertex_t content) {
     set_state(get_vertex(x, y), content);
 }
 
@@ -125,18 +127,18 @@ void FastBoard::reset_board(const int size) {
     m_dirs[3] = -1;
 
     for (int i = 0; i < m_numvertices; i++) {
-        m_state[i]     = INVAL;
+        m_state[i] = INVAL;
         m_neighbours[i] = 0;
-        m_parent[i]     = NUM_VERTICES;
+        m_parent[i] = NUM_VERTICES;
     }
 
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             int vertex = get_vertex(i, j);
 
-            m_state[vertex]           = EMPTY;
-            m_empty_idx[vertex]       = m_empty_cnt;
-            m_empty[m_empty_cnt++]    = vertex;
+            m_state[vertex] = EMPTY;
+            m_empty_idx[vertex] = m_empty_cnt;
+            m_empty[m_empty_cnt++] = vertex;
 
             if (i == 0 || i == size - 1) {
                 m_neighbours[vertex] += (1 << (NBR_SHIFT * BLACK))
@@ -157,8 +159,8 @@ void FastBoard::reset_board(const int size) {
     }
 
     m_parent[NUM_VERTICES] = NUM_VERTICES;
-    m_libs[NUM_VERTICES]   = 16384;    /* we will subtract from this */
-    m_next[NUM_VERTICES]   = NUM_VERTICES;
+    m_libs[NUM_VERTICES] = 16384; /* we will subtract from this */
+    m_next[NUM_VERTICES] = NUM_VERTICES;
 
     assert(m_state[NO_VERTEX] == INVAL);
 }
@@ -212,7 +214,8 @@ void FastBoard::add_neighbour(const int vtx, const int color) {
     for (int k = 0; k < 4; k++) {
         int ai = vtx + m_dirs[k];
 
-        m_neighbours[ai] += (1 << (NBR_SHIFT * color)) - (1 << (NBR_SHIFT * EMPTY));
+        m_neighbours[ai] += (1 << (NBR_SHIFT * color))
+                          - (1 << (NBR_SHIFT * EMPTY));
 
         bool found = false;
         for (int i = 0; i < nbr_par_cnt; i++) {
@@ -297,27 +300,31 @@ void FastBoard::display_board(const int lastmove) {
 
     myprintf("\n   ");
     print_columns();
-    for (int j = boardsize-1; j >= 0; j--) {
-        myprintf("%2d", j+1);
+    for (int j = boardsize - 1; j >= 0; j--) {
+        myprintf("%2d", j + 1);
         if (lastmove == get_vertex(0, j))
             myprintf("(");
         else
             myprintf(" ");
         for (int i = 0; i < boardsize; i++) {
-            if (get_state(i,j) == WHITE) {
+            if (get_state(i, j) == WHITE) {
                 myprintf("O");
-            } else if (get_state(i,j) == BLACK)  {
+            } else if (get_state(i, j) == BLACK) {
                 myprintf("X");
             } else if (starpoint(boardsize, i, j)) {
                 myprintf("+");
             } else {
                 myprintf(".");
             }
-            if (lastmove == get_vertex(i, j)) myprintf(")");
-            else if (i != boardsize-1 && lastmove == get_vertex(i, j)+1) myprintf("(");
-            else myprintf(" ");
+            if (lastmove == get_vertex(i, j)) {
+                myprintf(")");
+            } else if (i != boardsize - 1 && lastmove == get_vertex(i, j) + 1) {
+                myprintf("(");
+            } else {
+                myprintf(" ");
+            }
         }
-        myprintf("%2d\n", j+1);
+        myprintf("%2d\n", j + 1);
     }
     myprintf("   ");
     print_columns();
@@ -329,7 +336,8 @@ void FastBoard::print_columns() {
         if (i < 25) {
             myprintf("%c ", (('a' + i < 'i') ? 'a' + i : 'a' + i + 1));
         } else {
-            myprintf("%c ", (('A' + (i - 25) < 'I') ? 'A' + (i - 25) : 'A' + (i - 25) + 1));
+            myprintf("%c ", (('A' + (i - 25) < 'I') ? 'A' + (i - 25)
+                                                    : 'A' + (i - 25) + 1));
         }
     }
     myprintf("\n");
@@ -422,15 +430,14 @@ std::string FastBoard::move_to_text(const int move) const {
     column--;
     row--;
 
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
+    assert(move == FastBoard::PASS || move == FastBoard::RESIGN
            || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
+    assert(move == FastBoard::PASS || move == FastBoard::RESIGN
            || (column >= 0 && column < m_boardsize));
 
     if (move >= 0 && move <= m_numvertices) {
-        result << static_cast<char>(column < 8 ? 'A' + column : 'A' + column + 1);
+        result << static_cast<char>(column < 8 ? 'A' + column
+                                               : 'A' + column + 1);
         result << (row + 1);
     } else if (move == FastBoard::PASS) {
         result << "pass";
@@ -450,7 +457,8 @@ int FastBoard::text_to_move(std::string move) const {
         return PASS;
     } else if (move == "resign") {
         return RESIGN;
-    } else if (move.size() < 2 || !std::isalpha(move[0]) || !std::isdigit(move[1]) || move[0] == 'i') {
+    } else if (move.size() < 2 || !std::isalpha(move[0])
+               || !std::isdigit(move[1]) || move[0] == 'i') {
         return NO_VERTEX;
     }
 
@@ -480,11 +488,9 @@ std::string FastBoard::move_to_text_sgf(const int move) const {
     column--;
     row--;
 
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
+    assert(move == FastBoard::PASS || move == FastBoard::RESIGN
            || (row >= 0 && row < m_boardsize));
-    assert(move == FastBoard::PASS
-           || move == FastBoard::RESIGN
+    assert(move == FastBoard::PASS || move == FastBoard::RESIGN
            || (column >= 0 && column < m_boardsize));
 
     // SGF inverts rows

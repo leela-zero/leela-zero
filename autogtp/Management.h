@@ -19,15 +19,16 @@
 #define MANAGEMENT_H
 
 #include <QAtomicInt>
+#include <QFileInfo>
+#include <QLockFile>
 #include <QMutex>
 #include <QString>
 #include <QTextStream>
 #include <QThread>
-#include <QFileInfo>
-#include <QLockFile>
 #include <QVector>
 #include <chrono>
 #include <stdexcept>
+
 #include "Worker.h"
 
 constexpr int AUTOGTP_VERSION = 18;
@@ -35,17 +36,14 @@ constexpr int AUTOGTP_VERSION = 18;
 class Management : public QObject {
     Q_OBJECT
 public:
-    Management(int gpus,
-               int games,
-               const QStringList& gpuslist,
-               int ver,
-               int maxGame,
-               bool delNetworks,
-               const QString& keep,
+    Management(int gpus, int games, const QStringList& gpuslist, int ver,
+               int maxGame, bool delNetworks, const QString& keep,
                const QString& debug);
     ~Management() = default;
     void giveAssignments();
-    void incMoves() { m_movesMade++; }
+    void incMoves() {
+        m_movesMade++;
+    }
     void wait();
 signals:
     void sendQuit();
@@ -54,12 +52,9 @@ public slots:
     void storeGames();
 
 private:
-
-    struct NetworkException: public std::runtime_error
-    {
+    struct NetworkException : public std::runtime_error {
         NetworkException(std::string const& message)
-            : std::runtime_error("NetworkException: " + message)
-        {}
+            : std::runtime_error("NetworkException: " + message) {}
     };
     QMutex m_syncMutex;
     QVector<Worker*> m_gamesThreads;
@@ -81,31 +76,35 @@ private:
     int m_gamesLeft;
     int m_threadsLeft;
     bool m_delNetworks;
-    QLockFile *m_lockFile;
+    QLockFile* m_lockFile;
     QString m_leelaversion;
 
     Order getWorkInternal(bool tuning);
     Order getWork(bool tuning = false);
-    Order getWork(const QFileInfo &file);
-    QString getOption(const QJsonObject &ob, const QString &key, const QString &opt, const QString &defValue);
-    QString getBoolOption(const QJsonObject &ob, const QString &key, const QString &opt, bool defValue);
-    QString getOptionsString(const QJsonObject &opt, const QString &rnd);
-    QString getGtpCommandsString(const QJsonValue &gtpCommands);
+    Order getWork(const QFileInfo& file);
+    QString getOption(const QJsonObject& ob, const QString& key,
+                      const QString& opt, const QString& defValue);
+    QString getBoolOption(const QJsonObject& ob, const QString& key,
+                          const QString& opt, bool defValue);
+    QString getOptionsString(const QJsonObject& opt, const QString& rnd);
+    QString getGtpCommandsString(const QJsonValue& gtpCommands);
     void sendAllGames();
     void checkStoredGames();
     QFileInfo getNextStored();
-    bool networkExists(const QString &name, const QString &gzipHash);
-    void fetchNetwork(const QString &net, const QString &hash);
-    QString fetchGameData(const QString &name, const QString &extension);
+    bool networkExists(const QString& name, const QString& gzipHash);
+    void fetchNetwork(const QString& net, const QString& hash);
+    QString fetchGameData(const QString& name, const QString& extension);
     void printTimingInfo(float duration);
-    void runTuningProcess(const QString &tuneCmdLine);
-    void gzipFile(const QString &fileName);
-    bool sendCurl(const QStringList &lines);
-    void saveCurlCmdLine(const QStringList &prog_cmdline, const QString &name);
-    void archiveFiles(const QString &fileName);
-    void cleanupFiles(const QString &fileName);
-    void uploadData(const QMap<QString,QString> &r, const QMap<QString,QString> &l);
-    void uploadResult(const QMap<QString, QString> &r, const QMap<QString, QString> &l);
+    void runTuningProcess(const QString& tuneCmdLine);
+    void gzipFile(const QString& fileName);
+    bool sendCurl(const QStringList& lines);
+    void saveCurlCmdLine(const QStringList& prog_cmdline, const QString& name);
+    void archiveFiles(const QString& fileName);
+    void cleanupFiles(const QString& fileName);
+    void uploadData(const QMap<QString, QString>& r,
+                    const QMap<QString, QString>& l);
+    void uploadResult(const QMap<QString, QString>& r,
+                      const QMap<QString, QString>& l);
 };
 
 #endif

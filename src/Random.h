@@ -31,6 +31,7 @@
 #define RANDOM_H_INCLUDED
 
 #include "config.h"
+
 #include <cstdint>
 #include <limits>
 
@@ -44,11 +45,11 @@ public:
     void seedrandom(std::uint64_t s);
 
     // Random numbers from [0, max - 1]
-    template<int MAX>
+    template <int MAX>
     std::uint32_t randfix() {
-        static_assert(0 < MAX &&
-                     MAX < std::numeric_limits<std::uint32_t>::max(),
-                     "randfix out of range");
+        static_assert(0 < MAX
+                          && MAX < std::numeric_limits<std::uint32_t>::max(),
+                      "randfix out of range");
         // Last bit isn't random, so don't use it in isolation. We specialize
         // this case.
         static_assert(MAX != 2, "don't isolate the LSB with xoroshiro128+");
@@ -81,7 +82,7 @@ private:
 };
 
 // Specialization for last bit: use sign test
-template<>
+template <>
 inline std::uint32_t Random::randfix<2>() {
     return (gen() > (std::numeric_limits<std::uint64_t>::max() / 2));
 }

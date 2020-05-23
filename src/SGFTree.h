@@ -43,7 +43,7 @@
 
 class SGFTree {
 public:
-    static constexpr auto EOT = 0;               // End-Of-Tree marker
+    static constexpr auto EOT = 0; // End-Of-Tree marker
 
     SGFTree() = default;
     void init_state();

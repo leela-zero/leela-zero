@@ -27,8 +27,6 @@
     work.
 */
 
-#include "Training.h"
-
 #include <algorithm>
 #include <bitset>
 #include <cassert>
@@ -39,6 +37,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+
+#include "Training.h"
 
 #include "FastBoard.h"
 #include "FullBoard.h"
@@ -55,7 +55,7 @@
 
 std::vector<TimeStep> Training::m_data{};
 
-std::ostream& operator <<(std::ostream& stream, const TimeStep& timestep) {
+std::ostream& operator<<(std::ostream& stream, const TimeStep& timestep) {
     stream << timestep.planes.size() << ' ';
     for (const auto plane : timestep.planes) {
         stream << plane << ' ';
@@ -72,7 +72,7 @@ std::ostream& operator <<(std::ostream& stream, const TimeStep& timestep) {
     return stream;
 }
 
-std::istream& operator>> (std::istream& stream, TimeStep& timestep) {
+std::istream& operator>>(std::istream& stream, TimeStep& timestep) {
     int planes_size;
     stream >> planes_size;
     for (auto i = 0; i < planes_size; ++i) {
@@ -101,10 +101,8 @@ std::string OutputChunker::gen_chunk_name() const {
     return base;
 }
 
-OutputChunker::OutputChunker(const std::string& basename,
-                             bool compress)
-    : m_basename(basename), m_compress(compress) {
-}
+OutputChunker::OutputChunker(const std::string& basename, bool compress)
+    : m_basename(basename), m_compress(compress) {}
 
 OutputChunker::~OutputChunker() {
     flush_chunks();
@@ -131,7 +129,7 @@ void OutputChunker::flush_chunks() {
         if (!comp_size) {
             throw std::runtime_error("Error in gzip output");
         }
-        Utils::myprintf("Writing chunk %d\n",  m_chunk_count);
+        Utils::myprintf("Writing chunk %d\n", m_chunk_count);
         gzclose(out);
     } else {
         auto chunk_name = m_basename;
@@ -164,13 +162,14 @@ TimeStep::NNPlanes Training::get_planes(const GameState* const state) {
     return planes;
 }
 
-void Training::record(Network& network, const GameState& state, const UCTNode& root) {
+void Training::record(Network& network, const GameState& state,
+                      const UCTNode& root) {
     auto step = TimeStep{};
     step.to_move = state.board.get_to_move();
     step.planes = get_planes(&state);
 
-    const auto result = network.get_output(
-        &state, Network::Ensemble::DIRECT, Network::IDENTITY_SYMMETRY);
+    const auto result = network.get_output(&state, Network::Ensemble::DIRECT,
+                                           Network::IDENTITY_SYMMETRY);
     step.net_winrate = result.winrate;
 
     const auto& best_node = root.get_best_root_child(step.to_move);
@@ -209,7 +208,8 @@ void Training::record(Network& network, const GameState& state, const UCTNode& r
     m_data.emplace_back(step);
 }
 
-void Training::dump_training(const int winner_color, const std::string& filename) {
+void Training::dump_training(const int winner_color,
+                             const std::string& filename) {
     auto chunker = OutputChunker{filename, true};
     dump_training(winner_color, chunker);
 }
@@ -251,10 +251,10 @@ void Training::dump_training(const int winner_color, OutputChunker& outchunk) {
             const auto& plane = step.planes[p];
             // Write it out as a string of hex characters
             for (auto bit = size_t{0}; bit + 3 < plane.size(); bit += 4) {
-                auto hexbyte =  plane[bit]     << 3
-                              | plane[bit + 1] << 2
-                              | plane[bit + 2] << 1
-                              | plane[bit + 3] << 0;
+                auto hexbyte = plane[bit]     << 3
+                             | plane[bit + 1] << 2
+                             | plane[bit + 2] << 1
+                             | plane[bit + 3] << 0;
                 out << std::hex << hexbyte;
             }
             // NUM_INTERSECTIONS % 4 = 1 so the last bit goes by itself
@@ -267,8 +267,8 @@ void Training::dump_training(const int winner_color, OutputChunker& outchunk) {
         // bit, 0 = black to move.
         out << (step.to_move == FastBoard::BLACK ? "0" : "1") << std::endl;
         // Then a POTENTIAL_MOVES long array of float probabilities
-        for (auto it = begin(step.probabilities);
-            it != end(step.probabilities); ++it) {
+        for (auto it = begin(step.probabilities); it != end(step.probabilities);
+             ++it) {
             out << *it;
             if (next(it) != end(step.probabilities)) {
                 out << " ";
@@ -311,7 +311,8 @@ void Training::dump_debug(OutputChunker& outchunk) {
     outchunk.append(debug_str);
 }
 
-void Training::process_game(GameState& state, size_t& train_pos, const int who_won,
+void Training::process_game(GameState& state, size_t& train_pos,
+                            const int who_won,
                             const std::vector<int>& tree_moves,
                             OutputChunker& outchunker) {
     clear_training();
@@ -403,8 +404,7 @@ void Training::dump_supervised(const std::string& sgf_name,
             continue;
         }
 
-        process_game(*state, train_pos, who_won, tree_moves,
-                    outchunker);
+        process_game(*state, train_pos, who_won, tree_moves, outchunker);
     }
 
     std::cout << "Dumped " << train_pos << " training positions." << std::endl;

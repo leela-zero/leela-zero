@@ -26,15 +26,15 @@
     distribution.
 */
 
-#include <cstddef>
-#include <vector>
-#include <thread>
-#include <queue>
-#include <mutex>
 #include <condition_variable>
-#include <memory>
-#include <future>
+#include <cstddef>
 #include <functional>
+#include <future>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <vector>
 
 namespace Utils {
 
@@ -46,12 +46,14 @@ public:
     // create worker threads.  This version has no initializers.
     void initialize(std::size_t);
 
-    // add an extra thread.  The thread calls initializer() before doing anything,
-    // so that the user can initialize per-thread data structures before doing work.
+    // add an extra thread.  The thread calls initializer() before doing
+    // anything, so that the user can initialize per-thread data structures
+    // before doing work.
     void add_thread(std::function<void()> initializer);
-    template<class F, class... Args>
+    template <class F, class... Args>
     auto add_task(F&& f, Args&&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
+
 private:
     std::vector<std::thread> m_threads;
     std::queue<std::function<void()>> m_tasks;
@@ -68,7 +70,8 @@ inline void ThreadPool::add_thread(std::function<void()> initializer) {
             std::function<void()> task;
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
-                m_condvar.wait(lock, [this]{ return m_exit || !m_tasks.empty(); });
+                m_condvar.wait(lock,
+                               [this] { return m_exit || !m_tasks.empty(); });
                 if (m_exit && m_tasks.empty()) {
                     return;
                 }
@@ -82,23 +85,22 @@ inline void ThreadPool::add_thread(std::function<void()> initializer) {
 
 inline void ThreadPool::initialize(const size_t threads) {
     for (size_t i = 0; i < threads; i++) {
-        add_thread([](){} /* null function */);
+        add_thread([]() {} /* null function */);
     }
 }
 
-template<class F, class... Args>
+template <class F, class... Args>
 auto ThreadPool::add_task(F&& f, Args&&... args)
     -> std::future<typename std::result_of<F(Args...)>::type> {
     using return_type = typename std::result_of<F(Args...)>::type;
 
-    auto task = std::make_shared< std::packaged_task<return_type()> >(
-        std::bind(std::forward<F>(f), std::forward<Args>(args)...)
-    );
+    auto task = std::make_shared<std::packaged_task<return_type()>>(
+        std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 
     std::future<return_type> res = task->get_future();
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_tasks.emplace([task](){(*task)();});
+        m_tasks.emplace([task]() { (*task)(); });
     }
     m_condvar.notify_one();
     return res;
@@ -110,27 +112,27 @@ inline ThreadPool::~ThreadPool() {
         m_exit = true;
     }
     m_condvar.notify_all();
-    for (std::thread & worker : m_threads) {
+    for (std::thread& worker : m_threads) {
         worker.join();
     }
 }
 
 class ThreadGroup {
 public:
-    ThreadGroup(ThreadPool & pool) : m_pool(pool) {}
-    template<class F, class... Args>
+    ThreadGroup(ThreadPool& pool) : m_pool(pool) {}
+    template <class F, class... Args>
     void add_task(F&& f, Args&&... args) {
         m_taskresults.emplace_back(
-            m_pool.add_task(std::forward<F>(f), std::forward<Args>(args)...)
-        );
+            m_pool.add_task(std::forward<F>(f), std::forward<Args>(args)...));
     }
     void wait_all() {
-        for (auto && result : m_taskresults) {
+        for (auto&& result : m_taskresults) {
             result.get();
         }
     }
+
 private:
-    ThreadPool & m_pool;
+    ThreadPool& m_pool;
     std::vector<std::future<void>> m_taskresults;
 };
 

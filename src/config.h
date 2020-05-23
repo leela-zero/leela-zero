@@ -137,7 +137,7 @@ static constexpr auto SELFCHECK_PROBABILITY = 2000;
 #endif
 
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */
-    #pragma warning(disable : 4996)
+#pragma warning(disable : 4996)
 #endif /* VC8+ */
 
 #endif

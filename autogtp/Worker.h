@@ -19,11 +19,11 @@
 #ifndef WORKER_H
 #define WORKER_H
 
+#include <QMutex>
+#include <QThread>
+
 #include "Job.h"
 #include "Order.h"
-
-#include <QThread>
-#include <QMutex>
 
 class Management;
 
@@ -35,21 +35,25 @@ public:
         FINISHING,
         STORING
     };
-    Worker(int index, const QString& gpuIndex, Management *parent);
+    Worker(int index, const QString& gpuIndex, Management* parent);
     ~Worker() = default;
     void order(Order o);
-    void doFinish() { m_job->finish(); m_state.store(FINISHING); }
+    void doFinish() {
+        m_job->finish();
+        m_state.store(FINISHING);
+    }
     void doStore();
     void run() override;
 signals:
     void resultReady(Order o, Result r, int index, int duration);
+
 private:
     int m_index;
     QAtomicInt m_state;
     QString m_gpu;
     Order m_todo;
-    Job *m_job;
-    Management *m_boss;
+    Job* m_job;
+    Management* m_boss;
     void createJob(int type);
 };
 

@@ -31,8 +31,8 @@
 #define CPUPIPE_H_INCLUDED
 #include "config.h"
 
-#include <vector>
 #include <cassert>
+#include <vector>
 
 #include "ForwardPipe.h"
 
@@ -43,23 +43,20 @@ public:
                          std::vector<float>& output_pol,
                          std::vector<float>& output_val);
 
-    virtual void push_weights(unsigned int filter_size,
-                              unsigned int channels,
-                              unsigned int outputs,
-                              std::shared_ptr<const ForwardPipeWeights> weights);
+    virtual void push_weights(
+        unsigned int filter_size, unsigned int channels, unsigned int outputs,
+        std::shared_ptr<const ForwardPipeWeights> weights);
+
 private:
     void winograd_transform_in(const std::vector<float>& in,
-                               std::vector<float>& V,
-                               int C);
+                               std::vector<float>& V, int C);
 
     void winograd_sgemm(const std::vector<float>& U,
                         const std::vector<float>& V,
-                        std::vector<float>& M,
-                        int C, int K);
+                        std::vector<float>& M, int C, int K);
 
     void winograd_transform_out(const std::vector<float>& M,
-                                std::vector<float>& Y,
-                                int K);
+                                std::vector<float>& Y, int K);
 
     void winograd_convolve3(int outputs,
                             const std::vector<float>& input,
@@ -67,7 +64,6 @@ private:
                             std::vector<float>& V,
                             std::vector<float>& M,
                             std::vector<float>& output);
-
 
     int m_input_channels;
 

@@ -30,8 +30,8 @@
 #ifndef FASTSTATE_H_INCLUDED
 #define FASTSTATE_H_INCLUDED
 
-#include <cstddef>
 #include <array>
+#include <cstddef>
 #include <string>
 #include <vector>
 

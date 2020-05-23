@@ -49,7 +49,7 @@ TEST(UtilsTest, CeilMultiple) {
     EXPECT_EQ(ceilMultiple(0, 1), (size_t)0);
     EXPECT_EQ(ceilMultiple(0, 3), (size_t)0);
 
-    EXPECT_EQ(ceilMultiple(6,  1), (size_t)6);
+    EXPECT_EQ(ceilMultiple(6, 1), (size_t)6);
     EXPECT_EQ(ceilMultiple(23, 1), (size_t)23);
 
     EXPECT_EQ(ceilMultiple(2, 2), (size_t)2);
@@ -67,7 +67,8 @@ TEST(UtilsTest, CeilMultiple) {
     EXPECT_EQ(ceilMultiple(99, 100), (size_t)100);
 }
 
-double randomlyDistributedProbability(const std::vector<short>& values, const double expected) {
+double randomlyDistributedProbability(const std::vector<short>& values,
+                                      const double expected) {
     auto count = values.size();
 
     // h0: each number had a (1 / count) chance
@@ -91,7 +92,7 @@ double randomlyDistributedProbability(const std::vector<short>& values, const do
 }
 
 bool rngBucketsLookRandom(const double p, const double alpha) {
-    return p >= (alpha/2) && p <= (1-alpha/2);
+    return p >= (alpha / 2) && p <= (1 - alpha / 2);
 }
 
 TEST(UtilsTest, RandFix) {
