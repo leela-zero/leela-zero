@@ -36,8 +36,8 @@
 #include <string>
 #include <vector>
 
-#include "Network.h"
 #include "GameState.h"
+#include "Network.h"
 #include "UCTSearch.h"
 
 struct MoveToAvoid {
@@ -46,12 +46,11 @@ struct MoveToAvoid {
     int vertex;
 
     MoveToAvoid(const int color, const size_t until_move, const int vertex)
-        : color(color), until_move(until_move), vertex(vertex)
-    {}
+        : color(color), until_move(until_move), vertex(vertex) {}
 
     bool operator==(const MoveToAvoid& other) const {
-        return color == other.color &&
-            until_move == other.until_move && vertex == other.vertex;
+        return color == other.color && until_move == other.until_move
+               && vertex == other.vertex;
     }
 };
 
@@ -138,6 +137,7 @@ public:
     static void initialize(std::unique_ptr<Network>&& network);
     static void execute(GameState& game, const std::string& xinput);
     static void setup_default_parameters();
+
 private:
     static constexpr int GTP_VERSION = 2;
 
@@ -148,14 +148,17 @@ private:
         std::istringstream& is);
     static std::pair<bool, std::string> set_max_memory(
         size_t max_memory, int cache_size_ratio_percent);
-    static void execute_setoption(UCTSearch& search,
-                                  int id, const std::string& command);
+    static void execute_setoption(UCTSearch& search, int id,
+                                  const std::string& command);
 
     // Memory estimation helpers
     static size_t get_base_memory();
-    static size_t add_overhead(const size_t s) { return s * 11LL / 10LL; }
-    static size_t remove_overhead(const size_t s) { return s * 10LL / 11LL; }
+    static size_t add_overhead(const size_t s) {
+        return s * 11LL / 10LL;
+    }
+    static size_t remove_overhead(const size_t s) {
+        return s * 10LL / 11LL;
+    }
 };
-
 
 #endif

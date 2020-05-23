@@ -35,34 +35,30 @@
 #include <QTextStream>
 #include <tuple>
 
-class Sprt
-{
+class Sprt {
 public:
-        /*! The result of the test. */
-    enum Result
-    {
-        Continue,    //!< Continue monitoring
-        AcceptH0,    //!< Accept null hypothesis H0
-        AcceptH1    //!< Accept alternative hypothesis H1
+    /*! The result of the test. */
+    enum Result {
+        Continue, //!< Continue monitoring
+        AcceptH0, //!< Accept null hypothesis H0
+        AcceptH1  //!< Accept alternative hypothesis H1
     };
 
     /*! The result of a chess game. */
-    enum GameResult
-    {
-        NoResult = 0,    //!< Game ended with no result
-        Win,        //!< First player won
-        Loss,        //!< First player lost
-        Draw,        //!< Game was drawn
-        NotEnded    //!< Game was interrupted
+    enum GameResult {
+        NoResult = 0, //!< Game ended with no result
+        Win,          //!< First player won
+        Loss,         //!< First player lost
+        Draw,         //!< Game was drawn
+        NotEnded      //!< Game was interrupted
     };
 
     /*! The status of the test. */
-    struct Status
-    {
-        Result result;    //!< Test result
+    struct Status {
+        Result result; //!< Test result
         double llr;    //!< Log-likelihood ratio
-        double lBound;    //!< Lower bound
-        double uBound;    //!< Upper bound
+        double lBound; //!< Lower bound
+        double uBound; //!< Upper bound
     };
 
     /*! Creates a new uninitialized Sprt object. */
@@ -83,8 +79,7 @@ public:
      * \a alpha is the maximum probability for a type I error and
      * \a beta for a type II error outside interval [elo0, elo1].
      */
-    void initialize(double elo0, double elo1,
-                    double alpha, double beta);
+    void initialize(double elo0, double elo1, double alpha, double beta);
 
     /*! Returns the current status of the test. */
     Status status() const;
@@ -101,6 +96,7 @@ public:
     void addGameResult(GameResult result);
     friend QTextStream& operator<<(QTextStream& stream, const Sprt& sprt);
     friend QTextStream& operator>>(QTextStream& stream, Sprt& sprt);
+
 private:
     double m_elo0;
     double m_elo1;

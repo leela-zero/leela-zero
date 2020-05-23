@@ -19,8 +19,8 @@
 #ifndef RESULT_H
 #define RESULT_H
 
-#include <QString>
 #include <QMap>
+#include <QString>
 
 class Result {
 public:
@@ -34,16 +34,30 @@ public:
         Error
     };
     Result() = default;
-    Result(int t, QMap<QString,QString> n = QMap<QString,QString>()) { m_type = t, m_parameters = n; }
+    Result(int t, QMap<QString, QString> n = QMap<QString, QString>()) {
+        m_type = t;
+        m_parameters = n;
+    }
     ~Result() = default;
-    void type(int t) { m_type = t; }
-    int type() { return m_type; }
-    void add(const QString &name, const QString &value) { m_parameters[name] = value; }
-    QMap<QString,QString> parameters() { return m_parameters; }
-    void clear() { m_parameters.clear(); }
+    void type(int t) {
+        m_type = t;
+    }
+    int type() {
+        return m_type;
+    }
+    void add(const QString& name, const QString& value) {
+        m_parameters[name] = value;
+    }
+    QMap<QString, QString> parameters() {
+        return m_parameters;
+    }
+    void clear() {
+        m_parameters.clear();
+    }
+
 private:
     int m_type;
-    QMap<QString,QString> m_parameters;
+    QMap<QString, QString> m_parameters;
 };
 
 #endif // RESULT_H

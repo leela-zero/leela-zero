@@ -19,8 +19,8 @@
 #ifndef ORDER_H
 #define ORDER_H
 
-#include <QString>
 #include <QMap>
+#include <QString>
 
 class Order {
 public:
@@ -33,22 +33,44 @@ public:
         RestoreSelfPlayed
     };
     Order() = default;
-    Order(int t, QMap<QString,QString> p = QMap<QString,QString>()) { m_type = t; m_parameters = p; }
-    Order(const Order &o) { m_type = o.m_type; m_parameters = o.m_parameters; }
-    Order &operator=(const Order &o) { m_type = o.m_type; m_parameters = o.m_parameters; return *this; }
+    Order(int t, QMap<QString, QString> p = QMap<QString, QString>()) {
+        m_type = t;
+        m_parameters = p;
+    }
+    Order(const Order& o) {
+        m_type = o.m_type;
+        m_parameters = o.m_parameters;
+    }
+    Order& operator=(const Order& o) {
+        m_type = o.m_type;
+        m_parameters = o.m_parameters;
+        return *this;
+    }
     ~Order() = default;
-    void type(int t) { m_type = t; }
-    int type() const { return m_type; }
-    QMap<QString,QString> parameters() const { return m_parameters; }
-    void parameters(const QMap<QString,QString> &l) { m_parameters = l; }
-    void add(const QString &key, const QString &value) { m_parameters[key] = value; }
-    bool isValid() { return (m_type > Error && m_type <= RestoreSelfPlayed); }
-    void save(const QString &file);
-    void load(const QString &file);
+    void type(int t) {
+        m_type = t;
+    }
+    int type() const {
+        return m_type;
+    }
+    QMap<QString, QString> parameters() const {
+        return m_parameters;
+    }
+    void parameters(const QMap<QString, QString>& l) {
+        m_parameters = l;
+    }
+    void add(const QString& key, const QString& value) {
+        m_parameters[key] = value;
+    }
+    bool isValid() {
+        return m_type > Error && m_type <= RestoreSelfPlayed;
+    }
+    void save(const QString& file);
+    void load(const QString& file);
 
 private:
     int m_type;
-    QMap<QString,QString> m_parameters;
+    QMap<QString, QString> m_parameters;
 };
 
 #endif // ORDER_H

@@ -19,20 +19,23 @@
 #ifndef RESULTS_H
 #define RESULTS_H
 
-#include "SPRT.h"
 #include <QString>
 
+#include "SPRT.h"
 
 class Results {
 public:
     Results() = default;
-    int getGamesPlayed() const { return m_gamesPlayed; }
+    int getGamesPlayed() const {
+        return m_gamesPlayed;
+    }
     void addGameResult(Sprt::GameResult result, int side);
     void printResults(const QString& firstNetName,
                       const QString& secondNetName) const;
 
     friend QTextStream& operator<<(QTextStream& stream, const Results& r);
     friend QTextStream& operator>>(QTextStream& stream, Results& r);
+
 private:
     int m_gamesPlayed{0};
     int m_blackWins{0};

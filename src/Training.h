@@ -55,8 +55,8 @@ public:
     int bestmove_visits;
 };
 
-std::ostream& operator<< (std::ostream& stream, const TimeStep& timestep);
-std::istream& operator>> (std::istream& stream, TimeStep& timestep);
+std::ostream& operator<<(std::ostream& stream, const TimeStep& timestep);
+std::istream& operator>>(std::istream& stream, TimeStep& timestep);
 
 class OutputChunker {
 public:
@@ -66,6 +66,7 @@ public:
 
     // Group this many games in a batch.
     static constexpr size_t CHUNK_SIZE = 32;
+
 private:
     std::string gen_chunk_name() const;
     void flush_chunks();
@@ -82,7 +83,8 @@ public:
     static void dump_training(int winner_color,
                               const std::string& out_filename);
     static void dump_debug(const std::string& out_filename);
-    static void record(Network& network, const GameState& state, const UCTNode& node);
+    static void record(Network& network, const GameState& state,
+                       const UCTNode& node);
 
     static void dump_supervised(const std::string& sgf_file,
                                 const std::string& out_filename);
@@ -94,8 +96,7 @@ private:
     static void process_game(GameState& state, size_t& train_pos, int who_won,
                              const std::vector<int>& tree_moves,
                              OutputChunker& outchunker);
-    static void dump_training(int winner_color,
-                              OutputChunker& outchunker);
+    static void dump_training(int winner_color, OutputChunker& outchunker);
     static void dump_debug(OutputChunker& outchunker);
     static void save_training(std::ofstream& out);
     static void load_training(std::ifstream& in);

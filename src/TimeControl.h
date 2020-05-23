@@ -30,10 +30,11 @@
 #ifndef TIMECONTROL_H_INCLUDED
 #define TIMECONTROL_H_INCLUDED
 
+#include "config.h"
+
 #include <array>
 #include <memory>
 
-#include "config.h"
 #include "Timing.h"
 
 class TimeControl {
@@ -41,9 +42,8 @@ public:
     /*
         Initialize time control. Timing info is per GTP and in centiseconds
     */
-    TimeControl(int maintime = 60 * 60 * 100,
-                int byotime = 0, int byostones = 0,
-                int byoperiods = 0);
+    TimeControl(int maintime = 60 * 60 * 100, int byotime = 0,
+                int byostones = 0, int byoperiods = 0);
 
     void start(int color);
     void stop(int color);
@@ -57,7 +57,9 @@ public:
     static std::shared_ptr<TimeControl> make_from_text_sgf(
         const std::string& maintime, const std::string& byoyomi,
         const std::string& black_time_left, const std::string& white_time_left,
-        const std::string& black_moves_left, const std::string& white_moves_left);
+        const std::string& black_moves_left,
+        const std::string& white_moves_left);
+
 private:
     std::string stones_left_to_text_sgf(int color) const;
     void display_color_time(int color);
@@ -68,12 +70,12 @@ private:
     int m_byostones;
     int m_byoperiods;
 
-    std::array<int,  2> m_remaining_time;    /* main time per player */
-    std::array<int,  2> m_stones_left;       /* stones to play in byo period */
-    std::array<int,  2> m_periods_left;      /* byo periods */
-    std::array<bool, 2> m_inbyo;             /* player is in byo yomi */
+    std::array<int,  2> m_remaining_time; /* main time per player */
+    std::array<int,  2> m_stones_left;    /* stones to play in byo period */
+    std::array<int,  2> m_periods_left;   /* byo periods */
+    std::array<bool, 2> m_inbyo;          /* player is in byo yomi */
 
-    std::array<Time, 2> m_times;             /* storage for player times */
+    std::array<Time, 2> m_times;          /* storage for player times */
 };
 
 #endif

@@ -18,20 +18,20 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <QTextStream>
-#include <QString>
-#include <QThread>
-#include <QVector>
 #include <QAtomicInt>
 #include <QMutex>
-#include "SPRT.h"
+#include <QString>
+#include <QTextStream>
+#include <QThread>
+#include <QVector>
+
 #include "../autogtp/Game.h"
 #include "Results.h"
+#include "SPRT.h"
 
 class ValidationWorker : public QThread {
     Q_OBJECT
 public:
-
     enum {
         RUNNING = 0,
         FINISHING
@@ -39,15 +39,16 @@ public:
     ValidationWorker() = default;
     ValidationWorker(const ValidationWorker& w) : QThread(w.parent()) {}
     ~ValidationWorker() = default;
-    void init(const QString& gpuIndex,
-              const QVector<Engine>& engines,
-              const QString& keep,
-              int expected);
+    void init(const QString& gpuIndex, const QVector<Engine>& engines,
+              const QString& keep, int expected);
     void run() override;
-    void doFinish() { m_state.store(FINISHING); }
+    void doFinish() {
+        m_state.store(FINISHING);
+    }
 
 signals:
     void resultReady(Sprt::GameResult r, int net_one_color);
+
 private:
     QVector<Engine> m_engines;
     int m_expected;
@@ -59,13 +60,9 @@ class Validation : public QObject {
     Q_OBJECT
 
 public:
-    Validation(int gpus, int games,
-               const QStringList& gpusList,
-               QVector<Engine>& engines,
-               const QString& keep,
-               QMutex* mutex,
-               float h0,
-               float h1);
+    Validation(int gpus, int games, const QStringList& gpusList,
+               QVector<Engine>& engines, const QString& keep, QMutex* mutex,
+               float h0, float h1);
     ~Validation() = default;
     void startGames();
     void wait();
@@ -75,6 +72,7 @@ signals:
 public slots:
     void getResult(Sprt::GameResult result, int net_one_color);
     void storeSprt();
+
 private:
     QMutex* m_mainMutex;
     QMutex m_syncMutex;

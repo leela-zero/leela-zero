@@ -32,8 +32,8 @@
 
 #include "config.h"
 
-#include <cstddef>
 #include <atomic>
+#include <cstddef>
 
 namespace SMP {
     size_t get_num_cpus();
@@ -43,18 +43,20 @@ namespace SMP {
         Mutex();
         ~Mutex() = default;
         friend class Lock;
+
     private:
         std::atomic<bool> m_lock;
     };
 
     class Lock {
     public:
-        explicit Lock(Mutex & m);
+        explicit Lock(Mutex& m);
         ~Lock();
         void lock();
         void unlock();
+
     private:
-        Mutex * m_mutex;
+        Mutex* m_mutex;
         bool m_owns_lock{false};
     };
 }

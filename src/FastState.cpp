@@ -28,16 +28,17 @@
 */
 
 #include "config.h"
-#include "FastState.h"
 
 #include <algorithm>
 #include <iterator>
 #include <vector>
 
+#include "FastState.h"
+
 #include "FastBoard.h"
+#include "GTP.h"
 #include "Utils.h"
 #include "Zobrist.h"
-#include "GTP.h"
 
 using namespace Utils;
 
@@ -74,12 +75,11 @@ void FastState::reset_board() {
 }
 
 bool FastState::is_move_legal(const int color, const int vertex) const {
-    return !cfg_analyze_tags.is_to_avoid(color, vertex, m_movenum) && (
-              vertex == FastBoard::PASS ||
-                 vertex == FastBoard::RESIGN ||
-                 (vertex != m_komove &&
-                      board.get_state(vertex) == FastBoard::EMPTY &&
-                      !board.is_suicide(vertex, color)));
+    return !cfg_analyze_tags.is_to_avoid(color, vertex, m_movenum)
+           && (vertex == FastBoard::PASS || vertex == FastBoard::RESIGN
+               || (vertex != m_komove
+                   && board.get_state(vertex) == FastBoard::EMPTY
+                   && !board.is_suicide(vertex, color)));
 }
 
 void FastState::play_move(const int vertex) {

@@ -28,11 +28,12 @@
 */
 
 #include "config.h"
-#include "KoState.h"
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <iterator>
+
+#include "KoState.h"
 
 #include "FastBoard.h"
 #include "FastState.h"

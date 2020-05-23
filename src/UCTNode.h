@@ -33,10 +33,10 @@
 #include "config.h"
 
 #include <atomic>
-#include <memory>
-#include <vector>
 #include <cassert>
 #include <cstring>
+#include <memory>
+#include <vector>
 
 #include "GameState.h"
 #include "Network.h"
@@ -54,8 +54,7 @@ public:
     UCTNode() = delete;
     ~UCTNode() = default;
 
-    bool create_children(Network & network,
-                         std::atomic<int>& nodecount,
+    bool create_children(Network& network, std::atomic<int>& nodecount,
                          GameState& state, float& eval,
                          float min_psa_ratio = 0.0f);
 
@@ -87,9 +86,8 @@ public:
 
     // Defined in UCTNodeRoot.cpp, only to be called on m_root in UCTSearch
     void randomize_first_proportionally();
-    void prepare_root_node(Network & network, int color,
-                           std::atomic<int>& nodecount,
-                           GameState& state);
+    void prepare_root_node(Network& network, int color,
+                           std::atomic<int>& nodecount, GameState& state);
 
     UCTNode* get_first_child() const;
     UCTNode* get_nopass_child(FastState& state) const;
@@ -97,6 +95,7 @@ public:
     void inflate_all_children();
 
     void clear_expand_state();
+
 private:
     enum Status : char {
         INVALID, // superko

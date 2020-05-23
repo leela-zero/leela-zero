@@ -32,16 +32,16 @@
 
 #include "config.h"
 
-#define CL_HPP_MINIMUM_OPENCL_VERSION   110
-#define CL_HPP_TARGET_OPENCL_VERSION    120
+#define CL_HPP_MINIMUM_OPENCL_VERSION 110
+#define CL_HPP_TARGET_OPENCL_VERSION  120
 #define CL_HPP_ENABLE_EXCEPTIONS
 #include <CL/cl2.hpp>
+#include <cassert>
 #include <cstddef>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
-#include <mutex>
-#include <cassert>
 
 #include "Tuner.h"
 
@@ -50,6 +50,7 @@ template <typename net_t> class OpenCL_Network;
 
 class Layer {
     template <typename> friend class OpenCL_Network;
+
 private:
     unsigned int channels{0};
     unsigned int outputs{0};
@@ -63,6 +64,7 @@ private:
 class OpenCLContext {
     template <typename> friend class OpenCL;
     template <typename> friend class OpenCL_Network;
+
 private:
     bool m_is_initialized{false};
     cl::CommandQueue m_commandqueue;
@@ -84,8 +86,8 @@ private:
 template <typename net_t>
 class OpenCL_Network {
 public:
-    OpenCL_Network(OpenCL<net_t> & opencl) : m_opencl(opencl) {}
-    OpenCL<net_t> & getOpenCL() {
+    OpenCL_Network(OpenCL<net_t>& opencl) : m_opencl(opencl) {}
+    OpenCL<net_t>& getOpenCL() {
         return m_opencl;
     }
 
@@ -106,8 +108,7 @@ public:
     }
 
     void push_residual(const unsigned int filter_size,
-                       const unsigned int channels,
-                       const unsigned int outputs,
+                       const unsigned int channels, const unsigned int outputs,
                        const std::vector<net_t>& weights_1,
                        const std::vector<net_t>& means_1,
                        const std::vector<net_t>& variances_1,
@@ -128,8 +129,7 @@ public:
     }
 
     void push_convolve(const unsigned int filter_size,
-                       const unsigned int channels,
-                       const unsigned int outputs,
+                       const unsigned int channels, const unsigned int outputs,
                        const std::vector<net_t>& weights) {
         (void)filter_size;
         assert(filter_size == 1);
@@ -146,10 +146,9 @@ public:
     }
 
     void forward(const std::vector<float>& input,
-            std::vector<float>& output_pol,
-            std::vector<float>& output_val,
-            OpenCLContext & opencl_context,
-            int batch_size = 1);
+                 std::vector<float>& output_pol,
+                 std::vector<float>& output_val,
+                 OpenCLContext& opencl_context, int batch_size = 1);
 
 private:
     using weight_slice_t = std::vector<cl::Buffer>::const_iterator;
@@ -159,27 +158,22 @@ private:
     }
     void add_weights(size_t layer, size_t size, const net_t* weights);
 
-    void convolve3(OpenCLContext & opencl_context,
-                    int channels, int outputs,
-                    cl::Buffer& bufferIn,
-                    cl::Buffer& bufferOut,
-                    cl::Buffer& bufferV,
-                    cl::Buffer& bufferM, weight_slice_t weights,
-                    cl::Buffer* bufferResidual,
-                    weight_slice_t bn_weights,
-                    bool skip_in_transform,
-                    bool fuse_in_transform, bool store_inout,
-                    int batch_size);
+    void convolve3(OpenCLContext& opencl_context, int channels, int outputs,
+                   cl::Buffer& bufferIn,
+                   cl::Buffer& bufferOut,
+                   cl::Buffer& bufferV,
+                   cl::Buffer& bufferM, weight_slice_t weights,
+                   cl::Buffer* bufferResidual,
+                   weight_slice_t bn_weights, bool skip_in_transform,
+                   bool fuse_in_transform, bool store_inout, int batch_size);
 
-    void convolve1(OpenCLContext & opencl_context,
-                  int channels, int outputs,
-                  cl::Buffer& bufferInput,
-                  cl::Buffer& bufferOutput,
-                  cl::Buffer& bufferMerge,
-                  weight_slice_t weights,
-                  int batch_size);
+    void convolve1(OpenCLContext& opencl_context, int channels, int outputs,
+                   cl::Buffer& bufferInput,
+                   cl::Buffer& bufferOutput,
+                   cl::Buffer& bufferMerge,
+                   weight_slice_t weights, int batch_size);
 
-    OpenCL<net_t> & m_opencl;
+    OpenCL<net_t>& m_opencl;
 
     // this mutex is not required for correctness, but this exists simply
     // because queue.finish() is a busy wait and having a lot of threads
@@ -193,11 +187,12 @@ template <typename net_t>
 class OpenCL {
     friend class OpenCL_Network<net_t>;
     friend class Tuner<net_t>;
+
 public:
     OpenCL(int gpu, bool silent = false);
 
     void initialize(int channels, size_t batch_size = 1);
-    void ensure_context_initialized(OpenCLContext & opencl_context);
+    void ensure_context_initialized(OpenCLContext& opencl_context);
     std::string get_device_name();
     bool has_fp16_compute();
     bool has_tensor_cores();
@@ -206,6 +201,7 @@ public:
 
     cl::Device m_device;
     cl::Context m_context;
+
 private:
     void process_tuners(std::string tuners);
 

@@ -16,21 +16,17 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "Worker.h"
-#include "Game.h"
-#include <QTextStream>
 #include <QLockFile>
+#include <QTextStream>
 #include <QUuid>
 #include <chrono>
 
+#include "Worker.h"
 
-Worker::Worker(int index, const QString& gpuIndex, Management *parent) :
-    m_index(index),
-    m_state(),
-    m_gpu(""),
-    m_job(nullptr),
-    m_boss(parent)
-{
+#include "Game.h"
+
+Worker::Worker(int index, const QString& gpuIndex, Management* parent)
+    : m_index(index), m_state(), m_gpu(""), m_job(nullptr), m_boss(parent) {
     if (!gpuIndex.isEmpty()) {
         m_gpu = " --gpu=" + gpuIndex + " ";
     }
@@ -42,8 +38,7 @@ void Worker::doStore() {
     m_state.store(STORING);
 }
 
-void Worker::order(Order o)
-{
+void Worker::order(Order o) {
     if (!o.isValid()) {
         if (m_job != nullptr) {
             m_job->finish();
@@ -57,34 +52,34 @@ void Worker::order(Order o)
     m_job->init(m_todo);
 }
 
-
 void Worker::createJob(int type) {
     if (m_job != nullptr) {
         delete m_job;
     }
     switch (type) {
-    case Order::Production:
-    case Order::RestoreSelfPlayed:
-        m_job = new ProductionJob(m_gpu, m_boss);
-        break;
-    case Order::Validation:
-    case Order::RestoreMatch:
-        m_job = new ValidationJob(m_gpu, m_boss);
-        break;
-    case Order::Wait:
-        m_job = new WaitJob(m_gpu, m_boss);
-        break;
+        case Order::Production:
+        case Order::RestoreSelfPlayed:
+            m_job = new ProductionJob(m_gpu, m_boss);
+            break;
+        case Order::Validation:
+        case Order::RestoreMatch:
+            m_job = new ValidationJob(m_gpu, m_boss);
+            break;
+        case Order::Wait:
+            m_job = new WaitJob(m_gpu, m_boss);
+            break;
     }
 }
 
 void Worker::run() {
-     Result res;
-     do {
+    Result res;
+    do {
         auto start = std::chrono::high_resolution_clock::now();
         res = m_job->execute();
         auto end = std::chrono::high_resolution_clock::now();
         auto gameDuration =
-        std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+            std::chrono::duration_cast<std::chrono::seconds>(end - start)
+                .count();
         if (m_state != STORING) {
             emit resultReady(m_todo, res, m_index, gameDuration);
         }

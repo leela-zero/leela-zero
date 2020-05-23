@@ -16,30 +16,34 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "Results.h"
-#include "../autogtp/Game.h"
-#include "SPRT.h"
 #include <QString>
 #include <iostream>
+
+#include "Results.h"
+
+#include "../autogtp/Game.h"
+#include "SPRT.h"
 
 void Results::addGameResult(Sprt::GameResult result, int side) {
     m_gamesPlayed++;
     if (result == Sprt::GameResult::Win) {
-        if (side == Game::BLACK)
+        if (side == Game::BLACK) {
             m_blackWins++;
-        else
+        } else {
             m_whiteWins++;
+        }
     } else {
-        if (side == Game::BLACK)
+        if (side == Game::BLACK) {
             m_blackLosses++;
-        else
+        } else {
             m_whiteLosses++;
+        }
     }
 }
 
 std::string winPercentColumn(int wins, int games) {
-    auto line = QString::asprintf(" %4d %5.2f%%", wins,
-                                  100.0f * (wins / (float)games));
+    auto line =
+        QString::asprintf(" %4d %5.2f%%", wins, 100.0f * (wins / (float)games));
     return line.toStdString();
 }
 
@@ -53,10 +57,8 @@ void Results::printResults(const QString& firstNetName,
             DEFG5678  111 63.07%   61 68.54%   50 57.47%
                                    98 55.68%   78 44.32%
     */
-    auto first_name = firstNetName.leftJustified(8, ' ', true)\
-            .toStdString();
-    auto second_name = secondNetName.leftJustified(8, ' ', true)\
-            .toStdString();
+    auto first_name = firstNetName.leftJustified(8, ' ', true).toStdString();
+    auto second_name = secondNetName.leftJustified(8, ' ', true).toStdString();
 
     // Results for player one
     auto p1_wins = m_blackWins + m_whiteWins;
@@ -70,24 +72,20 @@ void Results::printResults(const QString& firstNetName,
     auto title_line = QString::asprintf("%13s %-11s %-11s %s\n",
                                         "", "wins", "black", "white");
 
-    std::cout
-        << first_name << " v " << second_name
-        << " ( " << m_gamesPlayed << " games)" << std::endl;
+    std::cout << first_name << " v " << second_name
+              << " ( " << m_gamesPlayed << " games)" << std::endl;
     std::cout << title_line.toStdString();
-    std::cout
-        << first_name
-        << winPercentColumn(p1_wins, m_gamesPlayed)
-        << winPercentColumn(m_blackWins, black_wins)
-        << winPercentColumn(m_whiteWins, white_wins) << std::endl;
-    std::cout
-        << second_name
-        << winPercentColumn(p1_losses, m_gamesPlayed)
-        << winPercentColumn(m_whiteLosses, black_wins)
-        << winPercentColumn(m_blackLosses, white_wins) << std::endl;
-    std::cout
-        << std::string(20, ' ')
-        << winPercentColumn(black_wins, m_gamesPlayed)
-        << winPercentColumn(white_wins, m_gamesPlayed) << std::endl;
+    std::cout << first_name
+              << winPercentColumn(p1_wins, m_gamesPlayed)
+              << winPercentColumn(m_blackWins, black_wins)
+              << winPercentColumn(m_whiteWins, white_wins) << std::endl;
+    std::cout << second_name
+              << winPercentColumn(p1_losses, m_gamesPlayed)
+              << winPercentColumn(m_whiteLosses, black_wins)
+              << winPercentColumn(m_blackLosses, white_wins) << std::endl;
+    std::cout << std::string(20, ' ')
+              << winPercentColumn(black_wins, m_gamesPlayed)
+              << winPercentColumn(white_wins, m_gamesPlayed) << std::endl;
 }
 
 QTextStream& operator<<(QTextStream& stream, const Results& r) {

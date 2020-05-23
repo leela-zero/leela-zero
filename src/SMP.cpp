@@ -27,16 +27,16 @@
     work.
 */
 
-#include "SMP.h"
-
 #include <cassert>
 #include <thread>
+
+#include "SMP.h"
 
 SMP::Mutex::Mutex() {
     m_lock = false;
 }
 
-SMP::Lock::Lock(Mutex & m) {
+SMP::Lock::Lock(Mutex& m) {
     m_mutex = &m;
     lock();
 }
@@ -47,7 +47,7 @@ void SMP::Lock::lock() {
     // However, just trying to Test-and-Set first improves performance in almost
     // all cases
     while (m_mutex->m_lock.exchange(true, std::memory_order_acquire)) {
-      while (m_mutex->m_lock.load(std::memory_order_relaxed));
+        while (m_mutex->m_lock.load(std::memory_order_relaxed)) {}
     }
     m_owns_lock = true;
 }

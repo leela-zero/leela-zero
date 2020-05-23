@@ -37,14 +37,13 @@
 #include <utility>
 #include <vector>
 
-#include "UCTNode.h"
 #include "FastBoard.h"
 #include "FastState.h"
+#include "GTP.h"
 #include "KoState.h"
 #include "Random.h"
 #include "UCTNode.h"
 #include "Utils.h"
-#include "GTP.h"
 
 /*
  * These functions belong to UCTNode but should only be called on the root node
@@ -60,7 +59,7 @@ UCTNode* UCTNode::get_first_child() const {
 }
 
 void UCTNode::kill_superkos(const GameState& state) {
-    UCTNodePointer *pass_child = nullptr;
+    UCTNodePointer* pass_child = nullptr;
     size_t valid_count = 0;
 
     for (auto& child : m_children) {
@@ -81,8 +80,8 @@ void UCTNode::kill_superkos(const GameState& state) {
         }
     }
 
-    if (valid_count > 1 && pass_child &&
-            !state.is_move_legal(state.get_to_move(), FastBoard::PASS)) {
+    if (valid_count > 1 && pass_child
+        && !state.is_move_legal(state.get_to_move(), FastBoard::PASS)) {
         // Remove the PASS node according to "avoid" -- but only if there are
         // other valid nodes left.
         (*pass_child)->invalidate();
@@ -91,9 +90,8 @@ void UCTNode::kill_superkos(const GameState& state) {
     // Now do the actual deletion.
     m_children.erase(
         std::remove_if(begin(m_children), end(m_children),
-                       [](const auto &child) { return !child->valid(); }),
-        end(m_children)
-    );
+                       [](const auto& child) { return !child->valid(); }),
+        end(m_children));
 }
 
 void UCTNode::dirichlet_noise(const float epsilon, const float alpha) {
@@ -105,8 +103,8 @@ void UCTNode::dirichlet_noise(const float epsilon, const float alpha) {
         dirichlet_vector.emplace_back(gamma(Random::get_Rng()));
     }
 
-    auto sample_sum = std::accumulate(begin(dirichlet_vector),
-                                      end(dirichlet_vector), 0.0f);
+    auto sample_sum =
+        std::accumulate(begin(dirichlet_vector), end(dirichlet_vector), 0.0f);
 
     // If the noise vector sums to 0 or a denormal, then don't try to
     // normalize.
@@ -142,8 +140,7 @@ void UCTNode::randomize_first_proportionally() {
             }
         }
         if (visits > cfg_random_min_visits) {
-            accum += std::pow(visits / norm_factor,
-                              1.0 / cfg_random_temp);
+            accum += std::pow(visits / norm_factor, 1.0 / cfg_random_temp);
             accum_vector.emplace_back(accum);
         }
     }
@@ -187,7 +184,7 @@ UCTNode* UCTNode::get_nopass_child(FastState& state) const {
 std::unique_ptr<UCTNode> UCTNode::find_child(const int move) {
     for (auto& child : m_children) {
         if (child.get_move() == move) {
-             // no guarantee that this is a non-inflated node
+            // no guarantee that this is a non-inflated node
             child.inflate();
             return std::unique_ptr<UCTNode>(child.release());
         }

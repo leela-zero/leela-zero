@@ -40,7 +40,6 @@
 
 class NNCache {
 public:
-
     // Maximum size of the cache in number of items.
     static constexpr int MAX_CACHE_COUNT = 150'000;
 
@@ -62,12 +61,11 @@ public:
         }
     };
 
-    static constexpr size_t ENTRY_SIZE =
-          sizeof(Netresult)
-        + sizeof(std::uint64_t)
-        + sizeof(std::unique_ptr<Netresult>);
+    static constexpr size_t ENTRY_SIZE = sizeof(Netresult)
+                                         + sizeof(std::uint64_t)
+                                         + sizeof(std::unique_ptr<Netresult>);
 
-    NNCache(int size = MAX_CACHE_COUNT);  // ~ 208MiB
+    NNCache(int size = MAX_CACHE_COUNT); // ~ 208MiB
 
     // Set a reasonable size gives max number of playouts
     void set_size_from_playouts(int max_playouts);
@@ -77,11 +75,10 @@ public:
     void clear();
 
     // Try and find an existing entry.
-    bool lookup(std::uint64_t hash, Netresult & result);
+    bool lookup(std::uint64_t hash, Netresult& result);
 
     // Insert a new entry.
-    void insert(std::uint64_t hash,
-                const Netresult& result);
+    void insert(std::uint64_t hash, const Netresult& result);
 
     // Return the hit rate ratio.
     std::pair<int, int> hit_rate() const {
@@ -92,8 +89,8 @@ public:
 
     // Return the estimated memory consumption of the cache.
     size_t get_estimated_size();
-private:
 
+private:
     std::mutex m_mutex;
 
     size_t m_size;
@@ -104,9 +101,8 @@ private:
     int m_inserts{0};
 
     struct Entry {
-        Entry(const Netresult& r)
-            : result(r) {}
-        Netresult result;  // ~ 1.4KiB
+        Entry(const Netresult& r) : result(r) {}
+        Netresult result; // ~ 1.4KiB
     };
 
     // Map from hash to {features, result}

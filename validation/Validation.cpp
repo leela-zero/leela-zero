@@ -16,15 +16,15 @@
     along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "Validation.h"
-#include <QFile>
 #include <QDir>
+#include <QFile>
 #include <QUuid>
+
+#include "Validation.h"
 
 using VersionTuple = std::tuple<int, int, int>;
 // Minimal Leela Zero version we expect to see
 const VersionTuple min_leelaz_version{0, 16, 0};
-
 
 void ValidationWorker::run() {
     do {
@@ -38,10 +38,10 @@ void ValidationWorker::run() {
             emit resultReady(Sprt::NoResult, Game::BLACK);
             return;
         }
-        QTextStream(stdout) << "starting:" << endl <<
-            m_engines[0].getCmdLine() << endl <<
-            "vs" << endl <<
-            m_engines[1].getCmdLine() << endl;
+        QTextStream(stdout) << "starting:" << endl
+                            << m_engines[0].getCmdLine() << endl
+                            << "vs" << endl
+                            << m_engines[1].getCmdLine() << endl;
 
         QString wmove = "play white ";
         QString bmove = "play black ";
@@ -79,7 +79,8 @@ void ValidationWorker::run() {
                     } else {
                         prefix.append("white_");
                     }
-                    QFile(first.getFile() + ".sgf").rename(prefix + first.getFile() + ".sgf");
+                    QFile(first.getFile() + ".sgf")
+                        .rename(prefix + first.getFile() + ".sgf");
                 }
             }
             QTextStream(stdout) << "Stopping engine." << endl;
@@ -107,8 +108,7 @@ void ValidationWorker::run() {
 }
 
 void ValidationWorker::init(const QString& gpuIndex,
-                            const QVector<Engine>& engines,
-                            const QString& keep,
+                            const QVector<Engine>& engines, const QString& keep,
                             int expected) {
     m_engines = engines;
     if (!gpuIndex.isEmpty()) {
@@ -120,23 +120,20 @@ void ValidationWorker::init(const QString& gpuIndex,
     m_state.store(RUNNING);
 }
 
-Validation::Validation(const int gpus,
-                       const int games,
-                       const QStringList& gpuslist,
-                       QVector<Engine>& engines,
-                       const QString& keep,
-                       QMutex* mutex,
-                       const float h0,
-                       const float h1) :
+Validation::Validation(const int gpus, const int games,
+                       const QStringList& gpuslist, QVector<Engine>& engines,
+                       const QString& keep, QMutex* mutex, const float h0,
+                       const float h1)
+    :
 
-    m_mainMutex(mutex),
-    m_syncMutex(),
-    m_gamesThreads(gpus*games),
-    m_games(games),
-    m_gpus(gpus),
-    m_gpusList(gpuslist),
-    m_engines(engines),
-    m_keepPath(keep) {
+      m_mainMutex(mutex),
+      m_syncMutex(),
+      m_gamesThreads(gpus * games),
+      m_games(games),
+      m_gpus(gpus),
+      m_gpusList(gpuslist),
+      m_engines(engines),
+      m_keepPath(keep) {
     m_statistic.initialize(h0, h1, 0.05, 0.05);
     m_statistic.addGameResult(Sprt::Draw);
 }
@@ -146,10 +143,8 @@ void Validation::startGames() {
         for (int game = 0; game < m_games; ++game) {
             auto thread_index = gpu * m_games + game;
             connect(&m_gamesThreads[thread_index],
-                    &ValidationWorker::resultReady,
-                    this,
-                    &Validation::getResult,
-                    Qt::DirectConnection);
+                    &ValidationWorker::resultReady, this,
+                    &Validation::getResult, Qt::DirectConnection);
 
             auto engines = m_engines;
             auto expected = Game::BLACK;
@@ -163,8 +158,8 @@ void Validation::startGames() {
                 myGpu = m_gpusList.at(gpu);
             }
 
-            m_gamesThreads[thread_index].init(
-                myGpu, engines, m_keepPath, expected);
+            m_gamesThreads[thread_index].init(myGpu, engines, m_keepPath,
+                                              expected);
             m_gamesThreads[thread_index].start();
         }
     }
@@ -208,13 +203,12 @@ void Validation::loadSprt() {
 }
 
 void Validation::printSprtStatus(const Sprt::Status& status) {
-    QTextStream(stdout)
-        << m_results.getGamesPlayed() << " games played." << endl;
-    QTextStream(stdout)
-        << "Status: " << status.result
-        << " LLR " << status.llr
-        << " Lower Bound " << status.lBound
-        << " Upper Bound " << status.uBound << endl;
+    QTextStream(stdout) << m_results.getGamesPlayed() << " games played."
+                        << endl;
+    QTextStream(stdout) << "Status: " << status.result
+                        << " LLR " << status.llr
+                        << " Lower Bound " << status.lBound
+                        << " Upper Bound " << status.uBound << endl;
 }
 
 void Validation::getResult(Sprt::GameResult result, int net_one_color) {
@@ -234,10 +228,10 @@ void Validation::getResult(Sprt::GameResult result, int net_one_color) {
         quitThreads();
         QTextStream(stdout)
             << "The first net is "
-            <<  ((status.result ==  Sprt::AcceptH0) ? "worse " : "better ")
+            << ((status.result == Sprt::AcceptH0) ? "worse " : "better ")
             << "than the second" << endl;
         m_results.printResults(m_engines[0].m_network, m_engines[1].m_network);
-        //sendQuit();
+        // sendQuit();
     } else {
         printSprtStatus(status);
     }

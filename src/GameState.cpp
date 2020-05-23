@@ -27,9 +27,6 @@
     work.
 */
 
-#include "GameState.h"
-#include "Network.h"
-
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -37,10 +34,13 @@
 #include <memory>
 #include <string>
 
+#include "GameState.h"
+
 #include "FastBoard.h"
 #include "FastState.h"
 #include "FullBoard.h"
 #include "KoState.h"
+#include "Network.h"
 #include "UCTSearch.h"
 
 void GameState::init_game(const int size, const float komi) {
@@ -122,8 +122,9 @@ bool GameState::play_textmove(std::string color, const std::string& vertex) {
     }
 
     const auto move = board.text_to_move(vertex);
-    if (move == FastBoard::NO_VERTEX ||
-        (move != FastBoard::PASS && move != FastBoard::RESIGN && board.get_state(move) != FastBoard::EMPTY)) {
+    if (move == FastBoard::NO_VERTEX
+        || (move != FastBoard::PASS && move != FastBoard::RESIGN
+            && board.get_state(move) != FastBoard::EMPTY)) {
         return false;
     }
 
@@ -165,8 +166,7 @@ void GameState::set_timecontrol(const TimeControl& timecontrol) {
 
 void GameState::set_timecontrol(const int maintime, const int byotime,
                                 const int byostones, const int byoperiods) {
-    TimeControl timecontrol(maintime, byotime,
-                            byostones, byoperiods);
+    TimeControl timecontrol(maintime, byotime, byostones, byoperiods);
 
     m_timecontrol = timecontrol;
 }
@@ -241,15 +241,15 @@ int GameState::set_fixed_handicap_2(const int handicap) {
         for (int i = low; i <= high; i += interval) {
             for (int j = low; j <= high; j += interval) {
                 if (placed >= handicap) return placed;
-                if (board.get_state(i-1, j-1) != FastBoard::EMPTY) continue;
-                if (board.get_state(i-1, j) != FastBoard::EMPTY) continue;
-                if (board.get_state(i-1, j+1) != FastBoard::EMPTY) continue;
-                if (board.get_state(i, j-1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i - 1, j - 1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i - 1, j) != FastBoard::EMPTY) continue;
+                if (board.get_state(i - 1, j + 1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i, j - 1) != FastBoard::EMPTY) continue;
                 if (board.get_state(i, j) != FastBoard::EMPTY) continue;
-                if (board.get_state(i, j+1) != FastBoard::EMPTY) continue;
-                if (board.get_state(i+1, j-1) != FastBoard::EMPTY) continue;
-                if (board.get_state(i+1, j) != FastBoard::EMPTY) continue;
-                if (board.get_state(i+1, j+1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i, j + 1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i + 1, j - 1) != FastBoard::EMPTY) continue;
+                if (board.get_state(i + 1, j) != FastBoard::EMPTY) continue;
+                if (board.get_state(i + 1, j + 1) != FastBoard::EMPTY) continue;
                 play_move(FastBoard::BLACK, board.get_vertex(i, j));
                 placed++;
             }
@@ -279,7 +279,7 @@ bool GameState::valid_handicap(const int handicap) {
     return true;
 }
 
-void GameState::place_free_handicap(int stones, Network & network) {
+void GameState::place_free_handicap(int stones, Network& network) {
     int limit = board.get_boardsize() * board.get_boardsize();
     if (stones > limit / 2) {
         stones = limit / 2;
@@ -300,7 +300,7 @@ void GameState::place_free_handicap(int stones, Network & network) {
         play_move(FastBoard::BLACK, move);
     }
 
-    if (orgstones)  {
+    if (orgstones) {
         board.set_to_move(FastBoard::WHITE);
     } else {
         board.set_to_move(FastBoard::BLACK);
@@ -317,6 +317,7 @@ const FullBoard& GameState::get_past_board(const int moves_ago) const {
     return game_history[m_movenum - moves_ago]->board;
 }
 
-const std::vector<std::shared_ptr<const KoState>>& GameState::get_game_history() const {
+const std::vector<std::shared_ptr<const KoState>>&
+GameState::get_game_history() const {
     return game_history;
 }

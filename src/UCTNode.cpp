@@ -29,11 +29,11 @@
 
 #include "config.h"
 
-#include <cassert>
-#include <cstdio>
-#include <cstdint>
 #include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <cstdint>
+#include <cstdio>
 #include <functional>
 #include <iterator>
 #include <limits>
@@ -42,6 +42,7 @@
 #include <vector>
 
 #include "UCTNode.h"
+
 #include "FastBoard.h"
 #include "FastState.h"
 #include "GTP.h"
@@ -51,17 +52,15 @@
 
 using namespace Utils;
 
-UCTNode::UCTNode(const int vertex, const float policy) : m_move(vertex), m_policy(policy) {
-}
+UCTNode::UCTNode(const int vertex, const float policy)
+    : m_move(vertex), m_policy(policy) {}
 
 bool UCTNode::first_visit() const {
     return m_visits == 0;
 }
 
-bool UCTNode::create_children(Network & network,
-                              std::atomic<int>& nodecount,
-                              GameState& state,
-                              float& eval,
+bool UCTNode::create_children(Network& network, std::atomic<int>& nodecount,
+                              GameState& state, float& eval,
                               const float min_psa_ratio) {
     // no successors in final state
     if (state.get_passes() >= 2) {
@@ -81,8 +80,8 @@ bool UCTNode::create_children(Network & network,
 
     NNCache::Netresult raw_netlist;
     try {
-        raw_netlist = network.get_output(
-            &state, Network::Ensemble::RANDOM_SYMMETRY);
+        raw_netlist =
+            network.get_output(&state, Network::Ensemble::RANDOM_SYMMETRY);
     } catch (NetworkHaltException&) {
         expand_cancel();
         throw;
@@ -171,11 +170,9 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
     const auto old_min_psa = max_psa * m_min_psa_ratio_children;
     const auto new_min_psa = max_psa * min_psa_ratio;
     if (new_min_psa > 0.0f) {
-        m_children.reserve(
-            std::count_if(cbegin(nodelist), cend(nodelist),
-                [=](const auto& node) { return node.first >= new_min_psa; }
-            )
-        );
+        m_children.reserve(std::count_if(
+            cbegin(nodelist), cend(nodelist),
+            [=](const auto& node) { return node.first >= new_min_psa; }));
     } else {
         m_children.reserve(nodelist.size());
     }
@@ -196,7 +193,6 @@ void UCTNode::link_nodelist(std::atomic<int>& nodecount,
 const std::vector<UCTNodePointer>& UCTNode::get_children() const {
     return m_children;
 }
-
 
 int UCTNode::get_move() const {
     return m_move;
@@ -320,9 +316,12 @@ UCTNode* UCTNode::uct_select_child(const int color, const bool is_root) {
         }
     }
 
-    const auto numerator = std::sqrt(double(parentvisits) *
-            std::log(cfg_logpuct * double(parentvisits) + cfg_logconst));
-    const auto fpu_reduction = (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction) * std::sqrt(total_visited_policy);
+    const auto numerator = std::sqrt(
+        double(parentvisits)
+        * std::log(cfg_logpuct * double(parentvisits) + cfg_logconst));
+    const auto fpu_reduction =
+        (is_root ? cfg_fpu_root_reduction : cfg_fpu_reduction)
+        * std::sqrt(total_visited_policy);
     // Estimated eval for unknown nodes = parent (not NN) eval - reduction
     const auto fpu_eval = get_raw_eval(color) - fpu_reduction;
 
@@ -335,7 +334,8 @@ UCTNode* UCTNode::uct_select_child(const int color, const bool is_root) {
         }
 
         auto winrate = fpu_eval;
-        if (child.is_inflated() && child->m_expand_state.load() == ExpandState::EXPANDING) {
+        if (child.is_inflated()
+            && child->m_expand_state.load() == ExpandState::EXPANDING) {
             // Someone else is expanding this node, never select it
             // if we can avoid so, because we'd block on it.
             winrate = -1.0f - fpu_reduction;
@@ -359,16 +359,15 @@ UCTNode* UCTNode::uct_select_child(const int color, const bool is_root) {
     return best->get();
 }
 
-class NodeComp : public std::binary_function<UCTNodePointer&,
-                                             UCTNodePointer&, bool> {
+class NodeComp
+    : public std::binary_function<UCTNodePointer&, UCTNodePointer&, bool> {
 public:
-    NodeComp(const int color, const float lcb_min_visits) : m_color(color),
-        m_lcb_min_visits(lcb_min_visits){};
+    NodeComp(const int color, const float lcb_min_visits)
+        : m_color(color), m_lcb_min_visits(lcb_min_visits) {}
 
     // WARNING : on very unusual cases this can be called on multithread
     // contexts (e.g., UCTSearch::get_pv()) so beware of race conditions
-    bool operator()(const UCTNodePointer& a,
-                    const UCTNodePointer& b) {
+    bool operator()(const UCTNodePointer& a, const UCTNodePointer& b) {
         auto a_visit = a.get_visits();
         auto b_visit = b.get_visits();
 
@@ -401,13 +400,15 @@ public:
         // both have same non-zero number of visits
         return a.get_eval(m_color) < b.get_eval(m_color);
     }
+
 private:
     int m_color;
     float m_lcb_min_visits;
 };
 
 void UCTNode::sort_children(const int color, const float lcb_min_visits) {
-    std::stable_sort(rbegin(m_children), rend(m_children), NodeComp(color, lcb_min_visits));
+    std::stable_sort(rbegin(m_children), rend(m_children),
+                     NodeComp(color, lcb_min_visits));
 }
 
 UCTNode& UCTNode::get_best_root_child(const int color) const {
@@ -420,8 +421,9 @@ UCTNode& UCTNode::get_best_root_child(const int color) const {
         max_visits = std::max(max_visits, node.get_visits());
     }
 
-    auto ret = std::max_element(begin(m_children), end(m_children),
-                                NodeComp(color, cfg_lcb_min_visit_ratio * max_visits));
+    auto ret =
+        std::max_element(begin(m_children), end(m_children),
+                         NodeComp(color, cfg_lcb_min_visit_ratio * max_visits));
     ret->inflate();
 
     return *(ret->get());

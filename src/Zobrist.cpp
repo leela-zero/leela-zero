@@ -28,7 +28,9 @@
 */
 
 #include "config.h"
+
 #include "Zobrist.h"
+
 #include "Random.h"
 
 std::array<std::array<std::uint64_t, FastBoard::NUM_VERTICES>,     4> Zobrist::zobrist;
@@ -54,6 +56,6 @@ void Zobrist::init_zobrist(Random& rng) {
     }
 
     for (int i = 0; i < 5; i++) {
-        Zobrist::zobrist_pass[i]  = rng.randuint64();
+        Zobrist::zobrist_pass[i] = rng.randuint64();
     }
 }

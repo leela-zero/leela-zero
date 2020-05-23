@@ -30,9 +30,9 @@
 #include "config.h"
 
 #include <atomic>
-#include <memory>
 #include <cassert>
 #include <cstring>
+#include <memory>
 
 #include "UCTNode.h"
 
@@ -77,8 +77,8 @@ UCTNodePointer::UCTNodePointer(const std::int16_t vertex, const float policy) {
     auto i_vertex = static_cast<std::uint16_t>(vertex);
     std::memcpy(&i_policy, &policy, sizeof(i_policy));
 
-    m_data =  (static_cast<std::uint64_t>(i_policy) << 32)
-            | (static_cast<std::uint64_t>(i_vertex) << 16);
+    m_data = (static_cast<std::uint64_t>(i_policy) << 32)
+           | (static_cast<std::uint64_t>(i_vertex) << 16);
     increment_tree_size(sizeof(UCTNodePointer));
 }
 
@@ -93,7 +93,7 @@ UCTNodePointer& UCTNodePointer::operator=(UCTNodePointer&& n) {
     return *this;
 }
 
-UCTNode * UCTNodePointer::release() {
+UCTNode* UCTNodePointer::release() {
     auto v = std::atomic_exchange(&m_data, INVALID);
     decrement_tree_size(sizeof(UCTNode));
     return read_ptr(v);
