@@ -7,7 +7,7 @@ A Go program with no human provided knowledge. Using MCTS (but without
 Monte Carlo playouts) and a deep residual convolutional neural network stack.
 
 This is a fairly faithful reimplementation of the system described
-in the Alpha Go Zero paper "[Mastering the Game of Go without Human Knowledge](https://deepmind.com/documents/119/agz_unformatted_nature.pdf)".
+in the Alpha Go Zero paper "[Mastering the Game of Go without Human Knowledge](https://deepmind.com/research/publications/mastering-game-go-without-human-knowledge)".
 For all intents and purposes, it is an open source AlphaGo Zero.
 
 # Wait, what?
