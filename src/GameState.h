@@ -81,7 +81,7 @@ public:
 private:
     bool valid_handicap(int stones);
 
-    std::vector<std::shared_ptr<const KoState>> game_history;
+    std::vector<std::shared_ptr<const KoState>> m_game_history;
     TimeControl m_timecontrol;
     int m_resigned{FastBoard::EMPTY};
 };

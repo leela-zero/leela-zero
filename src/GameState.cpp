@@ -46,8 +46,8 @@
 void GameState::init_game(const int size, const float komi) {
     KoState::init_game(size, komi);
 
-    game_history.clear();
-    game_history.emplace_back(std::make_shared<KoState>(*this));
+    m_game_history.clear();
+    m_game_history.emplace_back(std::make_shared<KoState>(*this));
 
     m_timecontrol.reset_clocks();
 
@@ -57,8 +57,8 @@ void GameState::init_game(const int size, const float komi) {
 void GameState::reset_game() {
     KoState::reset_game();
 
-    game_history.clear();
-    game_history.emplace_back(std::make_shared<KoState>(*this));
+    m_game_history.clear();
+    m_game_history.emplace_back(std::make_shared<KoState>(*this));
 
     m_timecontrol.reset_clocks();
 
@@ -66,9 +66,9 @@ void GameState::reset_game() {
 }
 
 bool GameState::forward_move() {
-    if (game_history.size() > m_movenum + 1) {
+    if (m_game_history.size() > m_movenum + 1) {
         m_movenum++;
-        *(static_cast<KoState*>(this)) = *game_history[m_movenum];
+        *(static_cast<KoState*>(this)) = *m_game_history[m_movenum];
         return true;
     } else {
         return false;
@@ -80,7 +80,7 @@ bool GameState::undo_move() {
         m_movenum--;
 
         // this is not so nice, but it should work
-        *(static_cast<KoState*>(this)) = *game_history[m_movenum];
+        *(static_cast<KoState*>(this)) = *m_game_history[m_movenum];
 
         // This also restores hashes as they're part of state
         return true;
@@ -90,7 +90,7 @@ bool GameState::undo_move() {
 }
 
 void GameState::rewind() {
-    *(static_cast<KoState*>(this)) = *game_history[0];
+    *(static_cast<KoState*>(this)) = *m_game_history[0];
     m_movenum = 0;
 }
 
@@ -106,8 +106,8 @@ void GameState::play_move(const int color, const int vertex) {
     }
 
     // cut off any leftover moves from navigating
-    game_history.resize(m_movenum);
-    game_history.emplace_back(std::make_shared<KoState>(*this));
+    m_game_history.resize(m_movenum);
+    m_game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
 bool GameState::play_textmove(std::string color, const std::string& vertex) {
@@ -178,8 +178,8 @@ void GameState::adjust_time(const int color, const int time, const int stones) {
 void GameState::anchor_game_history() {
     // handicap moves don't count in game history
     m_movenum = 0;
-    game_history.clear();
-    game_history.emplace_back(std::make_shared<KoState>(*this));
+    m_game_history.clear();
+    m_game_history.emplace_back(std::make_shared<KoState>(*this));
 }
 
 bool GameState::set_fixed_handicap(const int handicap) {
@@ -313,11 +313,11 @@ void GameState::place_free_handicap(int stones, Network& network) {
 
 const FullBoard& GameState::get_past_board(const int moves_ago) const {
     assert(moves_ago >= 0 && (unsigned)moves_ago <= m_movenum);
-    assert(m_movenum + 1 <= game_history.size());
-    return game_history[m_movenum - moves_ago]->board;
+    assert(m_movenum + 1 <= m_game_history.size());
+    return m_game_history[m_movenum - moves_ago]->board;
 }
 
 const std::vector<std::shared_ptr<const KoState>>&
 GameState::get_game_history() const {
-    return game_history;
+    return m_game_history;
 }
