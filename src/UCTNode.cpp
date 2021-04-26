@@ -60,7 +60,7 @@ bool UCTNode::first_visit() const {
 }
 
 bool UCTNode::create_children(Network& network, std::atomic<int>& nodecount,
-                              GameState& state, float& eval,
+                              const GameState& state, float& eval,
                               const float min_psa_ratio) {
     // no successors in final state
     if (state.get_passes() >= 2) {
