@@ -211,7 +211,6 @@ void UCTNode::prepare_root_node(Network& network, const int color,
     if (had_children) {
         root_eval = get_net_eval(color);
     } else {
-        update(root_eval);
         root_eval = (color == FastBoard::BLACK ? root_eval : 1.0f - root_eval);
     }
     Utils::myprintf("NN eval=%f\n", root_eval);
