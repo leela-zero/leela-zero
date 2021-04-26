@@ -1,4 +1,4 @@
-bleach==3.1.4
+bleach==3.3.0
 enum34==1.1.6
 futures==3.1.1
 html5lib==0.9999999
