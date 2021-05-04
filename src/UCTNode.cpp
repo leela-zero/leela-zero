@@ -148,8 +148,10 @@ bool UCTNode::create_children(Network& network, std::atomic<int>& nodecount,
     }
 
     link_nodelist(nodecount, nodelist, min_psa_ratio);
-    // Increment visit and assign eval.
-    update(eval);
+    if (first_visit()) {
+        // Increment visit and assign eval.
+        update(eval);
+    }
     expand_done();
     return true;
 }
