@@ -21,7 +21,7 @@ be an engine that is far stronger than the top humans.
 
 # Gimme the weights
 
-Recomputing the AlphaGo Zero weights will [take about 1700 years on commodity hardware](http://computer-go.org/pipermail/computer-go/2017-October/010307.html).
+Recomputing the AlphaGo Zero weights will [take about 1700 years on commodity hardware](http://web.archive.org/web/20190205013627/http://computer-go.org/pipermail/computer-go/2017-October/010307.html).
 
 One reason for publishing this program is that we are running a public,
 distributed effort to repeat the work. Working together, and especially
